@@ -32,9 +32,6 @@ static ULONG ulSemRWFat = 0;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
-PUBLIC BYTE szSrcLongName[ FAT32MAXPATH ] = "";
-PUBLIC BYTE szDstLongName[ FAT32MAXPATH ] = "";
-
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
 "Made by Henk Kelder + Netlabs\r\n";
@@ -111,6 +108,8 @@ ULONG    ulSrcCluster;
 ULONG    ulDstCluster;
 USHORT   rc, rc2;
 POPENINFO pOpenInfo = NULL;
+BYTE     szSrcLongName[ FAT32MAXPATH ];
+BYTE     szDstLongName[ FAT32MAXPATH ];
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_COPY %s to %s, mode %d", pSrc, pDst, usMode);
@@ -134,6 +133,13 @@ POPENINFO pOpenInfo = NULL;
       rc = ERROR_CANNOT_COPY;
       goto FS_COPYEXIT;
       }
+
+   if( TranslateName(pVolInfo, 0L, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szSrcLongName, pSrc );
+
+   if( TranslateName(pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szDstLongName, pDst );
+
    if (!stricmp( szSrcLongName, szDstLongName ))
       {
       rc = ERROR_CANNOT_COPY;
@@ -357,6 +363,7 @@ PSZ      pszFile;
 USHORT   rc;
 DIRENTRY DirEntry;
 POPENINFO pOpenInfo;
+BYTE     szLongName[ FAT32MAXPATH ];
 
    if (f32Parms.fMessageActive & LOG_FS)
     Message("FS_DELETE for %s", pFile);
@@ -377,7 +384,10 @@ POPENINFO pOpenInfo;
       goto FS_DELETEEXIT;
       }
 
-   pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
+   if( TranslateName(pVolInfo, 0L, pFile, szLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szLongName, pFile );
+
+   pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
    if (!pOpenInfo->pSHInfo)
       {
       rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -1853,6 +1863,34 @@ ULONG    ulTarCluster;
 USHORT   rc;
 POPENINFO pOISrc = NULL;
 POPENINFO pOIDst = NULL;
+BYTE     szSrcLongName[ FAT32MAXPATH ];
+BYTE     szDstLongName[ FAT32MAXPATH ];
+
+   if (f32Parms.fMessageActive & LOG_FS)
+      Message("FS_MOVE %s to %s", pSrc, pDst);
+
+   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   if (IsDriveLocked(pVolInfo))
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_MOVEEXIT;
+      }
+   if (!pVolInfo->fDiskCleanOnMount)
+      {
+      rc = ERROR_VOLUME_DIRTY;
+      goto FS_MOVEEXIT;
+      }
+   if (pVolInfo->fWriteProtected)
+      {
+      rc = ERROR_WRITE_PROTECT;
+      goto FS_MOVEEXIT;
+      }
+
+   if( TranslateName(pVolInfo, 0L, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szSrcLongName, pSrc );
+
+   if( TranslateName(pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szDstLongName, pDst );
 
    pOISrc = malloc(sizeof (OPENINFO));
    if (!pOISrc)
@@ -1899,25 +1937,6 @@ POPENINFO pOIDst = NULL;
         pOIDst->pSHInfo->fLock = TRUE;
    }
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MOVE %s to %s", pSrc, pDst);
-
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
-   if (IsDriveLocked(pVolInfo))
-      {
-      rc = ERROR_DRIVE_LOCKED;
-      goto FS_MOVEEXIT;
-      }
-   if (!pVolInfo->fDiskCleanOnMount)
-      {
-      rc = ERROR_VOLUME_DIRTY;
-      goto FS_MOVEEXIT;
-      }
-   if (pVolInfo->fWriteProtected)
-      {
-      rc = ERROR_WRITE_PROTECT;
-      goto FS_MOVEEXIT;
-      }
 
    /*
       Check destination
@@ -2134,32 +2153,13 @@ int far pascal FS_PROCESSNAME(
     char far *  pNameBuf        /* pNameBuf */
 )
 {
-PVOLINFO pVolInfo = pGlobVolInfo;
-BYTE     bDrive;
-
+#if 0
      if (f32Parms.fMessageActive & LOG_FS)
         Message("FS_PROCESSNAME for %s", pNameBuf);
-     bDrive = pNameBuf[0];
-     if (bDrive >= 'a' && bDrive <= 'z')
-         bDrive -= ('a' - 'A');
-     bDrive -= 'A';
-     while (pVolInfo)
-        {
-        if (pVolInfo->bDrive == bDrive)
-           break;
-        pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
-        }
-
-     if (pVolInfo)
-        {
-        strcpy( szDstLongName, szSrcLongName );
-        if( TranslateName(pVolInfo, 0L, pNameBuf, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
-            strcpy( szSrcLongName, pNameBuf );
-        }
 
      if (f32Parms.fMessageActive & LOG_FS)
-        Message(" FS_PROCESSNAME returned filename: %s, longname %s", pNameBuf, szSrcLongName);
-
+        Message(" FS_PROCESSNAME returned filename: %s", pNameBuf);
+#endif
    return 0;
 }
 
@@ -2633,7 +2633,9 @@ BOOL   fContiguous;
 
       for (;;)
          {
-/*         Yield(); */
+#ifdef CALL_YIELD
+         Yield();
+#endif
          /*
             Find first free cluster
          */
@@ -3302,7 +3304,9 @@ PROCINFO ProcInfo;
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pVolInfo->usClusterSize);
 
-//         Yield();
+#ifdef CALL_YIELD
+         Yield();
+#endif
 
          while (usMode == MODE_SCAN && pDir < pDirEnd)
             {
@@ -3495,7 +3499,9 @@ ULONG  ulCluster;
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pVolInfo->usClusterSize);
 
-//         Yield();
+#ifdef CALL_YIELD
+         Yield();
+#endif
 
          while (usMode == MODE_SCAN && pDir < pDirEnd)
             {
@@ -4216,7 +4222,10 @@ USHORT rc;
    ulClustersFreed = 0;
    while (!(ulCluster >= FAT_EOF2 && ulCluster <= FAT_EOF))
       {
-//      Yield();
+#ifdef CALL_YIELD
+      Yield();
+#endif
+
       if (!ulCluster || ulCluster == FAT_BAD_CLUSTER)
          {
          Message("DeleteFatChain: Bad Chain (Cluster %lu)",
@@ -4507,7 +4516,9 @@ BOOL      fNewCluster;
    fNewCluster = FALSE;
    while (ulCluster != FAT_EOF)
       {
-//      Yield();
+#ifdef CALL_YIELD
+      Yield();
+#endif
 
       usClusterCount++;
       if (!fNewCluster)
