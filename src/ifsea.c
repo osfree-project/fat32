@@ -315,7 +315,7 @@ USHORT   usMaxSize;
                Message("Found %s", pSrcFea + 1);
             memcpy(pTarFea, pSrcFea, usFeaSize);
             }
-         else 
+         else
             {
             usFeaSize = sizeof (FEA) + (USHORT)pGea->cbName + 1;
             if (usFeaSize > usMaxSize)
@@ -367,7 +367,6 @@ USHORT   usMaxSize;
          usMaxSize -= usFeaSize;
          }
       }
-
    rc = 0;
 
 usGetEASExit:
@@ -714,7 +713,7 @@ PFEA     pFea, pFeaEnd;
 
       DirNew.wCluster = LOUSHORT(ulCluster);
       DirNew.wClusterHigh = HIUSHORT(ulCluster);
-      
+
       if (fNew)
          rc = MakeDirEntry(pVolInfo, ulDirCluster, &DirNew, pszEAName);
       else
@@ -860,4 +859,114 @@ USHORT usExtLen = strlen(EA_EXTENTION);
          return TRUE;
       }
    return FALSE;
+}
+
+USHORT usGetEmptyEAS(PSZ pszFileName, PEAOP pEAOP)
+{
+   USHORT rc;
+
+   PFEALIST pTarFeal;
+   USHORT usMaxSize;
+   PFEA     pCurrFea;
+
+   PGEALIST pGeaList;
+   PGEA     pCurrGea;
+
+   ULONG    ulGeaSize;
+   ULONG    ulFeaSize;
+   ULONG    ulCurrFeaLen;
+   ULONG    ulCurrGeaLen;
+
+   if (f32Parms.fMessageActive & LOG_EAS)
+      Message("usGetEmptyEAS for %s with pEAOP %lX", pszFileName,pEAOP);
+
+   /*
+      Checking all the arguments
+   */
+
+   rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pEAOP, sizeof (EAOP));
+   if (rc)
+      {
+      Message("Protection violation in usGetEmptyEAS (1) at %lX", pEAOP);
+      return rc;
+      }
+
+   pTarFeal = pEAOP->fpFEAList;
+   rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pTarFeal, sizeof (ULONG));
+   if (rc)
+      {
+      Message("Protection violation in usGetEmptyEAS (2) at %lX", pTarFeal);
+      return rc;
+      }
+   if (pTarFeal->cbList > MAX_EA_SIZE)
+      usMaxSize = (USHORT)MAX_EA_SIZE;
+   else
+      usMaxSize = (USHORT)pTarFeal->cbList;
+
+   if (usMaxSize < sizeof (ULONG))
+      return ERROR_BUFFER_OVERFLOW;
+
+   rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pTarFeal, (USHORT)usMaxSize);
+   if (rc)
+      return rc;
+
+   pGeaList = pEAOP->fpGEAList;
+   rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pGeaList, sizeof (ULONG));
+   if (rc)
+      return rc;
+   if (pGeaList->cbList > MAX_EA_SIZE)
+      return ERROR_EA_LIST_TOO_LONG;
+   rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pGeaList, (USHORT)pGeaList->cbList);
+   if (rc)
+      return rc;
+
+   ulFeaSize = sizeof(pTarFeal->cbList);
+   ulGeaSize = sizeof(pGeaList->cbList);
+
+   pCurrGea = pGeaList->list;
+   pCurrFea = pTarFeal->list;
+   while(ulGeaSize < pGeaList->cbList)
+      {
+      ulFeaSize += sizeof(FEA) + pCurrGea->cbName + 1;
+      ulCurrGeaLen = sizeof(GEA) + pCurrGea->cbName;
+      pCurrGea = (PGEA)((PBYTE)pCurrGea + ulCurrGeaLen);
+      ulGeaSize += ulCurrGeaLen;
+      }
+
+   if (ulFeaSize > usMaxSize)
+      {
+      /* this is what HPFS.IFS returns */
+      /* when a file does not have any EAs */
+      pTarFeal->cbList = 0xEF;	
+      rc = ERROR_EAS_DIDNT_FIT;
+      }
+   else
+      {
+       /* since we DO copy something to */
+       /* FEALIST, we have to set the complete */
+       /* size of the resulting FEALIST in the */
+       /* length field */
+       pTarFeal->cbList = ulFeaSize;
+       ulGeaSize = sizeof(pGeaList->cbList);
+       pCurrGea = pGeaList->list;
+       pCurrFea = pTarFeal->list;
+       /* copy the EA names requested to the FEA area */
+       /* even if any values cannot be returned       */
+       while (ulGeaSize < pGeaList->cbList)
+          {
+          pCurrFea->fEA     = 0;
+          strcpy((PBYTE)(pCurrFea+1),pCurrGea->szName);
+          pCurrFea->cbName  = (BYTE)strlen(pCurrGea->szName);
+          pCurrFea->cbValue = 0;
+
+          ulCurrFeaLen = sizeof(FEA) + pCurrFea->cbName + 1;
+          pCurrFea = (PFEA)((PBYTE)pCurrFea + ulCurrFeaLen);
+
+          ulCurrGeaLen = sizeof(GEA) + pCurrGea->cbName;
+          pCurrGea = (PGEA)((PBYTE)pCurrGea + ulCurrGeaLen);
+          ulGeaSize += ulCurrGeaLen;
+          }
+       rc = 0;
+       }
+   return rc;
 }

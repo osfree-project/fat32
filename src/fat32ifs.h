@@ -348,6 +348,7 @@ IMPORT USHORT MY_PROBEBUF(USHORT usOperation, char far * pData, USHORT cbData);
 IMPORT POPENINFO GetOpenInfo(struct sffsd far * psffsd);
 IMPORT PSHOPENINFO GetSH(PSZ pszFileName, POPENINFO pOpenInfo);
 IMPORT BOOL ReleaseSH(POPENINFO pOI);
+IMPORT USHORT usGetEmptyEAS(PSZ pszFileName,PEAOP pEAOP);
 
 
 /*

@@ -16,12 +16,12 @@
 *
 ******************************************************************/
 int far pascal FS_FILEATTRIBUTE(
-    unsigned short usFlag,		/* flag		*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    unsigned short far * pAttr	/* pAttr	*/
+    unsigned short usFlag,                  /* flag     */
+    struct cdfsi far * pcdfsi,              /* pcdfsi   */
+    struct cdfsd far * pcdfsd,              /* pcdfsd   */
+    char far * pName,                          /* pName */
+    unsigned short usCurDirEnd,             /* iCurDirEnd  */
+    unsigned short far * pAttr           /* pAttr */
 )
 {
 PVOLINFO pVolInfo;
@@ -118,14 +118,14 @@ FS_FILEATTRIBUTEEXIT:
 *
 ******************************************************************/
 int far pascal FS_PATHINFO(
-    unsigned short usFlag,		/* flag		*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    unsigned short usLevel,		/* level	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData		/* cbData	*/
+    unsigned short usFlag,                  /* flag     */
+    struct cdfsi far * pcdfsi,              /* pcdfsi   */
+    struct cdfsd far * pcdfsd,              /* pcdfsd   */
+    char far * pName,                          /* pName */
+    unsigned short usCurDirEnd,             /* iCurDirEnd  */
+    unsigned short usLevel,                 /* level */
+    char far * pData,                          /* pData */
+    unsigned short cbData                   /* cbData   */
 )
 {
 PVOLINFO pVolInfo;
@@ -274,6 +274,33 @@ USHORT rc;
             }
 
          case FIL_QUERYEASFROMLIST:
+            {
+            PEAOP pEA = (PEAOP)pData;
+            PFEALIST pFEA = pEA->fpFEAList;
+            rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, sizeof pFEA->cbList);
+            if (rc)
+               {
+               Message("Protection VIOLATION in FS_PATHINFO!\n");
+               return rc;
+               }
+            rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, (USHORT)pFEA->cbList);
+            if (rc)
+               {
+               Message("Protection VIOLATION in FS_FILEINFO!\n");
+               return rc;
+               }
+            if (!f32Parms.fEAS)
+               {
+               rc = usGetEmptyEAS(pszFile,pEA);
+               }
+            else
+               {
+               rc = usGetEAS(pVolInfo, usLevel, ulDirCluster, pszFile, pEA);
+               }
+
+            break;
+            }
+
          case 4:
             {
             PEAOP pEA = (PEAOP)pData;

@@ -634,9 +634,18 @@ USHORT usClusterIndex;
                      }
                   else
                      {
-                     ulFeaSize = sizeof (ULONG);
-                     memcpy(*ppData, &ulFeaSize, sizeof (ULONG));
-                     rc = 0;
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);			
+
+                     if (rc && (rc != ERROR_EAS_DIDNT_FIT))
+                        return rc;
+                     else if (rc == ERROR_EAS_DIDNT_FIT)
+                        ulFeaSize = sizeof(pFindInfo->pInfo->EAOP.fpFEAList->cbList);
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
                      }
                   (*ppData) += ulFeaSize;
                   (*pcbData) -= ulFeaSize;
