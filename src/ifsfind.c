@@ -499,13 +499,12 @@ USHORT usClusterIndex;
                   }
 
                if (bCheck2 != bCheck1 ||
-                  !strlen(szLongName) ||
-                  (!pFindInfo->fLongNames && f32Parms.fUseShortNames))
+                  !strlen(szLongName))
                {
                   strcpy(szLongName, szShortName);
 
                   /* support for the FAT32 variation of WinNT family */
-                  if(( pFindInfo->fLongNames || !f32Parms.fUseShortNames ) && HAS_WINNT_EXT( pDir->fEAS ))
+                  if( HAS_WINNT_EXT( pDir->fEAS ))
                   {
                         PBYTE pDot = strchr( szLongName, '.' );;
 
@@ -531,12 +530,9 @@ USHORT usClusterIndex;
                strcpy(szUpperName, szLongName);
                FSH_UPPERCASE(szUpperName, sizeof szUpperName, szUpperName);
 
-               if (!f32Parms.fUseShortNames && !pFindInfo->fLongNames)
-                  {
-                  FSH_UPPERCASE(szLongName, sizeof szLongName, szLongName);
-                  if (strcmp(szLongName, szShortName))
-                     rc = 1;
-                  }
+               if( !pFindInfo->fLongNames )
+                  strcpy( szLongName, szShortName );
+
                /*
                   Check for MUST HAVE attributes
                */
@@ -549,11 +545,7 @@ USHORT usClusterIndex;
                if (!rc && strlen(pFindInfo->pInfo->szSearch))
                   {
                   rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szUpperName);
-#if 0
-                  if (rc && f32Parms.fUseShortNames && stricmp(szShortName, szUpperName))
-#else
                   if (rc && stricmp(szShortName, szUpperName))
-#endif
                      rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                   }
                if (!rc && f32Parms.fMessageActive & LOG_FIND)

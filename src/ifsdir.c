@@ -21,6 +21,7 @@ int far pascal FS_CHDIR(
 )
 {
 PVOLINFO pVolInfo;
+POPENINFO pOpenInfo = NULL;
 ULONG ulCluster;
 PSZ   pszFile;
 USHORT rc;
@@ -49,6 +50,31 @@ USHORT rc;
             rc = ERROR_DRIVE_LOCKED;
             goto FS_CHDIREXIT;
             }
+
+         if( usFlag == CD_EXPLICIT )
+         {
+            pOpenInfo = malloc(sizeof (OPENINFO));
+            if (!pOpenInfo)
+            {
+                rc = ERROR_NOT_ENOUGH_MEMORY;
+                goto FS_CHDIREXIT;
+            }
+            memset(pOpenInfo, 0, sizeof (OPENINFO));
+
+            pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
+            if (!pOpenInfo->pSHInfo)
+            {
+                rc = ERROR_TOO_MANY_OPEN_FILES;
+                goto FS_CHDIREXIT;
+            }
+            pOpenInfo->pSHInfo->sOpenCount++;
+            if (pOpenInfo->pSHInfo->fLock)
+            {
+                rc = ERROR_ACCESS_DENIED;
+                goto FS_CHDIREXIT;
+            }
+         }
+
          ulCluster = FindDirCluster(pVolInfo,
             pcdfsi,
             pcdfsd,
@@ -71,10 +97,17 @@ USHORT rc;
             }
 
          *(PULONG)pcdfsd = ulCluster;
+
+
+         if( usFlag == CD_EXPLICIT )
+            *((PULONG)pcdfsd + 1 ) = ( ULONG )pOpenInfo;
          rc = 0;
          break;
 
       case CD_FREE     :
+         pOpenInfo = ( POPENINFO )*(( PULONG )pcdfsd + 1 );
+         ReleaseSH( pOpenInfo );
+         pOpenInfo = NULL;
          rc = 0;
          break;
       default :
@@ -83,6 +116,15 @@ USHORT rc;
       }
 
 FS_CHDIREXIT:
+
+   if (rc && pOpenInfo)
+      {
+      if (pOpenInfo->pSHInfo)
+         ReleaseSH(pOpenInfo);
+      else
+         free(pOpenInfo);
+      }
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CHDIR returned %u", rc);
    return rc;
@@ -236,6 +278,11 @@ USHORT   usFileCount;
    if (strlen(pName) > FAT32MAXPATH)
       return ERROR_FILENAME_EXCED_RANGE;
 
+#if 1
+   rc = MY_ISCURDIRPREFIX( szSrcLongName );
+   if( rc )
+     goto FS_RMDIREXIT;
+#else
    rc = FSH_ISCURDIRPREFIX(pName);
    if (rc)
       goto FS_RMDIREXIT;
@@ -245,7 +292,7 @@ USHORT   usFileCount;
    rc = FSH_ISCURDIRPREFIX(szName);
    if (rc)
       goto FS_RMDIREXIT;
-
+#endif
 
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,

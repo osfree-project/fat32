@@ -94,7 +94,7 @@ USHORT rc;
 
    if (!(ulOpenMode & OPEN_FLAGS_DASD))
       {
-      pOpenInfo->pSHInfo = GetSH(pName, pOpenInfo);
+      pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
       if (!pOpenInfo->pSHInfo)
          {
          rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -347,6 +347,7 @@ USHORT rc;
          *pfGenFlag = ( HAS_CRITICAL_EAS( DirEntry.fEAS ) ? 1 : 0);
          }
 
+#if 0
       rc = FSH_UPPERCASE(pName, sizeof pOpenInfo->pSHInfo->szFileName, pOpenInfo->pSHInfo->szFileName);
       if (rc || !strlen(pOpenInfo->pSHInfo->szFileName))
          {
@@ -354,6 +355,7 @@ USHORT rc;
          strncpy(pOpenInfo->pSHInfo->szFileName, pName, sizeof pOpenInfo->pSHInfo->szFileName);
          rc = 0;
          }
+#endif
 
       if (pOpenInfo->pSHInfo->sOpenCount == 1)
          {
@@ -422,22 +424,13 @@ FS_OPENCREATEEXIT:
 ******************************************************************/
 PSHOPENINFO GetSH(PSZ pszFileName, POPENINFO pOI)
 {
-BYTE   szUpperName[FAT32MAXPATH];
 USHORT rc;
 PSHOPENINFO pSH;
-
-   rc = FSH_UPPERCASE(pszFileName, FAT32MAXPATH, szUpperName);
-   if (rc)
-      {
-      Message("GetSH: FSH_UPPERCASE Failed, rc = %d", rc);
-      strcpy(szUpperName, pszFileName);
-      strupr(szUpperName);
-      }
 
    pSH = pGlobSH;
    while (pSH)
       {
-      if (!stricmp(pSH->szFileName, szUpperName))
+      if (!stricmp(pSH->szFileName, pszFileName))
          break;
       pSH = (PSHOPENINFO)pSH->pNext;
       }
@@ -448,7 +441,7 @@ PSHOPENINFO pSH;
       if (!pSH)
          return NULL;
       memset(pSH, 0, sizeof (SHOPENINFO));
-      strcpy(pSH->szFileName, szUpperName);
+      strcpy(pSH->szFileName, pszFileName);
 
       pSH->pNext = (PVOID)pGlobSH;
       pGlobSH = pSH;
@@ -1709,3 +1702,22 @@ USHORT rc;
       }
    return pOpenInfo;
 }
+
+USHORT MY_ISCURDIRPREFIX( PSZ pszName )
+{
+PSHOPENINFO pSH;
+int iLength = strlen( pszName );
+
+   pSH = pGlobSH;
+   while (pSH)
+      {
+      if ( !strnicmp(pSH->szFileName, pszName, iLength ) &&
+           (( pSH->szFileName[ iLength ] == '\\' ) || ( pSH->szFileName[ iLength ] == '\0' )))
+         return ERROR_CURRENT_DIRECTORY;
+
+      pSH = (PSHOPENINFO)pSH->pNext;
+      }
+
+   return 0;
+}
+

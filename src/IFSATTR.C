@@ -16,12 +16,12 @@
 *
 ******************************************************************/
 int far pascal FS_FILEATTRIBUTE(
-    unsigned short usFlag,		/* flag		*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    unsigned short far * pAttr	/* pAttr	*/
+    unsigned short usFlag,      /* flag     */
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pName,           /* pName    */
+    unsigned short usCurDirEnd,     /* iCurDirEnd   */
+    unsigned short far * pAttr  /* pAttr    */
 )
 {
 PVOLINFO pVolInfo;
@@ -118,14 +118,14 @@ FS_FILEATTRIBUTEEXIT:
 *
 ******************************************************************/
 int far pascal FS_PATHINFO(
-    unsigned short usFlag,		/* flag		*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    unsigned short usLevel,		/* level	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData		/* cbData	*/
+    unsigned short usFlag,      /* flag     */
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pName,           /* pName    */
+    unsigned short usCurDirEnd,     /* iCurDirEnd   */
+    unsigned short usLevel,     /* level    */
+    char far * pData,           /* pData    */
+    unsigned short cbData       /* cbData   */
 )
 {
 PVOLINFO pVolInfo;
@@ -169,14 +169,18 @@ USHORT rc;
    if (usFlag == PI_RETRIEVE)
       {
       BYTE szFullName[FAT32MAXPATH];
+
       if (usLevel != FIL_NAMEISVALID)
          {
-         ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, szFullName);
+         ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
          if (ulCluster == FAT_EOF)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_PATHINFOEXIT;
             }
+
+         if( TranslateName( pVolInfo, 0L, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
+            strcpy( szFullName, pName );
          }
 
       switch (usLevel)
@@ -286,7 +290,7 @@ USHORT rc;
             rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, (USHORT)pFEA->cbList);
             if (rc)
                {
-               Message("Protection VIOLATION in FS_FILEINFO!\n");
+               Message("Protection VIOLATION in FS_PILEINFO!\n");
                return rc;
                }
             if (!f32Parms.fEAS)
@@ -314,7 +318,7 @@ USHORT rc;
             rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, (USHORT)pFEA->cbList);
             if (rc)
                {
-               Message("Protection VIOLATION in FS_FILEINFO!\n");
+               Message("Protection VIOLATION in FS_PILEINFO!\n");
                return rc;
                }
             if (!f32Parms.fEAS)

@@ -515,7 +515,7 @@ USHORT rc;
    memcpy(&NewEntry, &OldEntry, sizeof (DIRENTRY));
    if( HAS_OLD_EAS( NewEntry.fEAS ))
         NewEntry.fEAS = FILE_HAS_NO_EAS;
-   NewEntry.fEAS = ( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS;
+   NewEntry.fEAS = ( BYTE )(( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
 
    if (!memcmp(&NewEntry, &OldEntry, sizeof (DIRENTRY)))
       return 0;
@@ -839,14 +839,8 @@ USHORT rc;
    if (!(*pszEASName))
       return ERROR_NOT_ENOUGH_MEMORY;
 
-   if (f32Parms.fUseShortNames)
-      {
-      rc = TranslateName(pVolInfo, ulDirCluster, pszFileName, *pszEASName, TRANSLATE_SHORT_TO_LONG);
-      if (rc)
-         strcpy(*pszEASName, pszFileName);
-      }
-   else
-      strcpy(*pszEASName, pszFileName);
+   if( TranslateName( pVolInfo, ulDirCluster, pszFileName, *pszEASName, TRANSLATE_SHORT_TO_LONG ))
+       strcpy(*pszEASName, pszFileName);
 
    strcat(*pszEASName, EA_EXTENTION);
    return 0;

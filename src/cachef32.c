@@ -64,6 +64,7 @@ static BOOL      fActive = FALSE;
 static BOOL      fLoadDeamon = TRUE;
 static BOOL      fSayYes = FALSE;
 static BOOL      fSilent = FALSE;
+static ULONG     ulNewCP = 0;
 static PLWOPTS   pOptions = NULL;
 static BOOL      fForeGround;
 static ULONG     ulDriveMap = 0;
@@ -389,16 +390,17 @@ ULONG     ulParm;
                SetRASectors(&rgArgv[iArg][3]);
                break;
             case 'F':
-               if (rgArgv[iArg][2] == 'S')
-                  f32Parms.fUseShortNames = TRUE;
-               else if (rgArgv[iArg][2] == 'L')
-                  f32Parms.fUseShortNames = FALSE;
+               if (rgArgv[iArg][2] == 'S' || rgArgv[iArg][2] == 'L' )
+               {
+                  printf("Both /FS and /FL option is not supported any more.\n");
+                  printf("Please read the documentation.\n");
+                  break;
+               }
                else
                   {
                   printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
-               fSetParms = TRUE;
                break;
 
             case 'L':
@@ -431,6 +433,20 @@ ULONG     ulParm;
 
             case 'S':
                break;
+
+            case 'C':
+               if (( rgArgv[ iArg ][ 2 ] == 'P' ) && ( rgArgv[ iArg ][ 3 ] == ':' ))
+               {
+                  ulParm = atol(&rgArgv[iArg][4]);
+                  if( !ulParm )
+                  {
+                    printf("ERROR: Invalid value in %s\n", rgArgv[iArg]);
+                    DosExit(EXIT_PROCESS, 1);
+                  }
+
+                  ulNewCP = ulParm;
+                  break;
+               }
 
             default :
                printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
@@ -509,16 +525,6 @@ ULONG     ulParm;
          printf("%u sectors are in pending flush state.\n", f32Parms.usPendingFlush);
       printf("The cache hits ratio is %3d%%.\n",
          f32Parms.ulTotalHits * 100 / f32Parms.ulTotalReads);
-      if (f32Parms.fUseShortNames)
-         {
-         printf("Internally, short names are used.\n");
-         printf("All files are visible in DOS sessions.\n");
-         }
-      else
-         {
-         printf("Internally, long names are used.\n");
-         printf("Files and directories with long names are hidden for DOS.\n");
-         }
       printf("FAT32.IFS has currently %u GDT segments allocated.\n",
          f32Parms.usSegmentsAllocated);
       }
@@ -915,7 +921,11 @@ USHORT usCode;
       return FALSE;
       }
 
-   rc = DosQueryCp(sizeof rgCP, rgCP, &cbCP);
+   if( ulNewCP )
+        rgCP[ 0 ] = ulNewCP;
+   else
+        DosQueryCp(sizeof rgCP, rgCP, &cbCP);
+
    if (f32Parms.ulCurCP == rgCP[0])
       return FALSE;
 

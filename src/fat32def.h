@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.97b"
+#define FAT32_VERSION "0.98b"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
@@ -134,7 +134,6 @@ ULONG  ulDiskIdle;
 ULONG  ulBufferIdle;
 ULONG  ulMaxAge;
 USHORT fMessageActive;
-USHORT fUseShortNames;
 USHORT fEAS;
 BYTE   szVersion[10];
 

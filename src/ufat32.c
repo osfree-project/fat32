@@ -1066,7 +1066,7 @@ USHORT rc;
                 if (pCD->fFix)
                 {
                      strcpy(Mark.szFileName, pbPath);
-                     Mark.fEAS = pDir->fEAS == FILE_HAS_OLD_EAS ? FILE_HAS_EAS : FILE_HAS_CRITICAL_EAS;
+                     Mark.fEAS = ( BYTE )( pDir->fEAS == FILE_HAS_OLD_EAS ? FILE_HAS_EAS : FILE_HAS_CRITICAL_EAS );
                      rc = DosDevIOCtl2(NULL, 0,
                                        (PVOID)&Mark, sizeof Mark,
                                        FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);

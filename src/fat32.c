@@ -32,10 +32,8 @@ static ULONG ulSemRWFat = 0;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
-static BYTE szOrgSrcName[ FAT32MAXPATH ] = "";
-static BYTE szSrcShortName[ FAT32MAXPATH ] = "";
-static BYTE szOrgDstName[ FAT32MAXPATH ] = "";
-static BYTE szDstShortName[ FAT32MAXPATH ] = "";
+PUBLIC BYTE szSrcLongName[ FAT32MAXPATH ] = "";
+PUBLIC BYTE szDstLongName[ FAT32MAXPATH ] = "";
 
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
@@ -102,7 +100,6 @@ int far pascal FS_COPY(
     unsigned short usNameType       /* nameType (flags) */
 )
 {
-static BYTE szDstLongName[ FAT32MAXPATH ] = "";
 PVOLINFO pVolInfo;
 ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
@@ -137,13 +134,13 @@ POPENINFO pOpenInfo = NULL;
       rc = ERROR_CANNOT_COPY;
       goto FS_COPYEXIT;
       }
-   if (!stricmp(pSrc, pDst))
+   if (!stricmp( szSrcLongName, szDstLongName ))
       {
       rc = ERROR_CANNOT_COPY;
       goto FS_COPYEXIT;
       }
 
-   pOpenInfo->pSHInfo = GetSH(pDst, pOpenInfo);
+   pOpenInfo->pSHInfo = GetSH( szDstLongName, pOpenInfo);
    if (!pOpenInfo->pSHInfo)
       {
       rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -203,6 +200,15 @@ POPENINFO pOpenInfo = NULL;
    */
    if (DirEntry.bAttr & FILE_DIRECTORY)
       {
+      int iLen = strlen( szSrcLongName );
+
+      if ( !strnicmp(szSrcLongName, szDstLongName, iLen ) &&
+           ( szDstLongName[ iLen ] == '\\' ))
+      {
+        rc = ERROR_DIRECTORY;
+        goto FS_COPYEXIT;
+      }
+
       rc = ERROR_CANNOT_COPY;
       goto FS_COPYEXIT;
       }
@@ -218,20 +224,10 @@ POPENINFO pOpenInfo = NULL;
       Check destination
    */
 
-#if 0
-   if( f32Parms.fUseShortNames )
-      TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG );
-   else
-      strcpy( szDstLongName, pDst );
-#endif
-
-   if( TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
-      strcpy( szDstLongName, pDst );
-
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      szDstLongName,
+      pDst,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile);
@@ -240,6 +236,8 @@ POPENINFO pOpenInfo = NULL;
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_COPYEXIT;
       }
+
+   pszDstFile = strrchr( szDstLongName, '\\' ) + 1; /* To preserve long name */
 
    ulDstCluster = FindPathCluster(pVolInfo, ulDstDirCluster, pszDstFile, &TarEntry, NULL);
    if (ulDstCluster != FAT_EOF)
@@ -361,7 +359,7 @@ DIRENTRY DirEntry;
 POPENINFO pOpenInfo;
 
    if (f32Parms.fMessageActive & LOG_FS)
-   Message("FS_DELETE for %s", pFile);
+    Message("FS_DELETE for %s", pFile);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -378,7 +376,8 @@ POPENINFO pOpenInfo;
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FS_DELETEEXIT;
       }
-   pOpenInfo->pSHInfo = GetSH(pFile, pOpenInfo);
+
+   pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
    if (!pOpenInfo->pSHInfo)
       {
       rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -814,7 +813,6 @@ POPENINFO pOpenInfo;
          f32Parms.ulBufferIdle     = ((PF32PARMS)pParm)->ulBufferIdle;
          f32Parms.ulMaxAge         = ((PF32PARMS)pParm)->ulMaxAge;
          f32Parms.fMessageActive   = ((PF32PARMS)pParm)->fMessageActive;
-         f32Parms.fUseShortNames   = ((PF32PARMS)pParm)->fUseShortNames;
          f32Parms.ulCurCP          = ((PF32PARMS)pParm)->ulCurCP;
 
          TranslateInitDBCSEnv();
@@ -1169,7 +1167,6 @@ PSZ  p;
    f32Parms.ulDiskIdle = 1000;
    f32Parms.ulBufferIdle = 500;
    f32Parms.ulMaxAge = 5000;
-   f32Parms.fUseShortNames = FALSE;
    f32Parms.usSegmentsAllocated = 0;
    strcpy(f32Parms.szVersion, FAT32_VERSION);
 
@@ -1796,7 +1793,6 @@ int far pascal FS_MOVE(
     unsigned short usFlags      /* flags    */
 )
 {
-static BYTE szDstLongName[ FAT32MAXPATH ] = "";
 PVOLINFO pVolInfo;
 ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
@@ -1806,40 +1802,56 @@ DIRENTRY DirEntry;
 ULONG    ulCluster;
 ULONG    ulTarCluster;
 USHORT   rc;
-POPENINFO pOpenInfo;
+POPENINFO pOISrc = NULL;
+POPENINFO pOIDst = NULL;
 
-   /* for unmodified long name in /FS mode */
-   if( f32Parms.fUseShortNames && ( !strcmp( szDstShortName, pDst )))
-      strcpy( szDstLongName, szOrgDstName );
-   else
-      *szDstLongName = 0;
-
-   pOpenInfo = malloc(sizeof (OPENINFO));
-   if (!pOpenInfo)
+   pOISrc = malloc(sizeof (OPENINFO));
+   if (!pOISrc)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FS_MOVEEXIT;
       }
 
-   pOpenInfo->pSHInfo = GetSH(pSrc, pOpenInfo);
-   if (!pOpenInfo->pSHInfo)
+   pOISrc->pSHInfo = GetSH( szSrcLongName, pOISrc);
+   if (!pOISrc->pSHInfo)
       {
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_MOVEEXIT;
       }
-   pOpenInfo->pSHInfo->sOpenCount++;
-   if (pOpenInfo->pSHInfo->sOpenCount > 1)
+   pOISrc->pSHInfo->sOpenCount++;
+   if (pOISrc->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_MOVEEXIT;
       }
-   pOpenInfo->pSHInfo->fLock = TRUE;
+   pOISrc->pSHInfo->fLock = TRUE;
 
+   if( stricmp( szSrcLongName, szDstLongName ))
+   {
+        pOIDst = malloc(sizeof (OPENINFO));
+        if (!pOIDst)
+        {
+            rc = ERROR_NOT_ENOUGH_MEMORY;
+            goto FS_MOVEEXIT;
+        }
 
-   usFlags = usFlags;
+        pOIDst->pSHInfo = GetSH( szDstLongName, pOIDst);
+        if (!pOIDst->pSHInfo)
+        {
+            rc = ERROR_TOO_MANY_OPEN_FILES;
+            goto FS_MOVEEXIT;
+        }
+        pOIDst->pSHInfo->sOpenCount++;
+        if (pOIDst->pSHInfo->sOpenCount > 1)
+        {
+            rc = ERROR_ACCESS_DENIED;
+            goto FS_MOVEEXIT;
+        }
+        pOIDst->pSHInfo->fLock = TRUE;
+   }
 
    if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MOVE %s to %s, %s", pSrc, pDst, szDstShortName);
+      Message("FS_MOVE %s to %s", pSrc, pDst);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
    if (IsDriveLocked(pVolInfo))
@@ -1861,18 +1873,10 @@ POPENINFO pOpenInfo;
    /*
       Check destination
    */
-   if( f32Parms.fUseShortNames )
-   {
-      if( !*szDstLongName )
-         TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG );
-   }
-   else
-      strcpy( szDstLongName, pDst );
-
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      szDstLongName,
+      pDst,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile);
@@ -1887,7 +1891,6 @@ POPENINFO pOpenInfo;
    /*
       Check source
    */
-
    ulSrcDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
@@ -1930,6 +1933,46 @@ POPENINFO pOpenInfo;
 
    if (DirEntry.bAttr & FILE_DIRECTORY)
       {
+#if 1
+      int iLen = strlen( szSrcLongName );
+
+      if ( !strnicmp(szSrcLongName, szDstLongName, iLen ) &&
+           ( szDstLongName[ iLen ] == '\\' ))
+      {
+        rc = ERROR_CIRCULARITY_REQUESTED;
+        goto FS_MOVEEXIT;
+      }
+
+      ReleaseSH( pOISrc );
+      pOISrc = NULL;
+
+      rc = MY_ISCURDIRPREFIX( szSrcLongName );
+      if( rc )
+        goto FS_MOVEEXIT;
+
+      pOISrc = malloc(sizeof (OPENINFO));
+      if (!pOISrc)
+      {
+        rc = ERROR_NOT_ENOUGH_MEMORY;
+        goto FS_MOVEEXIT;
+      }
+
+      pOISrc->pSHInfo = GetSH( szSrcLongName, pOISrc);
+      if (!pOISrc->pSHInfo)
+      {
+        rc = ERROR_TOO_MANY_OPEN_FILES;
+        goto FS_MOVEEXIT;
+      }
+
+      pOISrc->pSHInfo->sOpenCount++;
+      if (pOISrc->pSHInfo->sOpenCount > 1)
+      {
+          rc = ERROR_ACCESS_DENIED;
+        goto FS_MOVEEXIT;
+      }
+
+      pOISrc->pSHInfo->fLock = TRUE;
+#else
       BYTE szName[FAT32MAXPATH];
       rc = FSH_ISCURDIRPREFIX(pSrc);
       if (rc)
@@ -1940,7 +1983,12 @@ POPENINFO pOpenInfo;
       rc = FSH_ISCURDIRPREFIX(szName);
       if (rc)
          goto FS_MOVEEXIT;
+#endif
       }
+
+   /*
+        rename EA file
+   */
 
    if (f32Parms.fEAS)
       {
@@ -1953,7 +2001,9 @@ POPENINFO pOpenInfo;
    if (ulSrcDirCluster == ulDstDirCluster)
       {
       DIRENTRY DirOld;
+
       memcpy(&DirOld, &DirEntry, sizeof DirEntry);
+
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster,
          MODIFY_DIR_RENAME, &DirOld, &DirEntry, pszDstFile, 0);
       goto FS_MOVEEXIT;
@@ -2006,12 +2056,20 @@ POPENINFO pOpenInfo;
 
 FS_MOVEEXIT:
 
-   if (pOpenInfo)
+   if (pOISrc)
       {
-      if (pOpenInfo->pSHInfo)
-         ReleaseSH(pOpenInfo);
+      if (pOISrc->pSHInfo)
+         ReleaseSH(pOISrc);
       else
-         free(pOpenInfo);
+         free(pOISrc);
+      }
+
+   if (pOIDst)
+      {
+      if (pOIDst->pSHInfo)
+         ReleaseSH(pOIDst);
+      else
+         free(pOIDst);
       }
 
    if (f32Parms.fMessageActive & LOG_FS)
@@ -2027,45 +2085,32 @@ int far pascal FS_PROCESSNAME(
     char far *  pNameBuf        /* pNameBuf */
 )
 {
-static BYTE szName[FAT32MAXPATH] = "";
 PVOLINFO pVolInfo = pGlobVolInfo;
 BYTE     bDrive;
-USHORT   rc;
 
-   if (f32Parms.fUseShortNames)
-      {
-      if (!IsDosSession()) /* Not a Dos Session */
-         {
-         if (f32Parms.fMessageActive & LOG_FS)
-            Message("FSH_PROCESSNAME for %s", pNameBuf);
-         bDrive = pNameBuf[0];
-         if (bDrive >= 'a' && bDrive <= 'z')
-            bDrive -= ('a' - 'A');
-         bDrive -= 'A';
-         while (pVolInfo)
-            {
-            if (pVolInfo->bDrive == bDrive)
-               break;
-            pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
-            }
+     if (f32Parms.fMessageActive & LOG_FS)
+        Message("FS_PROCESSNAME for %s", pNameBuf);
+     bDrive = pNameBuf[0];
+     if (bDrive >= 'a' && bDrive <= 'z')
+         bDrive -= ('a' - 'A');
+     bDrive -= 'A';
+     while (pVolInfo)
+        {
+        if (pVolInfo->bDrive == bDrive)
+           break;
+        pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
+        }
 
-         strcpy( szOrgDstName, szOrgSrcName );  /* for unmodified long name in /FS mode */
-         strcpy( szOrgSrcName, pNameBuf );
+     if (pVolInfo)
+        {
+        strcpy( szDstLongName, szSrcLongName );
+        if( TranslateName(pVolInfo, 0L, pNameBuf, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
+            strcpy( szSrcLongName, pNameBuf );
+        }
 
-         if (pVolInfo)
-            {
-            rc = TranslateName(pVolInfo, 0L, pNameBuf, szName, TRANSLATE_LONG_TO_SHORT);
-            if (!rc)
-               strncpy(pNameBuf, szName, FAT32MAXPATH);
-            }
+     if (f32Parms.fMessageActive & LOG_FS)
+        Message(" FS_PROCESSNAME returned filename: %s, longname %s", pNameBuf, szSrcLongName);
 
-         strcpy( szDstShortName, szSrcShortName );
-         strcpy( szSrcShortName, pNameBuf );
-
-         if (f32Parms.fMessageActive & LOG_FS)
-            Message(" FSH_PROCESSNAME returned filename: %s", pNameBuf);
-         }
-      }
    return 0;
 }
 
@@ -3214,31 +3259,39 @@ PROCINFO ProcInfo;
                FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
                if (strlen(pszLongName) && bCheck != GetVFATCheckSum(pDir))
                   memset(pszLongName, 0, FAT32MAXPATHCOMP);
-               if (strlen(pszLongName))
-                  FSH_UPPERCASE(pszLongName, FAT32MAXPATHCOMP, pszLongName);
 
-               if (strlen(pszLongName) && !stricmp(pszPart, pszLongName))
-                  {
-                  if (!ProcInfo.usPdb || f32Parms.fUseShortNames || !stricmp(szShortName, pszLongName))
-                     {
-                     if (pszFullName)
-                        strcat(pszFullName, pszLongName);
-                     fFound = TRUE;
-                     }
-                  }
+                /* support for the FAT32 variation of WinNT family */
+                if( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
+                {
+                    PBYTE pDot;
 
-               if (!fFound)
+                    MakeName( pDir, pszLongName, sizeof( pszLongName ));
+                    pDot = strchr( pszLongName, '.' );
+
+                    if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                    {
+                        if( pDot )
+                            *pDot = 0;
+
+                        strlwr( pszLongName );
+
+                        if( pDot )
+                            *pDot = '.';
+                    }
+
+                    if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                        strlwr( pDot + 1 );
+                }
+
+               if (!strlen(pszLongName))
+                  strcpy(pszLongName, szShortName);
+
+               if (( strlen(pszLongName) && !stricmp(pszPart, pszLongName)) ||
+                   !stricmp( pszPart, szShortName ))
                   {
-                  if (!stricmp(pszPart, szShortName))
-                     {
-                     if (!ProcInfo.usPdb || f32Parms.fUseShortNames ||
-                         !strlen(pszLongName) || !stricmp(szShortName, pszLongName))
-                        {
-                        if (pszFullName)
-                           strcat(pszFullName, szShortName);
-                        fFound = TRUE;
-                        }
-                     }
+                    if( pszFullName )
+                        strcat( pszFullName, pszLongName );
+                    fFound = TRUE;
                   }
 
                if (fFound)
@@ -3395,11 +3448,36 @@ ULONG  ulCluster;
                }
             else if ((pDir->bAttr & 0x0F) != FILE_VOLID)
                {
+
                MakeName(pDir, szShortName, sizeof szShortName);
                FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
 
                if (bCheck != GetVFATCheckSum(pDir))
                   memset(pszLongName, 0, FAT32MAXPATHCOMP);
+
+                /* support for the FAT32 variation of WinNT family */
+                if( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
+                {
+                    PBYTE pDot;
+
+                    MakeName( pDir, pszLongName, sizeof( pszLongName ));
+                    pDot = strchr( pszLongName, '.' );
+
+                    if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                    {
+                        if( pDot )
+                            *pDot = 0;
+
+                        strlwr( pszLongName );
+
+                        if( pDot )
+                            *pDot = '.';
+                    }
+
+                    if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                        strlwr( pDot + 1 );
+                }
+
                if (!strlen(pszLongName))
                   strcpy(pszLongName, szShortName);
                FSH_UPPERCASE(pszLongName, FAT32MAXPATHCOMP, pszUpperName);
@@ -3886,11 +3964,13 @@ USHORT rc;
          }
       }
 
+#if 0
    if (IsDosSession())
       {
       free(pszUpper);
       return LONGNAME_ERROR;
       }
+#endif
 
    usLongName = LONGNAME_OK;
 
