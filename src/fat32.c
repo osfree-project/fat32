@@ -760,7 +760,7 @@ POPENINFO pOpenInfo;
          break;
 
       case FAT32_STARTLW:
-         if (f32Parms.fLW || !f32Parms.usCacheSize)
+         if (f32Parms.fLW || ( !f32Parms.usCacheSize && !f32Parms.fForceLoad ))
             {
             rc = ERROR_INVALID_FUNCTION;
             goto FS_FSCTLEXIT;
@@ -804,7 +804,7 @@ POPENINFO pOpenInfo;
          break;
 
       case FAT32_SETPARMS:
-         if (cbParm < sizeof (F32PARMS))
+         if (cbParm > sizeof (F32PARMS))
             {
             rc = ERROR_INSUFFICIENT_BUFFER;
             goto FS_FSCTLEXIT;
@@ -814,8 +814,12 @@ POPENINFO pOpenInfo;
          f32Parms.ulMaxAge         = ((PF32PARMS)pParm)->ulMaxAge;
          f32Parms.fMessageActive   = ((PF32PARMS)pParm)->fMessageActive;
          f32Parms.ulCurCP          = ((PF32PARMS)pParm)->ulCurCP;
+         f32Parms.fForceLoad       = ((PF32PARMS)pParm)->fForceLoad;
 
-         TranslateInitDBCSEnv();
+         /*
+            Codepage is changed only by FAT32_SETTRANSTABLE,
+            so we don't worry about not modifying DBCS lead byte info here.
+         */
 
          rc = 0;
          break;
@@ -841,7 +845,11 @@ POPENINFO pOpenInfo;
                goto FS_FSCTLEXIT;
                }
 #endif
-            TranslateInit(pParm, cbParm);
+            if( !TranslateInit(pParm, cbParm))
+                {
+                rc = ERROR_INVALID_PARAMETER;
+                goto FS_FSCTLEXIT;
+                }
             }
          rc = 0;
          break;
@@ -853,6 +861,7 @@ POPENINFO pOpenInfo;
 
       case FAT32_QUERYSHORTNAME:
          {
+         char szShortPath[ FAT32MAXPATH ] = { 0, };
          PVOLINFO pVolInfo = pGlobVolInfo;
          BYTE     bDrive;
 
@@ -867,11 +876,43 @@ POPENINFO pOpenInfo;
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
          if (pVolInfo)
-            TranslateName(pVolInfo, 0L, (PSZ)pParm, (PSZ)pData, TRANSLATE_LONG_TO_SHORT);
+         {
+            TranslateName(pVolInfo, 0L, (PSZ)pParm, szShortPath, TRANSLATE_LONG_TO_SHORT);
+            if( strlen( szShortPath ) >= cbData )
+            {
+                rc = ERROR_BUFFER_OVERFLOW;
+                goto FS_FSCTLEXIT;
+            }
+
+            strcpy((PSZ)pData, szShortPath );
+         }
 
          rc = 0;
          break;
          }
+
+      case FAT32_GETCASECONVERSION:
+        if( cbData < 256 )
+        {
+            rc = ERROR_BUFFER_OVERFLOW;
+            goto FS_FSCTLEXIT;
+        }
+
+        GetCaseConversion( pData );
+
+        rc = 0;
+        break;
+
+      case FAT32_GETFIRSTINFO:
+        if( cbData < sizeof( UCHAR ) * 256 )
+        {
+            rc = ERROR_BUFFER_OVERFLOW;
+            goto FS_FSCTLEXIT;
+        }
+
+        GetFirstInfo(( PBOOL )pData );
+        rc = 0;
+        break;
 
       default :
          rc = ERROR_INVALID_FUNCTION;
@@ -1174,19 +1215,21 @@ PSZ  p;
    if (pszParm)
       {
       strncpy(szArguments, pszParm, sizeof szArguments);
-      if (strstr(szArguments, "/MONITOR"))
+      strlwr( szArguments );
+
+      if (strstr(szArguments, "/monitor"))
          f32Parms.fMessageActive = LOG_FS;
 
-      if (strstr(szArguments, "/Q"))
+      if (strstr(szArguments, "/q"))
          fSilent = TRUE;
 
       /*
          Get size of cache
       */
 
-      p = strstr(szArguments, "/CACHE:");
+      p = strstr(szArguments, "/cache:");
       if (!p)
-         p = strstr(szArguments, "-CACHE:");
+         p = strstr(szArguments, "-cache:");
       if (p)
          {
          p += 7;
@@ -1200,9 +1243,9 @@ PSZ  p;
       /*
          Get RA Sectors
       */
-      p = strstr(szArguments, "/RASECTORS:");
+      p = strstr(szArguments, "/rasectors:");
       if (!p)
-         p = strstr(szArguments, "-RASECTORS:");
+         p = strstr(szArguments, "-rasectors:");
       if (p)
          {
          p +=11;
@@ -1211,11 +1254,17 @@ PSZ  p;
       /*
          Get EA Settings
       */
-      p = strstr(szArguments, "/EAS");
+      p = strstr(szArguments, "/eas");
       if (!p)
-         p = strstr(szArguments, "-EAS");
+         p = strstr(szArguments, "-eas");
       if (p)
          f32Parms.fEAS = TRUE;
+
+      p = strstr( szArguments, "/h");
+      if( !p )
+        p = strstr( szArguments, "-h");
+      if( p )
+         f32Parms.fHighMem = TRUE;
       }
 
 #if 1
@@ -2246,9 +2295,10 @@ PVOID pRet;
 /******************************************************************
 *
 ******************************************************************/
-ULONG linalloc(ULONG tSize)
+ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore)
 {
 USHORT rc;
+ULONG ulFlags;
 ULONG ulAddress;
 ULONG ulReserved;
 PVOID pv = &ulReserved;
@@ -2256,15 +2306,23 @@ PVOID pv = &ulReserved;
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("linAlloc");
 
-   rc = DevHelp_VMAlloc(VMDHA_FIXED,
+   ulFlags = VMDHA_FIXED;
+   if( fHighMem )
+      ulFlags |= VMDHA_USEHIGHMEM;
+
+   rc = DevHelp_VMAlloc( ulFlags,
                 tSize,
                 -1,
                 &ulAddress,
                 &pv);
    if (rc)
       {
-      Message("ERROR: linalloc failed, rc = %d", rc);
-      CritMessage("linalloc failed, rc = %d", rc);
+      if (f32Parms.fMessageActive & LOG_FUNCS)
+         Message("ERROR: linalloc failed, rc = %d", rc);
+
+      if( !fIgnore )
+        CritMessage("linalloc failed, rc = %d", rc);
+
       return 0xFFFFFFFF;
       }
    return ulAddress;
@@ -3233,7 +3291,6 @@ PROCINFO ProcInfo;
          }
 
       memcpy(pszPart, pszPath, p - pszPath);
-      FSH_UPPERCASE(pszPart, FAT32MAXPATHCOMP, pszPart);
       pszPath = p;
 
       memset(pszLongName, 0, FAT32MAXPATHCOMP);
