@@ -1267,3 +1267,11 @@ Version 0.99:
 
 - Now, FAT32.IFS process parameters case-insensitively.
 
+- Added bad cluster check.
+
+- Dirty flag not cleared when ejecting removable medias. fixed.
+
+- Trapped when ejecting removable medias. fixed.
+
+- minor performance improvement.
+
