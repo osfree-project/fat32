@@ -101,9 +101,19 @@ ULONG    linPageList;
    /* Allocate lineair memory */
 
    ulSize = ulSectors * (ULONG)sizeof (CACHE);
-   ulLinCacheAddr = linalloc(ulSize);
+   ulLinCacheAddr = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem);
    if (ulLinCacheAddr == 0xFFFFFFFF)
-      return FALSE;
+   {
+      /* If tried to use high memory, try to use low memory */
+      if( f32Parms.fHighMem )
+      {
+          f32Parms.fHighMem = FALSE;
+          ulLinCacheAddr = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem);
+      }
+
+      if( ulLinCacheAddr == 0xFFFFFFFF )
+          return FALSE;
+   }
 
    /* Fill the selectors */
 
@@ -154,11 +164,21 @@ ULONG    linPageList;
          return FALSE;
          }
 
-      rgRQ[usIndex].ulLin = linalloc(ulSize);
+      rgRQ[usIndex].ulLin = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem);
       if (rgRQ[usIndex].ulLin == 0xFFFFFFFF)
          {
-         FatalMessage("FAT32: linAlloc for RLH failed");
-         return FALSE;
+            /* If tried to use high memory, try to use low memory */
+            if( f32Parms.fHighMem )
+            {
+               f32Parms.fHighMem = FALSE;
+               rgRQ[usIndex].ulLin = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem);
+            }
+
+            if( rgRQ[usIndex].ulLin == 0xFFFFFFFF )
+            {
+               FatalMessage("FAT32: linAlloc for RLH failed");
+               return FALSE;
+            }
          }
 
       rc = DevHelp_LinToGDTSelector(rgRQ[usIndex].Sel,
@@ -362,8 +382,8 @@ USHORT usCBIndex;
 
    if (!rc && pbSectors != pbData)
       {
-      f32Parms.ulTotalRA += (usSectors - nSectors);
-      memcpy(pbData, pbSectors, nSectors * 512);
+      f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
+      memcpy(pbData, pbSectors, min( usSectors, nSectors ) * 512);
       }
    if (pbSectors != pbData)
       free(pbSectors);
@@ -516,6 +536,9 @@ PCACHEBASE2 pBase2;
    pBase2->usNewer = 0xFFFF;
 }
 
+#if 1
+#define WAIT_THRESHOLD
+#endif
 /******************************************************************
 *
 ******************************************************************/
@@ -558,7 +581,11 @@ USHORT usCount;
          FatalMessage("FAT32: No Oldest entry found!");
 
       if (usRQInUse < usRQCount &&
-         f32Parms.usDirtySectors - f32Parms.usPendingFlush > f32Parms.usDirtyTreshold)
+#ifdef WAIT_THRESHOLD
+          f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold)
+#else
+          f32Parms.usDirtySectors - f32Parms.usPendingFlush > f32Parms.usDirtyTreshold)
+#endif
          {
          if (f32Parms.fMessageActive & LOG_CACHE ||
              f32Parms.fMessageActive & LOG_WAIT)
@@ -572,6 +599,20 @@ USHORT usCount;
          if (f32Parms.fMessageActive & LOG_CACHE ||
              f32Parms.fMessageActive & LOG_WAIT)
             Message("continuing after ProcRun...");
+
+#ifdef WAIT_THRESHOLD
+        if (f32Parms.fMessageActive & LOG_CACHE ||
+            f32Parms.fMessageActive & LOG_WAIT)
+            Message("waiting for dirty sectors to be less than threshold...");
+
+        _disable();
+        while( f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold )
+        {
+             DevHelp_ProcBlock((ULONG)&f32Parms.usDirtySectors, 1000L, 0);
+            _disable();
+        }
+        _enable();
+#endif
          }
 
       /*
@@ -722,6 +763,9 @@ VOID vReplaceSectorInCache(USHORT usCBIndex, PBYTE pbSector, BOOL fDirty)
 {
 PCACHEBASE pBase;
 PCACHE     pCache;
+#ifdef WAIT_THRESHOLD
+USHORT     usCount;
+#endif
 
       pBase = pCacheBase + usCBIndex;
 
@@ -731,7 +775,14 @@ PCACHE     pCache;
          pBase->ulCreateTime = GetCurTime();
          }
       else if (rgfDirty[usCBIndex] && !fDirty)
+#ifdef WAIT_THRESHOLD
+      {
+#endif
          f32Parms.usDirtySectors--;
+#ifdef WAIT_THRESHOLD
+         DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
+      }
+#endif
       rgfDirty[usCBIndex] = fDirty;
       pCache = GetAddress(usCBIndex);
       memcpy(pCache->bSector, pbSector, 512);
@@ -857,6 +908,10 @@ PCACHE   pCache;
             {
             rgfDirty[usCBIndex] = FALSE;
             f32Parms.usDirtySectors--;
+#ifdef WAIT_THRESHOLD
+            DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
+#endif
+
             if (fSetTime)
                pVolInfo->ulLastDiskTime = GetCurTime();
             }
@@ -888,7 +943,7 @@ USHORT rc;
       rc = WAIT_TIMED_OUT;
       while (!f32Parms.fInShutDown && !pOptions->fTerminate &&
          rc == WAIT_TIMED_OUT)
-//         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold)
+//         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold
          {
          rc = DevHelp_ProcBlock((ULONG)DoEmergencyFlush, 5000L, 1);
          _disable();
@@ -938,6 +993,7 @@ LONG lWait;
    Message("DoLW started");
 
    lWait = f32Parms.ulDiskIdle;
+   _disable();
    while (!f32Parms.fInShutDown && !pOptions->fTerminate)
       {
       DevHelp_ProcBlock((ULONG)DoLW, lWait, 1);
@@ -945,6 +1001,7 @@ LONG lWait;
       if (!(f32Parms.usDirtySectors - f32Parms.usPendingFlush) || usWaitCount)
          {
          lWait = f32Parms.ulDiskIdle;
+         _disable();
          continue;
          }
       lWait = 5;
@@ -982,7 +1039,9 @@ LONG lWait;
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
          }
+      _disable();
       }
+   _enable();
 
    f32Parms.fLW = FALSE;
    usFlushAll();
@@ -1434,6 +1493,9 @@ PREQUEST pRequest;
                      {
                      rgfDirty[pRequest->usCBIndex] = FALSE;
                      f32Parms.usDirtySectors--;
+#ifdef WAIT_THRESHOLD
+                     DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
+#endif
                      }
                   if (pBase->fFlushPending)
                      {
@@ -1497,7 +1559,9 @@ PCACHEBASE pBase;
 INT status;
 INT err_status;
 INT err_code;
-
+#ifdef WAIT_THRESHOLD
+USHORT usCount;
+#endif
 
    if (pRequest->usCBIndex > f32Parms.usCacheUsed)
       InternalError("FAT32: usCBIndex is wrong in vCheckRequest!");
@@ -1522,6 +1586,9 @@ INT err_code;
          case RH_RECOV_ERROR :
             rgfDirty[pRequest->usCBIndex] = FALSE;
             f32Parms.usDirtySectors--;
+#ifdef WAIT_THRESHOLD
+            DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
+#endif
             break;
          default             :
             CritMessage("FAT32: Error %X in rhNotify!", err_code);
