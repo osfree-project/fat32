@@ -125,6 +125,138 @@ PRIVATE BOOL OutputToFile(VOID);
 static F32PARMS  f32Parms;
 static BOOL fToFile;
 
+#if 1  /* by OAX */
+static UCHAR rgDBCSLead[ 12 ] = { 0, };
+static COUNTRYCODE cc;
+
+VOID TranslateInitDBCSEnv( VOID )
+{
+#if 1
+   memset( rgDBCSLead, 0, sizeof( rgDBCSLead ));
+
+   switch( f32Parms.ulCurCP )
+      {
+      case 934L :
+      case 944L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xBF;
+         break;
+
+      case 936L :
+      case 938L :
+      case 946L :
+      case 948L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFC;
+         break;
+
+      case 932L :
+      case 942L :
+      case 943L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0x9F;
+         rgDBCSLead[ 2 ] = 0xE0; rgDBCSLead[ 3 ] = 0xFC;
+         break;
+
+      case 949L :
+         rgDBCSLead[ 0 ] = 0x8F; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 950L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 1207L :
+         rgDBCSLead[ 0 ] = 0x80; rgDBCSLead[ 1 ] = 0xFF;
+         break;
+
+      case 1381L :
+         rgDBCSLead[ 0 ] = 0x8C; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 1386L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+      }
+#else      /* below code causes TRAP D on Warp 4 for Korean and WSeB for US */
+   COUNTRYCODE cc;
+
+   cc.country = 0;
+   cc.codepage = ( USHORT )f32Parms.ulCurCP;
+   DosGetDBCSEv( sizeof( rgDBCSLead ), &cc, rgDBCSLead );
+#endif
+}
+
+BOOL IsDBCSLead( USHORT usChar )
+{
+   USHORT usIndex;
+
+   for( usIndex = 0; ( usIndex < sizeof(rgDBCSLead)) &&
+                     ( rgDBCSLead[ usIndex ] != 0 || rgDBCSLead[ usIndex + 1 ] != 0 ); usIndex += 2  )
+      {
+         if( usChar >= rgDBCSLead[ usIndex ] &&
+             usChar <= rgDBCSLead[ usIndex + 1 ] )
+            return TRUE;
+      }
+
+   return FALSE;
+}
+
+/* Get the last-character. (sbcs/dbcs) */
+int lastchar(const char *string)
+{
+    UCHAR *s;
+    unsigned int c = 0;
+    int i, len = strlen(string);
+    s = (UCHAR *)string;
+    for(i = 0; i < len; i++)
+    {
+        c = *(s + i);
+        if(IsDBCSLead(c))
+        {
+            c = (c << 8) + ( unsigned int )*(s + i + 1);
+            i++;
+        }
+    }
+    return c;
+}
+
+/* byte step DBCS type strchr() (but. different wstrchr()) */
+char _FAR_ * _FAR_ _cdecl strchr(const char _FAR_ *string, int c)
+{
+    UCHAR *s;
+    int  i, len = strlen(string);
+    unsigned int ch;
+    s = (UCHAR *)string;
+    for(i = 0; i < len; i++)
+    {
+        ch = *(s + i);
+        if(IsDBCSLead(ch))
+            ch = (ch << 8) + *(s + i + 1);
+        if(( USHORT )c == ch)
+            return (s + i);
+        if(ch & 0xFF00)
+            i++;
+    }
+    return NULL;
+}
+/* byte step DBCS type strrchr() (but. different wstrrchr()) */
+char _FAR_ * _FAR_ _cdecl strrchr(const char _FAR_ *string, int c)
+{
+    char *s, *lastpos;
+    s = (char *)string;
+    lastpos = strchr(s, c);
+    if(!lastpos)
+        return NULL;
+    for(;;)
+    {
+        s = lastpos + 1;
+        s = strchr(s, c);
+        if(!s)
+            break;
+        lastpos = s;
+    }
+    return lastpos;
+}
+#endif /* by OAX */
+
 
 int pascal CHKDSK(INT iArgc, PSZ rgArgv[], PSZ rgEnv[])
 {
@@ -138,9 +270,13 @@ ULONG  ulDeadFace = 0xDEADFACE;
 USHORT usParmSize;
 USHORT usDataSize;
 
+#if 0
    rgEnv = rgEnv;
+#endif
 
    DosError(1); /* Enable hard errors */
+
+   TranslateInitDBCSEnv();
 
    fToFile = OutputToFile();
 
@@ -891,7 +1027,7 @@ USHORT rc;
                Construct full path
             */
             strcpy(pbPath, pszPath);
-            if (pbPath[strlen(pbPath) - 1] != '\\')
+            if (lastchar(pbPath) != '\\')
                strcat(pbPath, "\\");
             if (strlen(szLongName))
                strcat(pbPath, szLongName);
@@ -1037,7 +1173,7 @@ USHORT rc;
 
                      memset(&fs, 0, sizeof fs);
                      strcpy(fs.szFileName, pszPath);
-                     if (fs.szFileName[strlen(pszPath) - 1] != '\\')
+                     if (lastchar(fs.szFileName) != '\\')
                         strcat(fs.szFileName, "\\");
                      strcat(fs.szFileName, MakeName(pDir, szShortName, sizeof szShortName));
                      fs.ulFileSize = ulClustersUsed * pCD->usClusterSize;
@@ -1129,7 +1265,7 @@ USHORT rc;
                      Construct full path
                   */
                   strcpy(pbPath, pszPath);
-                  if (pbPath[strlen(pbPath) - 1] != '\\')
+                  if (lastchar(pbPath) != '\\')
                      strcat(pbPath, "\\");
                   if (strlen(szLongName))
                      strcat(pbPath, szLongName);

@@ -881,7 +881,7 @@ USHORT *rgTranslate[ MAX_TRANS_TABLE ] = { NULL, };
 PBYTE  pIn;
 PUSHORT pOut;
 UconvObject  uconv_object = NULL;
-INT iIndex;
+INT iIndex, i;
 size_t in_bytes_left;
 size_t uni_chars_left;
 size_t num_subs;
@@ -958,12 +958,30 @@ USHORT usCode;
       return FALSE;
       }
 
+   cc.country = 0;
+   cc.codepage = rgCP[ 0 ];
+
+   DosQueryDBCSEnv( sizeof( uchDBCSLead ), &cc, uchDBCSLead );
+
+  #if 1  /* by OAX */
    for (iIndex = 0; iIndex < 256; iIndex++)
+   {
       rgData[iIndex] = iIndex;
+      /* if (iIndex == DBCS1stByte) then, Set rgData[iIndex] = 0; */
+      for(i =  0; ( i < sizeof(uchDBCSLead)) &&
+                  ( uchDBCSLead[ i ] != 0 || uchDBCSLead[ i + 1 ] != 0 ); i += 2)
+      {
+         if(iIndex >= uchDBCSLead[i] && iIndex <= uchDBCSLead[i + 1])
+         {
+            rgData[iIndex] = 0;
+            break;
+         }
+      }
+   }
 
    for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
    {
-      rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof( USHORT ) * ARRAY_TRANS_TABLE );
+      rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof(USHORT ) * ARRAY_TRANS_TABLE );
       memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
    }
 
@@ -984,12 +1002,10 @@ USHORT usCode;
       printf("UniUconvToUcs failed, rc = %u\n", rc);
       return FALSE;
       }
+  #endif /* by OAX */
 
-   cc.country = 0;
-   cc.codepage = rgCP[ 0 ];
-
-   DosQueryDBCSEnv( sizeof( uchDBCSLead ), &cc, uchDBCSLead );
-   for( iIndex = 0; uchDBCSLead[ iIndex ] != 0 || uchDBCSLead[ iIndex + 1 ] != 0; iIndex += 2 )
+   for( iIndex = 0; ( iIndex < sizeof( uchDBCSLead )) &&
+                    ( uchDBCSLead[ iIndex ] != 0 || uchDBCSLead[ iIndex + 1 ] != 0 ); iIndex += 2 )
       {
          for( first = uchDBCSLead[ iIndex ]; first <= uchDBCSLead[ iIndex + 1 ]; first++ )
             for( second = 0; second < 0x100; second++ )

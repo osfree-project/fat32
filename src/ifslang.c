@@ -81,7 +81,7 @@ VOID TranslateInitDBCSEnv( VOID )
          rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
          break;
       }
-#else
+#else      /* below code causes TRAP D on Warp 4 for Korean and WSeB for US */
    COUNTRYCODE cc;
 
    cc.country = 0;
@@ -94,8 +94,8 @@ BOOL IsDBCSLead( USHORT usChar )
 {
    USHORT usIndex;
 
-   for( usIndex = 0; rgDBCSLead[ usIndex ] != 0 ||
-                     rgDBCSLead[ usIndex + 1 ] != 0; usIndex += 2 )
+   for( usIndex = 0; ( usIndex < sizeof(rgDBCSLead)) &&
+                     ( rgDBCSLead[ usIndex ] != 0 || rgDBCSLead[ usIndex + 1 ] != 0 ); usIndex += 2  )
       {
          if( usChar >= rgDBCSLead[ usIndex ] &&
              usChar <= rgDBCSLead[ usIndex + 1 ] )
@@ -104,6 +104,65 @@ BOOL IsDBCSLead( USHORT usChar )
 
    return FALSE;
 }
+
+#if 1  /* by OAX */
+/* Get the last-character. (sbcs/dbcs) */
+int lastchar(const char *string)
+{
+    UCHAR *s;
+    USHORT c = 0;
+    int i, len = strlen(string);
+    s = (UCHAR *)string;
+    for(i = 0; i < len; i++)
+    {
+        c = *(s + i);
+        if(IsDBCSLead(c))
+        {
+            c = (c << 8) + *(s + i + 1);
+            i++;
+        }
+    }
+    return c;
+}
+
+/* byte step DBCS type strchr() (but. different wstrchr()) */
+char _FAR_ * _FAR_ _cdecl strchr(const char _FAR_ *string, int c)
+{
+    UCHAR *s;
+    int  i, len = strlen(string);
+    unsigned int ch;
+    s = (UCHAR *)string;
+    for(i = 0; i < len; i++)
+    {
+        ch = *(s + i);
+        if(IsDBCSLead(ch))
+            ch = (ch << 8) + *(s + i + 1);
+        if(( USHORT )c == ch)
+            return (s + i);
+        if(ch & 0xFF00)
+            i++;
+    }
+    return NULL;
+}
+/* byte step DBCS type strrchr() (but. different wstrrchr()) */
+char _FAR_ * _FAR_ _cdecl strrchr(const char _FAR_ *string, int c)
+{
+    char *s, *lastpos;
+    s = (char *)string;
+    lastpos = strchr(s, c);
+    if(!lastpos)
+        return NULL;
+    for(;;)
+    {
+        s = lastpos + 1;
+        s = strchr(s, c);
+        if(!s)
+            break;
+        lastpos = s;
+    }
+    return lastpos;
+}
+#endif /* by OAX */
 
 VOID TranslateAllocBuffer( VOID )
 {
