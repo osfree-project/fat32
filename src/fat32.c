@@ -834,6 +834,28 @@ POPENINFO pOpenInfo;
          rc = 0;
          break;
 
+      case FAT32_QUERYSHORTNAME:
+         {
+         PVOLINFO pVolInfo = pGlobVolInfo;
+         BYTE     bDrive;
+
+         bDrive = *pParm;
+         if (bDrive >= 'a' && bDrive <= 'z')
+            bDrive -= ('a' - 'A');
+         bDrive -= 'A';
+         while (pVolInfo)
+            {
+            if (pVolInfo->bDrive == bDrive)
+               break;
+            pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
+            }
+         if (pVolInfo)
+            TranslateName(pVolInfo, 0L, (PSZ)pParm, (PSZ)pData, TRANSLATE_LONG_TO_SHORT);
+
+         rc = 0;
+         break;
+         }
+
       default :
          rc = ERROR_INVALID_FUNCTION;
          break;

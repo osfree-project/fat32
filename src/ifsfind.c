@@ -527,7 +527,11 @@ USHORT usClusterIndex;
                if (!rc && strlen(pFindInfo->pInfo->szSearch))
                   {
                   rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szUpperName);
+#if 0
                   if (rc && f32Parms.fUseShortNames && stricmp(szShortName, szUpperName))
+#else
+                  if (rc && stricmp(szShortName, szUpperName))
+#endif
                      rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                   }
                if (!rc && f32Parms.fMessageActive & LOG_FIND)

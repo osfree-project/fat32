@@ -1169,9 +1169,29 @@ Version 0.93:
 - Rewrote UFAT32.DLL to utilize a IOCtl call to read sectors
 
 Version 0.94:
+
 - Fixed a problem CHKDSK had when finding bad sectors.
 
 - Fixed a problem when running in 'Internal Shortname mode' that long files
   were not found. 
 
+Version 0.95:
+
+- FAT32.IFS now supports DBCS, especially Korean, correctly.
+
+- Fixed 'unsigned' overflow problems.
+
+- When both /FS and /EAS are enabled, MOVE and REN command don't process EA
+  files correctly. Fixed.
+
+- When /FL(default) is enabled, FillDirEntry doesn't recognize 8.3 name pointing
+  to the same file as long name.
+
+- When /EAS is disabled, FAT32.IFS now pass empty EA.
+
+- Changed UFAT32 to find volume label in ROOT directory not in bootsector.
+
+- Changed UFAT32 to report 'file allocation error' as long name.
+
+- Added FSCTL function to get short name from long name.
 
