@@ -30,8 +30,20 @@ int (* CALLCONV pUniUconvToUcs)(
              UniChar * * outbuf,       /* IO - Output buffer size          */
              size_t    * outchars,     /* IO - Output size (chars)         */
              size_t    * subst  );     /* IO - Substitution count          */
+int (* CALLCONV pUniUconvFromUcs)(
+             UconvObject uobj,
+             UniChar * * inbuf,
+             size_t    * inchars,
+             void    * * outbuf,
+             size_t    * outbytes,
+             size_t    * subst  );
+int (* CALLCONV pUniMapCpToUcsCp)( ULONG ulCp, UniChar *ucsCp, size_t n );
+UniChar (* CALLCONV pUniTolower )( UniChar uin );
+int (* CALLCONV pUniQueryUconvObject )
+    (UconvObject uobj, uconv_attribute_t *attr, size_t size, char first[256], char other[256], udcrange_t udcrange[32]);
 
-HMODULE hModLang;
+HMODULE hModConv = NULL;
+HMODULE hModUni = NULL;
 
 PRIVATE VOID Handler(INT iSignal);
 PRIVATE VOID InitProg(INT iArgc, PSZ rgArgv[]);
@@ -81,7 +93,6 @@ BYTE  bPrevPrio;
 
    DoCheckDisk(FALSE);
 
-
    InitProg(iArgc, rgArgv);
    if (fActive)
       DosExit(EXIT_PROCESS, 0);
@@ -89,7 +100,7 @@ BYTE  bPrevPrio;
    if (fForeGround)
       {
       DoCheckDisk(TRUE);
-      if (!f32Parms.usCacheSize)
+      if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
          printf("Cache size has been set to zero, lazy writer will not be started!\n");
       else if (fLoadDeamon)
          StartMe(rgArgv[0]);
@@ -235,8 +246,11 @@ ULONG     ulParm;
    else
       fForeGround = TRUE;
 
-   if (fForeGround && !fSilent)
-      printf("FAT32 cache helper version %s.\n", FAT32_VERSION);
+   if (fForeGround)
+   {
+      if( !fSilent )
+        printf("FAT32 cache helper version %s.\n", FAT32_VERSION);
+   }
    else
       WriteLogMessage("FAT32 task detached");
 
@@ -250,7 +264,7 @@ ULONG     ulParm;
       {
       rc = DosAllocSharedMem((PVOID *)&pOptions, SHAREMEM, sizeof (LWOPTS), PAG_COMMIT|PAG_READ|PAG_WRITE);
       if (rc)
-         DosExit(EXIT_PROCESS, 1);
+          DosExit(EXIT_PROCESS, 1);
       memset(pOptions, 0, sizeof pOptions);
       pOptions->bLWPrio = PRTYC_IDLETIME;
       WriteLogMessage("Shared memory allocated!");
@@ -287,12 +301,12 @@ ULONG     ulParm;
                printf("/B:bufferidle in millisecs.\n");
                printf("/M:maxage in millisecs.\n");
                printf("/R:d:,n sets read ahead sector count for drive d: to n.\n");
-               printf("/FS use short file names internally.\n");
-               printf("/FL use long file names internally.\n");
                printf("/L:on|off set lazy writing on or off.\n");
                printf("/P:1|2|3|4 Set priority of Lazy writer\n");
                printf("/Y assume yes\n");
                printf("/S do NOT display normal messages\n");
+               printf("/CP:cp load unicode translate table for cp\n");
+               printf("/F force lazy write deamon to be loaded\n");
                DosExit(EXIT_PROCESS, 0);
                break;
 
@@ -314,6 +328,8 @@ ULONG     ulParm;
 
             case 'N':
                fLoadDeamon = FALSE;
+               f32Parms.fForceLoad = FALSE;
+               fSetParms = TRUE;
                break;
 
             case 'T':
@@ -390,17 +406,22 @@ ULONG     ulParm;
                SetRASectors(&rgArgv[iArg][3]);
                break;
             case 'F':
-               if (rgArgv[iArg][2] == 'S' || rgArgv[iArg][2] == 'L' )
+               if( rgArgv[iArg][2] == '\0' )
+               {
+                  f32Parms.fForceLoad = TRUE;
+                  fSetParms = TRUE;
+               }
+               else if (rgArgv[iArg][2] == 'S' || rgArgv[iArg][2] == 'L' )
                {
                   printf("Both /FS and /FL option is not supported any more.\n");
                   printf("Please read the documentation.\n");
                   break;
                }
                else
-                  {
+               {
                   printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
-                  }
+               }
                break;
 
             case 'L':
@@ -457,7 +478,7 @@ ULONG     ulParm;
          }
       }
 
-   if (LoadTranslateTable())
+   if ( fForeGround && LoadTranslateTable())
       fSetParms = TRUE;
 
    if (fSetParms)
@@ -486,18 +507,20 @@ ULONG     ulParm;
       {
       if (!ulDriveMap)
          {
-         printf("FAT32: No FAT32 partitions found, aborting...\n");
-         DosExit(EXIT_PROCESS, 1);
+         if( !f32Parms.fForceLoad )
+            {
+            printf("FAT32: No FAT32 partitions found, aborting...\n");
+            printf("FAT32: Use /F option to load lazy write deamon\n");
+            DosExit(EXIT_PROCESS, 1);
+            }
          }
       }
-
-
 
    /*
       Query parms
    */
 
-   if (fActive || !f32Parms.usCacheSize)
+   if ( fActive /*|| !f32Parms.usCacheSize*/)
       {
       if (fActive)
          {
@@ -518,17 +541,23 @@ ULONG     ulParm;
       printf("\n");
       ShowRASectors();
       printf("\n");
-      printf("CACHE has space for %u sectors\n", f32Parms.usCacheSize);
-      printf("CACHE contains %u sectors\n", f32Parms.usCacheUsed);
-      printf("There are %u dirty sectors in cache.\n", f32Parms.usDirtySectors);
-      if (f32Parms.usPendingFlush > 0)
-         printf("%u sectors are in pending flush state.\n", f32Parms.usPendingFlush);
-      printf("The cache hits ratio is %3d%%.\n",
-         f32Parms.ulTotalHits * 100 / f32Parms.ulTotalReads);
-      printf("FAT32.IFS has currently %u GDT segments allocated.\n",
-         f32Parms.usSegmentsAllocated);
-      }
+      if( f32Parms.usCacheSize )
+        {
+        if( f32Parms.fHighMem )
+            printf("CACHE has all space in high memory.\n");
+        printf("CACHE has space for %u sectors\n", f32Parms.usCacheSize);
+        printf("CACHE contains %u sectors\n", f32Parms.usCacheUsed);
+        printf("There are %u dirty sectors in cache.\n", f32Parms.usDirtySectors);
+        if (f32Parms.usPendingFlush > 0)
+            printf("%u sectors are in pending flush state.\n", f32Parms.usPendingFlush);
+        printf("The cache hits ratio is %3d%%.\n",
+            f32Parms.ulTotalHits * 100 / f32Parms.ulTotalReads);
+        }
 
+      printf("FAT32.IFS has currently %u GDT segments allocated.\n",
+        f32Parms.usSegmentsAllocated);
+
+      }
    return;
 }
 
@@ -800,10 +829,14 @@ static BYTE szObjName[255];
 static BYTE szArguments[512];
 RESULTCODES Res;
 
+   sprintf(szObjName,
+      " /P:%u %s", pOptions->bLWPrio );
+   if( f32Parms.fForceLoad )
+      strcat( szObjName, " /F" );
+
    memset(szArguments, 0, sizeof szArguments);
    strcpy(szArguments, pszPath);
-   sprintf(szArguments + strlen(szArguments) + 1,
-      " /P:%u", pOptions->bLWPrio);
+   strcpy( szArguments + strlen( szArguments ) + 1, szObjName );
 
    rc = DosExecPgm(szObjName, sizeof szObjName,
       EXEC_BACKGROUND,
@@ -878,47 +911,104 @@ BOOL IsDiskFat32(PSZ pszDisk)
 #define MAX_TRANS_TABLE     0x100
 #define ARRAY_TRANS_TABLE   ( 0x10000 / MAX_TRANS_TABLE )
 
+#define INDEX_OF_START      MAX_TRANS_TABLE
+#define INDEX_OF_FIRSTINFO  MAX_TRANS_TABLE
+#define INDEX_OF_LCASECONV  ( MAX_TRANS_TABLE + 1 )
+#define INDEX_OF_END        INDEX_OF_LCASECONV
+#define EXTRA_ELEMENT       ( INDEX_OF_END - INDEX_OF_START + 1 )
+
 BOOL LoadTranslateTable(VOID)
 {
 APIRET rc;
 ULONG ulParmSize;
 BYTE   rgData[ 256 ];
-USHORT *rgTranslate[ MAX_TRANS_TABLE ] = { NULL, };
-PBYTE  pIn;
-PUSHORT pOut;
+// Extra space for DBCS lead info and case conversion
+UniChar *rgTranslate[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
+PBYTE  pChar;
+UniChar *pUni;
 UconvObject  uconv_object = NULL;
-INT iIndex, i;
-size_t in_bytes_left;
+INT iIndex;
+size_t bytes_left;
 size_t uni_chars_left;
 size_t num_subs;
 ULONG rgCP[3];
 ULONG cbCP;
-PVOID16 rgTransTable[ MAX_TRANS_TABLE ] = { NULL, };
-COUNTRYCODE cc;
-UCHAR uchDBCSLead[ 12 ];
+// Extra space for DBCS lead info and case conversion
+PVOID16 rgTransTable[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
+char rgFirst[ 256 ];
 USHORT first, second;
 USHORT usCode;
+UniChar ucsCp[ 12 ];
+UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
 
-   rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModLang);
+   rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModConv);
    if (rc)
       {
       printf("No NLS support found (%s does not load).\n", rgData);
       printf("No UNICODE translate table loaded!\n");
-      return TRUE;
+      rc = TRUE;
+      goto free_exit;
       }
-   rc = DosQueryProcAddr(hModLang, 0L,
+   rc = DosQueryProcAddr(hModConv, 0L,
       "UniCreateUconvObject", (PFN *)&pUniCreateUconvObject);
    if (rc)
       {
       printf("ERROR: Could not find address of UniCreateUconvObject.\n");
-      return FALSE;
+      rc = FALSE;
+      goto free_exit;
       }
-   rc = DosQueryProcAddr(hModLang, 0L,
+   rc = DosQueryProcAddr(hModConv, 0L,
       "UniUconvToUcs", (PFN *)&pUniUconvToUcs);
    if (rc)
       {
       printf("ERROR: Could not find address of UniUconvToUcs.\n");
-      return FALSE;
+      rc = FALSE;
+      goto free_exit;
+      }
+
+   rc = DosQueryProcAddr(hModConv, 0L,
+      "UniUconvFromUcs", (PFN *)&pUniUconvFromUcs);
+   if (rc)
+      {
+      printf("ERROR: Could not find address of UniUconvFromUcs.\n");
+      rc = FALSE;
+      goto free_exit;
+      }
+
+   rc = DosQueryProcAddr(hModConv, 0L,
+      "UniMapCpToUcsCp", (PFN *)&pUniMapCpToUcsCp);
+   if (rc)
+      {
+      printf("ERROR: Could not find address of UniMapCpToUcsCp.\n");
+      rc = FALSE;
+      goto free_exit;
+      }
+
+   rc = DosQueryProcAddr(hModConv, 0L,
+      "UniQueryUconvObject", (PFN *)&pUniQueryUconvObject);
+   if (rc)
+      {
+      printf("ERROR: Could not find address of UniQueryUconvObject.\n");
+      rc = FALSE;
+      goto free_exit;
+      }
+
+   rc = DosLoadModule(rgData, sizeof rgData, "LIBUNI.DLL", &hModUni);
+   if (rc)
+      {
+      printf("No NLS support found (%s does not load).\n", rgData);
+      printf("No UNICODE translate table loaded!\n");
+      rc = TRUE;
+      goto free_exit;
+      }
+
+   rc = DosQueryProcAddr(hModUni, 0L,
+      "UniTolower", (PFN *)&pUniTolower);
+   if (rc)
+      {
+      printf("ERROR: Could not find address of UniTolower.\n");
+      rc = FALSE;
+      goto free_exit;
       }
 
    if( ulNewCP )
@@ -927,7 +1017,10 @@ USHORT usCode;
         DosQueryCp(sizeof rgCP, rgCP, &cbCP);
 
    if (f32Parms.ulCurCP == rgCP[0])
-      return FALSE;
+   {
+      rc = FALSE;
+      goto free_exit;
+   }
 
    if (f32Parms.ulCurCP && !fSayYes)
       {
@@ -958,108 +1051,155 @@ USHORT usCode;
          break;
          }
       if (chChar == 'N')
-         return FALSE;
+         {
+         rc = FALSE;
+         goto free_exit;
+         }
       }
 
-   rc = pUniCreateUconvObject((UniChar *)L"", &uconv_object);
+   rc = pUniMapCpToUcsCp( rgCP[ 0 ], ucsCp, sizeof( ucsCp ) / sizeof( UniChar ));
+   if( rc != ULS_SUCCESS )
+   {
+        printf("UniMapCpToUcsCp error: return code = %u\n", rc );
+        rc = FALSE;
+        goto free_exit;
+   }
+
+   rc = pUniCreateUconvObject( ucsCp, &uconv_object);
    if (rc != ULS_SUCCESS)
       {
       printf("UniCreateUconvObject error: return code = %u\n", rc);
-      return FALSE;
+      rc = FALSE;
+      goto free_exit;
       }
 
-   cc.country = 0;
-   cc.codepage = rgCP[ 0 ];
-
-   DosQueryDBCSEnv( sizeof( uchDBCSLead ), &cc, uchDBCSLead );
-
-  #if 1  /* by OAX */
-   for (iIndex = 0; iIndex < 256; iIndex++)
-   {
-      rgData[iIndex] = iIndex;
-      /* if (iIndex == DBCS1stByte) then, Set rgData[iIndex] = 0; */
-      for(i =  0; ( i < sizeof(uchDBCSLead)) &&
-                  ( uchDBCSLead[ i ] != 0 || uchDBCSLead[ i + 1 ] != 0 ); i += 2)
+   rc = pUniQueryUconvObject( uconv_object, NULL, 0, rgFirst, NULL, NULL );
+   if (rc != ULS_SUCCESS)
       {
-         if(iIndex >= uchDBCSLead[i] && iIndex <= uchDBCSLead[i + 1])
-         {
-            rgData[iIndex] = 0;
-            break;
-         }
+      printf("UniQueryUConvObject error: return code = %u\n", rc);
+      rc = FALSE;
+      goto free_exit;
       }
-   }
 
-   for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
+   // Allocation for conversion, DBCS lead info and case conversion
+   for( iIndex = 0; iIndex <= INDEX_OF_END ; iIndex ++ )
    {
-      rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof(USHORT ) * ARRAY_TRANS_TABLE );
-      memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
+        rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof(USHORT ) * ARRAY_TRANS_TABLE );
+        memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
    }
 
-   pIn  = rgData;
-   in_bytes_left = sizeof rgData;
-   pOut = ( PVOID )rgTranslate[ 0 ];
+   // Initialize SBCS only for conversion and set DBCS lead info
+   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
+   {
+        rgData[ iIndex ] = ( rgFirst[ iIndex ] == 1 ) ? iIndex : 0;
+        rgTranslate[ INDEX_OF_FIRSTINFO ][ iIndex ] = rgFirst[ iIndex ];
+   }
+
+   pChar = rgData;
+   bytes_left = sizeof rgData;
+   pUni = ( PVOID )rgTranslate[ 0 ];
    uni_chars_left = ARRAY_TRANS_TABLE;
 
    rc = pUniUconvToUcs(uconv_object,
-      (PVOID *)&pIn,
-      &in_bytes_left,
-      &pOut,
+      (PVOID *)&pChar,
+      &bytes_left,
+      &pUni,
       &uni_chars_left,
       &num_subs);
 
    if (rc != ULS_SUCCESS)
       {
       printf("UniUconvToUcs failed, rc = %u\n", rc);
-      return FALSE;
+      rc = FALSE;
+      goto free_exit;
       }
-  #endif /* by OAX */
 
-   for( iIndex = 0; ( iIndex < sizeof( uchDBCSLead )) &&
-                    ( uchDBCSLead[ iIndex ] != 0 || uchDBCSLead[ iIndex + 1 ] != 0 ); iIndex += 2 )
+   // Translate upper case to lower case
+   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
+        rgUniBuffer[ iIndex ] = pUniTolower( rgTranslate[ 0 ][ iIndex ] );
+
+   // Convert lower case in Unicode to codepage code
+   pUni = ( PVOID )rgUniBuffer;
+   uni_chars_left = ARRAY_TRANS_TABLE;
+   pChar  = rgData;
+   bytes_left = sizeof rgData;
+
+   rc = pUniUconvFromUcs( uconv_object,
+        &pUni,
+        &uni_chars_left,
+        ( PVOID * )&pChar,
+        &bytes_left,
+        &num_subs );
+
+   if (rc != ULS_SUCCESS)
       {
-         for( first = uchDBCSLead[ iIndex ]; first <= uchDBCSLead[ iIndex + 1 ]; first++ )
+      printf("UniUconvFromUcs failed, rc = %u\n", rc);
+      rc = FALSE;
+      goto free_exit;
+      }
+
+   // Store codepage code to transtable
+   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
+        rgTranslate[ INDEX_OF_LCASECONV ][ iIndex ] = rgData[ iIndex ] ? rgData[ iIndex ] : iIndex;
+
+   // Translate DBCS code to unicode
+   for( first = 0; first < ARRAY_TRANS_TABLE; first++ )
+   {
+        if( rgFirst[ first ] == 2 )
+        {
             for( second = 0; second < 0x100; second++ )
-               {
+            {
                   usCode = first | (( second << 8 ) & 0xFF00 );
 
-                  pIn  = ( PVOID )&usCode;
-                  in_bytes_left = sizeof usCode;
-                  pOut = ( PVOID )&rgTranslate[ second ][ first ];
+                  pChar  = ( PVOID )&usCode;
+                  bytes_left = sizeof usCode;
+                  pUni = ( PVOID )&rgTranslate[ second ][ first ];
                   uni_chars_left = 1;
 
                   rc = pUniUconvToUcs(uconv_object,
-                     (PVOID *)&pIn,
-                     &in_bytes_left,
-                     &pOut,
+                     (PVOID *)&pChar,
+                     &bytes_left,
+                     &pUni,
                      &uni_chars_left,
                      &num_subs);
 
                   if (rc != ULS_SUCCESS)
-                     {
+                  {
                      printf("UniUconvToUcs failed, rc = %u\n", rc);
-                     return FALSE;
-                     }
-               }
-      }
+                     rc = FALSE;
+                     goto free_exit;
+                  }
+            }
+        }
+   }
 
    ulParmSize = sizeof rgTransTable;
    rc = DosFSCtl(NULL, 0, NULL,
                ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
                FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
-   for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
-      free( rgTranslate[ iIndex ]);
-
    if (rc)
       {
       printf("Unable to set translate table for current Codepage.\n");
-      return FALSE;
+      rc = FALSE;
+      goto free_exit;
       }
 
    f32Parms.ulCurCP = rgCP[0];
-   if( !fSilent )
-      printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
-   DosFreeModule(hModLang);
-   return TRUE;
+   printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
+   rc = TRUE;
+free_exit:
+
+   for( iIndex = 0; iIndex <= INDEX_OF_END; iIndex++ )
+      if( rgTranslate[ iIndex ])
+        free( rgTranslate[ iIndex ]);
+
+   if( hModConv )
+        DosFreeModule( hModConv);
+
+   if( hModUni )
+        DosFreeModule( hModUni );
+
+   return rc;
 }
 
 void WriteLogMessage(PSZ pszMessage)
