@@ -94,7 +94,12 @@ USHORT rc;
 
    if (!(ulOpenMode & OPEN_FLAGS_DASD))
       {
-      pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
+      BYTE szLongName[ FAT32MAXPATH ];
+
+      if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
+         strcpy( szLongName, pName );
+
+      pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
       if (!pOpenInfo->pSHInfo)
          {
          rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -430,7 +435,6 @@ FS_OPENCREATEEXIT:
 ******************************************************************/
 PSHOPENINFO GetSH(PSZ pszFileName, POPENINFO pOI)
 {
-USHORT rc;
 PSHOPENINFO pSH;
 
    pSH = pGlobSH;
@@ -634,9 +638,15 @@ USHORT usBytesAvail;
 USHORT usBytesRead;
 USHORT usBytesToRead;
 PBYTE  pbCluster;
+ULONG  ulSector;
+USHORT usSectors;
+USHORT usAlign;
+ULONG  ulClusterSector;
+USHORT usClusterOffset;
 
    usBytesToRead = *pLen;
    *pLen = 0;
+   pbCluster = NULL;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_READ, %u bytes at offset %ld",
@@ -644,7 +654,10 @@ PBYTE  pbCluster;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+   {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_READEXIT;
+   }
 
    if (psffsi->sfi_mode & OPEN_ACCESS_WRITEONLY)
       {
@@ -676,41 +689,66 @@ PBYTE  pbCluster;
 
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
       {
-      ULONG ulSector = psffsi->sfi_position;
+      ulSector = psffsi->sfi_position;
 
       if (!pOpenInfo->fSectorMode)
-         ulSector /= 512;
+         ulSector /= SECTOR_SIZE;
       else
-         usBytesToRead *= 512;
+         usBytesToRead *= SECTOR_SIZE;
 
       if (ulSector >= pVolInfo->BootSect.bpb.BigTotalSectors)
          {
-         free(pbCluster);
          rc = ERROR_SECTOR_NOT_FOUND;
          goto FS_READEXIT;
          }
+
       while (usBytesRead < usBytesToRead &&
              ulSector < pVolInfo->BootSect.bpb.BigTotalSectors)
          {
-         USHORT usSectors = (USHORT)min((ULONG)pVolInfo->BootSect.bpb.SectorsPerCluster,
-            (pVolInfo->BootSect.bpb.BigTotalSectors - ulSector));
 
-//         Yield();
-
-         rc = ReadSector(pVolInfo, ulSector, usSectors, pbCluster, usIOFlag);
-         if (rc)
-            {
-            free(pbCluster);
-            goto FS_READEXIT;
-            }
          if (!pOpenInfo->fSectorMode)
-            usOffset = (USHORT)(psffsi->sfi_position % 512);
+         {
+            usOffset = (USHORT)(psffsi->sfi_position % SECTOR_SIZE);
+
+            usAlign = ( usBytesToRead - usBytesRead );
+            if( usOffset )
+            {
+                if( usAlign <= ( USHORT )( SECTOR_SIZE - usOffset ))
+                    usAlign = 0;
+                else
+                    usAlign -= SECTOR_SIZE - usOffset;
+            }
+
+            usSectors = ( USHORT )((( ULONG )usAlign + SECTOR_SIZE - 1 ) / SECTOR_SIZE );
+            if( usOffset )
+                usSectors++;
+         }
          else
+         {
             usOffset = 0;
+            usSectors = ( usBytesToRead - usBytesRead ) / SECTOR_SIZE;
+         }
+
+         if(( ULONG )usSectors > ( pVolInfo->BootSect.bpb.BigTotalSectors - ulSector ))
+            usSectors = ( USHORT )( pVolInfo->BootSect.bpb.BigTotalSectors - ulSector );
+
+         if( usSectors > pVolInfo->BootSect.bpb.SectorsPerCluster )
+            usSectors = pVolInfo->BootSect.bpb.SectorsPerCluster;
 
          usBytesAvail = (usSectors * pVolInfo->BootSect.bpb.BytesPerSector) - usOffset;
          if (usBytesAvail > (usBytesToRead - usBytesRead))
             usBytesAvail = usBytesToRead - usBytesRead;
+
+#ifdef CALL_YIELD
+         Yield();
+#endif
+
+         rc = ReadSector(pVolInfo, ulSector, usSectors, pbCluster, usIOFlag);
+         if (rc)
+            {
+            goto FS_READEXIT;
+            }
+
          memcpy(pData, pbCluster + usOffset, usBytesAvail);
 
          usBytesRead += usBytesAvail;
@@ -725,8 +763,7 @@ PBYTE  pbCluster;
       if (!pOpenInfo->fSectorMode)
          *pLen = usBytesRead;
       else
-         *pLen = usBytesRead / 512;
-      free(pbCluster);
+         *pLen = usBytesRead / SECTOR_SIZE;
       psffsi->sfi_tstamp |= ST_SREAD | ST_PREAD;
       rc = 0;
       goto FS_READEXIT;
@@ -741,23 +778,45 @@ PBYTE  pbCluster;
       psffsi->sfi_position < psffsi->sfi_size)
       {
 
-//      Yield();
+#ifdef CALL_YIELD
+      Yield();
+#endif
 
-      usOffset = (USHORT)(psffsi->sfi_position % pVolInfo->usClusterSize);
-      usBytesAvail = pVolInfo->usClusterSize - usOffset;
+      ulClusterSector = pVolInfo->ulStartOfData +
+         ( pOpenInfo->ulCurCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
 
-      rc = ReadCluster(pVolInfo, pOpenInfo->ulCurCluster, pbCluster, usIOFlag);
-      if (rc)
-         {
-         free(pbCluster);
-         goto FS_READEXIT;
-         }
+      usClusterOffset = (USHORT)(psffsi->sfi_position % pVolInfo->usClusterSize);
+      ulSector = ulClusterSector + ( usClusterOffset / SECTOR_SIZE );
+      usOffset = usClusterOffset % SECTOR_SIZE;
 
+      usAlign = ( usBytesToRead - usBytesRead );
+      if( usOffset )
+      {
+         if( usAlign <= ( USHORT )( SECTOR_SIZE - usOffset ))
+            usAlign = 0;
+         else
+            usAlign -= SECTOR_SIZE - usOffset;
+      }
+
+      usSectors = ( USHORT )((( ULONG ) usAlign + SECTOR_SIZE - 1 ) / SECTOR_SIZE );
+      if( usOffset )
+         usSectors++;
+
+      if( ulSector + usSectors > ulClusterSector + pVolInfo->BootSect.bpb.SectorsPerCluster  )
+         usSectors = ( USHORT )( ulClusterSector + pVolInfo->BootSect.bpb.SectorsPerCluster - ulSector );
+
+      usBytesAvail = (usSectors * pVolInfo->BootSect.bpb.BytesPerSector) - usOffset;
       if (usBytesAvail > (usBytesToRead - usBytesRead))
          usBytesAvail = usBytesToRead - usBytesRead;
 
       if ((ULONG)usBytesAvail > psffsi->sfi_size - psffsi->sfi_position)
          usBytesAvail = (USHORT)(psffsi->sfi_size - psffsi->sfi_position);
+
+      rc = ReadSector(pVolInfo, ulSector, usSectors, pbCluster, usIOFlag );
+      if (rc)
+      {
+         goto FS_READEXIT;
+      }
 
       memcpy(pData, pbCluster + usOffset, usBytesAvail);
 
@@ -765,7 +824,7 @@ PBYTE  pbCluster;
       psffsi->sfi_position += usBytesAvail;
       pData += usBytesAvail;
 
-      if (usOffset + usBytesAvail >= pVolInfo->usClusterSize)
+      if (usClusterOffset + usBytesAvail >= pVolInfo->usClusterSize)
          {
          pOpenInfo->ulCurCluster = GetNextCluster(pVolInfo, pOpenInfo->ulCurCluster);
          if (!pOpenInfo->ulCurCluster)
@@ -773,12 +832,15 @@ PBYTE  pbCluster;
          }
       }
    *pLen = usBytesRead;
-   free(pbCluster);
 
    psffsi->sfi_tstamp |= ST_SREAD | ST_PREAD;
    rc = 0;
 
 FS_READEXIT:
+
+   if( pbCluster )
+      free( pbCluster );
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_READ returned %u (%u bytes read)", rc, *pLen);
    return rc;
@@ -804,9 +866,15 @@ USHORT usBytesWritten;
 USHORT usBytesToWrite;
 PBYTE  pbCluster;
 ULONG  ulOldSize;
+ULONG  ulSector;
+USHORT usSectors;
+USHORT usAlign;
+ULONG  ulClusterSector;
+USHORT usClusterOffset;
 
    usBytesToWrite = *pLen;
    *pLen = 0;
+   pbCluster = NULL;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_WRITE, %u bytes at offset %ld, ioflag %X, size = %lu",
@@ -814,9 +882,16 @@ ULONG  ulOldSize;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+   {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_WRITEEXIT;
+   }
+
    if (pVolInfo->fWriteProtected)
-      return ERROR_WRITE_PROTECT;
+   {
+      rc = ERROR_WRITE_PROTECT;
+      goto FS_WRITEEXIT;
+   }
 
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
       {
@@ -841,19 +916,18 @@ ULONG  ulOldSize;
    if (rc)
       {
       Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
-      return rc;
+      goto FS_WRITEEXIT;
       }
 
    pOpenInfo->pSHInfo->fMustCommit = TRUE;
-   *pLen = 0;
 
    /*
       calculate size whereby old clusters must be read
    */
-   ulOldSize = psffsi->sfi_size / pVolInfo->usClusterSize;
-   if (psffsi->sfi_size % pVolInfo->usClusterSize)
+   ulOldSize = psffsi->sfi_size / SECTOR_SIZE;
+   if (psffsi->sfi_size % SECTOR_SIZE)
       ulOldSize++;
-   ulOldSize *= pVolInfo->usClusterSize;
+   ulOldSize *= SECTOR_SIZE;
 
    /*
       No writes if file is larger than 7FFFFFFF (= 2Gb)
@@ -916,32 +990,85 @@ ULONG  ulOldSize;
    usBytesWritten = 0;
    while (usBytesWritten < usBytesToWrite)
       {
-//      Yield();
+#ifdef CALL_YIELD
+      Yield();
+#endif
 
-      usOffset = (USHORT)(psffsi->sfi_position % pVolInfo->usClusterSize);
-      usBytesAvail = pVolInfo->usClusterSize - usOffset;
+      ulClusterSector = pVolInfo->ulStartOfData +
+         ( pOpenInfo->ulCurCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
 
+      usClusterOffset = (USHORT)(psffsi->sfi_position % pVolInfo->usClusterSize);
+      ulSector = ulClusterSector + ( usClusterOffset / SECTOR_SIZE );
+      usOffset = usClusterOffset % SECTOR_SIZE;
+
+      usAlign = ( usBytesToWrite - usBytesWritten );
+      if( usOffset )
+      {
+         if( usAlign <= ( USHORT )( SECTOR_SIZE - usOffset ))
+            usAlign = 0;
+         else
+            usAlign -= SECTOR_SIZE - usOffset;
+      }
+
+      usSectors = ( USHORT )((( ULONG ) usAlign + SECTOR_SIZE - 1 ) / SECTOR_SIZE );
+      if( usOffset )
+         usSectors++;
+
+      if( ulSector + usSectors > ulClusterSector + pVolInfo->BootSect.bpb.SectorsPerCluster  )
+         usSectors = ( USHORT )( ulClusterSector + pVolInfo->BootSect.bpb.SectorsPerCluster - ulSector );
+
+      usBytesAvail = (usSectors * pVolInfo->BootSect.bpb.BytesPerSector) - usOffset;
       if (usBytesAvail > (usBytesToWrite - usBytesWritten))
          usBytesAvail = usBytesToWrite - usBytesWritten;
 
-      if (usBytesAvail < pVolInfo->usClusterSize && psffsi->sfi_position < ulOldSize)
+      usAlign = usBytesAvail;
+      if( usOffset )
+      {
+         if( usAlign <= ( USHORT )( SECTOR_SIZE - usOffset ))
+             usAlign = 0;
+         else
+             usAlign -= SECTOR_SIZE - usOffset;
+      }
+
+      if( usOffset || ( usAlign % SECTOR_SIZE ))
+      {
+         if( psffsi->sfi_position < ulOldSize )
          {
-         rc = ReadCluster(pVolInfo, pOpenInfo->ulCurCluster, pbCluster, usIOFlag);
-         if (rc)
+#if 0
+            rc = ReadSector(pVolInfo, ulSector, usSectors, pbCluster, usIOFlag );
+            if (rc)
             {
-            free(pbCluster);
-            goto FS_WRITEEXIT;
+                goto FS_WRITEEXIT;
             }
+#else
+            if( usOffset )
+            {
+               rc = ReadSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag );
+               if (rc)
+               {
+                   goto FS_WRITEEXIT;
+               }
+            }
+
+            if( usAlign % SECTOR_SIZE )
+            {
+               rc = ReadSector(pVolInfo, ulSector + usSectors - 1, 1, pbCluster + ( usSectors - 1 ) * SECTOR_SIZE, usIOFlag );
+               if (rc)
+               {
+                   goto FS_WRITEEXIT;
+               }
+            }
+#endif
          }
-      else
-         memset(pbCluster, 0, pVolInfo->usClusterSize);
+         else
+             memset(pbCluster, 0, pVolInfo->usClusterSize);
+      }
 
       memcpy(pbCluster + usOffset, pData, usBytesAvail);
 
-      rc = WriteCluster(pVolInfo, pOpenInfo->ulCurCluster, pbCluster, usIOFlag);
+      rc = WriteSector( pVolInfo, ulSector, usSectors, pbCluster, usIOFlag );
       if (rc)
          {
-         free(pbCluster);
          goto FS_WRITEEXIT;
          }
 
@@ -951,7 +1078,7 @@ ULONG  ulOldSize;
          psffsi->sfi_size = psffsi->sfi_position;
       pData += usBytesAvail;
 
-      if (usOffset + usBytesAvail >= pVolInfo->usClusterSize)
+      if (usClusterOffset + usBytesAvail >= pVolInfo->usClusterSize)
          {
          pOpenInfo->ulCurCluster = GetNextCluster( pVolInfo, pOpenInfo->ulCurCluster);
          if (!pOpenInfo->ulCurCluster)
@@ -960,15 +1087,14 @@ ULONG  ulOldSize;
             {
             Message("FS_WRITE (LOOP) No next cluster available!, (still %u bytes to write)", usBytesToWrite - usBytesWritten);
             CritMessage("FAT32: FS_WRITE (LOOP) No next cluster available! (still %u bytes to write)", usBytesToWrite - usBytesWritten);
-            free(pbCluster);
             *pLen = usBytesWritten;
-            return ERROR_DISK_FULL;
+            rc = ERROR_DISK_FULL;
+            goto FS_WRITEEXIT;
             }
          }
       }
 
    *pLen = usBytesWritten;
-   free(pbCluster);
 
    if (usBytesWritten)
       {
@@ -985,6 +1111,9 @@ ULONG  ulOldSize;
       rc = 0;
 
 FS_WRITEEXIT:
+   if( pbCluster )
+      free( pbCluster );
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_WRITE returned %u (%u bytes written)", rc, *pLen);
    return rc;
