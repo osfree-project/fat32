@@ -214,7 +214,7 @@ ULONG    linPageList;
       }
    memset(rgSlot, 0xFF, sizeof rgSlot);
    memset(rgfDirty, FALSE, sizeof rgfDirty);
-   
+
    f32Parms.usCacheUsed = 0L;
 
    /*
@@ -557,7 +557,7 @@ USHORT usCount;
       if (usOldestEntry == 0xFFFF)
          FatalMessage("FAT32: No Oldest entry found!");
 
-      if (usRQInUse < usRQCount && 
+      if (usRQInUse < usRQCount &&
          f32Parms.usDirtySectors - f32Parms.usPendingFlush > f32Parms.usDirtyTreshold)
          {
          if (f32Parms.fMessageActive & LOG_CACHE ||
@@ -881,7 +881,7 @@ VOID DoEmergencyFlush(PLWOPTS pOptions)
 USHORT usIndex;
 #endif
 USHORT rc;
-   
+
    while (!f32Parms.fInShutDown && !pOptions->fTerminate)
       {
       _disable();
@@ -978,7 +978,7 @@ LONG lWait;
             if (ulTime < pVolInfo->ulLastDiskTime ||
                 pVolInfo->ulLastDiskTime + f32Parms.ulDiskIdle <= ulTime)
 
-               usFlushVolume(pVolInfo, FLUSH_RETAIN, FALSE, bPriority); 
+               usFlushVolume(pVolInfo, FLUSH_RETAIN, FALSE, bPriority);
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
          }

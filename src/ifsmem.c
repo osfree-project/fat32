@@ -68,7 +68,7 @@ _WCRTLINK void * malloc(size_t tSize)
 #else
 void * cdecl malloc(size_t tSize)
 #endif
-{              
+{
 USHORT usSel;
 void * pRet;
 
@@ -79,6 +79,8 @@ void * pRet;
    if (tSize % 2)
       tSize++;
 
+if( tSize > 0 )
+   {
    for (usSel = 0; usSel < MAX_SELECTORS; usSel++)
       {
       if (rgpSegment[usSel] && rgpSegment[usSel] != RESERVED_SEGMENT)
@@ -109,15 +111,16 @@ void * pRet;
             goto malloc_exit;
          }
       }
+   }
 
    if (f32Parms.fMessageActive & LOG_MEM)
       Message("Malloc failed, calling gdtAlloc");
-   pRet = gdtAlloc(tSize, TRUE);
+   pRet = gdtAlloc(tSize ? ( ULONG )tSize : 65536L, TRUE);
 
 malloc_exit:
 
    if (f32Parms.fMessageActive & LOG_MEM)
-      Message("malloc %u bytes at %lX", tSize, pRet);
+      Message("malloc %lu bytes at %lX", tSize ? ( ULONG )tSize : 65536L, pRet);
 
    ReleaseMemAccess();
    return pRet;

@@ -90,6 +90,8 @@ This version of FAT32.IFS has the following limitations:
   This means Warp 3 fixpack 26 or higher or Warp 4.
   (You must have the LANGUAGE directory)
 
+- This version can read up to 4GB of file and write up 2GB of file.
+
 QUICK INSTALL:
 ==============
 (x: should be replaced by your boot drive.)
@@ -154,8 +156,7 @@ The following options are supported:
              action and placed in the cache.
              If omitted the default differs per volume and equals the 
              number of sectors per cluster times 2. 
-             The maximum treshold value used is the number of sectors per 
-             cluster times 4.
+             The maximum treshold value used is 128.
 
              You should note that the actual sector IO per read action is
              NOT determined by an application, but by the IFS. For FAT access
@@ -1212,3 +1213,18 @@ Version 0.95:
 - Added /Y to assume 'Yes' for CACHEF32.EXE.
 
 - Added /S to prevent CACHEF32.EXE from displaying normal messages.
+
+Version 0.96:
+
+- The DBCS [0xHH5C] code and [1 byte-katakana] are not changed correctly. The
+  1st byte code of DBCS contained in SBCS caused the conversion which is not
+  right. Fixed.
+
+- Changed the maximum value of RASECTORS from sectors per cluster times 4 to
+  128.
+
+- Fixed TRAP on accesing FAT32 partition having 32k cluster.
+
+- Now FAT32.IFS do not mount FAT32 parttion having >32k cluster.
+
+

@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.95b"
+#define FAT32_VERSION "0.96b"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
@@ -38,6 +38,8 @@
 #define FAT_ASSIGN_NEW 0xFFFFFFFF
 #define FAT_NOTUSED    0x00000000
 #define SECTOR_SIZE    512
+#define MAX_CLUSTER_SIZE 32768
+#define MAX_RASECTORS  128
 #define MAX_DRIVES     10
 #define DELETED_ENTRY  0xE5
 #define ERROR_VOLUME_NOT_MOUNTED 0xEE00

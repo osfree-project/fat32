@@ -58,6 +58,12 @@ P_VolChars   pVolChars;
             goto FS_MOUNT_EXIT;
             }
 
+         if(( ULONG )pSect->bpb.BytesPerSector * pSect->bpb.SectorsPerCluster > MAX_CLUSTER_SIZE )
+            {
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            goto FS_MOUNT_EXIT;
+            }
+
          pvpfsi->vpi_vid    = pSect->ulVolSerial;
          pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
          pvpfsi->vpi_totsec = pSect->bpb.BigTotalSectors;
@@ -104,8 +110,13 @@ P_VolChars   pVolChars;
          else
             pVolInfo->usRASectors = usDefaultRASectors;
 
+#if 1
+         if( pVolInfo->usRASectors > MAX_RASECTORS )
+            pVolInfo->usRASectors = MAX_RASECTORS;
+#else
          if (pVolInfo->usRASectors > (pVolInfo->usClusterSize / SECTOR_SIZE) * 4)
             pVolInfo->usRASectors = (pVolInfo->usClusterSize / SECTOR_SIZE ) * 4;
+#endif
 
          if (pSect->bpb.FSinfoSec != 0xFFFF)
             {

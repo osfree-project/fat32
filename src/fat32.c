@@ -1426,8 +1426,13 @@ ULONG hDEV;
                   goto FS_IOCTLEXIT;
                   }
                pVolInfo->usRASectors = *(PUSHORT)pParm;
+#if 1
+               if (pVolInfo->usRASectors > MAX_RASECTORS)
+                  pVolInfo->usRASectors = MAX_RASECTORS;
+#else
                if (pVolInfo->usRASectors > (pVolInfo->usClusterSize / 512 ) * 4)
                   pVolInfo->usRASectors = (pVolInfo->usClusterSize / 512 ) * 4;
+#endif
                *(PUSHORT)pParm = pVolInfo->usRASectors;
                Message("usRASectors changed to %u", pVolInfo->usRASectors);
                rc = 0;
@@ -3710,8 +3715,9 @@ PUSHORT p;
    bCurEntry = 1;
    while (*pszLongName)
       {
+#if 0
       USHORT usLen;
-
+#endif
       pLN->bNumber = bCurEntry;
       if (DBCSStrlen(pszLongName) <= 13)
          pLN->bNumber += 0x40;
@@ -4348,8 +4354,9 @@ BOOL      fNewCluster;
       return ERROR_NOT_ENOUGH_MEMORY;
       }
 
-   memset(pDirectory, 0, pVolInfo->usClusterSize * 2);
+   memset(pDirectory, 0, pVolInfo->usClusterSize);
    pDir2 =(PDIRENTRY)((PBYTE)pDirectory + pVolInfo->usClusterSize);
+   memset(pDir2, 0, pVolInfo->usClusterSize);
    pMax = (PDIRENTRY)((PBYTE)pDirectory + pVolInfo->usClusterSize * 2);
 
    ulCluster = ulDirCluster;
@@ -4388,7 +4395,7 @@ BOOL      fNewCluster;
             */
 
             pWork = pDir2;
-            while (pWork < pMax)
+            while (pWork != pMax)
                {
                if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY)
                   {
@@ -4417,7 +4424,7 @@ BOOL      fNewCluster;
                pWork++;
                }
 
-            if (pWork < pMax)
+            if (pWork != pMax)
                {
                switch (usMode)
                   {
@@ -4596,7 +4603,7 @@ VOID MarkFreeEntries(PDIRENTRY pDirBlock, USHORT usSize)
 PDIRENTRY pMax;
 
    pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize);
-   while (pDirBlock < pMax)
+   while (pDirBlock != pMax)
       {
       if (!pDirBlock->bFileName[0])
          pDirBlock->bFileName[0] = DELETED_ENTRY;
@@ -4608,13 +4615,16 @@ USHORT GetFreeEntries(PDIRENTRY pDirBlock, USHORT usSize)
 {
 USHORT usCount;
 PDIRENTRY pMax;
+BOOL bLoop;
 
    pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize);
    usCount = 0;
-   while (pDirBlock < pMax)
+   bLoop = pMax == pDirBlock;
+   while (( pDirBlock != pMax ) || bLoop )
       {
       if (!pDirBlock->bFileName[0] || pDirBlock->bFileName[0] == DELETED_ENTRY)
          usCount++;
+      bLoop = FALSE;
       pDirBlock++;
       }
 
@@ -4625,33 +4635,39 @@ PDIRENTRY CompactDir(PDIRENTRY pStart, USHORT usSize, USHORT usEntriesNeeded)
 {
 PDIRENTRY pTar, pMax, pFirstFree;
 USHORT usFreeEntries;
+BOOL bLoop;
 
 
    pMax = (PDIRENTRY)((PBYTE)pStart + usSize);
+   bLoop = pMax == pStart;
    pFirstFree = pMax;
    usFreeEntries = 0;
-   while (pFirstFree > pStart)
+   while (( pFirstFree != pStart ) || bLoop )
       {
       if (!(pFirstFree-1)->bFileName[0])
          usFreeEntries++;
       else
          break;
+      bLoop = FALSE;
       pFirstFree--;
       }
 
-   if (pFirstFree == pStart || (pFirstFree - 1)->bAttr != FILE_LONGNAME)
+   if ((( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bAttr != FILE_LONGNAME)
       if (usFreeEntries >= usEntriesNeeded)
          return pFirstFree;
 
    /*
       Leaving longname entries at the end
    */
-   while (pFirstFree > pStart && (pFirstFree - 1)->bAttr == FILE_LONGNAME)
+   while ((( pFirstFree != pStart ) || bLoop ) && (pFirstFree - 1)->bAttr == FILE_LONGNAME)
+   {
+      bLoop = FALSE;
       pFirstFree--;
+   }
 
    usFreeEntries = 0;
    pTar = pStart;
-   while (pStart < pFirstFree && usFreeEntries < usEntriesNeeded)
+   while ((( pStart != pFirstFree ) || bLoop ) && usFreeEntries < usEntriesNeeded)
       {
       if (pStart->bFileName[0] && pStart->bFileName[0] != DELETED_ENTRY)
          {
@@ -4662,11 +4678,24 @@ USHORT usFreeEntries;
       else
          usFreeEntries++;
 
+      bLoop = FALSE;
       pStart++;
       }
    if (pTar != pStart)
       {
+#if 1
+      USHORT usEntries = 0;
+      PDIRENTRY p;
+
+      for( p = pStart; ( p != pFirstFree ) /*|| bLoop */; p++ )
+        {
+            /*bLoop = FALSE;*/
+            usEntries++;
+        }
+      memmove(pTar, pStart, usEntries * sizeof (DIRENTRY));
+#else
       memmove(pTar, pStart, (pFirstFree - pStart) * sizeof (DIRENTRY));
+#endif
       pFirstFree -= usFreeEntries;
       memset(pFirstFree, DELETED_ENTRY, usFreeEntries * sizeof (DIRENTRY));
       }
