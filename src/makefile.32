@@ -18,7 +18,7 @@ WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
    type $*.err      
 
 .obj.exe:
-   ilink /NOFREE $*, $*, $*, LIBCONV $(LINKOPT);
+   ilink /NOFREE $*, $*, $*, LIBCONV LIBULS $(LINKOPT);
      echo <<$*.bnd
 > $*.EXE
 < $(IBMC)\HELP\\DDE4.MSG
