@@ -91,7 +91,7 @@ This version of FAT32.IFS has the following limitations:
   This means Warp 3 fixpack 26 or higher or Warp 4.
   (You must have the LANGUAGE directory)
 
-- This version can read up to 4GB of file and write up 2GB of file.
+- This version can read up to 4GB of file and write up to 2GB of file.
 
 QUICK INSTALL:
 ==============
@@ -168,6 +168,7 @@ The following options are supported:
 
 /EAS         Make FAT32.IFS support EXTENDED ATTRIBUTES.
 
+/H           Use high-memory( > 16MB ) to allocate cache buffer.
 
 CACHEF32.EXE
 ============
@@ -193,7 +194,8 @@ CACHEF32.EXE supports the following options:
 /Q    Terminates CACHEF32. CacheF32 will be unloaded from memory, lazy
       writing will stop. (Performance will degrade).
 
-/N    Runs CACHEF32 without starting the deamon in the background.
+/N    Runs CACHEF32 without starting the deamon in the background, ans also
+      clear fForceLoad flag.
 
 /D:nn Sets the DISKIDLE value. See OS/2 online help on CACHE.
 
@@ -209,9 +211,11 @@ CACHEF32.EXE supports the following options:
       Default 1 (= idle-time). This might be handy if the lazy-writter 
       doesn't seem to get any CPU due to heavy system load.
 
-/Y    assume yes
+/Y    Assume yes
 
-/S    do NOT display normal messages
+/S    Do NOT display normal messages
+
+/F    Force lazy write deamon to be loaded.
 
 Note 1: the /T option has been removed in version 0.83.
 
@@ -272,13 +276,13 @@ The following options exist:
           booting Windows 95 (OSR2) SCANDISK will be fired.
 
 
-MONITOR.EXE
+F32MON.EXE
 ===========
 
 Monitor will show (most) FAT32 actions on screen. This program is intended
-for troubleshooting. Using MONITOR will degrade performance since FAT32 must
+for troubleshooting. Using F32MON will degrade performance since FAT32 must
 send monitoring information to an internal buffer. This internal buffer is 
-only 4096 bytes large, so if monitoring is on, but MONITOR does not run,
+only 4096 bytes large, so if monitoring is on, but F32MON does not run,
 logging information is lost. This will however only occur if /MONITOR is
 specified after the IFS= line for FAT32.IFS.
 
@@ -286,14 +290,14 @@ If the /MONITOR command is not specified in the config.sys after the IFS=
 statement monitoring is OFF by default, but starting MONITOR once will 
 activate monitoring.
 
-When MONITOR runs, information is shown on the screen, but also written to
+When F32MON runs, information is shown on the screen, but also written to
 FAT32.LOG in the current directory.
 
-When MONITOR terminates the internal montoring is switched off.
+When F32MON terminates the internal montoring is switched off.
 
 the syntax for monitor is:
 
-MONITOR [tracemask] [/S]
+F32MON [tracemask] [/S]
 
 If tracemask is omitted it is set to 1. 
 
@@ -318,7 +322,7 @@ tracemask you should use 1 + 4 = 5.
 
 
 /S   - Runs without output to the screen, but only to FAT32.LOG. This is
-       usefull if MONITOR sends so much messages to the screen that the 
+       usefull if F32MON sends so much messages to the screen that the
        program can't keep up with the IFS. Using /S only sends the output
        to FAT32.LOG so no time is lost in screen handling.
 
@@ -429,8 +433,7 @@ All of the code is in plain 16 bits C (All of OS/2's IFS's are 16 bits!).
 No assembly language code is used.
 
 The MONITOR function takes a lot of time. Be sure to switch if off if you 
-don't 
-need it.
+don't need it.
 
 You should probably experiment with the CACHEF32 options to get the best 
 performance for your situation. 
@@ -488,8 +491,8 @@ The mark byte
 
 Also, to speed things up a bit, each file having extended attributes is 
 marked by FAT32.IFS. For this mark an appearant unused byte in the directory 
-entry is used. The value for this byte is set to 0xEA for files having 
-normal EAs, to 0xEC for files having critical EAs, and to 0x00 for files 
+entry is used. The value for this byte is set to 0x40 for files having
+normal EAs, to 0x80 for files having critical EAs, and to 0x00 for files
 not having EAs at all.
 
 (Please note that files with critical EAs can not be opened by programs
@@ -1205,7 +1208,7 @@ Version 0.96:
 
 - Fixed TRAP on accesing FAT32 partition having 32k cluster.
 
-- Now FAT32.IFS do not mount FAT32 parttion having >32k cluster.
+- Now FAT32.IFS do not mount FAT32 partItion having >32k cluster.
 
 Version 0.97:
 
@@ -1236,4 +1239,31 @@ Version 0.98:
   in case of mixed path of short and long name.
 
 - Added /CP option to CACHEF32.EXE to specify codepage in paramter.
+
+Version 0.99:
+
+- CACHEF32.EXE cause a beep continuously if a copy of CACHEF32.EXE already
+  was loaded and current CP is different from a copy of FAT32 IFS. Fixed.
+
+- /CP option of CACHEF32.EXE does not work. Fixed.
+
+- Case conversion of national characters work only for ASCII below 128,
+  introduced in 0.98b. Fixed.
+
+- Sometimes copies of the FATs do not match each other or 'lost cluster' occur
+  after copy operation when lazy write enabled. Fixed.
+  Unfortunately, write cache performance is decreased as a result.
+
+- Replaced legacy DBCS APIs with ULS APIs.
+
+- Added a feature to clear fForceLoad flag to '/N' option of CACHEF32.EXE.
+
+- Added /H option to FAT32.IFS to allocate cache memory in high memory(>16MB).
+  Probably, 'linalloc' problem may be blown away.
+
+- Added /F option to CACHEF32.EXE to force CACHEF32.EXE to be loaded without
+  any FAT32 partition.
+  I think this option can help people use a removable media.
+
+- Now, FAT32.IFS process parameters case-insensitively.
 
