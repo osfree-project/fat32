@@ -265,6 +265,12 @@ ULONG    linPageList;
 }
 
 
+#define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
+                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster ))
+
+#define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
+                                         pVolInfo->BootSect.bpb.SectorsPerCluster + 2 ))
+
 /******************************************************************
 *
 ******************************************************************/
@@ -316,7 +322,8 @@ USHORT usCBIndex;
       }
 #endif
    pbSectors = NULL;
-   if (!(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
+   if (( ulSector >= pVolInfo->ulStartOfData ) &&
+       !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -328,6 +335,28 @@ USHORT usCBIndex;
       pbSectors = pbData;
       usSectors = nSectors;
       }
+
+   /* check bad cluster */
+   if( ulSector >= pVolInfo->ulStartOfData )
+   {
+        ULONG ulStartCluster = Sector2Cluster( ulSector );
+        ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
+        ULONG ulNextCluster = 0;
+        ULONG ulCluster;
+
+        for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
+        {
+            ulNextCluster = GetNextCluster( pVolInfo, ulCluster );
+            if( ulNextCluster == FAT_BAD_CLUSTER )
+                break;
+        }
+
+        if( ulNextCluster == FAT_BAD_CLUSTER )
+        {
+            usSectors = ( ulStartCluster != ulCluster ) ?
+                ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
+        }
+   }
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();
@@ -448,9 +477,22 @@ USHORT usCBIndex;
                   fStoreSector(pVolInfo, ulSector + usIndex, p, fDirty);
                break;
             case TRUE  :
-               vReplaceSectorInCache(usCBIndex, p, fDirty);
+               {
+               BOOL fIdent = FALSE;
+
+               if( fDirty )
+                  {
+                  PCACHE pCache;
+
+                  pCache = GetAddress(usCBIndex);
+                  fIdent = memcmp(p, pCache->bSector, SECTOR_SIZE) == 0;
+                  }
+
+               if( !fIdent )
+                  vReplaceSectorInCache(usCBIndex, p, fDirty);
                UnlockBuffer(pCacheBase + usCBIndex);
                break;
+               }
             }
          p += SECTOR_SIZE;
          }
@@ -776,21 +818,20 @@ USHORT     usCount;
          }
       else if (rgfDirty[usCBIndex] && !fDirty)
 #ifdef WAIT_THRESHOLD
-      {
+         {
 #endif
          f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
          DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
-      }
+         }
 #endif
       rgfDirty[usCBIndex] = fDirty;
       pCache = GetAddress(usCBIndex);
-      memcpy(pCache->bSector, pbSector, 512);
+      memcpy(pCache->bSector, pbSector, SECTOR_SIZE);
       pBase->ulAccessTime = GetCurTime();
       UpdateChain(usCBIndex);
       return;
 }
-
 /******************************************************************
 *
 ******************************************************************/
