@@ -39,7 +39,8 @@ PARTFILT.TXT            A textfile about PARTFILT.FLT and DISKINFO.EXE
 FAT32.IFS               The actual IFS.
 CACHEF32.EXE            The cache helper program.
 UFAT32.DLL              The module needed to run CHKDSK on FAT32 partition.
-F32STAT.EXE             A program to change the DIRTY flag of FAT32 partitions.
+F32STAT.EXE             A program to change the DIRTY flag of FAT32 
+partitions.
 MONITOR.EXE             A program to monitor what FAT32.IFS is doing.
 
 PARTFILT.FLT            A general partition filter device that allows FAT32
@@ -204,10 +205,6 @@ CACHEF32.EXE supports the following options:
 
 /L:ON|OFF Set lazy writing ON or OFF, default is ON
 
-/FS   Use short names internally.
-/FL   Use long names internally (default).
-(see LONG FILENAMES IN OS/2 AND DOS SESSIONS below)
-
 /P:1|2|3|4 Set priority for lazy writer. 1 is lowest, 4 is highest. 
       Default 1 (= idle-time). This might be handy if the lazy-writter 
       doesn't seem to get any CPU due to heavy system load.
@@ -220,6 +217,8 @@ Note 1: the /T option has been removed in version 0.83.
 
 Note 2: if you notice that the /P options has any effect on your 
         situation please let me know.
+
+Note 3: Both /FS and /FL option has been removed in version 0.98.
 
 CHKDSK & UFAT32.DLL
 ===================
@@ -367,35 +366,10 @@ use the PARTFILT.FLT.
 
 LONG FILENAMES IN OS/2 AND DOS SESSIONS
 ---------------------------------------
-In the initial release long file names where only shown in OS/2 sessions, but
-in DOS sessions, the short filename equivalent was shown.
-
-This could however lead to big problems. An example:
-
-In in an OS/2 session directory \DevStudio was current, from a DOS session
-the directory \DEVSTU~1 could be removed since OS/2 didn't know that 
-DevStudio and DEVSTU~1 were infact the same directories.
- 
-The same problem could occur when opening files in both OS/2 and DOS. 
-No proper multiuser handle would take place since OS/2 doesn't know that
-files with different names are the same.
-
-To solve this problem I've done the following:
-
-Via a setting FAT32.IFS can be told to:
-- Translate all long filenames internally to their short equivalences OR
-- Use the long names internally, but hide all files or dirs with long names
-  from DOS sessions.
-This setting can be changed (on the fly) with CACHEF32.EXE.
-
-When using short names internally the following drawbacks occur:
-- Current directory is shown as a short name (command line only)
-- When deleting (long) files from the command line, the WPS doesn't 
-  pickup the deletions.
-
-When using long names internally the following drawbacks occur:
-- Files and directories with long names are not visible in DOS sessions.
-  This is however the same as with HPFS.
+Long file names where only shown in OS/2 sessions, but in DOS sessions, the
+short filename equivalent is shown. But, when deleting files in form of mixed
+path of short and long name in OS/2 session, or deleting long files with its
+equivalent short filename in DOS sessions, the WPS doesn't pickup the deletions.
 
 
 WINDOWS & OS/2 CHARACTER SETS
@@ -454,7 +428,8 @@ PERFORMANCE
 All of the code is in plain 16 bits C (All of OS/2's IFS's are 16 bits!). 
 No assembly language code is used.
 
-The MONITOR function takes a lot of time. Be sure to switch if off if you don't 
+The MONITOR function takes a lot of time. Be sure to switch if off if you 
+don't 
 need it.
 
 You should probably experiment with the CACHEF32 options to get the best 
@@ -600,7 +575,8 @@ FS_CHDIR                : Yes
 FS_CHGFILEPTR           : Yes
 FS_CLOSE                : Yes
 FS_COMMIT               : Yes
-FS_COPY                 : Partly, unsupported actions are simulated by command shell
+FS_COPY                 : Partly, unsupported actions are simulated by 
+command shell
 FS_DELETE               : Yes
 FS_DOPAGEIO             : No
 FS_EXIT                 : Yes
@@ -955,7 +931,8 @@ Version 0.84:
 - Got a message from someone complaining that the change in PARTFILT made him
   loose the ability to mount hidden 'normal' partitions since PARTFILT 
   presented all partition types as IFS. Now PARTFILT show normal partitions
-  by their actual types and only not-by-OS/2 supported types as IFS partitions.
+  by their actual types and only not-by-OS/2 supported types as IFS 
+partitions.
 - Increased performance for accessing large files by keeping track of first 
   and last cluster for each open file, and even the current cluster for each 
   open instance.
@@ -1008,7 +985,8 @@ Version 0.86:
   Now DosSetPathInfo accepts the directory bit set (for directories only).
 
 - Modified partfilt so it will also scan partitions inside a extended type F 
-  partition (partfilt is now on version 1.08). Modified DISKINFO.EXE to do the 
+  partition (partfilt is now on version 1.08). Modified DISKINFO.EXE to do 
+the 
   same.
 
 - Noticed some problems when a file was opened multiple times. The directory
@@ -1046,7 +1024,8 @@ Version 0.89:
 - Fixed a small division by zero in CACHEF32 when the cache was zero sectors
   large.
 - Fixed the 'cannot find message file' problem in CACHEF32.EXE.
-- Some users keep having troubles with 'error cannot find SH". Just for myself 
+- Some users keep having troubles with 'error cannot find SH". Just for 
+myself 
   I added the filename there.
 - Replaced an internal call (FSH_PROBEBUF) by a DevHelp call.
 - Fixed a trap I got due to a reentrancy problem in my memory allocation 
@@ -1137,7 +1116,8 @@ Notes on version 0.91:
   disk controllers that do not have the on-board cache enabled.
 
 - Did an effort to solve the problem when a cluster chain becomes improperly
-  terminated. FAT32.IFS simply ignores the problem now and assumes end of file.
+  terminated. FAT32.IFS simply ignores the problem now and assumes end of 
+file.
   CHKDSK (UFAT32.DLL) detects and corrects this problem.
 
 Version 0.92:
@@ -1243,4 +1223,17 @@ Version 0.97:
 - rename DISKINFO.EXE to F32PARTS.EXE
 
 - rename MONITOR.EXE to F32MON.EXE
+
+Version 0.98:
+
+- Fixed TranslateName() to support FAT32 variation of WinNT family.
+
+- Fixed FS_PATHINFO to support level 7 correctly.
+
+- Both /FS and /FL option is not supported any more.
+
+- Added 'Directory Circularity Check' for FS_COPY and FS_MOVE
+  in case of mixed path of short and long name.
+
+- Added /CP option to CACHEF32.EXE to specify codepage in paramter.
 
