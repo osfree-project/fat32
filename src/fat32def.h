@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.96b"
+#define FAT32_VERSION "0.97b"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
@@ -49,11 +49,24 @@
 #define OPEN_ACCESS_EXECUTE   0x0003
 #define MAX_EA_SIZE ((ULONG)65536)
 #define EA_EXTENTION " EA. SF"
-#define FILE_HAS_NO_EAS          0x00
-#define FILE_HAS_EAS             0xEA
-#define FILE_HAS_CRITICAL_EAS    0xEC
+#define FILE_HAS_NO_EAS             0x00
+#define FILE_HAS_EAS                0x40
+#define FILE_HAS_CRITICAL_EAS       0x80
+#define FILE_HAS_OLD_EAS            0xEA
+#define FILE_HAS_OLD_CRITICAL_EAS   0xEC
 
+#define HAS_EAS( fEAS ) ((( fEAS ) & FILE_HAS_EAS  ) ||\
+                         (( fEAS ) & FILE_HAS_CRITICAL_EAS ))
+#define HAS_CRITICAL_EAS( fEAS ) (( fEAS ) & FILE_HAS_CRITICAL_EAS )
+#define HAS_OLD_EAS( fEAS ) ((( fEAS ) == FILE_HAS_OLD_EAS ) || (( fEAS ) == FILE_HAS_OLD_CRITICAL_EAS ))
 
+#define FILE_HAS_WINNT_EXT       ( FILE_HAS_WINNT_EXT_NAME | FILE_HAS_WINNT_EXT_EXT )
+#define FILE_HAS_WINNT_EXT_NAME  0x08
+#define FILE_HAS_WINNT_EXT_EXT   0x10
+
+#define HAS_WINNT_EXT( fEAS ) (( fEAS ) & FILE_HAS_WINNT_EXT )
+#define HAS_WINNT_EXT_NAME( fEAS ) (( fEAS ) & FILE_HAS_WINNT_EXT_NAME )
+#define HAS_WINNT_EXT_EXT( fEAS ) (( fEAS ) & FILE_HAS_WINNT_EXT_EXT )
 
 #define FAT32_CLEAN_SHUTDOWN  0x08000000
 #define FAT32_NO_DISK_ERROR   0x04000000

@@ -28,7 +28,7 @@ USHORT usCode[256];
 static PUNIPAGE rgPage[ ARRAY_COUNT_PAGE ] = { NULL, };
 static PUSHORT  rgUnicode[ ARRAY_COUNT_UNICODE ] = { NULL, };
 
-static UCHAR rgDBCSLead[ 12 ] = { 0, };
+static BOOL rgIsDBCSLead[ 256 ] = { 0 , };
 
 PRIVATE USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
 PRIVATE VOID   SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
@@ -37,6 +37,9 @@ PRIVATE USHORT GetCurrentCodePage(VOID);
 
 VOID TranslateInitDBCSEnv( VOID )
 {
+   UCHAR rgDBCSLead[ 12 ] = { 0, };
+   INT   iIndex1, iIndex2;
+
 #if 1
    memset( rgDBCSLead, 0, sizeof( rgDBCSLead ));
 
@@ -88,21 +91,20 @@ VOID TranslateInitDBCSEnv( VOID )
    cc.codepage = ( USHORT )f32Parms.ulCurCP;
    DosGetDBCSEv( sizeof( rgDBCSLead ), &cc, rgDBCSLead );
 #endif
+
+   memset( rgIsDBCSLead, 0, sizeof( rgIsDBCSLead ));
+   for( iIndex1 = 0; ( iIndex1 < sizeof(rgDBCSLead)) &&
+                     ( rgDBCSLead[ iIndex1 ] != 0 || rgDBCSLead[ iIndex1 + 1 ] != 0 ); iIndex1 += 2  )
+      {
+         for( iIndex2 = rgDBCSLead[ iIndex1 ]; iIndex2 <= ( INT )rgDBCSLead[ iIndex1 + 1 ]; iIndex2++ )
+            rgIsDBCSLead[ iIndex2 ] = TRUE;
+      }
+
 }
 
 BOOL IsDBCSLead( USHORT usChar )
 {
-   USHORT usIndex;
-
-   for( usIndex = 0; ( usIndex < sizeof(rgDBCSLead)) &&
-                     ( rgDBCSLead[ usIndex ] != 0 || rgDBCSLead[ usIndex + 1 ] != 0 ); usIndex += 2  )
-      {
-         if( usChar >= rgDBCSLead[ usIndex ] &&
-             usChar <= rgDBCSLead[ usIndex + 1 ] )
-            return TRUE;
-      }
-
-   return FALSE;
+   return rgIsDBCSLead[ usChar ];
 }
 
 #if 1  /* by OAX */

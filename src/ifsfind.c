@@ -501,7 +501,29 @@ USHORT usClusterIndex;
                if (bCheck2 != bCheck1 ||
                   !strlen(szLongName) ||
                   (!pFindInfo->fLongNames && f32Parms.fUseShortNames))
+               {
                   strcpy(szLongName, szShortName);
+
+                  /* support for the FAT32 variation of WinNT family */
+                  if(( pFindInfo->fLongNames || !f32Parms.fUseShortNames ) && HAS_WINNT_EXT( pDir->fEAS ))
+                  {
+                        PBYTE pDot = strchr( szLongName, '.' );;
+
+                        if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                        {
+                            if( pDot )
+                                *pDot = 0;
+
+                            strlwr( szLongName );
+
+                            if( pDot )
+                                *pDot = '.';
+                        }
+
+                        if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                            strlwr( pDot + 1 );
+                  }
+               }
 
                if (f32Parms.fEAS && IsEASFile(szLongName))
                   rc = 1;
@@ -578,7 +600,7 @@ USHORT usClusterIndex;
                   pfFind->cbFileAlloc =
                      (pfFind->cbFile / pVolInfo->usClusterSize)  +
                      (pfFind->cbFile % pVolInfo->usClusterSize ? 1 : 0);
-                  if (!f32Parms.fEAS || pDir->fEAS == FILE_HAS_NO_EAS)
+                  if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
                      {
@@ -617,7 +639,7 @@ USHORT usClusterIndex;
                   *ppData = (PBYTE)(pfFind + 1);
                   (*pcbData) -= *ppData - pStart;
 
-                  if (f32Parms.fEAS && pDir->fEAS)
+                  if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
                      {
                      pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
                      pFindInfo->pInfo->EAOP.fpFEAList->cbList =

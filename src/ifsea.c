@@ -315,7 +315,7 @@ USHORT   usMaxSize;
                Message("Found %s", pSrcFea + 1);
             memcpy(pTarFea, pSrcFea, usFeaSize);
             }
-         else 
+         else
             {
             usFeaSize = sizeof (FEA) + (USHORT)pGea->cbName + 1;
             if (usFeaSize > usMaxSize)
@@ -513,7 +513,9 @@ USHORT rc;
       return ERROR_FILE_NOT_FOUND;
       }
    memcpy(&NewEntry, &OldEntry, sizeof (DIRENTRY));
-   NewEntry.fEAS = fEAS;
+   if( HAS_OLD_EAS( NewEntry.fEAS ))
+        NewEntry.fEAS = FILE_HAS_NO_EAS;
+   NewEntry.fEAS = ( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS;
 
    if (!memcmp(&NewEntry, &OldEntry, sizeof (DIRENTRY)))
       return 0;
@@ -714,7 +716,7 @@ PFEA     pFea, pFeaEnd;
 
       DirNew.wCluster = LOUSHORT(ulCluster);
       DirNew.wClusterHigh = HIUSHORT(ulCluster);
-      
+
       if (fNew)
          rc = MakeDirEntry(pVolInfo, ulDirCluster, &DirNew, pszEAName);
       else
@@ -938,7 +940,7 @@ USHORT usGetEmptyEAS(PSZ pszFileName, PEAOP pEAOP)
       {
       /* this is what HPFS.IFS returns */
       /* when a file does not have any EAs */
-      pTarFeal->cbList = 0xEF;	
+      pTarFeal->cbList = 0xEF;
       rc = ERROR_EAS_DIDNT_FIT;
       }
    else

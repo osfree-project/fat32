@@ -13,11 +13,11 @@
 #include "fat32ifs.h"
 
 int far pascal FS_CHDIR(
-    unsigned short usFlag,		/* flag		*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pDir,			/* pDir		*/
-    unsigned short usCurDirEnd		/* iCurDirEnd	*/
+    unsigned short usFlag,      /* flag     */
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pDir,            /* pDir     */
+    unsigned short usCurDirEnd      /* iCurDirEnd   */
 )
 {
 PVOLINFO pVolInfo;
@@ -89,12 +89,12 @@ FS_CHDIREXIT:
 }
 
 int far pascal FS_MKDIR(
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    char far * pEABuf,			/* pEABuf	*/
-    unsigned short usFlags		/* flags	*/
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pName,           /* pName    */
+    unsigned short usCurDirEnd,     /* iCurDirEnd   */
+    char far * pEABuf,          /* pEABuf   */
+    unsigned short usFlags      /* flags    */
 )
 {
 PVOLINFO pVolInfo;
@@ -205,10 +205,10 @@ FS_MKDIREXIT:
 }
 
 int far pascal FS_RMDIR(
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd		/* iCurDirEnd	*/
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pName,           /* pName    */
+    unsigned short usCurDirEnd      /* iCurDirEnd   */
 )
 {
 BYTE     szName[FAT32MAXPATH];
@@ -322,8 +322,10 @@ USHORT   usFileCount;
       rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFile);
       if (rc)
          goto FS_RMDIREXIT;
+#if 0
       if (DirEntry.fEAS == FILE_HAS_EAS || DirEntry.fEAS == FILE_HAS_CRITICAL_EAS)
          DirEntry.fEAS = FILE_HAS_NO_EAS;
+#endif
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_DELETE,

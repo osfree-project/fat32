@@ -26,7 +26,7 @@ WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 <<KEEP
      $(msgbind) $*.bnd
 
-ALL: MONITOR.EXE DISKINFO.EXE CACHEF32.EXE F32STAT.EXE
+ALL: F32MON.EXE F32PARTS.EXE CACHEF32.EXE F32STAT.EXE
 
 diskinf0.obj : diskinf0.c fat32.h fat32def.h
 diskinf1.obj : diskinf1.c fat32.h fat32def.h
@@ -39,16 +39,24 @@ f32stat.obj  : f32stat.c fat32def.h
 #   $(CC) $(MFLAGS) $(WOPTS) /Fediskinfo.exe  /L $**
 
 OBJS=diskinf0.OBJ diskinf1.OBJ diskinf2.OBJ
-DISKINFO.EXE : $(OBJS)
+F32PARTS.EXE : $(OBJS)
         ilink /NOFREE @<<
 $(RT_OBJS: = +^
 ) $(OBJS: = +^
 )
 $@
-DISKINFO, 
+F32PARTS,
 $(LINKOPT);
 <<NOKEEP
 
-MONITOR.EXE : MONITOR.OBJ
+F32MON.EXE : MONITOR.OBJ
+        ilink /NOFREE @<<
+MONITOR.OBJ
+$@
+F32MON,
+$(LINKOPT);
+<<NOKEEP
+
+#MONITOR.EXE : MONITOR.OBJ
 CACHEF32.EXE : CACHEF32.OBJ
 F32STAT.EXE  : F32STAT.OBJ

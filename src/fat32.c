@@ -88,7 +88,6 @@ int far pascal FS_ATTACH(unsigned short usFlag,     /* flag     */
    return ERROR_NOT_SUPPORTED;
 }
 
-
 /******************************************************************
 *
 ******************************************************************/
@@ -264,8 +263,10 @@ POPENINFO pOpenInfo = NULL;
          rc = usDeleteEAS(pVolInfo, ulDstDirCluster, pszDstFile);
          if (rc)
             goto FS_COPYEXIT;
+#if 0
          if (TarEntry.fEAS == FILE_HAS_EAS || TarEntry.fEAS == FILE_HAS_CRITICAL_EAS)
             TarEntry.fEAS = FILE_HAS_NO_EAS;
+#endif
          }
 
       rc = ModifyDirectory(pVolInfo, ulDstDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
@@ -435,8 +436,10 @@ POPENINFO pOpenInfo;
       rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFile);
       if (rc)
          goto FS_DELETEEXIT;
+#if 0
       if (DirEntry.fEAS == FILE_HAS_EAS || DirEntry.fEAS == FILE_HAS_CRITICAL_EAS)
          DirEntry.fEAS = FILE_HAS_NO_EAS;
+#endif
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, 0);
@@ -2111,9 +2114,10 @@ USHORT rc = 0;
          pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
          }
       }
-FS_SHUTDOWNEXIT:
+   else // usType == SD_COMPLETE
+      TranslateFreeBuffer();
 
-   TranslateFreeBuffer();
+FS_SHUTDOWNEXIT:
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SHUTDOWN returned %d", rc);

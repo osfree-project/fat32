@@ -1010,6 +1010,29 @@ USHORT rc;
                memset(szLongName, 0, sizeof szLongName);
                }
 
+            /* support for the FAT32 variation of WinNT family */
+            if( !*szLongName && HAS_WINNT_EXT( pDir->fEAS ))
+            {
+                PBYTE pDot;
+
+                MakeName( pDir, szLongName, sizeof( szLongName ));
+                pDot = strchr( szLongName, '.' );
+
+                if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                {
+                    if( pDot )
+                        *pDot = 0;
+
+                        strlwr( szLongName );
+
+                        if( pDot )
+                        *pDot = '.';
+                }
+
+                if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                    strlwr( pDot + 1 );
+            }
+
             if (pCD->fDetailed == 2)
                {
                printf("%-13.13s", MakeName(pDir, szShortName, sizeof szShortName));
@@ -1037,8 +1060,38 @@ USHORT rc;
                strcat(pbPath, szLongName);
                }
 
+            if( f32Parms.fEAS && HAS_OLD_EAS( pDir->fEAS ))
+            {
+                printf("%s has old EA mark byte(0x%0X).\n", pbPath, pDir->fEAS );
+                if (pCD->fFix)
+                {
+                     strcpy(Mark.szFileName, pbPath);
+                     Mark.fEAS = pDir->fEAS == FILE_HAS_OLD_EAS ? FILE_HAS_EAS : FILE_HAS_CRITICAL_EAS;
+                     rc = DosDevIOCtl2(NULL, 0,
+                                       (PVOID)&Mark, sizeof Mark,
+                                       FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
+                     if (!rc)
+                        printf("This has been corrected.\n");
+                     else
+                        printf("SYS%4.4u: Unable to correct problem.\n", rc);
+                }
+            }
 
-            if (f32Parms.fEAS && pDir->fEAS)
+#if 1
+            if( f32Parms.fEAS && pDir->fEAS && !HAS_WINNT_EXT( pDir->fEAS ) && !HAS_EAS( pDir->fEAS ))
+            {
+                printf("%s has unknown EA mark byte(0x%0X).\n", pbPath, pDir->fEAS );
+            }
+#endif
+
+#if 0
+            if( f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
+            {
+                printf("%s has EA byte(0x%0X).\n", pbPath, pDir->fEAS );
+            }
+#endif
+
+            if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
                {
                FILESTATUS fStat;
 
@@ -1127,7 +1180,7 @@ USHORT rc;
                      }
                   else
                      {
-                     if (Mark.fEAS == FILE_HAS_NO_EAS)
+                     if ( !HAS_EAS( Mark.fEAS ))
                         {
                         printf("EAs detected for %s, but it is not marked having EAs.\n", Mark.szFileName);
                         if (pCD->fFix)
@@ -1247,6 +1300,29 @@ USHORT rc;
                      szLongName, pDir->bFileName);
                   memset(szLongName, 0, sizeof szLongName);
                   }
+
+               /* support for the FAT32 variation of WinNT family */
+               if( !*szLongName && HAS_WINNT_EXT( pDir->fEAS ))
+               {
+                    PBYTE pDot;
+
+                    MakeName( pDir, szLongName, sizeof( szLongName ));
+                    pDot = strchr( szLongName, '.' );
+
+                    if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                    {
+                        if( pDot )
+                            *pDot = 0;
+
+                        strlwr( szLongName );
+
+                        if( pDot )
+                            *pDot = '.';
+                    }
+
+                    if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                        strlwr( pDot + 1 );
+               }
 
                if (!memicmp(pDir->bFileName,      ".          ", 11))
                   {

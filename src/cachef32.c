@@ -1036,7 +1036,6 @@ USHORT usCode;
    rc = DosFSCtl(NULL, 0, NULL,
                ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
                FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
-
    for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
       free( rgTranslate[ iIndex ]);
 

@@ -1227,4 +1227,20 @@ Version 0.96:
 
 - Now FAT32.IFS do not mount FAT32 parttion having >32k cluster.
 
+Version 0.97:
+
+- The files created on Win2k( possibly all WinNT ) are recognized as having EA
+  attribute. Especially, UFAT32.DLL( CHKDSK ) complain about this. Fixed.
+
+- 0.95 later, OS/2 don't progress shutdown completely. Fixed.
+
+- EA mark byte changed from 0xEA and 0xEC to 0x40 and 0x80, respectively
+  for compatibility with FAT32 of WinNT family.
+
+- Now, supports 8.3 name, whose name and ext part are all lower case,
+  created by WinNT family.
+
+- rename DISKINFO.EXE to F32PARTS.EXE
+
+- rename MONITOR.EXE to F32MON.EXE
 
