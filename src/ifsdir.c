@@ -25,6 +25,7 @@ POPENINFO pOpenInfo = NULL;
 ULONG ulCluster;
 PSZ   pszFile;
 USHORT rc;
+BYTE     szDirLongName[ FAT32MAXPATH ];
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CHDIR, flag %u", usFlag);
@@ -61,7 +62,10 @@ USHORT rc;
             }
             memset(pOpenInfo, 0, sizeof (OPENINFO));
 
-            pOpenInfo->pSHInfo = GetSH( szSrcLongName, pOpenInfo);
+            if( TranslateName(pVolInfo, 0L, pDir, szDirLongName, TRANSLATE_SHORT_TO_LONG ))
+               strcpy( szDirLongName, pDir );
+
+            pOpenInfo->pSHInfo = GetSH( szDirLongName, pOpenInfo);
             if (!pOpenInfo->pSHInfo)
             {
                 rc = ERROR_TOO_MANY_OPEN_FILES;
@@ -266,6 +270,7 @@ PDIRENTRY pDir;
 PDIRENTRY pWork, pMax;
 USHORT   rc;
 USHORT   usFileCount;
+BYTE     szLongName[ FAT32MAXPATH ];
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_RMDIR %s", pName);
@@ -281,7 +286,10 @@ USHORT   usFileCount;
       return ERROR_FILENAME_EXCED_RANGE;
 
 #if 1
-   rc = MY_ISCURDIRPREFIX( szSrcLongName );
+   if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szLongName, pName );
+
+   rc = MY_ISCURDIRPREFIX( szLongName );
    if( rc )
      goto FS_RMDIREXIT;
 #else
