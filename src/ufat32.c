@@ -126,77 +126,32 @@ static F32PARMS  f32Parms;
 static BOOL fToFile;
 
 #if 1  /* by OAX */
-static UCHAR rgDBCSLead[ 12 ] = { 0, };
-static COUNTRYCODE cc;
+static UCHAR rgFirstInfo[ 256 ] = { 0, };
+static UCHAR rgLCase[ 256 ] = { 0, };
 
 VOID TranslateInitDBCSEnv( VOID )
 {
-#if 1
-   memset( rgDBCSLead, 0, sizeof( rgDBCSLead ));
+   USHORT usDataSize;
+   USHORT usParamSize;
 
-   switch( f32Parms.ulCurCP )
-      {
-      case 934L :
-      case 944L :
-         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xBF;
-         break;
-
-      case 936L :
-      case 938L :
-      case 946L :
-      case 948L :
-         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFC;
-         break;
-
-      case 932L :
-      case 942L :
-      case 943L :
-         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0x9F;
-         rgDBCSLead[ 2 ] = 0xE0; rgDBCSLead[ 3 ] = 0xFC;
-         break;
-
-      case 949L :
-         rgDBCSLead[ 0 ] = 0x8F; rgDBCSLead[ 1 ] = 0xFE;
-         break;
-
-      case 950L :
-         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
-         break;
-
-      case 1207L :
-         rgDBCSLead[ 0 ] = 0x80; rgDBCSLead[ 1 ] = 0xFF;
-         break;
-
-      case 1381L :
-         rgDBCSLead[ 0 ] = 0x8C; rgDBCSLead[ 1 ] = 0xFE;
-         break;
-
-      case 1386L :
-         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
-         break;
-      }
-#else      /* below code causes TRAP D on Warp 4 for Korean and WSeB for US */
-   COUNTRYCODE cc;
-
-   cc.country = 0;
-   cc.codepage = ( USHORT )f32Parms.ulCurCP;
-   DosGetDBCSEv( sizeof( rgDBCSLead ), &cc, rgDBCSLead );
-#endif
+   DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &usDataSize,
+      NULL, 0, &usParamSize,
+      FAT32_GETFIRSTINFO, "FAT32", -1, FSCTL_FSDNAME, 0L );
 }
 
-BOOL IsDBCSLead( USHORT usChar )
+BOOL IsDBCSLead( UCHAR uch)
 {
-   USHORT usIndex;
+    return ( rgFirstInfo[ uch ] == 2 );
+}
 
-   for( usIndex = 0; ( usIndex < sizeof(rgDBCSLead)) &&
-                     ( rgDBCSLead[ usIndex ] != 0 || rgDBCSLead[ usIndex + 1 ] != 0 ); usIndex += 2  )
-      {
-         if( usChar >= rgDBCSLead[ usIndex ] &&
-             usChar <= rgDBCSLead[ usIndex + 1 ] )
-            return TRUE;
-      }
+VOID CaseConversionInit( VOID )
+{
+   USHORT usDataSize;
+   USHORT usParamSize;
 
-   return FALSE;
+   DosFSCtl( rgLCase, sizeof( rgLCase ), &usDataSize,
+      NULL, 0, &usParamSize,
+      FAT32_GETCASECONVERSION, "FAT32", -1, FSCTL_FSDNAME, 0L );
 }
 
 /* Get the last-character. (sbcs/dbcs) */
@@ -209,7 +164,7 @@ int lastchar(const char *string)
     for(i = 0; i < len; i++)
     {
         c = *(s + i);
-        if(IsDBCSLead(c))
+        if(IsDBCSLead(( UCHAR )c))
         {
             c = (c << 8) + ( unsigned int )*(s + i + 1);
             i++;
@@ -228,7 +183,7 @@ char _FAR_ * _FAR_ _cdecl strchr(const char _FAR_ *string, int c)
     for(i = 0; i < len; i++)
     {
         ch = *(s + i);
-        if(IsDBCSLead(ch))
+        if(IsDBCSLead(( UCHAR )ch))
             ch = (ch << 8) + *(s + i + 1);
         if(( USHORT )c == ch)
             return (s + i);
@@ -257,6 +212,30 @@ char _FAR_ * _FAR_ _cdecl strrchr(const char _FAR_ *string, int c)
 }
 #endif /* by OAX */
 
+#ifdef __WATCOM
+_WCRTLINK char * strlwr( char *s )
+#else
+char * cdecl strlwr( char *s )
+#endif
+{
+    char *t = s;
+
+    while( *t )
+    {
+        if( IsDBCSLead( *t ))
+        {
+            t++;
+            if( *t )            /* correct tail ? */
+                t++;
+            else                /* broken DBCS ? */
+                break;
+        }
+        else
+            *t++ = rgLCase[ *t ];
+    }
+
+    return s;
+}
 
 int pascal CHKDSK(INT iArgc, PSZ rgArgv[], PSZ rgEnv[])
 {
@@ -277,6 +256,8 @@ USHORT usDataSize;
    DosError(1); /* Enable hard errors */
 
    TranslateInitDBCSEnv();
+
+   CaseConversionInit();
 
    fToFile = OutputToFile();
 
@@ -450,8 +431,10 @@ USHORT usAttr;
       case 1:
       case 2:
          return FALSE;
+/*
       default:
          return FALSE;
+*/
       }
    return FALSE;
 }
