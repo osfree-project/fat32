@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.98b"
+#define FAT32_VERSION "0.99b"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
@@ -72,17 +72,19 @@
 #define FAT32_NO_DISK_ERROR   0x04000000
 
 /* FSCTL function numbers */
-#define FAT32_GETLOGDATA      0x8000
-#define FAT32_SETMESSAGE      0x8001
-#define FAT32_STARTLW         0x8002
-#define FAT32_STOPLW          0x8003
-#define FAT32_DOLW            0x8004
-#define FAT32_SETPARMS        0x8005
-#define FAT32_GETPARMS        0x8006
-#define FAT32_SETTRANSTABLE   0x8007
-#define FAT32_WIN2OS          0x8008
-#define FAT32_EMERGTHREAD     0x8009
-#define FAT32_QUERYSHORTNAME  0x800A
+#define FAT32_GETLOGDATA        0x8000
+#define FAT32_SETMESSAGE        0x8001
+#define FAT32_STARTLW           0x8002
+#define FAT32_STOPLW            0x8003
+#define FAT32_DOLW              0x8004
+#define FAT32_SETPARMS          0x8005
+#define FAT32_GETPARMS          0x8006
+#define FAT32_SETTRANSTABLE     0x8007
+#define FAT32_WIN2OS            0x8008
+#define FAT32_EMERGTHREAD       0x8009
+#define FAT32_QUERYSHORTNAME    0x800A
+#define FAT32_GETCASECONVERSION 0x800B
+#define FAT32_GETFIRSTINFO      0x800C
 
 #define FAT32_SECTORIO        0x9014
 
@@ -150,6 +152,8 @@ USHORT volatile usCacheSize;
 USHORT usSegmentsAllocated;
 USHORT fTranslateNames;
 ULONG  ulCurCP;
+USHORT fHighMem;
+USHORT fForceLoad;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options

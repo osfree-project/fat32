@@ -303,7 +303,7 @@ IMPORT VOID cdecl FatalMessage(PSZ pszMessage, ...);
 IMPORT VOID InternalError(PSZ pszMessage);
 IMPORT USHORT GetLogBuffer(PBYTE pData, USHORT cbData, ULONG ulTimeOut);
 IMPORT BOOL InitCache(ULONG ulSectors);
-IMPORT ULONG linalloc(ULONG tSize);
+IMPORT ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
 IMPORT void *gdtAlloc(ULONG tSize, BOOL fSwap);
 IMPORT void *ldtAlloc(ULONG tSize);
 IMPORT void freeseg(void *p);
@@ -342,19 +342,20 @@ IMPORT USHORT usMoveEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile
 IMPORT USHORT CopyChain(PVOLINFO pVolInfo, ULONG ulCluster, PULONG pulNew);
 IMPORT USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS);
 IMPORT VOID   TranslateInitDBCSEnv( VOID );
-IMPORT BOOL   IsDBCSLead( USHORT usChar );
+IMPORT BOOL   IsDBCSLead( UCHAR uch );
 IMPORT VOID   TranslateAllocBuffer( VOID );
 IMPORT VOID   TranslateFreeBuffer( VOID );
 IMPORT USHORT Translate2Win(PSZ pszName, PUSHORT puniName, USHORT usLen);
 IMPORT VOID   Translate2OS2(PUSHORT puniName, PSZ pszName, USHORT usLen);
-IMPORT VOID   TranslateInit(BYTE rgTrans[], USHORT usSize);
+IMPORT BOOL   TranslateInit(BYTE rgTrans[], USHORT usSize);
 IMPORT USHORT MY_PROBEBUF(USHORT usOperation, char far * pData, USHORT cbData);
 IMPORT POPENINFO GetOpenInfo(struct sffsd far * psffsd);
 IMPORT PSHOPENINFO GetSH( PSZ pszFileName, POPENINFO pOpenInfo);
 IMPORT BOOL ReleaseSH(POPENINFO pOI);
 IMPORT USHORT usGetEmptyEAS(PSZ pszFileName,PEAOP pEAOP);
 IMPORT USHORT MY_ISCURDIRPREFIX( PSZ pszName );
-
+IMPORT VOID   GetFirstInfo( PBOOL pLead );
+IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 
 /*
 #define GetCurTime() (pGI->time * 100 + pGI->hundredths)
