@@ -8,6 +8,7 @@
 #define INCL_DOSDEVIOCTL
 #define INCL_DOSDEVICES
 #define INCL_DOSERRORS
+#define INCL_DOSNLS
 
 #include "os2.h"
 #include "portable.h"
@@ -15,41 +16,153 @@
 
 typedef struct _UniPage
 {
-BYTE bAscii[256];
+USHORT usCode[256];
 } UNIPAGE, *PUNIPAGE;
 
-#define MAX_PAGES 0x26
+#define ARRAY_COUNT_PAGE    4
+#define MAX_ARRAY_PAGE      ( 0x100 / ARRAY_COUNT_PAGE )
 
-static UNIPAGE rgPage[MAX_PAGES];
-static USHORT  rgUnicode[256];
+#define ARRAY_COUNT_UNICODE 256
+#define MAX_ARRAY_UNICODE   (( USHORT )( 0x10000L / ARRAY_COUNT_UNICODE ))
 
+static PUNIPAGE rgPage[ ARRAY_COUNT_PAGE ] = { NULL, };
+static PUSHORT  rgUnicode[ ARRAY_COUNT_UNICODE ] = { NULL, };
+
+static UCHAR rgDBCSLead[ 12 ] = { 0, };
+
+PRIVATE USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
+PRIVATE VOID   SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
+PRIVATE USHORT QueryNLS2Uni( USHORT usCode );
 PRIVATE USHORT GetCurrentCodePage(VOID);
 
-VOID Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
+VOID TranslateInitDBCSEnv( VOID )
 {
+#if 1
+   memset( rgDBCSLead, 0, sizeof( rgDBCSLead ));
+
+   switch( f32Parms.ulCurCP )
+      {
+      case 934L :
+      case 944L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xBF;
+         break;
+
+      case 936L :
+      case 938L :
+      case 946L :
+      case 948L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFC;
+         break;
+
+      case 932L :
+      case 942L :
+      case 943L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0x9F;
+         rgDBCSLead[ 2 ] = 0xE0; rgDBCSLead[ 3 ] = 0xFC;
+         break;
+
+      case 949L :
+         rgDBCSLead[ 0 ] = 0x8F; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 950L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 1381L :
+         rgDBCSLead[ 0 ] = 0x8C; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+      }
+#else
+   COUNTRYCODE cc;
+
+   cc.country = 0;
+   cc.codepage = ( USHORT )f32Parms.ulCurCP;
+   DosGetDBCSEv( sizeof( rgDBCSLead ), &cc, rgDBCSLead );
+#endif
+}
+
+BOOL IsDBCSLead( USHORT usChar )
+{
+   USHORT usIndex;
+
+   for( usIndex = 0; rgDBCSLead[ usIndex ] != 0 ||
+                     rgDBCSLead[ usIndex + 1 ] != 0; usIndex += 2 )
+      {
+         if( usChar >= rgDBCSLead[ usIndex ] &&
+             usChar <= rgDBCSLead[ usIndex + 1 ] )
+            return TRUE;
+      }
+
+   return FALSE;
+}
+
+VOID TranslateAllocBuffer( VOID )
+{
+   INT iIndex;
+
+   for( iIndex = 0; iIndex < ARRAY_COUNT_PAGE; iIndex++ )
+      rgPage[ iIndex ] = malloc( sizeof( UNIPAGE ) * MAX_ARRAY_PAGE );
+
+   for( iIndex = 0; iIndex < ARRAY_COUNT_UNICODE; iIndex++ )
+      rgUnicode[ iIndex ] = malloc( sizeof( USHORT ) * MAX_ARRAY_UNICODE );
+}
+
+VOID TranslateFreeBuffer( VOID )
+{
+   INT iIndex;
+
+   for( iIndex = 0; iIndex < ARRAY_COUNT_PAGE; iIndex++ )
+      free( rgPage[ iIndex ]);
+
+   for( iIndex = 0; iIndex < ARRAY_COUNT_UNICODE; iIndex++ )
+      free( rgUnicode[ iIndex ]);
+}
+
+USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
+{
+USHORT usCode;
+USHORT usProcessedLen;
+
+   usProcessedLen = 0;
+
    if (!f32Parms.fTranslateNames)
       {
       while (*pszName && usLen)
          {
          *pusUni++ = (USHORT)*pszName++;
          usLen--;
+         usProcessedLen++;
          }
-      return;
+      return usProcessedLen;
       }
 
-//   GetCurrentCodePage();
+/*
+   GetCurrentCodePage();
+*/
 
    while (*pszName && usLen)
       {
-      *pusUni++ = rgUnicode[*pszName++];
+      usCode = *pszName++;
+      if( IsDBCSLead( usCode ))
+         {
+         usCode |= (( USHORT )*pszName++ << 8 ) & 0xFF00;
+         usProcessedLen++;
+         }
+
+      *pusUni++ = QueryNLS2Uni( usCode );
       usLen--;
+      usProcessedLen++;
       }
+
+   return usProcessedLen;
 }
 
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 {
 USHORT usPage;
 USHORT usChar;
+USHORT usCode;
 
    if (!f32Parms.fTranslateNames)
       {
@@ -62,46 +175,74 @@ USHORT usChar;
       return;
       }
 
-//   GetCurrentCodePage();
+/*
+   GetCurrentCodePage();
+*/
 
    while (*pusUni && usLen)
       {
       usPage = ((*pusUni) >> 8) & 0x00FF;
       usChar = (*pusUni) & 0x00FF;
-      if (usPage < MAX_PAGES)
-         *pszName++ = rgPage[usPage].bAscii[usChar];
-      else
-         *pszName++ = '_';
+
+      usCode = QueryUni2NLS( usPage, usChar );
+      *pszName++ = ( BYTE )( usCode & 0x00FF );
+      if( usCode & 0xFF00 )
+         {
+         *pszName++ = ( BYTE )(( usCode >> 8 ) & 0x00FF );
+         usLen--;
+         }
+
       pusUni++;
       usLen--;
       }
-
 }
 
 VOID TranslateInit(BYTE rgTrans[], USHORT usSize)
 {
-USHORT usIndex;
+ULONG  ulCode;
 USHORT usPage;
 USHORT usChar;
+INT    iIndex;
 
-   if (usSize != sizeof rgUnicode)
+PVOID *prgTrans = ( PVOID * )rgTrans;
+
+   if( rgPage[ 0 ] == NULL )
+      TranslateAllocBuffer();
+
+   if (usSize != sizeof( PVOID ) * ARRAY_COUNT_UNICODE )
       return;
 
-   memcpy(rgUnicode, rgTrans, sizeof rgUnicode);
+   for( iIndex = 0; iIndex < ARRAY_COUNT_UNICODE; iIndex++ )
+      memcpy( rgUnicode[ iIndex ], prgTrans[ iIndex ], sizeof( USHORT ) * MAX_ARRAY_UNICODE );
 
-   memset(rgPage, '_', sizeof rgPage);
+   for( iIndex = 0; iIndex < ARRAY_COUNT_PAGE; iIndex++ )
+      memset( rgPage[ iIndex ], '_', sizeof( UNIPAGE ) * MAX_ARRAY_PAGE );
 
-   for (usIndex = 0; usIndex < 256; usIndex++)
+   for (ulCode = 0; ulCode < 0x10000; ulCode++)
       {
-      usPage = ((rgUnicode[usIndex]) >> 8) & 0x00FF;
-      usChar = (rgUnicode[usIndex] & 0x00FF);
-      if (usPage < MAX_PAGES)
-         rgPage[usPage].bAscii[usChar] = (BYTE)usIndex;
+      usPage = (QueryNLS2Uni(( USHORT )ulCode ) >> 8) & 0x00FF;
+      usChar = QueryNLS2Uni(( USHORT )ulCode ) & 0x00FF;
+
+      SetUni2NLS( usPage, usChar, ( USHORT )ulCode );
       }
 
    f32Parms.fTranslateNames = TRUE;
 }
 
+USHORT QueryUni2NLS( USHORT usPage, USHORT usChar )
+{
+    return rgPage[ usPage / MAX_ARRAY_PAGE ][ usPage % MAX_ARRAY_PAGE ].usCode[ usChar ];
+}
+
+VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode )
+{
+    rgPage[ usPage / MAX_ARRAY_PAGE ][ usPage % MAX_ARRAY_PAGE ].usCode[ usChar ] = usCode;
+}
+
+USHORT QueryNLS2Uni( USHORT usCode )
+{
+    return rgUnicode[ usCode / MAX_ARRAY_UNICODE ][ usCode % MAX_ARRAY_UNICODE ];
+}
 
 USHORT GetCurrentCodePage(VOID)
 {
@@ -129,3 +270,5 @@ USHORT rc;
       Message("Current codepage tag at %lX = %lu", pulCP, *pulCP);
    return (USHORT)(*pulCP);
 }
+
+

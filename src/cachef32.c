@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <uconv.h>
 
+#define INCL_DOSNLS
 #define INCL_DOSDEVIOCTL
 #define INCL_DOS
 #define INCL_DOSERRORS
@@ -59,6 +60,7 @@ static PSZ rgPriority[]=
 static F32PARMS  f32Parms;
 static BOOL      fActive = FALSE;
 static BOOL      fLoadDeamon = TRUE;
+static BOOL      fSayYes = FALSE;
 static PLWOPTS   pOptions = NULL;
 static BOOL      fForeGround;
 static ULONG     ulDriveMap = 0;
@@ -278,6 +280,7 @@ ULONG     ulParm;
                printf("/FL use long file names internally.\n");
                printf("/L:on|off set lazy writing on or off.\n");
                printf("/P:1|2|3|4 Set priority of Lazy writer\n");
+               printf("/Y assume yes\n");
                DosExit(EXIT_PROCESS, 0);
                break;
 
@@ -411,6 +414,10 @@ ULONG     ulParm;
                   }
                break;
 
+            case 'Y':
+               fSayYes = TRUE;
+               break;
+
             default :
                printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
                DosExit(EXIT_PROCESS, 1);
@@ -436,6 +443,7 @@ ULONG     ulParm;
          NULL, 0, &ulDataSize,
          (PVOID)&f32Parms, ulParmSize, &ulParmSize,
          FAT32_SETPARMS, "FAT32", -1, FSCTL_FSDNAME);
+
       if (rc)
          {
          printf("DosFSCtl FAT32_SETPARMS, failed, rc = %d\n", rc);
@@ -625,7 +633,7 @@ static BYTE Buffer[200];
 ULONG ulBufferSize;
 PFSQBUFFER2 fsqBuf = (PFSQBUFFER2)Buffer;
 APIRET rc;
-  
+
    ulBufferSize = sizeof Buffer;
 
    DosError(0);
@@ -689,7 +697,7 @@ RESULTCODES Res;
    strcpy(szArguments, szProgram);
    sprintf(szArguments + strlen(szArguments) + 1,
       "%s /F /C", pszDisk);
-      
+
 
    rc = DosExecPgm(szObjName, sizeof szObjName,
       EXEC_SYNC,
@@ -702,7 +710,7 @@ RESULTCODES Res;
       printf("DosExecPgm Failed, rc = %d\n", rc);
       return FALSE;
       }
-   return TRUE;   
+   return TRUE;
 }
 
 /******************************************************************
@@ -776,7 +784,7 @@ RESULTCODES Res;
       return FALSE;
       }
    printf("FAT32: Lazy write daemon started.\n");
-   return TRUE;   
+   return TRUE;
 }
 
 
@@ -831,21 +839,29 @@ BOOL IsDiskFat32(PSZ pszDisk)
    return FALSE;
 }
 
+#define MAX_TRANS_TABLE     0x100
+#define ARRAY_TRANS_TABLE   ( 0x10000 / MAX_TRANS_TABLE )
+
 BOOL LoadTranslateTable(VOID)
 {
 APIRET rc;
 ULONG ulParmSize;
-BYTE   rgData[256];
+BYTE   rgData[ 256 ];
+USHORT *rgTranslate[ MAX_TRANS_TABLE ] = { NULL, };
 PBYTE  pIn;
-USHORT rgTranslate[256];
 PUSHORT pOut;
 UconvObject  uconv_object = NULL;
 INT iIndex;
-size_t       in_bytes_left;
-size_t       uni_chars_left;
-size_t       num_subs;
+size_t in_bytes_left;
+size_t uni_chars_left;
+size_t num_subs;
 ULONG rgCP[3];
 ULONG cbCP;
+PVOID16 rgTransTable[ MAX_TRANS_TABLE ] = { NULL, };
+COUNTRYCODE cc;
+UCHAR uchDBCSLead[ 12 ];
+USHORT first, second;
+USHORT usCode;
 
    rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModLang);
    if (rc)
@@ -873,7 +889,7 @@ ULONG cbCP;
    if (f32Parms.ulCurCP == rgCP[0])
       return FALSE;
 
-   if (f32Parms.ulCurCP)
+   if (f32Parms.ulCurCP && !fSayYes)
       {
       BYTE chChar;
       printf("Loaded unicode translate table is for CP %lu\n", f32Parms.ulCurCP);
@@ -905,9 +921,6 @@ ULONG cbCP;
          return FALSE;
       }
 
-   for (iIndex = 0; iIndex < 256; iIndex++)
-      rgData[iIndex] = iIndex;
-
    rc = pUniCreateUconvObject((UniChar *)L"", &uconv_object);
    if (rc != ULS_SUCCESS)
       {
@@ -915,10 +928,19 @@ ULONG cbCP;
       return FALSE;
       }
 
+   for (iIndex = 0; iIndex < 256; iIndex++)
+      rgData[iIndex] = iIndex;
+
+   for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
+   {
+      rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof( USHORT ) * ARRAY_TRANS_TABLE );
+      memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
+   }
+
    pIn  = rgData;
    in_bytes_left = sizeof rgData;
-   pOut = rgTranslate;
-   uni_chars_left = sizeof rgTranslate / sizeof (USHORT);
+   pOut = ( PVOID )rgTranslate[ 0 ];
+   uni_chars_left = ARRAY_TRANS_TABLE;
 
    rc = pUniUconvToUcs(uconv_object,
       (PVOID *)&pIn,
@@ -933,11 +955,45 @@ ULONG cbCP;
       return FALSE;
       }
 
+   cc.country = 0;
+   cc.codepage = rgCP[ 0 ];
 
-   ulParmSize = sizeof rgTranslate;
+   DosQueryDBCSEnv( sizeof( uchDBCSLead ), &cc, uchDBCSLead );
+   for( iIndex = 0; uchDBCSLead[ iIndex ] != 0 && uchDBCSLead[ iIndex + 1 ] != 0; iIndex += 2 )
+      {
+         for( first = uchDBCSLead[ iIndex ]; first <= uchDBCSLead[ iIndex + 1 ]; first++ )
+            for( second = 0; second < 0x100; second++ )
+               {
+                  usCode = first | (( second << 8 ) & 0xFF00 );
+
+                  pIn  = ( PVOID )&usCode;
+                  in_bytes_left = sizeof usCode;
+                  pOut = ( PVOID )&rgTranslate[ second ][ first ];
+                  uni_chars_left = 1;
+
+                  rc = pUniUconvToUcs(uconv_object,
+                     (PVOID *)&pIn,
+                     &in_bytes_left,
+                     &pOut,
+                     &uni_chars_left,
+                     &num_subs);
+
+                  if (rc != ULS_SUCCESS)
+                     {
+                     printf("UniUconvToUcs failed, rc = %u\n", rc);
+                     return FALSE;
+                     }
+               }
+      }
+
+   ulParmSize = sizeof rgTransTable;
    rc = DosFSCtl(NULL, 0, NULL,
-               rgTranslate, ulParmSize, &ulParmSize,
+               ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
                FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
+
+   for( iIndex = 0; iIndex < MAX_TRANS_TABLE; iIndex++ )
+      free( rgTranslate[ iIndex ]);
+
    if (rc)
       {
       printf("Unable to set translate table for current Codepage.\n");
@@ -952,6 +1008,7 @@ ULONG cbCP;
 
 void WriteLogMessage(PSZ pszMessage)
 {
+#if 0
 FILE *fp;
 
    return;
@@ -959,4 +1016,5 @@ FILE *fp;
    fp = fopen("\\CACHEF32.LOG", "a");
    fprintf(fp, "%s\n", pszMessage);
    fclose(fp);
+#endif
 }

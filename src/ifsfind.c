@@ -42,18 +42,18 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal FS_FINDFIRST(struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-                            struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-                            char far * pName,			/* pName	*/
-                            unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-                            unsigned short usAttr,		/* attr		*/
-                            struct fsfsi far * pfsfsi,		/* pfsfsi	*/
-                            struct fsfsd far * pfsfsd,		/* pfsfsd	*/
-                            char far * pData,			/* pData	*/
-                            unsigned short cbData,		/* cbData	*/
-                            unsigned short far * pcMatch,	/* pcMatch	*/
-                            unsigned short usLevel,		/* level	*/
-                            unsigned short usFlags)		/* flags	*/
+int far pascal FS_FINDFIRST(struct cdfsi far * pcdfsi,      /* pcdfsi   */
+                            struct cdfsd far * pcdfsd,      /* pcdfsd   */
+                            char far * pName,           /* pName    */
+                            unsigned short usCurDirEnd,     /* iCurDirEnd   */
+                            unsigned short usAttr,      /* attr     */
+                            struct fsfsi far * pfsfsi,      /* pfsfsi   */
+                            struct fsfsd far * pfsfsd,      /* pfsfsd   */
+                            char far * pData,           /* pData    */
+                            unsigned short cbData,      /* cbData   */
+                            unsigned short far * pcMatch,   /* pcMatch  */
+                            unsigned short usLevel,     /* level    */
+                            unsigned short usFlags)     /* flags    */
 {
 PVOLINFO pVolInfo;
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
@@ -140,7 +140,7 @@ PROCINFO ProcInfo;
       pcdfsd,
       pName,
       usCurDirEnd,
-      RETURN_PARENT_DIR, 
+      RETURN_PARENT_DIR,
       &pSearch);
 
 
@@ -188,7 +188,7 @@ PROCINFO ProcInfo;
    pFindInfo->usTotalClusters = usNumClusters;
    pFindInfo->pInfo->pDirEntries =
       (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
-   
+
    if (f32Parms.fMessageActive & LOG_FIND)
       Message("pInfo at %lX, pDirEntries at %lX",
          pFindInfo->pInfo, pFindInfo->pInfo->pDirEntries);
@@ -288,15 +288,15 @@ FS_FINDFIRSTEXIT:
 *
 ******************************************************************/
 int far pascal FS_FINDFROMNAME(
-    struct fsfsi far * pfsfsi,		/* pfsfsi	*/
-    struct fsfsd far * pfsfsd,		/* pfsfsd	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* cbData	*/
-    unsigned short far * pcMatch,	/* pcMatch	*/
-    unsigned short usLevel,		/* level	*/
-    unsigned long ulPosition,		/* position	*/
-    char far * pName,			/* pName	*/
-    unsigned short usFlags		/* flags	*/
+    struct fsfsi far * pfsfsi,      /* pfsfsi   */
+    struct fsfsd far * pfsfsd,      /* pfsfsd   */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short far * pcMatch,   /* pcMatch  */
+    unsigned short usLevel,     /* level    */
+    unsigned long ulPosition,       /* position */
+    char far * pName,           /* pName    */
+    unsigned short usFlags      /* flags    */
 )
 {
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
@@ -316,13 +316,13 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 *
 ******************************************************************/
 int far pascal FS_FINDNEXT(
-    struct fsfsi far * pfsfsi,		/* pfsfsi	*/
-    struct fsfsd far * pfsfsd,		/* pfsfsd	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* cbData	*/
-    unsigned short far * pcMatch,	/* pcMatch	*/
-    unsigned short usLevel,		/* level	*/
-    unsigned short usFlags		/* flag		*/
+    struct fsfsi far * pfsfsi,      /* pfsfsi   */
+    struct fsfsd far * pfsfsd,      /* pfsfsd   */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short far * pcMatch,   /* pcMatch  */
+    unsigned short usLevel,     /* level    */
+    unsigned short usFlags      /* flag     */
 )
 {
 PVOLINFO pVolInfo;
@@ -620,7 +620,7 @@ USHORT usClusterIndex;
                         *pcbData - (strlen(szLongName) + 2);
 
                      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
-                        pFindInfo->pInfo->rgClusters[0], 
+                        pFindInfo->pInfo->rgClusters[0],
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
                         return rc;
@@ -693,7 +693,7 @@ BYTE szExtention[4];
 
 BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck)
 {
-BYTE szLongName[15] = "";
+BYTE szLongName[30] = "";
 USHORT uniName[15] = {0};
 USHORT wNameSize;
 USHORT usIndex;
@@ -725,10 +725,11 @@ PLNENTRY pLN = (PLNENTRY)pDir;
          uniName[wNameSize++] = pLN->usChar3[usIndex];
       }
 
+   Translate2OS2(uniName, szLongName, sizeof szLongName);
+
+   wNameSize = strlen( szLongName );
    if (strlen(pszName) + wNameSize > wMax)
       return FALSE;
-
-   Translate2OS2(uniName, szLongName, sizeof szLongName);
 
    memmove(pszName + wNameSize, pszName, strlen(pszName) + 1);
    memcpy(pszName, szLongName, wNameSize);
@@ -751,17 +752,17 @@ int far pascal FS_FINDNOTIFYCLOSE( unsigned short usHandle)
 *
 ******************************************************************/
 int far pascal FS_FINDNOTIFYFIRST(
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pName,			/* pName	*/
-    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
-    unsigned short usAttr,		/* attr		*/
-    unsigned short far * pHandle,	/* pHandle	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* cbData	*/
-    unsigned short far * pcMatch,	/* pcMatch	*/
-    unsigned short usLevel,		/* level	*/
-    unsigned long	ulTimeOut	/* timeout	*/
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pName,           /* pName    */
+    unsigned short usCurDirEnd,     /* iCurDirEnd   */
+    unsigned short usAttr,      /* attr     */
+    unsigned short far * pHandle,   /* pHandle  */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short far * pcMatch,   /* pcMatch  */
+    unsigned short usLevel,     /* level    */
+    unsigned long   ulTimeOut   /* timeout  */
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)
@@ -774,12 +775,12 @@ int far pascal FS_FINDNOTIFYFIRST(
 *
 ******************************************************************/
 int far pascal FS_FINDNOTIFYNEXT(
-    unsigned short usHandle,		/* handle	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* cbData	*/
-    unsigned short far * pcMatch,	/* pcMatch	*/
-    unsigned short usInfoLevel,		/* infolevel	*/
-    unsigned long	 ulTimeOut	/* timeout	*/
+    unsigned short usHandle,        /* handle   */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short far * pcMatch,   /* pcMatch  */
+    unsigned short usInfoLevel,     /* infolevel    */
+    unsigned long    ulTimeOut  /* timeout  */
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)

@@ -187,7 +187,7 @@ BYTE      bMustAttr;
 typedef struct _ShOpenInfo
 {
 BYTE   szFileName[FAT32MAXPATH];  /* 275 */
-SHORT  sOpenCount;               
+SHORT  sOpenCount;
 ULONG  ulDirCluster;
 ULONG  ulStartCluster;
 ULONG  ulLastCluster;
@@ -215,47 +215,47 @@ ULONG  cbMaxEAListSize;
 } EASIZEBUF, *PEASIZEBUF;
 
 #pragma pack(1)
-typedef struct _FILEFNDBUF {	/* findbuf */
-	FDATE	fdateCreation;
-	FTIME	ftimeCreation;
-	FDATE	fdateLastAccess;
-	FTIME	ftimeLastAccess;
-	FDATE	fdateLastWrite;
-	FTIME	ftimeLastWrite;
-	ULONG	cbFile;
-	ULONG	cbFileAlloc;
-	USHORT	attrFile;
-	UCHAR	cchName;
-	CHAR	achName[CCHMAXPATHCOMP];
+typedef struct _FILEFNDBUF {    /* findbuf */
+    FDATE   fdateCreation;
+    FTIME   ftimeCreation;
+    FDATE   fdateLastAccess;
+    FTIME   ftimeLastAccess;
+    FDATE   fdateLastWrite;
+    FTIME   ftimeLastWrite;
+    ULONG   cbFile;
+    ULONG   cbFileAlloc;
+    USHORT  attrFile;
+    UCHAR   cchName;
+    CHAR    achName[CCHMAXPATHCOMP];
 } FILEFNDBUF;
 typedef FILEFNDBUF FAR *PFILEFNDBUF;
 
-typedef struct _FILEFNDBUF3 {	/* findbuf3 */
-	FDATE	fdateCreation;
-	FTIME	ftimeCreation;
-	FDATE	fdateLastAccess;
-	FTIME	ftimeLastAccess;
-	FDATE	fdateLastWrite;
-	FTIME	ftimeLastWrite;
-	ULONG	cbFile;
-	ULONG	cbFileAlloc;
-	USHORT	attrFile;
+typedef struct _FILEFNDBUF3 {   /* findbuf3 */
+    FDATE   fdateCreation;
+    FTIME   ftimeCreation;
+    FDATE   fdateLastAccess;
+    FTIME   ftimeLastAccess;
+    FDATE   fdateLastWrite;
+    FTIME   ftimeLastWrite;
+    ULONG   cbFile;
+    ULONG   cbFileAlloc;
+    USHORT  attrFile;
 } FILEFNDBUF3;
 typedef FILEFNDBUF3 FAR *PFILEFNDBUF3;
 
-typedef struct _FILEFNDBUF2 {	/* findbuf2 */
-	FDATE	fdateCreation;
-	FTIME	ftimeCreation;
-	FDATE	fdateLastAccess;
-	FTIME	ftimeLastAccess;
-	FDATE	fdateLastWrite;
-	FTIME	ftimeLastWrite;
-	ULONG	cbFile;
-	ULONG	cbFileAlloc;
-	USHORT	attrFile;
-	ULONG	cbList;
-	UCHAR	cchName;
-	CHAR	achName[CCHMAXPATHCOMP];
+typedef struct _FILEFNDBUF2 {   /* findbuf2 */
+    FDATE   fdateCreation;
+    FTIME   ftimeCreation;
+    FDATE   fdateLastAccess;
+    FTIME   ftimeLastAccess;
+    FDATE   fdateLastWrite;
+    FTIME   ftimeLastWrite;
+    ULONG   cbFile;
+    ULONG   cbFileAlloc;
+    USHORT  attrFile;
+    ULONG   cbList;
+    UCHAR   cchName;
+    CHAR    achName[CCHMAXPATHCOMP];
 } FILEFNDBUF2;
 
 
@@ -284,8 +284,8 @@ IMPORT PVOLINFO GetVolInfo(USHORT hVBP);
 IMPORT VOID   MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 IMPORT BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
 IMPORT ULONG FindDirCluster(PVOLINFO pVolInfo,
-   struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-   struct cdfsd far * pcdfsd,		/* pcdfsd	*/
+   struct cdfsi far * pcdfsi,       /* pcdfsi   */
+   struct cdfsd far * pcdfsd,       /* pcdfsd   */
    PSZ pDir,
    USHORT usCurDirEnd,
    USHORT usAttrWanted,
@@ -337,7 +337,11 @@ IMPORT USHORT usCopyEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile
 IMPORT USHORT usMoveEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, ULONG ulTarDirCluster, PSZ pszTarFile);
 IMPORT USHORT CopyChain(PVOLINFO pVolInfo, ULONG ulCluster, PULONG pulNew);
 IMPORT USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS);
-IMPORT VOID   Translate2Win(PSZ pszName, PUSHORT puniName, USHORT usLen);
+IMPORT VOID   TranslateInitDBCSEnv( VOID );
+IMPORT BOOL   IsDBCSLead( USHORT usChar );
+IMPORT VOID   TranslateAllocBuffer( VOID );
+IMPORT VOID   TranslateFreeBuffer( VOID );
+IMPORT USHORT Translate2Win(PSZ pszName, PUSHORT puniName, USHORT usLen);
 IMPORT VOID   Translate2OS2(PUSHORT puniName, PSZ pszName, USHORT usLen);
 IMPORT VOID   TranslateInit(BYTE rgTrans[], USHORT usSize);
 IMPORT USHORT MY_PROBEBUF(USHORT usOperation, char far * pData, USHORT cbData);

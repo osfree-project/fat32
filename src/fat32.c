@@ -54,23 +54,23 @@ static ULONG GetChainSize(PVOLINFO pVolInfo, ULONG ulCluster);
 static VOID InitMessage(PSZ pszMessage);
 static USHORT MakeChain(PVOLINFO pVolInfo, ULONG ulFirstCluster, ULONG ulSize);
 static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark);
-
+static USHORT DBCSStrlen( const PSZ pszStr );
 
 /******************************************************************
 *
 ******************************************************************/
-int far pascal FS_ATTACH(unsigned short usFlag,		/* flag		*/
-                         char far * pDev,			/* pDev		*/
-                         void far * pvpfsd,			/* if remote drive
-	                                             struct vpfsd far *
-                                 				   else if remote device
-				                                    null ptr (0L)    */
-                         void far * pdevfsd,			/* if remote drive
-           				                           struct cdfsd far *
-                     			            	   else
-				                                    struct devfsd far * */
-                         char far * pParm,			/* pParm	*/
-                         unsigned short far * pLen)	/* pLen		*/
+int far pascal FS_ATTACH(unsigned short usFlag,     /* flag     */
+                         char far * pDev,           /* pDev     */
+                         void far * pvpfsd,         /* if remote drive
+                                                 struct vpfsd far *
+                                                   else if remote device
+                                                    null ptr (0L)    */
+                         void far * pdevfsd,            /* if remote drive
+                                                   struct cdfsd far *
+                                                   else
+                                                    struct devfsd far * */
+                         char far * pParm,          /* pParm    */
+                         unsigned short far * pLen) /* pLen     */
 {
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_ATTACH - NOT SUPPORTED");
@@ -88,14 +88,14 @@ int far pascal FS_ATTACH(unsigned short usFlag,		/* flag		*/
 *
 ******************************************************************/
 int far pascal FS_COPY(
-    unsigned short usMode,		/* copy mode	*/
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pSrc,			/* source name	*/
-    unsigned short usSrcCurDirEnd,		/* iSrcCurrDirEnd	*/
-    char far * pDst,			/* pDst		*/
-    unsigned short usDstCurDirEnd,		/* iDstCurrDirEnd	*/
-    unsigned short usNameType		/* nameType (flags)	*/
+    unsigned short usMode,      /* copy mode    */
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pSrc,            /* source name  */
+    unsigned short usSrcCurDirEnd,      /* iSrcCurrDirEnd   */
+    char far * pDst,            /* pDst     */
+    unsigned short usDstCurDirEnd,      /* iDstCurrDirEnd   */
+    unsigned short usNameType       /* nameType (flags) */
 )
 {
 PVOLINFO pVolInfo;
@@ -215,7 +215,7 @@ POPENINFO pOpenInfo = NULL;
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pDst,    
+      pDst,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile);
@@ -293,7 +293,7 @@ POPENINFO pOpenInfo = NULL;
       DirEntry.ulFileSize = 0L;
       }
    /*
-      modify new entry 
+      modify new entry
    */
    rc2 = ModifyDirectory(pVolInfo, ulDstDirCluster, MODIFY_DIR_UPDATE, &TarEntry, &DirEntry, NULL, 0);
    if (rc2 && !rc)
@@ -329,10 +329,10 @@ FS_COPYEXIT:
 *
 ******************************************************************/
 int far pascal FS_DELETE(
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pFile,			/* pFile	*/
-    unsigned short usCurDirEnd		/* iCurDirEnd	*/
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pFile,           /* pFile    */
+    unsigned short usCurDirEnd      /* iCurDirEnd   */
 )
 {
 PVOLINFO pVolInfo;
@@ -452,9 +452,9 @@ FS_DELETEEXIT:
 *
 ******************************************************************/
 void far pascal FS_EXIT(
-    unsigned short usUid,		/* uid		*/
-    unsigned short usPid,		/* pid		*/
-    unsigned short usPdb		/* pdb		*/
+    unsigned short usUid,       /* uid      */
+    unsigned short usPid,       /* pid      */
+    unsigned short usPdb        /* pdb      */
 )
 {
 PVOLINFO pVolInfo = pGlobVolInfo;
@@ -501,14 +501,14 @@ USHORT rc;
                Message("Removing a FINDINFO");
             if (RemoveFindEntry(pVolInfo, pFindInfo))
                free(pFindInfo);
-            pFindInfo = (PFINFO)pVolInfo->pFindInfo; 
+            pFindInfo = (PFINFO)pVolInfo->pFindInfo;
             }
          else
             pFindInfo = (PFINFO)pFindInfo->pNextEntry;
          }
       pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
       }
-   
+
    return ;
 }
 
@@ -518,8 +518,8 @@ USHORT rc;
 *
 ******************************************************************/
 int far pascal FS_FLUSHBUF(
-    unsigned short hVPB,		/* hVPB		*/
-    unsigned short usFlag		/* flag		*/
+    unsigned short hVPB,        /* hVPB     */
+    unsigned short usFlag       /* flag     */
 )
 {
 PVOLINFO pVolInfo = GetVolInfo(hVPB);
@@ -559,15 +559,15 @@ FS_FLUSHEXIT:
 *
 ******************************************************************/
 int far pascal FS_FSCTL(
-    union argdat far * pArgDat,		/* pArgdat	*/
-    unsigned short usArgType,		/* iArgType	*/
-    unsigned short usFunc,		/* func		*/
-    char far * pParm,			/* pParm	*/
-    unsigned short cbParm,		/* lenParm	*/
-    unsigned short far * pcbParm,	/* plenParmOut	*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* lenData	*/
-    unsigned short far * pcbData	/* plenDataOut	*/
+    union argdat far * pArgDat,     /* pArgdat  */
+    unsigned short usArgType,       /* iArgType */
+    unsigned short usFunc,      /* func     */
+    char far * pParm,           /* pParm    */
+    unsigned short cbParm,      /* lenParm  */
+    unsigned short far * pcbParm,   /* plenParmOut  */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* lenData  */
+    unsigned short far * pcbData    /* plenDataOut  */
 )
 {
 USHORT rc;
@@ -747,7 +747,7 @@ POPENINFO pOpenInfo;
             rc = ERROR_INVALID_FUNCTION;
             goto FS_FSCTLEXIT;
             }
-            
+
          f32Parms.fLW = TRUE;
          Message("Lazy writing is ON");
          rc = 0;
@@ -797,6 +797,9 @@ POPENINFO pOpenInfo;
          f32Parms.fMessageActive   = ((PF32PARMS)pParm)->fMessageActive;
          f32Parms.fUseShortNames   = ((PF32PARMS)pParm)->fUseShortNames;
          f32Parms.ulCurCP          = ((PF32PARMS)pParm)->ulCurCP;
+
+         TranslateInitDBCSEnv();
+
          rc = 0;
          break;
 
@@ -814,11 +817,13 @@ POPENINFO pOpenInfo;
             f32Parms.fTranslateNames = FALSE;
          else
             {
+#if 0
             if (cbParm != 512)
                {
                rc = ERROR_INSUFFICIENT_BUFFER;
                goto FS_FSCTLEXIT;
                }
+#endif
             TranslateInit(pParm, cbParm);
             }
          rc = 0;
@@ -845,11 +850,11 @@ FS_FSCTLEXIT:
 *
 ******************************************************************/
 int far pascal FS_FSINFO(
-    unsigned short usFlag,		/* flag		*/
-    unsigned short hVBP,		/* hVPB		*/
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* cbData	*/
-    unsigned short usLevel		/* level	*/
+    unsigned short usFlag,      /* flag     */
+    unsigned short hVBP,        /* hVPB     */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short usLevel      /* level    */
 )
 {
 PVOLINFO pVolInfo;
@@ -899,7 +904,7 @@ USHORT rc;
                   pAlloc->cSectorUnit = 32;
                else if (ulTotalSectors > 8L * 65526L)
                   pAlloc->cSectorUnit = 16;
-               else 
+               else
                   pAlloc->cSectorUnit = 8;
 
                if ((ULONG)pVolInfo->BootSect.bpb.SectorsPerCluster > pAlloc->cSectorUnit)
@@ -1107,9 +1112,9 @@ PBOOTSECT pBootSect;
 *
 ******************************************************************/
 int far pascal FS_INIT(
-    char far * pszParm,			/* szParm	*/
-    unsigned long pDevHlp,		/* pDevHlp	*/
-    unsigned long far *	pMiniFSD	/* pMiniFSD	*/
+    char far * pszParm,         /* szParm   */
+    unsigned long pDevHlp,      /* pDevHlp  */
+    unsigned long far * pMiniFSD    /* pMiniFSD */
 )
 {
 BOOL fSilent = FALSE;
@@ -1118,6 +1123,7 @@ PSZ  p;
    pMiniFSD = pMiniFSD;
 
    memset(&f32Parms, 0, sizeof f32Parms);
+
    f32Parms.fLW = FALSE;
    f32Parms.ulDiskIdle = 1000;
    f32Parms.ulBufferIdle = 500;
@@ -1191,7 +1197,7 @@ PSZ  p;
 
    if (!ulCacheSectors)
       InitMessage("FAT32: Warning CACHE size is zero!\r\n");
-            
+
    return 0;
 }
 
@@ -1207,16 +1213,16 @@ USHORT usWritten;
 *
 ******************************************************************/
 int far pascal FS_IOCTL(
-    struct sffsi far * psffsi,		/* psffsi	*/
-    struct sffsd far * psffsd,		/* psffsd	*/
-    unsigned short usCat,		/* cat		*/
-    unsigned short usFunc,		/* func		*/
-    char far * pParm,			/* pParm	*/
-    unsigned short cbParm,		/* lenParm	*/
-    unsigned far * pcbParm,		/* pParmLenInOut */
-    char far * pData,			/* pData	*/
-    unsigned short cbData,		/* lenData	*/
-    unsigned far * pcbData		/* pDataLenInOut */
+    struct sffsi far * psffsi,      /* psffsi   */
+    struct sffsd far * psffsd,      /* psffsd   */
+    unsigned short usCat,       /* cat      */
+    unsigned short usFunc,      /* func     */
+    char far * pParm,           /* pParm    */
+    unsigned short cbParm,      /* lenParm  */
+    unsigned far * pcbParm,     /* pParmLenInOut */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* lenData  */
+    unsigned far * pcbData      /* pDataLenInOut */
 )
 {
 USHORT rc;
@@ -1514,7 +1520,7 @@ ULONG hDEV;
                else
                   {
                   PSETCLUSTERDATA pSet = (PSETCLUSTERDATA)pParm;
-            
+
                   if (SetNextCluster(pVolInfo, pSet->ulCluster,
                      pSet->ulNextCluster) != pSet->ulNextCluster)
                      rc = ERROR_SECTOR_NOT_FOUND;
@@ -1726,7 +1732,7 @@ USHORT rc;
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_UPDATE,
       &DirEntry, &DirNew, NULL, 0);
-   
+
    return rc;
 }
 
@@ -1735,13 +1741,13 @@ USHORT rc;
 *
 ******************************************************************/
 int far pascal FS_MOVE(
-    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
-    char far * pSrc,			/* pSrc		*/
-    unsigned short usSrcCurDirEnd,		/* iSrcCurDirEnd*/
-    char far * pDst,			/* pDst		*/
-    unsigned short usDstCurDirEnd,		/* iDstCurDirEnd*/
-    unsigned short usFlags		/* flags	*/
+    struct cdfsi far * pcdfsi,      /* pcdfsi   */
+    struct cdfsd far * pcdfsd,      /* pcdfsd   */
+    char far * pSrc,            /* pSrc     */
+    unsigned short usSrcCurDirEnd,      /* iSrcCurDirEnd*/
+    char far * pDst,            /* pDst     */
+    unsigned short usDstCurDirEnd,      /* iDstCurDirEnd*/
+    unsigned short usFlags      /* flags    */
 )
 {
 PVOLINFO pVolInfo;
@@ -1968,7 +1974,7 @@ FS_MOVEEXIT:
 *
 ******************************************************************/
 int far pascal FS_PROCESSNAME(
-    char far *	pNameBuf		/* pNameBuf	*/
+    char far *  pNameBuf        /* pNameBuf */
 )
 {
 static BYTE szName[FAT32MAXPATH] = "";
@@ -2010,8 +2016,8 @@ USHORT   rc;
 *
 ******************************************************************/
 int far pascal FS_SHUTDOWN(
-    unsigned short usType,		/* usType	*/
-    unsigned long	 ulReserved	/* ulReserved	*/
+    unsigned short usType,      /* usType   */
+    unsigned long    ulReserved /* ulReserved   */
 )
 {
 PVOLINFO pVolInfo;
@@ -2052,6 +2058,8 @@ USHORT rc = 0;
       }
 FS_SHUTDOWNEXIT:
 
+   TranslateFreeBuffer();
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SHUTDOWN returned %d", rc);
    return rc;
@@ -2061,8 +2069,8 @@ FS_SHUTDOWNEXIT:
 *
 ******************************************************************/
 int far pascal FS_VERIFYUNCNAME(
-    unsigned short usFlag,		/* flag		*/
-    char far *	pName		/* pName	*/
+    unsigned short usFlag,      /* flag     */
+    char far *  pName       /* pName    */
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)
@@ -2179,7 +2187,7 @@ USHORT rc;
       Message("ERROR: freeseg: protection violation");
       return;
       }
-   
+
    usSel = SELECTOROF(p);
    rc = FSH_SEGFREE(usSel);
    if (rc)
@@ -2216,7 +2224,7 @@ USHORT rc;
    ulSector = pVolInfo->ulStartOfData +
       (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
 
-   rc = ReadSector(pVolInfo, ulSector, 
+   rc = ReadSector(pVolInfo, ulSector,
       pVolInfo->BootSect.bpb.SectorsPerCluster,
       pbCluster, usIOMode);
    if (rc)
@@ -2251,7 +2259,7 @@ USHORT rc;
    ulSector = pVolInfo->ulStartOfData +
       (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
 
-   rc = WriteSector(pVolInfo, ulSector, 
+   rc = WriteSector(pVolInfo, ulSector,
       pVolInfo->BootSect.bpb.SectorsPerCluster,
       pbCluster, usIOMode);
    if (rc)
@@ -2727,7 +2735,7 @@ PBYTE pbSector;
       Trick, set fDiskClean to FALSE, so WriteSector
       won't set is back to dirty again
    */
-   pVolInfo->fDiskClean = FALSE; 
+   pVolInfo->fDiskClean = FALSE;
 
    ulSector = 0L;
    for (usFat = 0; usFat < pVolInfo->BootSect.bpb.NumberOfFATs; usFat++)
@@ -2948,8 +2956,8 @@ struct vpfsd far * pvpfsd;
 *
 ******************************************************************/
 ULONG FindDirCluster(PVOLINFO pVolInfo,
-   struct cdfsi far * pcdfsi,		/* pcdfsi	*/
-   struct cdfsd far * pcdfsd,		/* pcdfsd	*/
+   struct cdfsi far * pcdfsi,       /* pcdfsi   */
+   struct cdfsd far * pcdfsd,       /* pcdfsd   */
    PSZ pDir,
    USHORT usCurDirEnd,
    USHORT usAttrWanted,
@@ -2964,7 +2972,7 @@ PSZ    p;
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("FindDirCluster");
 
-   if (pcdfsi && 
+   if (pcdfsi &&
       (pcdfsi->cdi_flags & CDI_ISVALID) &&
       !(pcdfsi->cdi_flags & CDI_ISROOT) &&
       usCurDirEnd != 0xFFFF)
@@ -3613,6 +3621,7 @@ INT  iIndex;
          bCheck >>=1;
       bCheck += pDir->bFileName[iIndex];
       }
+
    return bCheck;
 
 }
@@ -3634,8 +3643,12 @@ PUSHORT p;
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
+#if 0
    usNeededEntries = strlen(pszLongName) / 13 +
       (strlen(pszLongName) % 13 ? 1 : 0);
+#else
+   usNeededEntries = ( DBCSStrlen( pszLongName ) + 12 ) / 13;
+#endif
 
    if (!usNeededEntries)
       return pDir;
@@ -3650,22 +3663,23 @@ PUSHORT p;
       USHORT usLen;
 
       pLN->bNumber = bCurEntry;
-      if (strlen(pszLongName) <= 13)
+      if (DBCSStrlen(pszLongName) <= 13)
          pLN->bNumber += 0x40;
       pLN->wCluster = 0L;
       pLN->bAttr = FILE_LONGNAME;
       pLN->bReserved = 0;
       pLN->bVFATCheckSum = bCheck;
 
+#if 0
       usLen = strlen(pszLongName);
       if (usLen > 13)
          usLen = 13;
+#endif
 
       memset(uniEnd, 0xFF, sizeof uniEnd);
       memset(uniName, 0, sizeof uniName);
 
-      Translate2Win(pszLongName, uniName, 13);
-      pszLongName += usLen;
+      pszLongName += Translate2Win(pszLongName, uniName, 13);
 
       p = uniName;
       for (usIndex = 0; usIndex < 5; usIndex ++)
@@ -3863,7 +3877,7 @@ USHORT rc;
          */
          if (p == pLastDot)
             usIndex = 8;
-         else 
+         else
             usLongName = LONGNAME_MAKE_UNIQUE;
          }
       else if (strchr(rgValidChars, *p))
@@ -3878,6 +3892,22 @@ USHORT rc;
       usLongName = LONGNAME_MAKE_UNIQUE;
 
    free(pszUpper);
+
+   p = szShortName;
+   for( usIndex = 0; usIndex < 8; usIndex++ )
+      if( IsDBCSLead( p[ usIndex ]))
+         usIndex++;
+
+   if( usIndex > 8 )
+      p[ 7 ] = 0x20;
+
+   p = szShortName + 8;
+   for( usIndex = 0; usIndex < 3; usIndex++ )
+      if( IsDBCSLead( p[ usIndex ]))
+         usIndex++;
+
+   if( usIndex > 3 )
+      p[ 2 ] = 0x20;
 
    if (usLongName == LONGNAME_MAKE_UNIQUE)
       {
@@ -3908,6 +3938,13 @@ USHORT rc;
          if (usPos1 && usPos1 < usPos2)
             usPos2 = usPos1;
 
+         for( usIndex = 0; usIndex < usPos2; usIndex++ )
+            if( IsDBCSLead( szShortName[ usIndex ]))
+               usIndex++;
+
+         if( usIndex > usPos2 )
+            usPos2--;
+
          strcpy(szFileName + usPos2, "~");
          strcat(szFileName, szNumber);
 
@@ -3927,10 +3964,19 @@ USHORT rc;
       if (usNum < 32000)
          {
          p = strchr(szFileName, '.');
+#if 0
          if (p && p - szFileName < 8)
             memcpy(szShortName, szFileName, p - szFileName);
          else
-            memcpy(szShortName, szFileName, 8);
+            memccpy(szShortName, szFileName, 0, 8 );
+         }
+#else
+         if( !p )
+            p = szFileName + strlen( szFileName );
+
+         memcpy(szShortName, szFileName, p - szFileName);
+         memset( szShortName + ( p - szFileName ), 0x20, 8 - ( p - szFileName ));
+#endif
          }
       else
          return LONGNAME_ERROR;
@@ -4226,8 +4272,12 @@ BOOL      fNewCluster;
 
       usEntriesNeeded = 1;
       if (pszLongName)
+#if 0
          usEntriesNeeded += strlen(pszLongName) / 13 +
             (strlen(pszLongName) % 13 ? 1 : 0);
+#else
+         usEntriesNeeded += ( DBCSStrlen( pszLongName ) + 12 ) / 13;
+#endif
       }
 
    if (usMode == MODIFY_DIR_RENAME ||
@@ -4594,7 +4644,7 @@ USHORT rc;
          }
       } while (rc == ERROR_INTERRUPT);
 
-   return rc; 
+   return rc;
 }
 
 BOOL IsDosSession(VOID)
@@ -4620,7 +4670,7 @@ USHORT   rc;
       if (!memcmp(&pVolInfo->ProcLocked, &ProcInfo, sizeof (PROCINFO)))
          return FALSE;
 
-      rc = FSH_CRITERROR(strlen(szDiskLocked) + 1, szDiskLocked, 0, "", 
+      rc = FSH_CRITERROR(strlen(szDiskLocked) + 1, szDiskLocked, 0, "",
          CE_ALLFAIL | CE_ALLABORT | CE_ALLRETRY);
       if (rc != CE_RETRETRY)
          return TRUE;
@@ -4667,3 +4717,24 @@ USHORT MY_PROBEBUF(USHORT usOperation, char far * pData, USHORT cbData)
       OFFSETOF(pData),
       (UCHAR)usOperation);
 }
+
+USHORT DBCSStrlen( const PSZ pszStr )
+{
+   USHORT usLen;
+   USHORT usIndex;
+   USHORT usRet;
+
+   usLen = strlen( pszStr );
+   usRet = 0;
+   for( usIndex = 0; usIndex < usLen; usIndex++ )
+      {
+         if( IsDBCSLead( pszStr[ usIndex ]))
+            usIndex++;
+
+         usRet++;
+      }
+
+   return usRet;
+}
+
+
