@@ -21,7 +21,7 @@ WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
    ilink /NOFREE $*, $*, $*, LIBCONV $(LINKOPT);
      echo <<$*.bnd
 > $*.EXE
-< D:\IBMCPP\HELP\\DDE4.MSG
+< $(IBMC)\HELP\\DDE4.MSG
 *
 <<KEEP
      $(msgbind) $*.bnd
@@ -35,19 +35,19 @@ monitor.obj  : monitor.c fat32def.h
 cachef32.obj : cachef32.c fat32def.h
 f32stat.obj  : f32stat.c fat32def.h
 
-DISKINFO.EXE : DISKINF0.C DISKINF1.C DISKINF2.C
-   $(CC) $(MFLAGS) $(WOPTS) /Fediskinfo.exe  /L $**
+#DISKINFO.EXE : DISKINF0.C DISKINF1.C DISKINF2.C
+#   $(CC) $(MFLAGS) $(WOPTS) /Fediskinfo.exe  /L $**
 
-#OBJS=diskinf0.OBJ diskinf1.OBJ diskinf2.OBJ
-#DISKINFO.EXE : $(OBJS)
-#        ilink /NOFREE @<<
-#$(RT_OBJS: = +^
-#) $(OBJS: = +^
-#)
-#$@
-#DISKINFO, 
-#$(LINKOPT);
-#<<NOKEEP
+OBJS=diskinf0.OBJ diskinf1.OBJ diskinf2.OBJ
+DISKINFO.EXE : $(OBJS)
+        ilink /NOFREE @<<
+$(RT_OBJS: = +^
+) $(OBJS: = +^
+)
+$@
+DISKINFO, 
+$(LINKOPT);
+<<NOKEEP
 
 MONITOR.EXE : MONITOR.OBJ
 CACHEF32.EXE : CACHEF32.OBJ

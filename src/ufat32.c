@@ -30,6 +30,7 @@ MSG_1306, AvailableClusters
 #define INCL_DOS
 #define INCL_DOSERRORS
 #include <os2.h>
+#include <bsedev.h>
 #include "portable.h"
 #include "fat32def.h"
 
@@ -818,8 +819,8 @@ USHORT rc;
    p = pbCluster;
    while (ulCluster != FAT_EOF)
       {
-      ReadCluster(pCD, ulCluster, p, FALSE);
-      ulCluster = GetNextCluster(pCD, ulCluster);
+      ReadCluster(pCD, ulCluster, p);
+      ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
       if (!ulCluster)
          ulCluster = FAT_EOF;
       p += pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector;

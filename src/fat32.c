@@ -34,9 +34,7 @@ static SEL sLoc = 0;
 
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
-"Made by Henk Kelder\r\n"
-"\r\n"
-"USE AT YOUR OWN RISK!\r\n";\
+"Made by Henk Kelder + Netlabs\r\n";
 
 static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 static PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
@@ -885,8 +883,9 @@ USHORT rc;
                rc = ERROR_BUFFER_OVERFLOW;
                goto FS_FSINFOEXIT;
                }
-
+#ifdef OLD_SOURCE
             pAlloc->ulReserved  = 0L;
+#endif
             pAlloc->cbSector = pVolInfo->BootSect.bpb.BytesPerSector;
 
             if (IsDosSession()) /* Dos Session */

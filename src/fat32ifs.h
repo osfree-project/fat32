@@ -35,6 +35,7 @@ typedef PVOID * PPVOID;
 
 #define FSCTL_DAEMON_QUERY          4  /* FSD query for daemon rqrmnt */
 
+#if OLD_SOURCE
 typedef struct _FSDTHREAD  /* fsdthread struct for FSCTL fn 4 */
 {
 USHORT  usFunc;
@@ -51,7 +52,7 @@ USHORT     usMoreFlag;
 USHORT     usCallInstance;
 FSDTHREAD  tdThrds[16];
 } FSDDAEMON, * PFSDDAEMON;
-
+#endif
 
 typedef Req_List_Header RLH;
 typedef RLH * PRLH;

@@ -1,8 +1,12 @@
 @echo off
 @echo Building FAT32.IFS and UFAT32.DLL...
-call c6
-c:\msc\binp\nmake
+set SAVEINCLUDE=%INCLUDE%
+set SAVEPATH=%PATH%
+set PATH=%DDKTOOLS%\toolkits\msc60\binp;%SAVEPATH%
+set INCLUDE=%DDKTOOLS%\toolkits\msc60\include;%DDK%\base\h
+nmake DDK=%DDK% DDKTOOLS=%DDKTOOLS%
 @echo Building 32 Bits helper programs
-call ibmc
-c:\msc\binp\nmake /f makefile.32
+set PATH=%SAVEPATH%
+set INCLUDE=%SAVEINCLUDE%
+nmake /f makefile.32 IBMC=%IBMC%
 

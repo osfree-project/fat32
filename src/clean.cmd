@@ -1,0 +1,12 @@
+@echo off
+del *.obj
+del *.ifs
+del *.new
+del *.err
+del *.erl
+del *.map
+del *.lst
+del *.dll
+del *.exe
+del *.bnd
+del *~
