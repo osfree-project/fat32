@@ -100,7 +100,10 @@ USHORT rc;
 
 
          if( usFlag == CD_EXPLICIT )
+         {
+            pOpenInfo->pSHInfo->bAttr = FILE_DIRECTORY;
             *((PULONG)pcdfsd + 1 ) = ( ULONG )pOpenInfo;
+         }
          rc = 0;
          break;
 
@@ -253,7 +256,6 @@ int far pascal FS_RMDIR(
     unsigned short usCurDirEnd      /* iCurDirEnd   */
 )
 {
-BYTE     szName[FAT32MAXPATH];
 PVOLINFO pVolInfo;
 ULONG    ulCluster;
 ULONG    ulNextCluster;

@@ -133,6 +133,12 @@ USHORT rc;
       ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
       if (pOpenInfo->pSHInfo->sOpenCount > 1)
          {
+         if (pOpenInfo->pSHInfo->bAttr & FILE_DIRECTORY)
+            {
+            rc = ERROR_ACCESS_DENIED;
+            goto FS_OPENCREATEEXIT;
+            }
+
          if (f32Parms.fMessageActive & LOG_FS)
             Message("File has been previously opened!");
          ulCluster    = pOpenInfo->pSHInfo->ulStartCluster;
