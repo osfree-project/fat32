@@ -204,7 +204,7 @@ P_VolChars   pVolChars;
      case MOUNT_VOL_REMOVED:
      case MOUNT_RELEASE:
          pVolInfo = GetVolInfo(hVBP);
-         if (!pVolInfo->hDupVBP)
+         if (( usFlag == MOUNT_RELEASE ) && !pVolInfo->hDupVBP)
          {
             UpdateFSInfo(pVolInfo);
             MarkDiskStatus(pVolInfo, TRUE);
