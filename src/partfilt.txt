@@ -150,7 +150,7 @@ gets the same drive letters assigned.
 If your FAT32 partition is not a primary partition and you don't care what 
 drive letter the FAT32 partition gets you may stop reading here. Simply do 
 not specify the /A or /M options and the FAT32 partition will get a drive 
-letter higher then all partition normally recoqnized by OS/2.
+letter higher then all partition normally recognized by OS/2.
 
 But if your FAT32 partition is a primary partition, or you want the FAT32 
 partition to have a drive letter before the OS/2 boot drive you will need to 
@@ -179,7 +179,7 @@ and you consider converting the FAT16 partition to FAT32 (with partition
 magic) the following will happen after the conversion:
 
 During the first scan the FAT32 partition is skipped and the OS/2 boot 
-drive will get C: assigned. During the 2nd scan FAT32 is recoqnized because
+drive will get C: assigned. During the 2nd scan FAT32 is recognized because
 you have loaded PARTFILT and is assigned C:. Your HPFS partition will get D: 
 assigned and OS/2 will not boot because OS/2 has already decided to go for C:
 but cannot find its stuff there.
@@ -203,7 +203,7 @@ With the Fake partition installed the following partitions exist:
 
 By not specifying seq# 1 in the mountlist, PARTFILT will not virtualize this
 partition and OS/2 will not assign a drive to it.
-By using a HPFS partition, Windows 95 will not recoqnize the fake partition
+By using a HPFS partition, Windows 95 will not recognize the fake partition
 and will not assign a drive letter to it.
 
 

@@ -43,11 +43,11 @@ F32STAT.EXE             A program to change the DIRTY flag of FAT32 partitions.
 MONITOR.EXE             A program to monitor what FAT32.IFS is doing.
 
 PARTFILT.FLT            A general partition filter device that allows FAT32
-                        partitions to be recoqnized by OS/2. 
+                        partitions to be recognized by OS/2. 
 
 OS2DASD.F32             A modified version of OS2DASD.DMD that is an
                         alternative for using PARTFILT.FLT. This modified
-                        driver also allows FAT32 partitions to be recoqnized 
+                        driver also allows FAT32 partitions to be recognized 
                         by OS/2. If you want to try this please rename it to
                         OS2DASD.DMD and place it in your OS2\BOOT directory.
                         Remember to make a backup copy of the orginal!
@@ -328,10 +328,10 @@ tracemask you should use 1 + 4 = 5.
 GENERAL NOTES
 =============
 
-MAKING OS/2 RECOQNIZE FAT32 PARTITIONS.
+MAKING OS/2 RECOGNIZE FAT32 PARTITIONS.
 ---------------------------------------
-OS/2 by itself does not recoqnize FAT32 partitions. This means that 
-installing the IFS is useless if we can't make OS/2 recoqnize them.
+OS/2 by itself does not recognize FAT32 partitions. This means that 
+installing the IFS is useless if we can't make OS/2 recognize them.
 
 Currently, if you are using WARP 3 or 4 there are two ways to achieve that.
 - Use PARTFILT.FLT to fake FAT32 partition; (this is advised)
@@ -648,8 +648,8 @@ Version 0.20
 
 - CHKDSK: Is now able to fix incorrect free space count.
 - CHKDSK: Lost cluster fix algoritm has been improved for performance.
-- CHKDSK: Didn't recoqnize bad-sectors, has been fixed.
-- CHKDSK: Had problems with recoqnition of some type of free clusters,
+- CHKDSK: Didn't recognize bad-sectors, has been fixed.
+- CHKDSK: Had problems with recognition of some type of free clusters,
           has been fixed.
 - OS2DASD.DMD: Is now based on the latest version. (December '97)
 
