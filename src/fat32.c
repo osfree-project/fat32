@@ -32,6 +32,11 @@ static ULONG ulSemRWFat = 0;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
+static BYTE szOrgSrcName[ FAT32MAXPATH ] = "";
+static BYTE szSrcShortName[ FAT32MAXPATH ] = "";
+static BYTE szOrgDstName[ FAT32MAXPATH ] = "";
+static BYTE szDstShortName[ FAT32MAXPATH ] = "";
+
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
 "Made by Henk Kelder + Netlabs\r\n";
@@ -98,6 +103,7 @@ int far pascal FS_COPY(
     unsigned short usNameType       /* nameType (flags) */
 )
 {
+static BYTE szDstLongName[ FAT32MAXPATH ] = "";
 PVOLINFO pVolInfo;
 ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
@@ -212,14 +218,25 @@ POPENINFO pOpenInfo = NULL;
    /*
       Check destination
    */
+
+#if 0
+   if( f32Parms.fUseShortNames )
+      TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG );
+   else
+      strcpy( szDstLongName, pDst );
+#endif
+
+   if( TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szDstLongName, pDst );
+
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pDst,
+      szDstLongName,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile);
-   if (ulSrcDirCluster == FAT_EOF)
+   if (ulDstDirCluster == FAT_EOF)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_COPYEXIT;
@@ -251,16 +268,15 @@ POPENINFO pOpenInfo = NULL;
             TarEntry.fEAS = FILE_HAS_NO_EAS;
          }
 
+      rc = ModifyDirectory(pVolInfo, ulDstDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
+      if (rc)
+         goto FS_COPYEXIT;
+
       if (!DeleteFatChain(pVolInfo, ulDstCluster))
          {
          rc = ERROR_FILE_NOT_FOUND;
          goto FS_COPYEXIT;
          }
-
-      rc = ModifyDirectory(pVolInfo, ulDstDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
-      if (rc)
-         goto FS_COPYEXIT;
-
       }
 
    /*
@@ -1772,6 +1788,7 @@ int far pascal FS_MOVE(
     unsigned short usFlags      /* flags    */
 )
 {
+static BYTE szDstLongName[ FAT32MAXPATH ] = "";
 PVOLINFO pVolInfo;
 ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
@@ -1782,6 +1799,12 @@ ULONG    ulCluster;
 ULONG    ulTarCluster;
 USHORT   rc;
 POPENINFO pOpenInfo;
+
+   /* for unmodified long name in /FS mode */
+   if( f32Parms.fUseShortNames && ( !strcmp( szDstShortName, pDst )))
+      strcpy( szDstLongName, szOrgDstName );
+   else
+      *szDstLongName = 0;
 
    pOpenInfo = malloc(sizeof (OPENINFO));
    if (!pOpenInfo)
@@ -1808,7 +1831,7 @@ POPENINFO pOpenInfo;
    usFlags = usFlags;
 
    if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MOVE %s to %s", pSrc, pDst);
+      Message("FS_MOVE %s to %s, %s", pSrc, pDst, szDstShortName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
    if (IsDriveLocked(pVolInfo))
@@ -1827,14 +1850,21 @@ POPENINFO pOpenInfo;
       goto FS_MOVEEXIT;
       }
 
-
    /*
       Check destination
    */
+   if( f32Parms.fUseShortNames )
+   {
+      if( !*szDstLongName )
+         TranslateName( pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG );
+   }
+   else
+      strcpy( szDstLongName, pDst );
+
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pDst,
+      szDstLongName,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile);
@@ -1908,9 +1938,9 @@ POPENINFO pOpenInfo;
       {
       rc = usMoveEAS(pVolInfo, ulSrcDirCluster, pszSrcFile,
                                ulDstDirCluster, pszDstFile);
+      if( rc )
+         goto FS_MOVEEXIT;
       }
-   if( rc )
-      goto FS_MOVEEXIT;
 
    if (ulSrcDirCluster == ulDstDirCluster)
       {
@@ -1982,8 +2012,6 @@ FS_MOVEEXIT:
    return rc;
 }
 
-
-
 /******************************************************************
 *
 ******************************************************************/
@@ -2012,12 +2040,20 @@ USHORT   rc;
                break;
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
+
+         strcpy( szOrgDstName, szOrgSrcName );  /* for unmodified long name in /FS mode */
+         strcpy( szOrgSrcName, pNameBuf );
+
          if (pVolInfo)
             {
             rc = TranslateName(pVolInfo, 0L, pNameBuf, szName, TRANSLATE_LONG_TO_SHORT);
             if (!rc)
                strncpy(pNameBuf, szName, FAT32MAXPATH);
             }
+
+         strcpy( szDstShortName, szSrcShortName );
+         strcpy( szSrcShortName, pNameBuf );
+
          if (f32Parms.fMessageActive & LOG_FS)
             Message(" FSH_PROCESSNAME returned filename: %s", pNameBuf);
          }
@@ -2485,7 +2521,7 @@ BOOL   fContiguous;
 
       for (;;)
          {
-//         Yield();
+/*         Yield(); */
          /*
             Find first free cluster
          */

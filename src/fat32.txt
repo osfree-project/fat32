@@ -211,6 +211,10 @@ CACHEF32.EXE supports the following options:
       Default 1 (= idle-time). This might be handy if the lazy-writter 
       doesn't seem to get any CPU due to heavy system load.
 
+/Y    assume yes
+
+/S    do NOT display normal messages
+
 Note 1: the /T option has been removed in version 0.83.
 
 Note 2: if you notice that the /P options has any effect on your 
@@ -1184,8 +1188,8 @@ Version 0.95:
 - When both /FS and /EAS are enabled, MOVE and REN command don't process EA
   files correctly. Fixed.
 
-- When /FL(default) is enabled, FillDirEntry doesn't recognize 8.3 name pointing
-  to the same file as long name.
+- When /FL(default) is enabled, FillDirEntry doesn't recognize 8.3 name
+  pointing to the same file as long name.
 
 - When /EAS is disabled, FAT32.IFS now pass empty EA.
 
@@ -1195,3 +1199,16 @@ Version 0.95:
 
 - Added FSCTL function to get short name from long name.
 
+- When /FS is enalbed and a target file already exists, COPY and MOVE command
+  names a target file to the short name of the exisintg file. Fixed.
+
+- Fixed bug of 'Dest check routine' in FS_COPY.
+
+- Fixed a potential problem in FS_MOVE.
+
+- Fixed a problem of CACHEF32.EXE with restarting lazy write deamon
+  after quiting it on CMD.EXE.
+
+- Added /Y to assume 'Yes' for CACHEF32.EXE.
+
+- Added /S to prevent CACHEF32.EXE from displaying normal messages.

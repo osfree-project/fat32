@@ -12,6 +12,7 @@
 #define INCL_DOS
 #define INCL_DOSERRORS
 #define INCL_DOSDEVICES
+#define INCL_DOSPROCESS
 #define INCL_VIO
 #include <os2.h>
 #include "portable.h"
@@ -40,6 +41,7 @@ PRIVATE VOID APIENTRY EMThread(ULONG ulArg);
 PRIVATE BOOL IsDiskClean(PSZ pszDrive);
 PRIVATE BOOL DoCheckDisk(BOOL fDoCheck);
 PRIVATE BOOL ChkDsk(ULONG ulBootDisk, PSZ pszDrive);
+PRIVATE PSZ  QueryMyFullPath( VOID );
 PRIVATE BOOL StartMe(PSZ pszPath);
 PRIVATE ULONG GetFAT32Drives(VOID);
 PRIVATE BOOL IsDiskFat32(PSZ pszDisk);
@@ -61,6 +63,7 @@ static F32PARMS  f32Parms;
 static BOOL      fActive = FALSE;
 static BOOL      fLoadDeamon = TRUE;
 static BOOL      fSayYes = FALSE;
+static BOOL      fSilent = FALSE;
 static PLWOPTS   pOptions = NULL;
 static BOOL      fForeGround;
 static ULONG     ulDriveMap = 0;
@@ -203,7 +206,6 @@ VOID Handler(INT iSignal)
 VOID InitProg(INT iArgc, PSZ rgArgv[])
 {
 APIRET    rc;
-BYTE      szTranslate[256];
 INT       iArg;
 ULONG     ulLVB;
 USHORT    uscbLVB;
@@ -212,8 +214,16 @@ ULONG     ulParmSize;
 BOOL      fSetParms = FALSE;
 ULONG     ulParm;
 
-
-   memset(szTranslate, 0, sizeof szTranslate);
+   for (iArg = 1; iArg < iArgc; iArg++)
+   {
+      strupr(rgArgv[iArg]);
+      if (( rgArgv[iArg][0] == '/' || rgArgv[iArg][0] == '-' ) &&
+          rgArgv[ iArg ][ 1 ] == 'S' )
+      {
+          fSilent = TRUE;
+          break;
+      }
+   }
 
    /*
       Determine if we run in the foreground
@@ -224,7 +234,7 @@ ULONG     ulParm;
    else
       fForeGround = TRUE;
 
-   if (fForeGround)
+   if (fForeGround && !fSilent)
       printf("FAT32 cache helper version %s.\n", FAT32_VERSION);
    else
       WriteLogMessage("FAT32 task detached");
@@ -281,6 +291,7 @@ ULONG     ulParm;
                printf("/L:on|off set lazy writing on or off.\n");
                printf("/P:1|2|3|4 Set priority of Lazy writer\n");
                printf("/Y assume yes\n");
+               printf("/S do NOT display normal messages\n");
                DosExit(EXIT_PROCESS, 0);
                break;
 
@@ -416,6 +427,9 @@ ULONG     ulParm;
 
             case 'Y':
                fSayYes = TRUE;
+               break;
+
+            case 'S':
                break;
 
             default :
@@ -759,6 +773,20 @@ ULONG  ulDataSize;
 /******************************************************************
 *
 ******************************************************************/
+PRIVATE PSZ QueryMyFullPath( VOID )
+{
+    PPIB    ppib;
+    PCHAR   p;
+
+    DosGetInfoBlocks( NULL, &ppib );
+    for( p = ppib->pib_pchcmd - 2; *p; p-- );
+
+    return ( p + 1 );
+}
+
+/******************************************************************
+*
+******************************************************************/
 BOOL StartMe(PSZ pszPath)
 {
 APIRET rc;
@@ -776,14 +804,16 @@ RESULTCODES Res;
       szArguments,
       NULL,
       &Res,
-      pszPath);
+      QueryMyFullPath());
    if (rc)
       {
       printf("FAT32: unable to start deamon (%s)\n. rc = %d for %s\n",
          szArguments, rc, szObjName);
       return FALSE;
       }
-   printf("FAT32: Lazy write daemon started.\n");
+   if( !fSilent )
+      printf("FAT32: Lazy write daemon started.\n");
+
    return TRUE;
 }
 
@@ -1001,7 +1031,8 @@ USHORT usCode;
       }
 
    f32Parms.ulCurCP = rgCP[0];
-   printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
+   if( !fSilent )
+      printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
    DosFreeModule(hModLang);
    return TRUE;
 }
