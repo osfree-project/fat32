@@ -8,6 +8,8 @@ typedef PVOID * PPVOID;
 #include "dhcalls.h"
 #include "strat2.h"
 
+#define CALL_YIELD
+
 #define MYNULL         ((PVOID)0x00030000L)
 
 #define LONGNAME_OFF         0
@@ -269,11 +271,6 @@ IMPORT USHORT usDefaultRASectors;
 IMPORT PGINFOSEG pGI;
 IMPORT PULONG    pGITicks;
 IMPORT F32PARMS f32Parms;
-
-IMPORT BYTE szSrcLongName[ FAT32MAXPATH ];
-IMPORT BYTE szDstLongName[ FAT32MAXPATH ];
-
-
 
 #define RETURN_PARENT_DIR 0xFFFF
 
