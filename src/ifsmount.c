@@ -205,7 +205,10 @@ P_VolChars   pVolChars;
      case MOUNT_RELEASE:
          pVolInfo = GetVolInfo(hVBP);
          if (!pVolInfo->hDupVBP)
+         {
             UpdateFSInfo(pVolInfo);
+            MarkDiskStatus(pVolInfo, TRUE);
+         }
          RemoveVolume(pVolInfo);
          freeseg(pVolInfo);
          rc = 0;
