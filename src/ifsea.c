@@ -315,7 +315,7 @@ USHORT   usMaxSize;
                Message("Found %s", pSrcFea + 1);
             memcpy(pTarFea, pSrcFea, usFeaSize);
             }
-         else
+         else 
             {
             usFeaSize = sizeof (FEA) + (USHORT)pGea->cbName + 1;
             if (usFeaSize > usMaxSize)
@@ -367,6 +367,7 @@ USHORT   usMaxSize;
          usMaxSize -= usFeaSize;
          }
       }
+
    rc = 0;
 
 usGetEASExit:
@@ -713,7 +714,7 @@ PFEA     pFea, pFeaEnd;
 
       DirNew.wCluster = LOUSHORT(ulCluster);
       DirNew.wClusterHigh = HIUSHORT(ulCluster);
-
+      
       if (fNew)
          rc = MakeDirEntry(pVolInfo, ulDirCluster, &DirNew, pszEAName);
       else
@@ -970,3 +971,4 @@ USHORT usGetEmptyEAS(PSZ pszFileName, PEAOP pEAOP)
        }
    return rc;
 }
+

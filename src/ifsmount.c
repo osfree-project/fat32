@@ -17,11 +17,11 @@ static BOOL RemoveVolume(PVOLINFO pVolInfo);
 static USHORT CheckWriteProtect(PVOLINFO);
 
 
-int far pascal FS_MOUNT(unsigned short usFlag,		/* flag		*/
-                        struct vpfsi far * pvpfsi,		/* pvpfsi	*/
-                        struct vpfsd far * pvpfsd,		/* pvpfsd	*/
-                        unsigned short hVBP,		/* hVPB		*/
-                        char far *	pBoot		/* pBoot	*/)
+int far pascal FS_MOUNT(unsigned short usFlag,      /* flag     */
+                        struct vpfsi far * pvpfsi,      /* pvpfsi   */
+                        struct vpfsd far * pvpfsd,      /* pvpfsd   */
+                        unsigned short hVBP,        /* hVPB     */
+                        char far *  pBoot       /* pBoot    */)
 {
 PBOOTSECT pSect;
 PVOLINFO  pVolInfo;
@@ -100,12 +100,12 @@ P_VolChars   pVolChars;
          pVolInfo->pNextVolInfo = NULL;
 
          if (usDefaultRASectors == 0xFFFF)
-            pVolInfo->usRASectors = (pVolInfo->usClusterSize * 2) / SECTOR_SIZE;
+            pVolInfo->usRASectors = (pVolInfo->usClusterSize / SECTOR_SIZE ) * 2;
          else
             pVolInfo->usRASectors = usDefaultRASectors;
 
-         if (pVolInfo->usRASectors > (pVolInfo->usClusterSize * 4) / SECTOR_SIZE)
-            pVolInfo->usRASectors = (pVolInfo->usClusterSize * 4) / SECTOR_SIZE;
+         if (pVolInfo->usRASectors > (pVolInfo->usClusterSize / SECTOR_SIZE) * 4)
+            pVolInfo->usRASectors = (pVolInfo->usClusterSize / SECTOR_SIZE ) * 4;
 
          if (pSect->bpb.FSinfoSec != 0xFFFF)
             {
@@ -190,7 +190,7 @@ P_VolChars   pVolChars;
          rc = 0;
          break;
 
-     case MOUNT_VOL_REMOVED: 
+     case MOUNT_VOL_REMOVED:
      case MOUNT_RELEASE:
          pVolInfo = GetVolInfo(hVBP);
          if (!pVolInfo->hDupVBP)

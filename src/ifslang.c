@@ -69,8 +69,16 @@ VOID TranslateInitDBCSEnv( VOID )
          rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
          break;
 
+      case 1207L :
+         rgDBCSLead[ 0 ] = 0x80; rgDBCSLead[ 1 ] = 0xFF;
+         break;
+
       case 1381L :
          rgDBCSLead[ 0 ] = 0x8C; rgDBCSLead[ 1 ] = 0xFE;
+         break;
+
+      case 1386L :
+         rgDBCSLead[ 0 ] = 0x81; rgDBCSLead[ 1 ] = 0xFE;
          break;
       }
 #else

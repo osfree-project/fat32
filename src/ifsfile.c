@@ -19,8 +19,8 @@ PRIVATE VOID ResetAllCurrents(POPENINFO pOI);
 
 PRIVATE ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset);
 PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
     ULONG ulLen,
     USHORT usIOFlag);
 
@@ -28,18 +28,18 @@ PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
 *
 ******************************************************************/
 int far pascal FS_OPENCREATE(
-    struct cdfsi far * pcdfsi,              /* pcdfsi      */
-    struct cdfsd far * pcdfsd,              /* pcdfsd      */
-    char far * pName,                          /* pName    */
-    unsigned short usCurDirEnd,             /* iCurDirEnd     */
-    struct sffsi far * psffsi,              /* psffsi      */
-    struct sffsd far * psffsd,              /* psffsd      */
-    unsigned long ulOpenMode,               /* fhandflag/openmode   */
-    unsigned short usOpenFlag,              /* openflag    */
-    unsigned short far * pAction,        /* pAction     */
-    unsigned short usAttr,                  /* attr        */
-    char far * pEABuf,                         /* pEABuf      */
-    unsigned short far * pfGenFlag       /* pfgenFlag      */
+    struct cdfsi far * pcdfsi,		/* pcdfsi		*/
+    struct cdfsd far * pcdfsd,	   /* pcdfsd      */
+    char far * pName,			/* pName		*/
+    unsigned short usCurDirEnd,		/* iCurDirEnd		*/
+    struct sffsi far * psffsi,		/* psffsi		*/
+    struct sffsd far * psffsd, 		/* psffsd		*/
+    unsigned long ulOpenMode,		/* fhandflag/openmode	*/
+    unsigned short usOpenFlag,		/* openflag		*/
+    unsigned short far * pAction,	/* pAction		*/
+    unsigned short usAttr,		/* attr			*/
+    char far * pEABuf,			/* pEABuf		*/
+    unsigned short far * pfGenFlag	/* pfgenFlag		*/
 )
 {
 PVOLINFO pVolInfo;
@@ -506,7 +506,7 @@ USHORT rc;
    /*
       Now release the SHOPENINFO if needed
    */
-
+   
    pSH->sOpenCount--;
    if (pSH->sOpenCount > 0)
       return TRUE;
@@ -559,10 +559,10 @@ PSHOPENINFO pSH = pOI->pSHInfo;
 *
 ******************************************************************/
 int far pascal FS_CLOSE(
-    unsigned short usType,                  /* close type  */
-    unsigned short IOFlag,                  /* IOflag   */
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd               /* psffsd   */
+    unsigned short usType,		/* close type	*/
+    unsigned short IOFlag,		/* IOflag	*/
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd		/* psffsd	*/
 )
 {
 POPENINFO pOpenInfo = GetOpenInfo(psffsd);
@@ -620,11 +620,11 @@ FS_CLOSEEXIT:
 *
 ******************************************************************/
 int far pascal FS_READ(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    char far * pData,                          /* pData */
-    unsigned short far * pLen,           /* pLen     */
-    unsigned short usIOFlag                 /* IOflag   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    char far * pData,			/* pData	*/
+    unsigned short far * pLen,	/* pLen		*/
+    unsigned short usIOFlag		/* IOflag	*/
 )
 {
 USHORT rc;
@@ -789,11 +789,11 @@ FS_READEXIT:
 *
 ******************************************************************/
 int far pascal FS_WRITE(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    char far * pData,                          /* pData */
-    unsigned short far * pLen,           /* pLen     */
-    unsigned short usIOFlag                 /* IOflag   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    char far * pData,			/* pData	*/
+    unsigned short far * pLen,	/* pLen		*/
+    unsigned short usIOFlag		/* IOflag	*/
 )
 {
 USHORT rc;
@@ -906,7 +906,7 @@ ULONG  ulOldSize;
       CritMessage("FAT32: FS_WRITE (INIT2) No next cluster available!");
       return 6;
       }
-
+      
    pbCluster = malloc(pVolInfo->usClusterSize);
    if (!pbCluster)
       {
@@ -1013,9 +1013,9 @@ ULONG ulCurCluster;
 *
 ******************************************************************/
 int far pascal FS_CANCELLOCKREQUEST(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    void far * pLockRang                       /* pLockRang   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    void far * pLockRang			/* pLockRang	*/
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)
@@ -1030,11 +1030,11 @@ int far pascal FS_CANCELLOCKREQUEST(
 *
 ******************************************************************/
 int far pascal FS_CHGFILEPTR(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    long lOffset,                           /* offset   */
-    unsigned short usType,                  /* type     */
-    unsigned short IOFlag                   /* IOflag   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    long lOffset,			/* offset	*/
+    unsigned short usType,		/* type		*/
+    unsigned short IOFlag		/* IOflag	*/
 )
 {
 PVOLINFO pVolInfo;
@@ -1063,7 +1063,7 @@ USHORT rc;
       case CFP_RELCUR  :
          lNewOffset = psffsi->sfi_position + lOffset;
          break;
-      case CFP_RELEND                    :
+      case CFP_RELEND	:
          lNewOffset = psffsi->sfi_size + lOffset;
          break;
       }
@@ -1091,10 +1091,10 @@ FS_CHGFILEPTREXIT:
 *
 ******************************************************************/
 int far pascal FS_COMMIT(
-    unsigned short usType,                  /* commit type */
-    unsigned short usIOFlag,                /* IOflag   */
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd               /* psffsd   */
+    unsigned short usType,		/* commit type	*/
+    unsigned short usIOFlag,		/* IOflag	*/
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd		/* psffsd	*/
 )
 {
 USHORT rc;
@@ -1186,12 +1186,12 @@ FS_COMMITEXIT:
 *
 ******************************************************************/
 int far pascal FS_FILELOCKS(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    void far * pUnlockRange,                   /* pUnLockRange */
-    void far * pLockRange,                     /* pLockRange  */
-    unsigned long ulTimeOut,                /* timeout  */
-    unsigned long ulFlags                /* flags */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    void far * pUnlockRange,			/* pUnLockRange */
+    void far * pLockRange,			/* pLockRange	*/
+    unsigned long ulTimeOut,		/* timeout	*/
+    unsigned long	ulFlags	/* flags	*/
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)
@@ -1203,10 +1203,10 @@ int far pascal FS_FILELOCKS(
 *
 ******************************************************************/
 int far pascal FS_NEWSIZE(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    unsigned long ulLen,                    /* len      */
-    unsigned short usIOFlag                 /* IOflag   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    unsigned long ulLen,		/* len		*/
+    unsigned short usIOFlag		/* IOflag	*/
 )
 {
 PVOLINFO pVolInfo;
@@ -1241,8 +1241,8 @@ USHORT rc;
 *
 ******************************************************************/
 USHORT NewSize(PVOLINFO pVolInfo,
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
     ULONG ulLen,
     USHORT usIOFlag)
 {
@@ -1352,13 +1352,13 @@ ULONG ulCluster, ulNextCluster;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal FS_FILEINFO(unsigned short usFlag,    /* flag     */
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    unsigned short usLevel,                 /* level */
-    char far * pData,                          /* pData */
-    unsigned short cbData,                  /* cbData   */
-    unsigned short IOFlag                   /* IOflag   */
+int far pascal FS_FILEINFO(unsigned short usFlag,		/* flag		*/
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    unsigned short usLevel,		/* level	*/
+    char far * pData,			/* pData	*/
+    unsigned short cbData,		/* cbData	*/
+    unsigned short IOFlag		/* IOflag	*/
 )
 {
 PVOLINFO pVolInfo;
@@ -1518,7 +1518,7 @@ PSZ  pszFile;
                rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pszFile, pEA);
             break;
             }
-		
+
          case 4:
             {
             PEAOP pEA = (PEAOP)pData;
@@ -1536,7 +1536,6 @@ PSZ  pszFile;
                Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
                return rc;
                }
-
             if (!f32Parms.fEAS)
                {
                memset(pFEA, 0, (USHORT)pFEA->cbList);
@@ -1547,7 +1546,6 @@ PSZ  pszFile;
                rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pszFile, pEA);
             break;
             }
-
          default :
             rc = ERROR_INVALID_LEVEL;
             break;
@@ -1666,12 +1664,12 @@ FS_FILEINFOEXIT:
 *
 ******************************************************************/
 int far pascal FS_FILEIO(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    char far * cbCmdList,                      /* cbCmdList   */
-    unsigned short pCmdLen,                 /* pCmdLen  */
-    unsigned short far * poError,        /* poError  */
-    unsigned short IOFlag                   /* IOflag   */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    char far * cbCmdList,			/* cbCmdList	*/
+    unsigned short pCmdLen,		/* pCmdLen	*/
+    unsigned short far * poError,	/* poError	*/
+    unsigned short IOFlag		/* IOflag	*/
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)
@@ -1684,12 +1682,12 @@ int far pascal FS_FILEIO(
 *
 ******************************************************************/
 int far pascal FS_NMPIPE(
-    struct sffsi far * psffsi,              /* psffsi   */
-    struct sffsd far * psffsd,              /* psffsd   */
-    unsigned short usOpType,                /* OpType   */
-    union npoper far * pOpRec,              /* pOpRec   */
-    char far * pData,                          /* pData */
-    char far * pName                        /* pName */
+    struct sffsi far * psffsi,		/* psffsi	*/
+    struct sffsd far * psffsd,		/* psffsd	*/
+    unsigned short usOpType,		/* OpType	*/
+    union npoper far * pOpRec,		/* pOpRec	*/
+    char far * pData,			/* pData	*/
+    char far *	pName		/* pName	*/
 )
 {
    if (f32Parms.fMessageActive & LOG_FS)

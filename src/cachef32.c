@@ -959,7 +959,7 @@ USHORT usCode;
    cc.codepage = rgCP[ 0 ];
 
    DosQueryDBCSEnv( sizeof( uchDBCSLead ), &cc, uchDBCSLead );
-   for( iIndex = 0; uchDBCSLead[ iIndex ] != 0 && uchDBCSLead[ iIndex + 1 ] != 0; iIndex += 2 )
+   for( iIndex = 0; uchDBCSLead[ iIndex ] != 0 || uchDBCSLead[ iIndex + 1 ] != 0; iIndex += 2 )
       {
          for( first = uchDBCSLead[ iIndex ]; first <= uchDBCSLead[ iIndex + 1 ]; first++ )
             for( second = 0; second < 0x100; second++ )

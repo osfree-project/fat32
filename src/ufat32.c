@@ -112,6 +112,7 @@ PRIVATE USHORT ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
 PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE PSZ    MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
+PRIVATE USHORT fGetVolLabel(PCDINFO pCD, PSZ pszVolLabel);
 PRIVATE BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax);
 PRIVATE BOOL   ClusterInUse(PCDINFO pCD, ULONG ulCluster);
 PRIVATE PSZ    GetOS2Error(USHORT rc);
@@ -136,7 +137,7 @@ BYTE   bSector[512];
 ULONG  ulDeadFace = 0xDEADFACE;
 USHORT usParmSize;
 USHORT usDataSize;
-   
+
    rgEnv = rgEnv;
 
    DosError(1); /* Enable hard errors */
@@ -336,7 +337,7 @@ USHORT usDataSize;
    rsd.nSectors = nSectors;
 
    usDataSize = nSectors * SECTOR_SIZE;
-   
+
    return DosDevIOCtl2(
       (PVOID)pbSector, usDataSize,
       (PVOID)&rsd, sizeof rsd,
@@ -350,24 +351,6 @@ ULONG  ulBytes;
 USHORT usBlocks;
 BYTE   szString[12];
 PSZ    p;
-
-   memset(szString, 0, sizeof szString);
-   strncpy(szString, pCD->BootSect.VolumeLabel, 11);
-   p = szString + strlen(szString);
-   while (p > szString && *(p-1) == ' ')
-      p--;
-   *p = 0;
-   iShowMessage(pCD, 1375, 1, TYPE_STRING, szString);
-
-   sprintf(szString, "%4.4X-%4.4X",
-      HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
-   iShowMessage(pCD, 1243, 1, TYPE_STRING, szString);
-   
-   if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
-      {
-      printf("The media descriptor is incorrect\n");
-      pCD->ulErrorCount++;
-      }
 
    /*
       Some preparations
@@ -396,6 +379,28 @@ PSZ    p;
       return ERROR_NOT_ENOUGH_MEMORY;
       }
 
+   memset(szString, 0, sizeof szString);
+#if 0
+   strncpy(szString, pCD->BootSect.VolumeLabel, 11);
+#else
+   fGetVolLabel( pCD, szString );
+#endif
+   p = szString + strlen(szString);
+   while (p > szString && *(p-1) == ' ')
+      p--;
+   *p = 0;
+   if( p > szString )
+      iShowMessage(pCD, 1375, 1, TYPE_STRING, szString);
+
+   sprintf(szString, "%4.4X-%4.4X",
+      HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
+   iShowMessage(pCD, 1243, 1, TYPE_STRING, szString);
+
+   if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
+      {
+      printf("The media descriptor is incorrect\n");
+      pCD->ulErrorCount++;
+      }
 
    rc = CheckFats(pCD);
    if (rc)
@@ -448,12 +453,12 @@ PSZ    p;
       TYPE_LONG, pCD->ulTotalDirs);
    iShowMessage(pCD, 1819, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->usClusterSize);
-   iShowMessage(pCD, 1365, 2, 
+   iShowMessage(pCD, 1365, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->usClusterSize,
       TYPE_LONG, pCD->ulUserFiles);
 
    if (pCD->ulRecoveredClusters)
-      iShowMessage(pCD, 1365, 2, 
+      iShowMessage(pCD, 1365, 2,
          TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->usClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
 
@@ -599,7 +604,7 @@ USHORT fRetco;
          pulCluster++;
          ulCluster++;
          }
-      
+
 
       }
 
@@ -618,7 +623,7 @@ USHORT fRetco;
       printf("Ok.   \n");
       pCD->fFatOk = TRUE;
       }
-   
+
    free(pSector);
    return fRetco;
 }
@@ -847,7 +852,7 @@ USHORT rc;
             bCheck = pDir->bReserved;
             fGetLongName(pDir, szLongName, sizeof szLongName);
             }
-         else 
+         else
             {
             bCheckSum = 0;
             for (iIndex = 0; iIndex < 11; iIndex++)
@@ -900,7 +905,7 @@ USHORT rc;
             if (f32Parms.fEAS && pDir->fEAS)
                {
                FILESTATUS fStat;
-               
+
                strcpy(Mark.szFileName, pbPath);
                strcat(Mark.szFileName, EA_EXTENTION);
                rc = DosQPathInfo(Mark.szFileName, FIL_STANDARD, (PBYTE)&fStat, sizeof fStat, 0L);
@@ -1004,7 +1009,7 @@ USHORT rc;
                      }
                   }
                else if (pDir->bAttr & FILE_HIDDEN)
-                  {                 
+                  {
                   pCD->ulHiddenClusters += ulClustersUsed;
                   pCD->ulHiddenFiles++;
                   }
@@ -1018,7 +1023,11 @@ USHORT rc;
                   if (!pCD->fFix)
                      {
                      printf("File allocation error detected for %s\\%s\n",
+#if 0
                         pszPath, MakeName(pDir, szShortName, sizeof szShortName));
+#else
+                        pszPath, szLongName);
+#endif
                      pCD->ulErrorCount++;
                      }
                   else
@@ -1032,10 +1041,10 @@ USHORT rc;
                         strcat(fs.szFileName, "\\");
                      strcat(fs.szFileName, MakeName(pDir, szShortName, sizeof szShortName));
                      fs.ulFileSize = ulClustersUsed * pCD->usClusterSize;
-
                      rc = DosDevIOCtl2(NULL, 0,
                         (PVOID)&fs, sizeof fs,
                         FAT32_SETFILESIZE, IOCTL_FAT32, pCD->hDisk);
+                     strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
                      if (rc)
                         {
                         printf("File allocation error detected for %s.\n",
@@ -1103,16 +1112,16 @@ USHORT rc;
                   memset(szLongName, 0, sizeof szLongName);
                   }
 
-               if (!memicmp(pDir->bFileName,      ".          ", 11)) 
+               if (!memicmp(pDir->bFileName,      ".          ", 11))
                   {
                   if (ulCluster != ulDirCluster)
-                     printf(". entry in %s is incorrect!\n", pszPath); 
+                     printf(". entry in %s is incorrect!\n", pszPath);
                   }
                else if (!memicmp(pDir->bFileName, "..         ", 11))
                   {
                   if (ulCluster != ulParentDirCluster)
                      printf(".. entry in %s is incorrect! (%lX %lX)\n",
-                        pszPath, ulCluster, ulParentDirCluster); 
+                        pszPath, ulCluster, ulParentDirCluster);
                   }
                else
                   {
@@ -1139,7 +1148,7 @@ USHORT rc;
             memset(szLongName, 0, sizeof szLongName);
             }
          }
-      pDir++; 
+      pDir++;
       }
 
    free(pbCluster);
@@ -1264,9 +1273,55 @@ BYTE szExtention[4];
    return pszName;
 }
 
+USHORT fGetVolLabel( PCDINFO pCD, PSZ pszVolLabel )
+{
+PDIRENTRY pDirStart, pDir, pDirEnd;
+ULONG ulCluster;
+DIRENTRY DirEntry;
+BOOL     fFound;
+
+   pDir = NULL;
+
+   pDirStart = malloc(pCD->usClusterSize);
+   if (!pDirStart)
+      return ERROR_NOT_ENOUGH_MEMORY;
+
+   fFound = FALSE;
+   ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
+   while (!fFound && ulCluster != FAT_EOF)
+      {
+      ReadCluster(pCD, ulCluster, (PBYTE)pDirStart);
+      pDir = pDirStart;
+      pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->usClusterSize);
+      while (pDir < pDirEnd)
+         {
+         if ((pDir->bAttr & 0x0F) == FILE_VOLID && pDir->bFileName[0] != DELETED_ENTRY)
+            {
+            fFound = TRUE;
+            memcpy(&DirEntry, pDir, sizeof (DIRENTRY));
+            break;
+            }
+         pDir++;
+         }
+      if (!fFound)
+         {
+         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         if (!ulCluster)
+            ulCluster = FAT_EOF;
+         }
+      }
+   free(pDirStart);
+   if (!fFound)
+      memset(pszVolLabel, 0, 11);
+   else
+      memcpy(pszVolLabel, DirEntry.bFileName, 11);
+
+   return 0;
+}
+
 BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax)
 {
-static BYTE szLongName[15] = "";
+static BYTE szLongName[30] = "";
 static USHORT uniName[15] = {0};
 USHORT wNameSize;
 USHORT usIndex;
@@ -1294,9 +1349,6 @@ PLNENTRY pLN = (PLNENTRY)pDir;
          uniName[wNameSize++] = pLN->usChar3[usIndex];
       }
 
-   if (strlen(pszName) + wNameSize > wMax)
-      return FALSE;
-
    usDataSize = sizeof szLongName;
    usParmSize = sizeof uniName;
    DosFSCtl(szLongName, usDataSize, &usDataSize,
@@ -1306,6 +1358,11 @@ PLNENTRY pLN = (PLNENTRY)pDir;
          -1,
          FSCTL_FSDNAME,
          0L);
+
+   wNameSize = strlen( szLongName );
+
+   if (strlen(pszName) + wNameSize > wMax)
+      return FALSE;
 
    memmove(pszName + wNameSize, pszName, strlen(pszName) + 1);
    memcpy(pszName, szLongName, wNameSize);
@@ -1319,7 +1376,7 @@ ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad)
 PULONG pulCluster;
 ULONG  ulSector;
 ULONG  ulRet;
-   
+
    ulSector = ulCluster / 128;
    if (!ReadFATSector(pCD, ulSector))
       return FAT_EOF;
@@ -1667,7 +1724,7 @@ BYTE   szRecovered[CCHMAXPATH];
 USHORT rc;
 
    memset(szRecovered, 0, sizeof szRecovered);
-   rc = DosDevIOCtl2(szRecovered, sizeof szRecovered, 
+   rc = DosDevIOCtl2(szRecovered, sizeof szRecovered,
       (PVOID)&ulCluster, 4,
       FAT32_RECOVERCHAIN, IOCTL_FAT32, pCD->hDisk);
    if (rc)

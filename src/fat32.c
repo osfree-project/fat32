@@ -1388,8 +1388,8 @@ ULONG hDEV;
                   goto FS_IOCTLEXIT;
                   }
                pVolInfo->usRASectors = *(PUSHORT)pParm;
-               if (pVolInfo->usRASectors > (pVolInfo->usClusterSize * 4) / 512)
-                  pVolInfo->usRASectors = (pVolInfo->usClusterSize * 4) / 512;
+               if (pVolInfo->usRASectors > (pVolInfo->usClusterSize / 512 ) * 4)
+                  pVolInfo->usRASectors = (pVolInfo->usClusterSize / 512 ) * 4;
                *(PUSHORT)pParm = pVolInfo->usRASectors;
                Message("usRASectors changed to %u", pVolInfo->usRASectors);
                rc = 0;
@@ -1882,19 +1882,20 @@ POPENINFO pOpenInfo;
          goto FS_MOVEEXIT;
       }
 
+   if (f32Parms.fEAS)
+      {
+      rc = usMoveEAS(pVolInfo, ulSrcDirCluster, pszSrcFile,
+                               ulDstDirCluster, pszDstFile);
+      }
+   if( rc )
+      goto FS_MOVEEXIT;
+
    if (ulSrcDirCluster == ulDstDirCluster)
       {
       DIRENTRY DirOld;
       memcpy(&DirOld, &DirEntry, sizeof DirEntry);
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster,
          MODIFY_DIR_RENAME, &DirOld, &DirEntry, pszDstFile, 0);
-      if (rc)
-         goto FS_MOVEEXIT;
-      if (f32Parms.fEAS)
-         {
-         rc = usMoveEAS(pVolInfo, ulSrcDirCluster, pszSrcFile,
-                                  ulDstDirCluster, pszDstFile);
-         }
       goto FS_MOVEEXIT;
       }
 
@@ -1942,15 +1943,6 @@ POPENINFO pOpenInfo;
          goto FS_MOVEEXIT;
          }
       }
-
-
-   if (f32Parms.fEAS)
-      {
-      rc = usMoveEAS(pVolInfo, ulSrcDirCluster, pszSrcFile,
-                               ulDstDirCluster, pszDstFile);
-      }
-
-
 
 FS_MOVEEXIT:
 
@@ -2970,7 +2962,7 @@ DIRENTRY DirEntry;
 PSZ    p;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("FindDirCluster");
+      Message("FindDirCluster for %s, CurDirEnd %u, AttrWanted %u", pDir, usCurDirEnd, usAttrWanted );
 
    if (pcdfsi &&
       (pcdfsi->cdi_flags & CDI_ISVALID) &&

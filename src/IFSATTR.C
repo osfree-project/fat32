@@ -16,12 +16,12 @@
 *
 ******************************************************************/
 int far pascal FS_FILEATTRIBUTE(
-    unsigned short usFlag,                  /* flag     */
-    struct cdfsi far * pcdfsi,              /* pcdfsi   */
-    struct cdfsd far * pcdfsd,              /* pcdfsd   */
-    char far * pName,                          /* pName */
-    unsigned short usCurDirEnd,             /* iCurDirEnd  */
-    unsigned short far * pAttr           /* pAttr */
+    unsigned short usFlag,		/* flag		*/
+    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
+    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
+    char far * pName,			/* pName	*/
+    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
+    unsigned short far * pAttr	/* pAttr	*/
 )
 {
 PVOLINFO pVolInfo;
@@ -118,14 +118,14 @@ FS_FILEATTRIBUTEEXIT:
 *
 ******************************************************************/
 int far pascal FS_PATHINFO(
-    unsigned short usFlag,                  /* flag     */
-    struct cdfsi far * pcdfsi,              /* pcdfsi   */
-    struct cdfsd far * pcdfsd,              /* pcdfsd   */
-    char far * pName,                          /* pName */
-    unsigned short usCurDirEnd,             /* iCurDirEnd  */
-    unsigned short usLevel,                 /* level */
-    char far * pData,                          /* pData */
-    unsigned short cbData                   /* cbData   */
+    unsigned short usFlag,		/* flag		*/
+    struct cdfsi far * pcdfsi,		/* pcdfsi	*/
+    struct cdfsd far * pcdfsd,		/* pcdfsd	*/
+    char far * pName,			/* pName	*/
+    unsigned short usCurDirEnd,		/* iCurDirEnd	*/
+    unsigned short usLevel,		/* level	*/
+    char far * pData,			/* pData	*/
+    unsigned short cbData		/* cbData	*/
 )
 {
 PVOLINFO pVolInfo;

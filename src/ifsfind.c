@@ -199,7 +199,7 @@ PROCINFO ProcInfo;
    strcpy(pFindInfo->pInfo->szSearch, pSearch);
    FSH_UPPERCASE(pFindInfo->pInfo->szSearch, sizeof pFindInfo->pInfo->szSearch, pFindInfo->pInfo->szSearch);
 
-   pFindInfo->ulMaxEntry   = (pVolInfo->usClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+   pFindInfo->ulMaxEntry   = ((ULONG)pVolInfo->usClusterSize / sizeof (DIRENTRY)) * usNumClusters;
    if (!GetCluster(pVolInfo, pFindInfo, 0))
       {
       rc = ERROR_SYS_INTERNAL;
@@ -531,7 +531,7 @@ USHORT usClusterIndex;
                      rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                   }
                if (!rc && f32Parms.fMessageActive & LOG_FIND)
-                  Message("%lu : %s", pFindInfo->ulCurEntry, szLongName);
+                  Message("%lu : %s, %s", pFindInfo->ulCurEntry, szLongName, szShortName );
 
                if (!rc && usLevel == FIL_STANDARD)
                   {
@@ -638,7 +638,7 @@ USHORT usClusterIndex;
                      pFindInfo->pInfo->EAOP.fpFEAList->cbList =
                         *pcbData - (strlen(szLongName) + 2);
 
-                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);			
+                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);
 
                      if (rc && (rc != ERROR_EAS_DIDNT_FIT))
                         return rc;
