@@ -7,8 +7,8 @@
 msgbind=msgbind
 
 CC = icc
-CFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /C $(OPTS)
-MFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 $(OPTS)
+CFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(OPTS)
+MFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt $(OPTS)
 LINKOPT = /NOI $(CV) /PM:VIO /STACK:10000 /ALIGN:4 /MAP /BASE:0x10000
 WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 
