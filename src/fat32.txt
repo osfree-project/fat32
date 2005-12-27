@@ -1275,3 +1275,32 @@ Version 0.99:
 
 - minor performance improvement.
 
+Version 0.9.10:
+
+- Changed version numbering style to major.minor.patch level style.
+
+- Removed beta symbol.
+
+- Filename including NLS characters not converted to unicode by OS/2, cause
+  'lost cluster' problem. fixed.
+
+- Added IOCTL function to write in sector mode.
+
+Version 0.9.11(aka 2005 X-mas version):
+
+- Fixed 'Free Space' problem.
+
+- Fixed non-recognization problem of USB Removable Drive change.
+
+- Fixed the problem that CACHEF32 cannot call 'CHKDSK.COM' if a current drive
+  is not a boot drive.
+
+- Fixed some minor warnings such as 'non-used variable' on compilation time.
+
+*** Known problems ***
+
+- Sometimes the pending flush state of a few sectors is not cleared.
+  You can see this by report of 'CACHEF32'. Even though any dirty sector is not
+  there, pending sector exists. Why ? ^^ However, this has no effect on
+  functionality of IFS.
+
