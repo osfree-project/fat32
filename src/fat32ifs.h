@@ -113,6 +113,7 @@ ULONG    ulSector;
 unsigned bDrive:8;
 unsigned fLocked:1;
 unsigned fFlushPending:1;
+unsigned fDiscard:1;
 ULONG    ulAccessTime;
 ULONG    ulCreateTime;
 } CACHEBASE, * PCACHEBASE;
