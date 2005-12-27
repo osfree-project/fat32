@@ -166,10 +166,10 @@ P_VolChars   pVolChars;
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
-         if (!pVolInfo->hDupVBP &&
+         if (!pVolInfo->hDupVBP /*&&
             (pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
              !pVolInfo->fDiskClean ||
-             pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF))
+             pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF)*/)
             GetFreeSpace(pVolInfo);
 
          pDevCaps  = pvpfsi->vpi_pDCS;
@@ -201,11 +201,15 @@ P_VolChars   pVolChars;
          rc = 0;
          break;
 
-     case MOUNT_VOL_REMOVED:
-     case MOUNT_RELEASE:
+      case MOUNT_VOL_REMOVED:
+         rc = 0;
+         break;
+
+      case MOUNT_RELEASE:
          pVolInfo = GetVolInfo(hVBP);
-         if (( usFlag == MOUNT_RELEASE ) && !pVolInfo->hDupVBP)
+         if (!pVolInfo->hDupVBP)
          {
+            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
             UpdateFSInfo(pVolInfo);
             MarkDiskStatus(pVolInfo, TRUE);
          }
