@@ -72,7 +72,7 @@ void * cdecl malloc(size_t tSize)
 USHORT usSel;
 void * pRet;
 
-//   CheckHeap();
+/*   CheckHeap();*/
 
    GetMemAccess();
 
@@ -188,7 +188,7 @@ USHORT rc;
    if (f32Parms.fMessageActive & LOG_MEM)
       Message("free %lX", pntr);
 
-//   CheckHeap();
+/*   CheckHeap();*/
 
    if (OFFSETOF(pntr) == 0)
       {

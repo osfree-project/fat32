@@ -133,7 +133,9 @@ APIRET rc;
      (PVOID)&fActive, ulParmSize, &ulParmSize,
       FAT32_SETMESSAGE, "FAT32", -1, FSCTL_FSDNAME);
 
-   printf("\nprogram aborted!\n");
+   printf("\nprogram aborted! rc = %ld\n", rc);
    exit(1);
+
+   signal = signal;
 }
 

@@ -415,6 +415,8 @@ USHORT usDataSize;
 
    DosExit(1, rc);
    return rc;
+
+   rgEnv = rgEnv;
 }
 
 BOOL OutputToFile(VOID)
@@ -1024,7 +1026,7 @@ USHORT rc;
                else
                   printf("%10lu ", pDir->ulFileSize);
 
-//               printf("%8.8lX ", MAKEP(pDir->wClusterHigh, pDir->wCluster));
+/*               printf("%8.8lX ", MAKEP(pDir->wClusterHigh, pDir->wCluster));*/
 
                printf("%s ", szLongName);
                }
@@ -1601,7 +1603,6 @@ SETCLUSTERDATA SetCluster;
 USHORT rc;
 PULONG pulCluster;
 ULONG  ulSector;
-ULONG  ulRet;
 
 
    SetCluster.ulCluster = ulCluster;
@@ -1644,18 +1645,30 @@ int pascal FORMAT(INT iArgc, PSZ rgArgv[], PSZ rgEnv[])
 {
    printf("\nThis function is not supported\n");
    return ERROR_NOT_SUPPORTED;
+
+   iArgc = iArgc;
+   rgArgv = rgArgv;
+   rgEnv = rgEnv;
 }
 
 int pascal RECOVER(INT iArgc, PSZ rgArgv[], PSZ rgEnv[])
 {
    printf("\nThis function is not supported\n");
    return ERROR_NOT_SUPPORTED;
+
+   iArgc = iArgc;
+   rgArgv = rgArgv;
+   rgEnv = rgEnv;
 }
 
 int pascal SYS(INT iArgc, PSZ rgArgv[], PSZ rgEnv[])
 {
    printf("\nThis function is not supported\n");
    return ERROR_NOT_SUPPORTED;
+
+   iArgc = iArgc;
+   rgArgv = rgArgv;
+   rgEnv = rgEnv;
 }
 
 PSZ GetOS2Error(USHORT rc)
@@ -1841,8 +1854,10 @@ PSZ    pszMess;
    if (pCD->fPM)
       {
       strcat(szOut, "\n");
-//      printf(szOut);
-//      return usNumFields;
+/*
+      printf(szOut);
+      return usNumFields;
+*/
       }
 
    rc = DosInsMessage(rgPSZ,

@@ -399,7 +399,7 @@ USHORT usEntriesWanted;
    rc = 0;
    for (usIndex = 0; usIndex < usEntriesWanted; usIndex++)
       {
-      PULONG pulOrdinal;
+      PULONG pulOrdinal = NULL;
 
       if (usFlags == FF_GETPOS)
          {
@@ -773,6 +773,8 @@ int far pascal FS_FINDNOTIFYCLOSE( unsigned short usHandle)
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDNOTIFYCLOSE - NOT SUPPORTED");
    return ERROR_NOT_SUPPORTED;
+
+   usHandle = usHandle;
 }
 
 /******************************************************************
@@ -796,6 +798,18 @@ int far pascal FS_FINDNOTIFYFIRST(
       Message("FS_FINDNOTIFYFIRST - NOT SUPPORTED");
 
    return ERROR_NOT_SUPPORTED;
+
+   pcdfsi = pcdfsi;
+   pcdfsd = pcdfsd;
+   pName = pName;
+   usCurDirEnd = usCurDirEnd;
+   usAttr = usAttr;
+   pHandle = pHandle;
+   pData = pData;
+   cbData = cbData;
+   pcMatch = pcMatch;
+   usLevel = usLevel;
+   ulTimeOut =ulTimeOut;
 }
 
 /******************************************************************
@@ -814,6 +828,13 @@ int far pascal FS_FINDNOTIFYNEXT(
       Message("FS_FINDNOTIFYNEXT - NOT SUPPORTED");
 
    return ERROR_NOT_SUPPORTED;
+
+   usHandle = usHandle;
+   pData = pData;
+   cbData = cbData;
+   pcMatch = pcMatch;
+   usInfoLevel = usInfoLevel;
+   ulTimeOut = ulTimeOut;
 }
 
 BOOL GetCluster(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usClusterIndex)

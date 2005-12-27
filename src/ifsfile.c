@@ -1148,9 +1148,11 @@ int far pascal FS_CANCELLOCKREQUEST(
 {
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CANCELLOCKREQUEST - NOT SUPPORTED");
+   return ERROR_NOT_SUPPORTED;
+
    psffsi = psffsi;
    psffsd = psffsd;
-   return ERROR_NOT_SUPPORTED;
+   pLockRang = pLockRang;
 }
 
 
@@ -1167,7 +1169,7 @@ int far pascal FS_CHGFILEPTR(
 {
 PVOLINFO pVolInfo;
 POPENINFO pOpenInfo = GetOpenInfo(psffsd);
-LONG  lNewOffset;
+LONG  lNewOffset = 0;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FS)
@@ -1212,6 +1214,8 @@ FS_CHGFILEPTREXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CHGFILEPTR returned %u", rc);
    return rc;
+
+   IOFlag = IOFlag;
 }
 
 
@@ -1325,6 +1329,13 @@ int far pascal FS_FILELOCKS(
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FILELOCKS");
    return ERROR_NOT_SUPPORTED;
+
+   psffsi = psffsi;
+   psffsd = psffsd;
+   pUnlockRange = pUnlockRange;
+   pLockRange = pLockRange;
+   ulTimeOut = ulTimeOut;
+   ulFlags = ulFlags;
 }
 
 /******************************************************************
@@ -1803,6 +1814,13 @@ int far pascal FS_FILEIO(
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FILEIO - NOT SUPPORTED");
    return ERROR_NOT_SUPPORTED;
+
+   psffsi = psffsi;
+   psffsd = psffsd;
+   cbCmdList = cbCmdList;
+   pCmdLen = pCmdLen;
+   poError = poError;
+   IOFlag = IOFlag;
 }
 
 
@@ -1821,6 +1839,13 @@ int far pascal FS_NMPIPE(
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_NMPIPE - NOT SUPPORTED");
    return ERROR_NOT_SUPPORTED;
+
+   psffsi = psffsi;
+   psffsd = psffsd;
+   usOpType = usOpType;
+   pOpRec = pOpRec;
+   pData = pData;
+   pName = pName;
 }
 
 POPENINFO GetOpenInfo(struct sffsd far * psffsd)
