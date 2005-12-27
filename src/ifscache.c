@@ -313,6 +313,7 @@ USHORT usCBIndex;
    */
    if (fFromCache)
       return 0;
+
 #if 0
    if (f32Parms.fMessageActive & LOG_CACHE)
       {
@@ -456,7 +457,7 @@ USHORT usCBIndex;
       usWaitCount++;
       rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
       usWaitCount--;
-      if (rc && rc != ERROR_WRITE_PROTECT)
+      if (rc && rc != ERROR_WRITE_PROTECT && rc != ERROR_GEN_FAILURE )
          FatalMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
             ulSector, nSectors, rc);
       fDirty = FALSE;
@@ -650,7 +651,7 @@ USHORT usCount;
         _disable();
         while( f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold )
         {
-             DevHelp_ProcBlock((ULONG)&f32Parms.usDirtySectors, 1000L, 0);
+             DevHelp_ProcBlock((ULONG)&f32Parms.usDirtySectors, 1000L, 1);
             _disable();
         }
         _enable();
@@ -817,14 +818,12 @@ USHORT     usCount;
          pBase->ulCreateTime = GetCurTime();
          }
       else if (rgfDirty[usCBIndex] && !fDirty)
-#ifdef WAIT_THRESHOLD
          {
-#endif
          f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
          DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
-         }
 #endif
+         }
       rgfDirty[usCBIndex] = fDirty;
       pCache = GetAddress(usCBIndex);
       memcpy(pCache->bSector, pbSector, SECTOR_SIZE);
@@ -912,7 +911,15 @@ PCACHE   pCache;
 
    pBase = pCacheBase + usCBIndex;
    if (!rgfDirty[usCBIndex])
+   {
+      if( pBase->fDiscard )
+      {
+         pBase->bDrive = 0xFF;
+         pBase->fDiscard = OFF;
+      }
+
       return 0;
+   }
 
    if (!pVolInfo)
       pVolInfo = pGlobVolInfo;
@@ -947,6 +954,12 @@ PCACHE   pCache;
 
          if (!rc || rc == ERROR_WRITE_PROTECT)
             {
+            if( pBase->fDiscard )
+            {
+               pBase->bDrive = 0xFF;
+               pBase->fDiscard = OFF;
+            }
+
             rgfDirty[usCBIndex] = FALSE;
             f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
@@ -984,7 +997,7 @@ USHORT rc;
       rc = WAIT_TIMED_OUT;
       while (!f32Parms.fInShutDown && !pOptions->fTerminate &&
          rc == WAIT_TIMED_OUT)
-//         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold
+/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold */
          {
          rc = DevHelp_ProcBlock((ULONG)DoEmergencyFlush, 5000L, 1);
          _disable();
@@ -1017,7 +1030,7 @@ USHORT rc;
 
    while (pVolInfo)
       {
-      rc = usFlushVolume(pVolInfo, FLUSH_RETAIN, TRUE, PRIO_URGENT);
+      rc = usFlushVolume(pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT);
       pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
       }
    return 0;
@@ -1039,7 +1052,7 @@ LONG lWait;
       {
       DevHelp_ProcBlock((ULONG)DoLW, lWait, 1);
       Yield();
-      if (!(f32Parms.usDirtySectors - f32Parms.usPendingFlush) || usWaitCount)
+      if ((f32Parms.usDirtySectors == f32Parms.usPendingFlush) || usWaitCount)
          {
          lWait = f32Parms.ulDiskIdle;
          _disable();
@@ -1089,6 +1102,10 @@ LONG lWait;
    Message("DoLW Stopped, Lazy writing also");
 }
 
+#if 0
+#define WAIT_PENDINGFLUSH
+#endif
+
 /******************************************************************
 *
 ******************************************************************/
@@ -1101,9 +1118,31 @@ USHORT usCount;
 ULONG  ulCurTime = GetCurTime();
 PRQLIST pRQ;
 
-   usFlag = usFlag;
+   if (!f32Parms.usCacheUsed )
+      return 0;
 
-   if (!f32Parms.usCacheUsed || !(f32Parms.usDirtySectors - f32Parms.usPendingFlush))
+   if( usFlag == FLUSH_DISCARD )
+   {
+      /* Wait to flush pending dirty sectors completely */
+#ifndef WAIT_PENDINGFLUSH
+      _disable();
+      while ( usRQInUse )
+      {
+         DevHelp_ProcBlock((ULONG)GetRequestList, 1000L, 1);
+         _disable();
+      }
+      _enable();
+#else
+      _disable();
+      while( f32Parms.usPendingFlush )
+      {
+         DevHelp_ProcBlock((ULONG)&f32Parms.usPendingFlush, 1000L, 1);
+         _disable();
+      }
+      _enable();
+#endif
+   }
+   else if( f32Parms.usDirtySectors == f32Parms.usPendingFlush )
       return 0;
 
    usCount = 0;
@@ -1120,25 +1159,37 @@ PRQLIST pRQ;
          pBase2 = pCacheBase2 + usCBIndex;
          pBase  = pCacheBase + usCBIndex;
 
-         if (rgfDirty[usCBIndex] &&
-             pBase->bDrive == pVolInfo->bDrive &&
+         if (pBase->bDrive == pVolInfo->bDrive &&
              (ulCurTime - pBase->ulCreateTime >= f32Parms.ulMaxAge ||
               ulCurTime - pBase->ulAccessTime >= f32Parms.ulBufferIdle))
             {
-            if (!pBase->fLocked && !pBase->fFlushPending)
+            if( rgfDirty[ usCBIndex ] )
                {
-               if (!pRQ)
-                  pRQ = GetRequestList(pVolInfo, TRUE);
-
-               LockBuffer(pBase);
-               if (!pRQ || !fAddToRLH(pRQ, usCBIndex, bPriority))
+               if (!pBase->fLocked && !pBase->fFlushPending)
                   {
-                  WriteCacheSector(pVolInfo, usCBIndex, FALSE);
-                  UnlockBuffer(pBase);
+                  if (!pRQ)
+                     pRQ = GetRequestList(pVolInfo, TRUE);
+
+                  LockBuffer(pBase);
+                  if( usFlag == FLUSH_DISCARD )
+                     pBase->fDiscard = SET;
+                  if (!pRQ || !fAddToRLH(pRQ, usCBIndex, bPriority))
+                     {
+                     WriteCacheSector(pVolInfo, usCBIndex, FALSE);
+                     UnlockBuffer(pBase);
+                     }
+                  usCount++;
                   }
-               usCount++;
+               }
+            else if( usFlag == FLUSH_DISCARD )
+               {
+                  LockBuffer( pBase );
+                  pBase->bDrive = 0xFF;
+                  pBase->fDiscard = OFF;
+                  UnlockBuffer( pBase );
                }
             }
+
          usCBIndex = pBase2->usNewer;
          }
       if (f32Parms.fMessageActive & LOG_CACHE && usCount > 0)
@@ -1154,25 +1205,37 @@ PRQLIST pRQ;
 
    pRQ = GetRequestList(pVolInfo, TRUE);
    usCBIndex = 0;
-   for (usCBIndex = 0; f32Parms.usDirtySectors &&
+   for (usCBIndex = 0; ( f32Parms.usDirtySectors || usFlag == FLUSH_DISCARD ) &&
          usCBIndex < f32Parms.usCacheUsed; usCBIndex++)
       {
       pBase = pCacheBase + usCBIndex;
-      if (rgfDirty[usCBIndex] && pVolInfo->bDrive == (BYTE)pBase->bDrive)
+      if (pVolInfo->bDrive == (BYTE)pBase->bDrive)
          {
-         if (pRQ && pRQ->rlh.Count >= MAXRQENTRIES)
+         if( rgfDirty[usCBIndex] )
             {
-            vCallStrategy(pVolInfo, pRQ);
-            pRQ = GetRequestList(pVolInfo, TRUE);
-            }
+            if (pRQ && pRQ->rlh.Count >= MAXRQENTRIES)
+               {
+               vCallStrategy(pVolInfo, pRQ);
+               pRQ = GetRequestList(pVolInfo, TRUE);
+               }
 
-         LockBuffer(pBase);
-         if (!pRQ || !fAddToRLH(pRQ, usCBIndex, PRIO_URGENT))
-            {
-            WriteCacheSector(pVolInfo, usCBIndex, FALSE);
-            UnlockBuffer(pBase);
+            LockBuffer(pBase);
+            if( usFlag == FLUSH_DISCARD )
+               pBase->fDiscard = SET;
+            if (!pRQ || !fAddToRLH(pRQ, usCBIndex, PRIO_URGENT))
+               {
+               WriteCacheSector(pVolInfo, usCBIndex, FALSE);
+               UnlockBuffer(pBase);
+               }
+            usCount++;
             }
-         usCount++;
+         else if( usFlag == FLUSH_DISCARD )
+            {
+               LockBuffer( pBase );
+               pBase->bDrive = 0xFF;
+               pBase->fDiscard = OFF;
+               UnlockBuffer( pBase );
+            }
          }
       }
    vCallStrategy(pVolInfo, pRQ);
@@ -1194,7 +1257,7 @@ USHORT usCount;
 PVOLINFO pVolInfo;
 PRQLIST pRQ;
 
-   if (!f32Parms.usCacheUsed || !(f32Parms.usDirtySectors - f32Parms.usPendingFlush))
+   if (!f32Parms.usCacheUsed || (f32Parms.usDirtySectors == f32Parms.usPendingFlush))
       return 0;
 
    /*
@@ -1419,8 +1482,10 @@ PCACHE pCache;
    pCache = GetAddress(usCBIndex);
    memcpy(pTar, pCache->bSector, SECTOR_SIZE);
 
-//   rgfDirty[usCBIndex] = FALSE;
-//   f32Parms.usDirtySectors--;
+/*
+   rgfDirty[usCBIndex] = FALSE;
+   f32Parms.usDirtySectors--;
+*/
 
    pBase->fFlushPending = SET;
    f32Parms.usPendingFlush++;
@@ -1532,6 +1597,12 @@ PREQUEST pRequest;
                   {
                   if (rgfDirty[pRequest->usCBIndex])
                      {
+                     if( pBase->fDiscard )
+                        {
+                        pBase->bDrive = 0xFF;
+                        pBase->fDiscard = OFF;
+                        }
+
                      rgfDirty[pRequest->usCBIndex] = FALSE;
                      f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
@@ -1541,6 +1612,9 @@ PREQUEST pRequest;
                   if (pBase->fFlushPending)
                      {
                      f32Parms.usPendingFlush--;
+#ifdef WAIT_PENDINGFLUSH
+                     DevHelp_ProcRun((ULONG)&f32Parms.usPendingFlush, &usCount );
+#endif
                      pBase->fFlushPending = OFF;
                      }
                   }
@@ -1625,6 +1699,12 @@ USHORT usCount;
          {
          case RH_NO_ERROR    :
          case RH_RECOV_ERROR :
+            if( pBase->fDiscard )
+            {
+               pBase->bDrive = 0xFF;
+               pBase->fDiscard = OFF;
+            }
+
             rgfDirty[pRequest->usCBIndex] = FALSE;
             f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
@@ -1639,6 +1719,9 @@ USHORT usCount;
       if (pBase->fFlushPending)
          {
          f32Parms.usPendingFlush--;
+#ifdef WAIT_PENDINGFLUSH
+         DevHelp_ProcRun((ULONG)&f32Parms.usPendingFlush, &usCount );
+#endif
          pBase->fFlushPending = OFF;
          }
       return;
@@ -1659,6 +1742,9 @@ USHORT usCount;
          if (pBase->fFlushPending)
             {
             f32Parms.usPendingFlush--;
+#ifdef WAIT_PENDINGFLUSH
+            DevHelp_ProcRun((ULONG)&f32Parms.usPendingFlush, &usCount );
+#endif
             pBase->fFlushPending = OFF;
             }
 
