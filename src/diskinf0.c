@@ -41,7 +41,6 @@ BOOL ClusterInUse(PDRIVEINFO pDrive, ULONG ulCluster);
 int main(INT iArgc, PSZ Argv[])
 {
 APIRET rc;
-ULONG ulDiskSize, ulDiskFree;
 INT iArg;
 INT iPartType;
 PSZ pEnd;
