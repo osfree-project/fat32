@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.99b"
+#define FAT32_VERSION "0.9.11"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
@@ -104,6 +104,8 @@
 #define FAT32_SETCLUSTER      0xFB
 #define FAT32_READCLUSTER     0xFC
 #define FAT32_READSECTOR      0xFD
+#define FAT32_WRITECLUSTER    0xFE
+#define FAT32_WRITESECTOR     0xFF
 
 typedef struct _BPB
 {
@@ -259,6 +261,12 @@ typedef struct _ReadSectorData
 ULONG ulSector;
 USHORT nSectors;
 } READSECTORDATA, *PREADSECTORDATA;
+
+typedef struct _WriteSectorData
+{
+ULONG ulSector;
+USHORT nSectors;
+} WRITESECTORDATA, *PWRITESECTORDATA;
 
 #pragma pack()
 
