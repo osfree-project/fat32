@@ -559,7 +559,7 @@ USHORT rc;
    if (pVolInfo->fWriteProtected)
       return 0;
 
-   rc = usFlushVolume(pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT);
+   rc = usFlushVolume(pVolInfo, usFlag, TRUE, PRIO_URGENT);
    if (rc)
       return rc;
 
@@ -1664,8 +1664,40 @@ ULONG hDEV;
                rc = ReadSector(pVolInfo, pRSD->ulSector, pRSD->nSectors, pData, 0);
                break;
                }
-
-
+            case FAT32_WRITECLUSTER:
+               {
+               ULONG ulCluster;
+               if (cbParm < sizeof(ULONG))
+                  {
+                  rc = ERROR_INSUFFICIENT_BUFFER;
+                  goto FS_IOCTLEXIT;
+                  }
+               if ((USHORT)cbData < pVolInfo->usClusterSize)
+                  {
+                  rc = ERROR_INSUFFICIENT_BUFFER;
+                  goto FS_IOCTLEXIT;
+                  }
+               ulCluster = *(PULONG)pParm;
+               rc = WriteCluster(pVolInfo, ulCluster, pData, 0);
+               break;
+               }
+            case FAT32_WRITESECTOR:
+               {
+               PWRITESECTORDATA pWSD;
+               if (cbParm < sizeof(WRITESECTORDATA))
+                  {
+                  rc = ERROR_INSUFFICIENT_BUFFER;
+                  goto FS_IOCTLEXIT;
+                  }
+               pWSD = (PWRITESECTORDATA)pParm;
+               if ((USHORT)cbData < pWSD->nSectors * SECTOR_SIZE)
+                  {
+                  rc = ERROR_INSUFFICIENT_BUFFER;
+                  goto FS_IOCTLEXIT;
+                  }
+               rc = WriteSector(pVolInfo, pWSD->ulSector, pWSD->nSectors, pData, 0);
+               break;
+               }
             default :
                rc = ERROR_BAD_COMMAND;
                break;
@@ -2144,6 +2176,8 @@ FS_MOVEEXIT:
       Message("FS_MOVE returned %d", rc);
 
    return rc;
+
+   usFlags = usFlags;
 }
 
 /******************************************************************
@@ -2153,9 +2187,24 @@ int far pascal FS_PROCESSNAME(
     char far *  pNameBuf        /* pNameBuf */
 )
 {
-#if 0
+#if 1
+     USHORT usUniCh;
+     USHORT usLen;
+     char   far *p;
+
      if (f32Parms.fMessageActive & LOG_FS)
         Message("FS_PROCESSNAME for %s", pNameBuf);
+
+     for( p = pNameBuf; *p; p += usLen )
+     {
+        usLen = Translate2Win( p, &usUniCh, 1 );
+        if( usUniCh == 0xFFFD )
+        {
+            *p = '_';
+            if( usLen == 2 )
+                p[ 1 ] = '_';
+        }
+     }
 
      if (f32Parms.fMessageActive & LOG_FS)
         Message(" FS_PROCESSNAME returned filename: %s", pNameBuf);
@@ -2208,7 +2257,7 @@ USHORT rc = 0;
          pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
          }
       }
-   else // usType == SD_COMPLETE
+   else /* usType == SD_COMPLETE */
       TranslateFreeBuffer();
 
 FS_SHUTDOWNEXIT:
@@ -3021,8 +3070,10 @@ USHORT rc;
    if (rc)
       return FAT_EOF;
 
-//   if (fUpdateFSInfo)
-//      UpdateFSInfo(pVolInfo);
+/*
+   if (fUpdateFSInfo)
+      UpdateFSInfo(pVolInfo);
+*/
 
    return ulReturn;
 }
@@ -3084,7 +3135,7 @@ struct vpfsi far * pvpfsi;
 struct vpfsd far * pvpfsd;
 PVOLINFO pVolInfo;
 
-//   Message("GetVolInfo");
+/*   Message("GetVolInfo");*/
 
    rc = FSH_GETVOLPARM(hVBP, &pvpfsi, &pvpfsd);
    if (rc)
@@ -4258,7 +4309,7 @@ USHORT rc;
       }
 
    pVolInfo->pBootFSInfo->ulFreeClusters += ulClustersFreed;
-//   UpdateFSInfo(pVolInfo);
+/*   UpdateFSInfo(pVolInfo);*/
 
    ReleaseFat(pVolInfo);
 
