@@ -174,9 +174,10 @@ ULONG  ulDataSize;
       (PVOID)pOptions, ulParmSize, &ulParmSize,
       FAT32_DOLW, "FAT32", -1, FSCTL_FSDNAME);
 
-   rc = rc;
-
    pOptions->fTerminate = TRUE;
+
+   ulArg = ulArg;
+   rc = rc;
 }
 
 VOID APIENTRY EMThread(ULONG ulArg)
@@ -201,6 +202,8 @@ ULONG  ulDataSize;
       FAT32_EMERGTHREAD, "FAT32", -1, FSCTL_FSDNAME);
    if (rc)
       printf("EMThread: rc = %u\n", rc);
+
+   ulArg = ulArg;
 }
 
 /******************************************************************
@@ -702,11 +705,10 @@ APIRET rc;
 ******************************************************************/
 BOOL DoCheckDisk(BOOL fDoCheck)
 {
-ULONG ulCurDisk;
+ULONG ulBootDisk;
 USHORT usIndex;
-ULONG ulDummy;
 
-      DosQueryCurrentDisk(&ulCurDisk, &ulDummy);
+      DosQuerySysInfo( QSV_BOOT_DRIVE, QSV_BOOT_DRIVE, &ulBootDisk, sizeof( ULONG ));
       ulDriveMap = GetFAT32Drives();
 
       for (usIndex = 0; usIndex < 26; usIndex++)
@@ -721,7 +723,7 @@ ULONG ulDummy;
          szDisk[2] = 0;
 
          if (!IsDiskClean(szDisk) && fDoCheck)
-            if (!ChkDsk(ulCurDisk, szDisk))
+            if (!ChkDsk(ulBootDisk, szDisk))
                return FALSE;
          }
 
@@ -740,13 +742,11 @@ static BYTE szProgram[255] = "X:\\OS2\\CHKDSK.COM";
 static BYTE szArguments[512];
 RESULTCODES Res;
 
-
    szProgram[0] = (BYTE)(ulBootDisk + '@');
    memset(szArguments, 0, sizeof szArguments);
    strcpy(szArguments, szProgram);
    sprintf(szArguments + strlen(szArguments) + 1,
       "%s /F /C", pszDisk);
-
 
    rc = DosExecPgm(szObjName, sizeof szObjName,
       EXEC_SYNC,
@@ -756,7 +756,7 @@ RESULTCODES Res;
       szProgram);
    if (rc)
       {
-      printf("DosExecPgm Failed, rc = %d\n", rc);
+      printf("DosExecPgm Failed due to %s, rc = %d\n", szObjName, rc);
       return FALSE;
       }
    return TRUE;
@@ -1213,4 +1213,6 @@ FILE *fp;
    fprintf(fp, "%s\n", pszMessage);
    fclose(fp);
 #endif
+
+   pszMessage = pszMessage;
 }
