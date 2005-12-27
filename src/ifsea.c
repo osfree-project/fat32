@@ -830,8 +830,6 @@ PBYTE pMax;
 
 USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PSZ * pszEASName)
 {
-USHORT rc;
-
    if (strlen(pszFileName) > FAT32MAXPATH - 4)
       return ERROR_FILENAME_EXCED_RANGE;
 
