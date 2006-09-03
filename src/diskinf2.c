@@ -21,7 +21,7 @@ VOID vDumpDirEntry(PDIRENTRY pDir);
 ULONG GetClusterCount(PDRIVEINFO pDrive, ULONG ulCluster);
 
 IMPORT BOOL ClusterInUse(PDRIVEINFO pDrive, ULONG ulCluster);
-                                        
+
 
 BYTE szMaxPath[512];
 ULONG ulTotalClusters = 0;
@@ -125,7 +125,7 @@ static BYTE szShortName[13];
             bCheck = pDir->bReserved;
             fGetLongName(pDir, szLongName, sizeof szLongName);
             }
-         else 
+         else
             {
             bCheckSum = 0;
             for (iIndex = 0; iIndex < 11; iIndex++)
@@ -192,7 +192,7 @@ static BYTE szShortName[13];
             printf("(deleted entry)\n");
          }
 
-      pDir++; 
+      pDir++;
       }
    if (fDetailed > 2)
       printf("%ld files\n", ulEntries);
@@ -244,7 +244,7 @@ static BYTE szShortName[13];
                pbPath);
             }
          }
-      pDir++; 
+      pDir++;
       }
 
    free(pbCluster);
@@ -532,3 +532,5 @@ USHORT usStart;
       }
 
 }
+
+

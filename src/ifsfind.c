@@ -869,3 +869,4 @@ USHORT usIndex;
    pFindInfo->usClusterIndex = usClusterIndex;
    return TRUE;
 }
+

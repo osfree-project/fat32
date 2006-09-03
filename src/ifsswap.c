@@ -98,3 +98,4 @@ int far pascal FS_SETSWAP(
    psffsi = psffsi;
    psffsd = psffsd;
 }
+

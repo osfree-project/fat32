@@ -201,7 +201,7 @@ USHORT usSector, usHead, usCylinder;
                fKnown = TRUE;
                pszPartType = "FAT12";
                break;
-            case PARTITION_XENIX_1        : 
+            case PARTITION_XENIX_1        :
                pszPartType = "XENIX_1";
                break;
             case PARTITION_XENIX_2        :
@@ -335,7 +335,7 @@ USHORT usSector, usHead, usCylinder;
                pPart->cSystem,
                pszPartType);
 
-            // calculate first Head, Cylinder and sector 
+            // calculate first Head, Cylinder and sector
 
             ulSector = ulFirstSector;
             usSector = ulSector % pdpmb->cSectorsPerTrack;
@@ -346,7 +346,7 @@ USHORT usSector, usHead, usCylinder;
             printf("Strt:H:%6d C:%4d S:%4d",
                usHead, usCylinder, usSector + 1);
 
-            // calculate last Head, Cylinder and sector 
+            // calculate last Head, Cylinder and sector
 
             ulSector = ulLastSector;
             usSector = ulSector % pdpmb->cSectorsPerTrack;
@@ -397,7 +397,7 @@ USHORT usSector, usHead, usCylinder;
 //               pPart->Start.Cylinders256 * 256 + pPart->Start.Cylinders,
 //               pPart->Start.Sectors))
                vListMBR(hDisk, &mbr2, pdpmb,
-                  (iLevel == 1 ? pPart->ulRelSectorNr : ulFirstExtOffset), 
+                  (iLevel == 1 ? pPart->ulRelSectorNr : ulFirstExtOffset),
                   ulFirstExtOffset + pPart->ulRelSectorNr,
                   wDiskNum);
             }
@@ -417,7 +417,7 @@ ULONG  ulDataSize;
 APIRET rc;
 
    bParam = 0;
-   ulParmSize = sizeof bParam; 
+   ulParmSize = sizeof bParam;
    ulDataSize  = sizeof (DEVICEPARAMETERBLOCK);
 
    rc = DosDevIOCtl(hDisk,
@@ -581,21 +581,21 @@ USHORT    usBlocks;
       printf("BytesPerSector    : %u\n", bSect.bpb.BytesPerSector);
       printf("SectorsPerCluster : %u\n", bSect.bpb.SectorsPerCluster);
       printf("Reserved Sectors  : %u\n", bSect.bpb.ReservedSectors);
-      printf("NumberOfFATs;     : %u\n", bSect.bpb.NumberOfFATs);    
-      printf("RootDirEntries;   : %u\n", bSect.bpb.RootDirEntries);  
-      printf("TotalSectors;     : %u\n", bSect.bpb.TotalSectors);    
-      printf("MediaDescriptor;  : %u\n", bSect.bpb.MediaDescriptor); 
-      printf("SectorsPerFat;    : %u\n", bSect.bpb.SectorsPerFat);   
-      printf("SectorsPerTrack;  : %u\n", bSect.bpb.SectorsPerTrack); 
-      printf("Heads;            : %u\n", bSect.bpb.Heads);           
-      printf("HiddenSectors;    : %lu\n",bSect.bpb.HiddenSectors);   
-      printf("BigTotalSectors;  : %lu\n",bSect.bpb.BigTotalSectors); 
+      printf("NumberOfFATs;     : %u\n", bSect.bpb.NumberOfFATs);
+      printf("RootDirEntries;   : %u\n", bSect.bpb.RootDirEntries);
+      printf("TotalSectors;     : %u\n", bSect.bpb.TotalSectors);
+      printf("MediaDescriptor;  : %u\n", bSect.bpb.MediaDescriptor);
+      printf("SectorsPerFat;    : %u\n", bSect.bpb.SectorsPerFat);
+      printf("SectorsPerTrack;  : %u\n", bSect.bpb.SectorsPerTrack);
+      printf("Heads;            : %u\n", bSect.bpb.Heads);
+      printf("HiddenSectors;    : %lu\n",bSect.bpb.HiddenSectors);
+      printf("BigTotalSectors;  : %lu\n",bSect.bpb.BigTotalSectors);
       printf("BigSectorsPerFat; : %lu\n",bSect.bpb.BigSectorsPerFat);
-      printf("ExtFlags;         : %u\n", bSect.bpb.ExtFlags);        
-      printf("FS_Version;       : %u\n", bSect.bpb.FS_Version);      
-      printf("RootDirStrtClus;  : %lu\n",bSect.bpb.RootDirStrtClus); 
-      printf("FSinfoSec;        : %u\n", bSect.bpb.FSinfoSec);       
-      printf("BkUpBootSec;      : %u\n", bSect.bpb.BkUpBootSec);     
+      printf("ExtFlags;         : %u\n", bSect.bpb.ExtFlags);
+      printf("FS_Version;       : %u\n", bSect.bpb.FS_Version);
+      printf("RootDirStrtClus;  : %lu\n",bSect.bpb.RootDirStrtClus);
+      printf("FSinfoSec;        : %u\n", bSect.bpb.FSinfoSec);
+      printf("BkUpBootSec;      : %u\n", bSect.bpb.BkUpBootSec);
       printf("bReserved[6];     : %-6.6s\n", bSect.bpb.bReserved);
 
       printf("Volume label      : '%-11.11s'\n", bSect.VolumeLabel);
@@ -638,3 +638,4 @@ USHORT usIndex;
    printf("  %s\n", szText);
 
 }
+

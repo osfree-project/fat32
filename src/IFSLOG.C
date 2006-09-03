@@ -135,4 +135,3 @@ APIRET rc;
    return rc;
 }
 
-

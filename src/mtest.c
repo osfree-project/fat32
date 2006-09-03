@@ -54,3 +54,4 @@ ULONG ulOffset;
 
    return 0;
 }
+

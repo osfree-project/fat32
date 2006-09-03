@@ -372,4 +372,3 @@ USHORT rc;
    return (USHORT)(*pulCP);
 }
 
-

@@ -63,3 +63,4 @@ USHORT usReplySize;
       }
    return szErrorBuf;
 }
+

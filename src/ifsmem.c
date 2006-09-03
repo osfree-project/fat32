@@ -329,3 +329,4 @@ VOID ReleaseMemAccess(VOID)
         rc = FSH_SEMCLEAR(&ulMemSem);
     }
 }
+

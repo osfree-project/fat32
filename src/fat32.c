@@ -5069,5 +5069,4 @@ USHORT DBCSStrlen( const PSZ pszStr )
    return usRet;
 }
 
-
 

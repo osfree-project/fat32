@@ -121,3 +121,4 @@ ULONG cbCP;
    DosFreeModule(hModLang);
    return TRUE;
 }
+

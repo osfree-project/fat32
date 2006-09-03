@@ -107,4 +107,3 @@ BYTE szFileName[20];
    return TRUE;
 }
 
-
