@@ -4,7 +4,6 @@
 #include "fsd.h"
 #include "fsh.h"
 #include "fat32def.h"
-typedef PVOID * PPVOID;
 #include "dhcalls.h"
 #include "strat2.h"
 
@@ -149,7 +148,6 @@ USHORT   hVBP;
 PVOID    pFindInfo;
 BYTE     bDrive;
 BYTE     bUnit;
-USHORT   hDupVBP;
 BOOL     fLocked;
 BOOL     fWriteProtected;
 PROCINFO ProcLocked;
@@ -265,6 +263,8 @@ typedef struct _FILEFNDBUF2 {   /* findbuf2 */
 typedef FILEFNDBUF2 FAR *PFILEFNDBUF2;
 #pragma pack()
 
+
+
 IMPORT PVOLINFO pGlobVolInfo;
 IMPORT BYTE szArguments[];
 IMPORT ULONG ulCacheSectors;
@@ -301,7 +301,8 @@ IMPORT VOID cdecl FatalMessage(PSZ pszMessage, ...);
 IMPORT VOID InternalError(PSZ pszMessage);
 IMPORT USHORT GetLogBuffer(PBYTE pData, USHORT cbData, ULONG ulTimeOut);
 IMPORT BOOL InitCache(ULONG ulSectors);
-IMPORT ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
+IMPORT APIRET linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore, PULONG pulPhysAddr);
+IMPORT PVOID virtalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
 IMPORT void *gdtAlloc(ULONG tSize, BOOL fSwap);
 IMPORT void *ldtAlloc(ULONG tSize);
 IMPORT void freeseg(void *p);
@@ -355,6 +356,7 @@ IMPORT USHORT MY_ISCURDIRPREFIX( PSZ pszName );
 IMPORT VOID   GetFirstInfo( PBOOL pLead );
 IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 
+
 /*
 #define GetCurTime() (pGI->time * 100 + pGI->hundredths)
 */
@@ -365,3 +367,4 @@ IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 
 
 #endif
+

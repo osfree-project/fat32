@@ -249,10 +249,6 @@ ULONG  ulDeadFace = 0xDEADFACE;
 USHORT usParmSize;
 USHORT usDataSize;
 
-#if 0
-   rgEnv = rgEnv;
-#endif
-
    DosError(1); /* Enable hard errors */
 
    TranslateInitDBCSEnv();
@@ -340,7 +336,7 @@ USHORT usDataSize;
          iShowMessage(pCD, rc, 0);
       else
          printf("%s\n", GetOS2Error(rc));
-      DosExit(1, 1);
+      DosExit(EXIT_PROCESS, 1);
       }
    usParmSize = sizeof ulDeadFace;
    rc = DosFSCtl(NULL, 0, 0,
@@ -371,7 +367,7 @@ USHORT usDataSize;
             iShowMessage(pCD, rc, 0);
          else
             printf("%s\n", GetOS2Error(rc));
-         DosExit(1, 1);
+         DosExit(EXIT_PROCESS, 1);
          }
       }
 
@@ -380,7 +376,7 @@ USHORT usDataSize;
    if (rc)
       {
       fprintf(stderr, "DosQFSInfo failed, %s\n", GetOS2Error(rc));
-      DosExit(1, 1);
+      DosExit(EXIT_PROCESS, 1);
       }
    pCD->hDisk = hFile;
 
@@ -407,13 +403,13 @@ USHORT usDataSize;
       if (rc)
          {
          printf("The drive cannot be unlocked. SYS%4.4u\n", rc);
-         DosExit(1, 1);
+         DosExit(EXIT_PROCESS, 1);
          }
       }
    DosClose(hFile);
    free(pCD);
 
-   DosExit(1, rc);
+   DosExit(EXIT_PROCESS, rc);
    return rc;
 
    rgEnv = rgEnv;
@@ -1850,6 +1846,8 @@ PSZ    pszMess;
          strcat(szOut, p);
          }
       }
+
+   va_end( va );
 
    if (pCD->fPM)
       {

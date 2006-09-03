@@ -17,8 +17,8 @@
 
 static BYTE szLogBuf[LOGBUF_SIZE] = "";
 
-static BOOL fData = FALSE;
 static BYTE szLost[]="(information lost)\r\n";
+static ULONG ulLogSem = 0UL;
 
 static BOOL fWriteLogging(PSZ pszMessage);
 
@@ -46,11 +46,15 @@ USHORT usThreadID;
       (USHORT)(ulmSecs % 1000));
 
    vsprintf(szMessage + strlen(szMessage), pszMessage, va);
+
+   va_end( va );
+
    fWriteLogging(szMessage);
 }
 
 BOOL fWriteLogging(PSZ pszMessage)
 {
+APIRET rc;
 USHORT usNeeded;
 USHORT usSize;
 PSZ    p1, p2;
@@ -70,7 +74,9 @@ PSZ    p1, p2;
             p2 = p1 + 1;
             }
          else
+            {
             return TRUE;
+            }
          }
 
       memcpy(szLogBuf, szLost, strlen(szLost));
@@ -80,16 +86,17 @@ PSZ    p1, p2;
    strcat(szLogBuf + usSize, pszMessage);
    strcat(szLogBuf + usSize, "\r\n");
 
-   fData = TRUE;
-   DevHelp_ProcRun((ULONG)GetLogBuffer, &usSize);
+   rc = FSH_SEMCLEAR(&ulLogSem);
+
    if (usSize)
       Yield();
+
    return TRUE;
 }
 
 USHORT GetLogBuffer(PBYTE pData, USHORT cbData, ULONG ulTimeOut)
 {
-USHORT rc;
+APIRET rc;
 
    if (f32Parms.fInShutDown)
       return ERROR_ALREADY_SHUTDOWN;
@@ -101,18 +108,14 @@ USHORT rc;
       return rc;
       }
 
-   _disable();
-   while (!fData && !f32Parms.fInShutDown)
-      {
-      rc = DevHelp_ProcBlock((ULONG)GetLogBuffer, ulTimeOut, WAIT_IS_INTERRUPTABLE);
-      if (rc)
-         {
-         _enable();
-         return rc;
-         }
-      _disable();
-      }
-   _enable();
+   if (!f32Parms.fInShutDown)
+   {
+       rc = FSH_SEMSETWAIT(&ulLogSem,ulTimeOut);
+       if (rc != NO_ERROR)
+       {
+           return rc;
+       }
+   }
 
    if (f32Parms.fInShutDown)
       return ERROR_ALREADY_SHUTDOWN;
@@ -126,7 +129,6 @@ USHORT rc;
    else
       {
       *szLogBuf = 0;
-      fData = FALSE;
       rc = 0;
       }
 

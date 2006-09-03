@@ -378,6 +378,13 @@ int far pascal
 FSH_YIELD(void);
 
 int far pascal
+FSH_CALLDRIVER(
+    void far *,                 /* pPkt         */
+    unsigned short,             /* hVPB         */
+    unsigned short              /* fControl     */
+);
+
+int far pascal
 MFSH_DOVOLIO(
     char far *,                 /* Data         */
     unsigned short far *,       /* cSec         */

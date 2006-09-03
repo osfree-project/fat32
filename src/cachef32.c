@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <uconv.h>
+#include <process.h>
 
 #define INCL_DOSNLS
 #define INCL_DOSDEVIOCTL
@@ -48,8 +49,13 @@ HMODULE hModUni = NULL;
 PRIVATE VOID Handler(INT iSignal);
 PRIVATE VOID InitProg(INT iArgc, PSZ rgArgv[]);
 PRIVATE PSZ GetFSName(PSZ pszDevice);
+/*
 PRIVATE VOID APIENTRY LWThread(ULONG ulArg);
 PRIVATE VOID APIENTRY EMThread(ULONG ulArg);
+*/
+PRIVATE VOID _LNK_CONV LWThread(PVOID ulArg);
+PRIVATE VOID _LNK_CONV EMThread(PVOID ulArg);
+
 PRIVATE BOOL IsDiskClean(PSZ pszDrive);
 PRIVATE BOOL DoCheckDisk(BOOL fDoCheck);
 PRIVATE BOOL ChkDsk(ULONG ulBootDisk, PSZ pszDrive);
@@ -124,6 +130,7 @@ BYTE  bPrevPrio;
    signal(SIGTERM, Handler);
    signal(SIGINT, Handler);
 
+/*
    rc = DosCreateThread(&pOptions->ulEMTID, EMThread, 0L, 0, 8196);
    if (rc)
       printf("DosCreateThread failed, rc = %d\n", rc);
@@ -131,6 +138,14 @@ BYTE  bPrevPrio;
    rc = DosCreateThread(&pOptions->ulLWTID, LWThread, 0L, 0, 8196);
    if (rc)
       printf("DosCreateThread failed, rc = %d\n", rc);
+*/
+   pOptions->ulEMTID = _beginthread(EMThread,NULL,8192,NULL);
+   if (pOptions->ulEMTID == -1)
+      printf("_beginthread failed, rc = %d\n", -1);
+
+   pOptions->ulLWTID = _beginthread(LWThread,NULL,8192,NULL);
+   if (pOptions->ulLWTID == -1)
+      printf("_beginthread failed, rc = %d\n", -1);
 
    ulParmSize = sizeof f32Parms;
    rc = DosFSCtl(
@@ -158,7 +173,7 @@ BYTE  bPrevPrio;
 /******************************************************************
 *
 ******************************************************************/
-VOID APIENTRY LWThread(ULONG ulArg)
+VOID _LNK_CONV LWThread(PVOID ulArg)
 {
 APIRET rc;
 ULONG  ulParmSize;
@@ -180,15 +195,15 @@ ULONG  ulDataSize;
    rc = rc;
 }
 
-VOID APIENTRY EMThread(ULONG ulArg)
+VOID _LNK_CONV EMThread(PVOID ulArg)
 {
 APIRET rc;
 ULONG  ulParmSize;
 ULONG  ulDataSize;
 
 #if 1
-   rc = DosSetPriority(PRTYS_THREAD,
-      PRTYC_TIMECRITICAL, PRTYD_MAXIMUM, 0);
+//   rc = DosSetPriority(PRTYS_THREAD,
+//      PRTYC_TIMECRITICAL, PRTYD_MAXIMUM, 0);
 #else
    rc = DosSetPriority(PRTYS_THREAD,
       PRTYC_FOREGROUNDSERVER, PRTYD_MAXIMUM, 0);
@@ -211,8 +226,12 @@ ULONG  ulDataSize;
 ******************************************************************/
 VOID Handler(INT iSignal)
 {
-   printf("Signal %d was received\n", iSignal);
-   exit(1);
+    printf("Signal %d was received\n", iSignal);
+    if (iSignal == SIGTERM)
+    {
+       pOptions->fTerminate = TRUE;
+    }
+//   exit(1);
 }
 
 /******************************************************************
@@ -554,7 +573,7 @@ ULONG     ulParm;
         if (f32Parms.usPendingFlush > 0)
             printf("%u sectors are in pending flush state.\n", f32Parms.usPendingFlush);
         printf("The cache hits ratio is %3d%%.\n",
-            f32Parms.ulTotalHits * 100 / f32Parms.ulTotalReads);
+            f32Parms.ulTotalReads > 0 ? f32Parms.ulTotalHits * 100 / f32Parms.ulTotalReads: 0UL);
         }
 
       printf("FAT32.IFS has currently %u GDT segments allocated.\n",
@@ -737,9 +756,9 @@ USHORT usIndex;
 BOOL ChkDsk(ULONG ulBootDisk, PSZ pszDisk)
 {
 APIRET rc;
-static BYTE szObjName[255];
-static BYTE szProgram[255] = "X:\\OS2\\CHKDSK.COM";
-static BYTE szArguments[512];
+static BYTE szObjName[255]={0};
+static BYTE szProgram[255] = {"X:\\OS2\\CHKDSK.COM"};
+static BYTE szArguments[512] ={0};
 RESULTCODES Res;
 
    szProgram[0] = (BYTE)(ulBootDisk + '@');
@@ -814,7 +833,10 @@ PRIVATE PSZ QueryMyFullPath( VOID )
     PCHAR   p;
 
     DosGetInfoBlocks( NULL, &ppib );
-    for( p = ppib->pib_pchcmd - 2; *p; p-- );
+    for( p = ppib->pib_pchcmd - 2; *p; p-- )
+    {
+        ;
+    }
 
     return ( p + 1 );
 }
@@ -830,7 +852,7 @@ static BYTE szArguments[512];
 RESULTCODES Res;
 
    sprintf(szObjName,
-      " /P:%u %s", pOptions->bLWPrio );
+      " /P:%u", pOptions->bLWPrio );
    if( f32Parms.fForceLoad )
       strcat( szObjName, " /F" );
 
@@ -846,7 +868,7 @@ RESULTCODES Res;
       QueryMyFullPath());
    if (rc)
       {
-      printf("FAT32: unable to start deamon (%s)\n. rc = %d for %s\n",
+      printf("FAT32: unable to start daemon (%s)\n. rc = %d for %s\n",
          szArguments, rc, szObjName);
       return FALSE;
       }
@@ -1216,3 +1238,4 @@ FILE *fp;
 
    pszMessage = pszMessage;
 }
+

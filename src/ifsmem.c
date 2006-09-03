@@ -30,6 +30,7 @@ static VOID ReleaseMemAccess(VOID);
 static void * rgpSegment[MAX_SELECTORS] = {0};
 
 static BOOL fLocked = FALSE;
+static ULONG ulMemSem = 0UL;
 
 VOID CheckHeap(VOID)
 {
@@ -306,22 +307,25 @@ BOOL fFree = IsBlockFree(pMCB);
 
 VOID GetMemAccess(VOID)
 {
-   _disable();
-   while (fLocked)
-      {
-      if (f32Parms.fMessageActive & LOG_WAIT)
-         Message("Waiting for a heap access");
+    APIRET rc;
 
-      DevHelp_ProcBlock((ULONG)GetMemAccess, 1000, 1);
-      _disable();
-      }
-   fLocked = TRUE;
+    if (f32Parms.fMessageActive & LOG_WAIT)
+        Message("Waiting for a heap access");
+
+
+    rc = FSH_SEMREQUEST(&ulMemSem,-1);
+    if (rc == NO_ERROR)
+    {
+        fLocked = TRUE;
+    }
 }
 
 VOID ReleaseMemAccess(VOID)
 {
-USHORT usCount;
+    APIRET rc;
 
-   fLocked = FALSE;
-   DevHelp_ProcRun((ULONG)GetMemAccess, &usCount);
+    if (fLocked)
+    {
+        rc = FSH_SEMCLEAR(&ulMemSem);
+    }
 }

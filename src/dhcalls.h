@@ -548,6 +548,8 @@ USHORT APIENTRY DevHelp_FreeGDTSelector( SEL Selector );
 #define VMDHL_WRITE             0x0008
 #define VMDHL_LONG              0x0010
 #define VMDHL_VERIFY            0x0020
+/* if request would involve wating for short term locks, then give up and lock non-contiguously */
+#define VMDHL_TRY_CONTIG        0x8000                               /* os2ddprog, message 2465 */
 
 /* DevHelp_VMAlloc */                                                /*@V76282*/
                                                                      /*@V76282*/
@@ -558,8 +560,17 @@ USHORT APIENTRY DevHelp_FreeGDTSelector( SEL Selector );
 #define VMDHA_PHYS              0x0010                               /*@V76282*/
 #define VMDHA_PROCESS           0x0020                               /*@V76282*/
 #define VMDHA_SGSCONT           0x0040                               /*@V76282*/
+/* Provide selector mapping and return 16:16 address in ECX (or SelOffset for that matter) */
+#define VMDHA_SELMAP            0x0080                               /* os2ddprog, message 2465 */
 #define VMDHA_RESERVE           0x0100                               /*@V76282*/
+/* Allocate shared memory object. This flag is only supported for mapping a physical address */
+/* to non-system memory into the shared arena. VMDHA_PHYS must be specified */
+#define VMDHA_SHARED            0x0400                               /* os2ddprog, message 2465 */
 #define VMDHA_USEHIGHMEM        0x0800                               /*@V76282*/
+/* align on a 64k boundary */
+#define VMDHA_ALIGN64K          0x1000                               /* os2ddprog, message 2465 */
+/* Like OBJ_ANY for DosAllocMem -- use above 512mb line if possible */
+#define VMDHA_USEHMA            0x2000                               /* os2ddprog, message 2465 */
 
 /* DevHelp_VMGlobalToProcess */                                      /*@V76282*/
                                                                      /*@V76282*/
@@ -567,6 +578,8 @@ USHORT APIENTRY DevHelp_FreeGDTSelector( SEL Selector );
 #define VMDHGP_SELMAP           0x0002                               /*@V76282*/
 #define VMDHGP_SGSCONTROL       0x0004                               /*@V76282*/
 #define VMDHGP_4MEG             0x0008                               /*@V76282*/
+ /* map to process memory address space above 512 MB if possible, for newer kernels */
+#define VMDHGP_HMA              0x0020                               /* os2ddprog, message 993 */
 
 /* DevHelp_VMProcessToGlobal */                                      /*@V76282*/
                                                                      /*@V76282*/

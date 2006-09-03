@@ -1,30 +1,41 @@
-#!ifdef DEBUG
-#OPTS=/O+ /Ti /Gs+ /Tm+
-#CV=/CO /MAP
-#!else
-#OPTS=/O- /Gs-
-#!endif
-msgbind=msgbind
+!IFNDEF DEBUG
+!ERROR ,SPECIFY EITHER DEBUG=0 or DEBUG=1 ON THE NMAKE COMMANDLINE !
+!ENDIF
 
-CC = icc
-CFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(OPTS)
-MFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt $(OPTS)
-LINKOPT = /NOI $(CV) /PM:VIO /STACK:10000 /ALIGN:4 /MAP /BASE:0x10000
+!IF $(DEBUG)
+COPTS=/Ti
+LOPTS=/DE /DBGPACK
+!ELSE
+COPTS=/O
+LOPTS=
+!ENDIF
+
+MSGBIND=msgbind.exe
+CC = icc.exe
+LINK = ilink.exe
+
+CFLAGS = /Q+ /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(COPTS)
+LINKOPT = /NOI $(LOPTS) /PM:VIO /STACK:10000 /ALIGN:4 /MAP /BASE:0x10000
 WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 
 
 .c.obj:
-   $(CC) $(CFLAGS) $(WOPTS) .\$*.c >$*.err
-   type $*.err      
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.c
 
 .obj.exe:
-   ilink /NOFREE $*, $*, $*, LIBCONV LIBULS $(LINKOPT);
-     echo <<$*.bnd
-> $*.EXE
-< $(IBMC)\HELP\\DDE4.MSG
+    -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
+$<
+$@
+$*.MAP
+LIBCONV.LIB+
+LIBULS.LIB;
+<<NOKEEP
+    $(MSGBIND) <<
+> $@
+< $(IBMC)\HELP\DDE4.MSG
 *
-<<KEEP
-     $(msgbind) $*.bnd
+<<NOKEEP
+
 
 ALL: F32MON.EXE F32PARTS.EXE CACHEF32.EXE F32STAT.EXE
 
@@ -35,28 +46,22 @@ monitor.obj  : monitor.c fat32def.h
 cachef32.obj : cachef32.c fat32def.h
 f32stat.obj  : f32stat.c fat32def.h
 
-#DISKINFO.EXE : DISKINF0.C DISKINF1.C DISKINF2.C
-#   $(CC) $(MFLAGS) $(WOPTS) /Fediskinfo.exe  /L $**
-
 OBJS=diskinf0.OBJ diskinf1.OBJ diskinf2.OBJ
 F32PARTS.EXE : $(OBJS)
-        ilink /NOFREE @<<
-$(RT_OBJS: = +^
-) $(OBJS: = +^
+        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
+$(OBJS: = +^
 )
 $@
-F32PARTS,
-$(LINKOPT);
+$*.MAP;
 <<NOKEEP
 
 F32MON.EXE : MONITOR.OBJ
-        ilink /NOFREE @<<
-MONITOR.OBJ
+        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
+$?
 $@
-F32MON,
-$(LINKOPT);
+$*.MAP;
 <<NOKEEP
 
-#MONITOR.EXE : MONITOR.OBJ
 CACHEF32.EXE : CACHEF32.OBJ
 F32STAT.EXE  : F32STAT.OBJ
+
