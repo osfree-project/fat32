@@ -380,8 +380,8 @@ char *p;
          Message("WriteSector: Writing sector thru");
       pVolInfo->ulLastDiskTime = GetCurTime();
       rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
-      if (rc && rc != ERROR_WRITE_PROTECT && rc != ERROR_GEN_FAILURE )
-         FatalMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
+      if (rc && rc != ERROR_WRITE_PROTECT )
+         CritMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
             ulSector, nSectors, rc);
       fDirty = FALSE;
       }
@@ -1089,4 +1089,3 @@ USHORT VerifyOn(VOID)
    return ret;
 }
 
-

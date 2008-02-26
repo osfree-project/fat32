@@ -255,9 +255,6 @@ P_VolChars   pVolChars;
         break;
 
       case MOUNT_VOL_REMOVED:
-         rc = 0;
-         break;
-
       case MOUNT_RELEASE:
          pVolInfo = GetVolInfo(hVBP);
          usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
