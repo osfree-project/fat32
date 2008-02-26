@@ -1226,10 +1226,16 @@ PSZ  p;
       strncpy(szArguments, pszParm, sizeof szArguments);
       strlwr( szArguments );
 
-      if (strstr(szArguments, "/monitor"))
+      p = strstr(szArguments, "/monitor");
+      if( !p )
+        p = strstr( szArguments, "-monitor");
+      if( p )
          f32Parms.fMessageActive = LOG_FS;
 
-      if (strstr(szArguments, "/q"))
+      p = strstr(szArguments, "/q");
+      if( !p )
+         p = strstr( szArguments, "-q");
+      if( p )
          fSilent = TRUE;
 
       /*
@@ -5069,4 +5075,3 @@ USHORT DBCSStrlen( const PSZ pszStr )
    return usRet;
 }
 
-
