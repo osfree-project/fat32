@@ -211,6 +211,10 @@ P_VolChars   pVolChars;
         if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
+        if (f32Parms.fCalcFree ||
+            pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
+          /*!pVolInfo->fDiskClean ||*/
+            pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF)
         GetFreeSpace(pVolInfo);
 
         pDevCaps  = pvpfsi->vpi_pDCS;
@@ -463,4 +467,3 @@ P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
 }
 #pragma optimize("",on)
 
-
