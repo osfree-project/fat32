@@ -830,7 +830,7 @@ static BYTE szArguments[512];
 RESULTCODES Res;
 
    sprintf(szObjName,
-      " /P:%u %s", pOptions->bLWPrio );
+      " /P:%u", pOptions->bLWPrio );
    if( f32Parms.fForceLoad )
       strcat( szObjName, " /F" );
 
