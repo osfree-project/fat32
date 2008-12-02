@@ -25,7 +25,7 @@
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.9.11"
+#define FAT32_VERSION "0.9.12"
 
 #define FSINFO_OFFSET  484
 #define MBRTABLEOFFSET 446
