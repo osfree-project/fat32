@@ -457,8 +457,8 @@ USHORT usCBIndex;
       usWaitCount++;
       rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
       usWaitCount--;
-      if (rc && rc != ERROR_WRITE_PROTECT && rc != ERROR_GEN_FAILURE )
-         FatalMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
+      if (rc && rc != ERROR_WRITE_PROTECT)
+         CritMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
             ulSector, nSectors, rc);
       fDirty = FALSE;
       }
