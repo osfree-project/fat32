@@ -166,10 +166,11 @@ P_VolChars   pVolChars;
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
-         if (!pVolInfo->hDupVBP /*&&
-            (pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
-             !pVolInfo->fDiskClean ||
-             pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF)*/)
+         if (!pVolInfo->hDupVBP &&
+                (f32Parms.fCalcFree ||
+                 pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
+               /*!pVolInfo->fDiskClean ||*/
+                 pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF))
             GetFreeSpace(pVolInfo);
 
          pDevCaps  = pvpfsi->vpi_pDCS;

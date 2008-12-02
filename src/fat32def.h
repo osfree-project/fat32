@@ -156,6 +156,7 @@ USHORT fTranslateNames;
 ULONG  ulCurCP;
 USHORT fHighMem;
 USHORT fForceLoad;
+USHORT fCalcFree;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options

@@ -1277,6 +1277,12 @@ PSZ  p;
          f32Parms.fHighMem = TRUE;
       }
 
+      p = strstr( szArguments, "/calcfree");
+      if( !p )
+         p = strstr( szArguments, "-calcfree");
+      if( p )
+         f32Parms.fCalcFree = TRUE;
+
 #if 1
    if (!DosGetInfoSeg(&sGlob, &sLoc))
 #else
