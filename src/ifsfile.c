@@ -1411,6 +1411,11 @@ USHORT usBytesPerCluster;
                     USHORT usSectorsToRead = usAdjacentClusters * usSectorsPerCluster;
 
                     ulClusterSector = pVolInfo->ulStartOfData + (pOpenInfo->ulCurCluster-2)*usSectorsPerCluster;
+#if 0
+                    /*
+                        The following code is fast, but is not compatible
+                        with OBJ_ANY attribute
+                    */
                     rc = ReadSector(pVolInfo, ulClusterSector,usSectorsToRead,pBufPosition, usIOFlag);
                     if (rc)
                     {
@@ -1422,6 +1427,29 @@ USHORT usBytesPerCluster;
                     usBytesToRead                   -= usCurrBytesToRead;
                     usAdjacentClusters              = 1;
                     pOpenInfo->ulCurCluster         = ulNextCluster;
+#else
+                    while( usAdjacentClusters )
+                    {
+                        rc = ReadSector(pVolInfo, ulClusterSector,usSectorsPerCluster,pbCluster, usIOFlag);
+                        if (rc)
+                        {
+                            goto FS_READEXIT;
+                        }
+
+                        memcpy( pBufPosition, pbCluster, usBytesPerCluster );
+
+                        pBufPosition                += usBytesPerCluster;
+                        ulClusterSector             += usSectorsPerCluster;
+                        usAdjacentClusters--;
+                    }
+
+                    psffsi->sfi_position            += usCurrBytesToRead;
+                    usBytesRead                     += usCurrBytesToRead;
+                    usBytesToRead                   -= usCurrBytesToRead;
+                    usAdjacentClusters              = 1;
+                    pOpenInfo->ulCurCluster         = ulNextCluster;
+
+#endif
                 }
                 ulCurrCluster       = ulNextCluster;
             }
@@ -1850,6 +1878,11 @@ USHORT usBytesPerCluster;
                     USHORT usSectorsToWrite = usAdjacentClusters * usSectorsPerCluster;
 
                     ulClusterSector = pVolInfo->ulStartOfData + (pOpenInfo->ulCurCluster-2)*usSectorsPerCluster;
+#if 0
+                    /*
+                        The following code is fast, but is not compatible
+                        with OBJ_ANY attribute
+                    */
                     rc = WriteSector(pVolInfo, ulClusterSector,usSectorsToWrite,pBufPosition, usIOFlag);
                     if (rc)
                     {
@@ -1862,6 +1895,28 @@ USHORT usBytesPerCluster;
                     usBytesToWrite                  -= usCurrBytesToWrite;
                     usAdjacentClusters              = 1;
                     pOpenInfo->ulCurCluster         = ulNextCluster;
+#else
+                    while( usAdjacentClusters )
+                    {
+                        memcpy(pbCluster,pBufPosition,usBytesPerCluster);
+
+                        rc = WriteSector(pVolInfo,ulClusterSector,usSectorsPerCluster,pbCluster,usIOFlag);
+                        if (rc)
+                        {
+                            goto FS_WRITEEXIT;
+                        }
+
+                        pBufPosition                += usBytesPerCluster;
+                        ulClusterSector             += usSectorsPerCluster;
+                        usAdjacentClusters--;
+                    }
+
+                    psffsi->sfi_position            += usCurrBytesToWrite;
+                    usBytesWritten                  += usCurrBytesToWrite;
+                    usBytesToWrite                  -= usCurrBytesToWrite;
+                    usAdjacentClusters              = 1;
+                    pOpenInfo->ulCurCluster         = ulNextCluster;
+#endif
                 }
                 ulCurrCluster       = ulNextCluster;
             }
@@ -2695,3 +2750,4 @@ int iLength = strlen( pszName );
 
    return 0;
 }
+
