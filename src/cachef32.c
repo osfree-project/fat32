@@ -1185,7 +1185,8 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       }
 
    f32Parms.ulCurCP = rgCP[0];
-   printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
+   if( !fSilent )
+      printf("FAT32: Unicode translate table for CP %lu loaded.\n", rgCP[0]);
    rc = TRUE;
 free_exit:
 
@@ -1216,3 +1217,4 @@ FILE *fp;
 
    pszMessage = pszMessage;
 }
+
