@@ -15,12 +15,12 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-
 #define NOT_USED    0xFFFFFFFF
 #define MAX_SECTORS 4096
 #define PAGE_SIZE   4096
 #define MAX_SLOTS   0x4000
 #define FREE_SLOT   0xFFFF
+#define SECTORS_PER_RQ  ( PAGE_SIZE / SECTOR_SIZE )
 
 PRIVATE volatile USHORT  usOldestEntry = 0xFFFF;
 PRIVATE volatile USHORT  usNewestEntry = 0xFFFF;
@@ -86,7 +86,6 @@ ULONG    linPageList;
 
    f32Parms.usCacheSize = 0L;
 
-
    /* Allocate enough selectors */
 
    usSelCount = (USHORT)((ulSectors * SECTOR_SIZE + 65535L ) / 65536L);
@@ -133,7 +132,6 @@ ULONG    linPageList;
       ulSize -= 0x10000;
       }
 
-
    f32Parms.usCacheSize = (USHORT)ulSectors;
    f32Parms.usDirtyThreshold =
       f32Parms.usCacheSize - (f32Parms.usCacheSize / 20);
@@ -154,8 +152,8 @@ ULONG    linPageList;
 
       rgRQ[usIndex].usNr = usIndex;
 
-      /* 65535 bytes */
-      ulSize = MAXRQENTRIES * 512L;
+      /* 65536 bytes */
+      ulSize = ( ULONG )MAXRQENTRIES * PAGE_SIZE;
 
       rc = DevHelp_AllocGDTSelector(&rgRQ[usIndex].Sel, 1);
       if (rc)
@@ -259,7 +257,6 @@ ULONG    linPageList;
    rc = FSH_FORCENOSWAP(SELECTOROF(p));
    if (rc)
       FatalMessage("FAT32:FSH_FORCENOSWAP on rgRQ Segment failed, rc=%u", rc);
-
 
    return TRUE;
 }
@@ -465,7 +462,6 @@ USHORT usCBIndex;
       fDirty = FALSE;
       }
 
-
    if (!rc)
       {
       p = pbData;
@@ -568,7 +564,7 @@ PCACHEBASE2 pBase2;
    pBase2->usNewer = 0xFFFF;
 }
 
-#if 1
+#if 0
 #define WAIT_THRESHOLD
 #endif
 /******************************************************************
@@ -841,15 +837,7 @@ USHORT usSel;
 ******************************************************************/
 PVOID GetPhysAddr(PRQLIST pRQ, ULONG ulEntry)
 {
-ULONG ulOffset;
-USHORT usEntry;
-
-   ulOffset = ulEntry * sizeof (CACHE);
-   usEntry = (USHORT)(ulOffset / PAGE_SIZE);
-
-   ulOffset = ulOffset % PAGE_SIZE;
-
-   return (PVOID)(pRQ->rgPhys[usEntry] + ulOffset);
+   return (PVOID)(pRQ->rgPhys[ulEntry]);
 }
 
 /******************************************************************
@@ -984,9 +972,7 @@ USHORT rc;
       {
       _disable();
       rc = WAIT_TIMED_OUT;
-      while (!f32Parms.fInShutDown && !pOptions->fTerminate &&
-         rc == WAIT_TIMED_OUT)
-/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold */
+      while (!f32Parms.fInShutDown && !pOptions->fTerminate && rc == WAIT_TIMED_OUT)
          {
          rc = DevHelp_ProcBlock((ULONG)DoEmergencyFlush, 5000L, 1);
          _disable();
@@ -1231,6 +1217,7 @@ PRQLIST pRQ;
 
    if (f32Parms.fMessageActive & LOG_CACHE)
       Message("%u sectors flushed, still %u dirty", usCount, f32Parms.usDirtySectors);
+
    return 0;
 }
 
@@ -1416,36 +1403,34 @@ USHORT usEntry;
 PBYTE pTar;
 PCACHE pCache;
 
-   if (!pRQin || pRQin->rlh.Count >= MAXRQENTRIES)
+   if (!pRQin)
       return FALSE;
+
    rqBase = SELECTOROF(pRQin);
    pRQ = (RQLIST _based(rqBase) *)OFFSETOF(pRQin);
 
    pBase = pCacheBase + usCBIndex;
 
-#ifdef SORT_RLH
-   for (usEntry = 0; usEntry < (USHORT)pRQ->rlh.Count; usEntry++)
-      {
-      pPB = &pRQ->rgReq[usEntry].pb;
-      if (pBase->ulSector < pPB->Start_Block)
-         break;
-      }
-   if (usEntry < (USHORT)pRQ->rlh.Count)
-      {
-      memmove(&pRQ->rgReq[usEntry + 1],
-              &pRQ->rgReq[usEntry],
-            ((USHORT)pRQ->rlh.Count - usEntry) * sizeof (REQUEST));
-      }
-#else
-   usEntry = (USHORT)pRQ->rlh.Count;
-#endif
+   /* Find a free entry to add a sector */
+   for( usEntry = 0; usEntry < ( USHORT )pRQin->rlh.Count; usEntry++ )
+   {
+      pPB = &pRQ->rgReq[ usEntry ].pb;
+      if( pPB->Block_Count < SECTORS_PER_RQ &&
+          pPB->Start_Block + pPB->Block_Count == pBase->ulSector )
+        break;
+   }
+
+   if( usEntry == ( USHORT )pRQin->rlh.Count && pRQin->rlh.Count == MAXRQENTRIES )
+      return FALSE;
 
    pRLH = &pRQ->rlh;
    pPB = &pRQ->rgReq[usEntry].pb;
    pSG = &pRQ->rgReq[usEntry].sg;
 
-   pRQ->rgReq[usEntry].usCBIndex = usCBIndex;
+   pRQ->rgReq[usEntry].rgCBIndex[ pPB->Block_Count ] = usCBIndex;
 
+if( usEntry == ( USHORT )pRQ->rlh.Count )
+{
    pPB->RqHdr.Length        = RH_LAST_REQ;
    pPB->RqHdr.Old_Command   = PB_REQ_LIST;
    pPB->RqHdr.Command_Code  = PB_WRITE_X;
@@ -1467,7 +1452,15 @@ PCACHE pCache;
    pSG->BufferPtr = GetPhysAddr(pRQ, pRQ->rlh.Count);
    pSG->BufferSize = SECTOR_SIZE;
 
-   pTar = MAKEP(pRQ->Sel, usEntry * SECTOR_SIZE);
+   pRQ->rlh.Count++;
+}
+else
+{
+   pPB->Block_Count++;
+   pSG->BufferSize += SECTOR_SIZE;
+}
+
+   pTar = MAKEP(pRQ->Sel, usEntry * PAGE_SIZE + ( pPB->Block_Count - 1 ) * SECTOR_SIZE);
    pCache = GetAddress(usCBIndex);
    memcpy(pTar, pCache->bSector, SECTOR_SIZE);
 
@@ -1475,8 +1468,6 @@ PCACHE pCache;
    f32Parms.usPendingFlush++;
 
    UnlockBuffer(pBase);
-
-   pRQ->rlh.Count++;
 
    return TRUE;
 }
@@ -1523,7 +1514,6 @@ PB     _based(rqBase) * pPB;
    if (pRQ->rlh.Count == 1)
       pRQ->rlh.Lst_Status |= RLH_Single_Req;
 
-
    for (ulIndex = 0; ulIndex < pRQ->rlh.Count; ulIndex++)
       {
       pPB = &pRQ->rgReq[ulIndex].pb;
@@ -1551,7 +1541,7 @@ PRQLIST pRQ;
 USHORT usCount;
 WORD ESReg, BXReg;
 INT iStatus, iErrorStatus;
-ULONG ulIndex;
+ULONG ulIndex, ulIndex2;
 PREQUEST pRequest;
 
 
@@ -1572,14 +1562,17 @@ PREQUEST pRequest;
             pRequest = pRQ->rgReq;
             for (ulIndex = 0; ulIndex < pRQ->rlh.Count; ulIndex++)
                {
-               PCACHEBASE pBase = pCacheBase + pRequest->usCBIndex;
-
                if (pRequest->pb.RqHdr.Status & 0x0F != RH_DONE)
                   FatalMessage("FAT32: rlhNotify received with not all sectors being done!");
 
-               if (pBase->ulSector == pRequest->pb.Start_Block)
+         for( ulIndex2 = 0; ulIndex2 < pRequest->pb.Blocks_Xferred; ulIndex2++ )
+            {
+               PCACHEBASE pBase = pCacheBase + pRequest->rgCBIndex[ ulIndex2 ];
+
+               if (pBase->ulSector >= pRequest->pb.Start_Block &&
+                   pBase->ulSector < pRequest->pb.Start_Block + pRequest->pb.Blocks_Xferred )
                   {
-                  if (rgfDirty[pRequest->usCBIndex])
+                  if (rgfDirty[pRequest->rgCBIndex[ ulIndex2 ]])
                      {
                      if( pBase->fDiscard )
                         {
@@ -1587,7 +1580,7 @@ PREQUEST pRequest;
                         pBase->fDiscard = OFF;
                         }
 
-                     rgfDirty[pRequest->usCBIndex] = FALSE;
+                     rgfDirty[pRequest->rgCBIndex[ ulIndex2 ]] = FALSE;
                      f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
                      DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
@@ -1602,6 +1595,8 @@ PREQUEST pRequest;
                      pBase->fFlushPending = OFF;
                      }
                   }
+            }
+
                pRequest++;
                }
             break;
@@ -1661,13 +1656,17 @@ INT err_code;
 #ifdef WAIT_THRESHOLD
 USHORT usCount;
 #endif
+ULONG ulIndex;
 
-   if (pRequest->usCBIndex > f32Parms.usCacheUsed)
+for( ulIndex = 0; ulIndex < pRequest->pb.Blocks_Xferred; ulIndex++ )
+   {
+   if (pRequest->rgCBIndex[ ulIndex ] > f32Parms.usCacheUsed)
       InternalError("FAT32: usCBIndex is wrong in vCheckRequest!");
 
-   pBase = pCacheBase + pRequest->usCBIndex;
+   pBase = pCacheBase + pRequest->rgCBIndex[ ulIndex ];
 
-   if (pBase->ulSector != pRequest->pb.Start_Block)
+   if (pBase->ulSector < pRequest->pb.Start_Block ||
+       pBase->ulSector >= pRequest->pb.Start_Block + pRequest->pb.Blocks_Xferred )
       {
       CritMessage("FAT32: Sectors do not match in rhNotify!");
       return;
@@ -1689,7 +1688,7 @@ USHORT usCount;
                pBase->fDiscard = OFF;
             }
 
-            rgfDirty[pRequest->usCBIndex] = FALSE;
+            rgfDirty[pRequest->rgCBIndex[ ulIndex ]] = FALSE;
             f32Parms.usDirtySectors--;
 #ifdef WAIT_THRESHOLD
             DevHelp_ProcRun(( ULONG )&f32Parms.usDirtySectors, &usCount );
@@ -1708,7 +1707,7 @@ USHORT usCount;
 #endif
          pBase->fFlushPending = OFF;
          }
-      return;
+      continue;
       }
 
    switch (err_status)
@@ -1718,7 +1717,7 @@ USHORT usCount;
       */
       case RH_NO_ERROR    :
       case RH_RECOV_ERROR :
-         return;
+         break;
       /*
          In this case there is no more chance ...
       */
@@ -1735,5 +1734,6 @@ USHORT usCount;
          CritMessage("FAT32: Error %X in rhNotify!", err_code);
          break;
       }
-   return;
+   }
 }
+

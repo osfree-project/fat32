@@ -72,19 +72,14 @@ typedef VOID (*STRATFUNC)(VOID);
 
 #pragma pack(1)
 
-#if 0
-#define MAXRQENTRIES 48
-#define MAX_RQS     20
-#endif
-#define MAXRQENTRIES 128
-#define MAX_RQS     8
-
+#define MAXRQENTRIES 16
+#define MAX_RQS     6
 
 typedef struct _Request
 {
 PB pb;
 SG sg;
-USHORT usCBIndex;
+USHORT rgCBIndex[ 8 ];
 } REQUEST, *PREQUEST;
 
 typedef struct _RQList
@@ -93,7 +88,7 @@ USHORT  usNr;
 BOOL    fBusy;
 SEL     Sel;
 ULONG   ulLin;
-ULONG   rgPhys[MAXRQENTRIES / 8 + 1];
+ULONG   rgPhys[MAXRQENTRIES + 1];
 RLH     rlh;
 REQUEST rgReq[MAXRQENTRIES];
 } RQLIST, *PRQLIST;
@@ -106,7 +101,7 @@ BYTE  bSector[SECTOR_SIZE];
 #define SET  1
 #define OFF  0
 
-typedef struct _CacheBase /* 20 bytes */
+typedef struct _CacheBase
 {
 USHORT   usNext;
 ULONG    ulSector;
