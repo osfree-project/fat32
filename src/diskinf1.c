@@ -621,7 +621,7 @@ USHORT usIndex;
 
    memset(szText, 0, sizeof szText);
 
-   for (usIndex = 0; usIndex < 512; usIndex++)
+   for (usIndex = 0; usIndex < SECTOR_SIZE; usIndex++)
       {
       if (!(usIndex % 16))
          {

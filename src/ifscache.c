@@ -89,7 +89,7 @@ ULONG    linPageList;
 
    /* Allocate enough selectors */
 
-   usSelCount = (USHORT)(ulSectors / 128 + (ulSectors % 128 ? 1: 0));
+   usSelCount = (USHORT)((ulSectors * SECTOR_SIZE + 65535L ) / 65536L);
 
    rc = DevHelp_AllocGDTSelector(rgCacheSel, usSelCount);
    if (rc)
@@ -329,7 +329,7 @@ USHORT usCBIndex;
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      pbSectors = malloc(usSectors * 512);
+      pbSectors = malloc(usSectors * SECTOR_SIZE);
       }
    if (!pbSectors)
       {
@@ -413,7 +413,7 @@ USHORT usCBIndex;
    if (!rc && pbSectors != pbData)
       {
       f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
-      memcpy(pbData, pbSectors, min( usSectors, nSectors ) * 512);
+      memcpy(pbData, pbSectors, min( usSectors, nSectors ) * SECTOR_SIZE);
       }
    if (pbSectors != pbData)
       free(pbSectors);
@@ -530,7 +530,7 @@ PCACHE pCache;
    pBase = pCacheBase + usCBIndex;
 
    pCache = GetAddress(usCBIndex);
-   memcpy(pbSector, pCache->bSector, 512);
+   memcpy(pbSector, pCache->bSector, SECTOR_SIZE);
 
    pBase->ulAccessTime = GetCurTime();
    UpdateChain(usCBIndex);
@@ -902,7 +902,7 @@ USHORT    usCBIndex;
 USHORT WriteCacheSector(PVOLINFO pVolInfo, USHORT usCBIndex, BOOL fSetTime)
 {
 static BOOL fLocked = FALSE;
-static BYTE bSector[512] = "";
+static BYTE bSector[SECTOR_SIZE] = "";
 PCACHEBASE pBase;
 USHORT   rc;
 USHORT   usSectors;
@@ -945,7 +945,7 @@ PCACHE   pCache;
          usWaitCount--;
          fLocked = TRUE;
 
-         memcpy(bSector, pCache->bSector, 512);
+         memcpy(bSector, pCache->bSector, SECTOR_SIZE);
          rc = FSH_DOVOLIO(DVIO_OPWRITE, DVIO_ALLACK,
             pVolInfo->hVBP, bSector, &usSectors, pBase->ulSector);
 

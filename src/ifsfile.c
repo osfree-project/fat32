@@ -398,7 +398,7 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors * 512;
+      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors * SECTOR_SIZE;
       psffsi->sfi_ctime = 0;
       psffsi->sfi_cdate = 0;
       psffsi->sfi_atime = 0;
@@ -2750,4 +2750,3 @@ int iLength = strlen( pszName );
 
    return 0;
 }
-

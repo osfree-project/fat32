@@ -67,7 +67,7 @@ ULONG       ulActiveFatStart;
 USHORT      usClusterSize;
 ULONG       ulTotalClusters;
 ULONG       ulCurFATSector;
-BYTE        pbFATSector[512];
+BYTE        pbFATSector[SECTOR_SIZE];
 BOOL        fDetailed;
 BOOL        fPM;
 BOOL        fFix;
@@ -244,7 +244,7 @@ HFILE hFile;
 USHORT rc = 0;
 PCDINFO pCD;
 USHORT usAction;
-BYTE   bSector[512];
+BYTE   bSector[SECTOR_SIZE];
 ULONG  ulDeadFace = 0xDEADFACE;
 USHORT usParmSize;
 USHORT usDataSize;
@@ -682,7 +682,7 @@ USHORT fRetco;
          usPerc = usNew;
          }
 
-      nSectors = BLOCK_SIZE / 512;
+      nSectors = BLOCK_SIZE / SECTOR_SIZE;
       if ((ULONG)nSectors > pCD->BootSect.bpb.BigSectorsPerFat - ulSector)
          nSectors = (USHORT)(pCD->BootSect.bpb.BigSectorsPerFat - ulSector);
 
@@ -697,7 +697,7 @@ USHORT fRetco;
          {
          if (memcmp(pSector + nFat * BLOCK_SIZE,
                     pSector + nFat * BLOCK_SIZE + BLOCK_SIZE,
-                    nSectors * 512))
+                    nSectors * SECTOR_SIZE))
             fDiff = TRUE;
          }
 
