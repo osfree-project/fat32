@@ -289,7 +289,7 @@ USHORT usCBIndex;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
-      FatalMessage("FAT32: ERROR: ReadSector %ld does not exist on disk %c:",
+      FatalMessage("FAT32: ERROR: ReadSector: Sector %ld does not exist on disk %c:",
          ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -444,7 +444,7 @@ USHORT usCBIndex;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
-      FatalMessage("FAT32: ERROR: WriteSector %ld does not exist on disk %c:",
+      FatalMessage("FAT32: ERROR: WriteSector: Sector %ld does not exist on disk %c:",
          ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
