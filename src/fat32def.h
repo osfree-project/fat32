@@ -149,7 +149,7 @@ ULONG  ulTotalRA;
 USHORT usCacheUsed;
 USHORT usDirtySectors;
 USHORT usPendingFlush;
-USHORT usDirtyTreshold;
+USHORT usDirtyThreshold;
 USHORT volatile usCacheSize;
 USHORT usSegmentsAllocated;
 USHORT fTranslateNames;

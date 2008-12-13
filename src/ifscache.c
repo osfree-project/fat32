@@ -135,7 +135,7 @@ ULONG    linPageList;
 
 
    f32Parms.usCacheSize = (USHORT)ulSectors;
-   f32Parms.usDirtyTreshold =
+   f32Parms.usDirtyThreshold =
       f32Parms.usCacheSize - (f32Parms.usCacheSize / 20);
 
    /* initiate request lists */
@@ -625,9 +625,9 @@ USHORT usCount;
 
       if (usRQInUse < usRQCount &&
 #ifdef WAIT_THRESHOLD
-          f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold)
+          f32Parms.usDirtySectors >= f32Parms.usDirtyThreshold)
 #else
-          f32Parms.usDirtySectors - f32Parms.usPendingFlush > f32Parms.usDirtyTreshold)
+          f32Parms.usDirtySectors - f32Parms.usPendingFlush > f32Parms.usDirtyThreshold)
 #endif
          {
          if (f32Parms.fMessageActive & LOG_CACHE ||
@@ -649,7 +649,7 @@ USHORT usCount;
             Message("waiting for dirty sectors to be less than threshold...");
 
         _disable();
-        while( f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold )
+        while( f32Parms.usDirtySectors >= f32Parms.usDirtyThreshold )
         {
              DevHelp_ProcBlock((ULONG)&f32Parms.usDirtySectors, 1000L, 1);
             _disable();
@@ -997,7 +997,7 @@ USHORT rc;
       rc = WAIT_TIMED_OUT;
       while (!f32Parms.fInShutDown && !pOptions->fTerminate &&
          rc == WAIT_TIMED_OUT)
-/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold */
+/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyThreshold */
          {
          rc = DevHelp_ProcBlock((ULONG)DoEmergencyFlush, 5000L, 1);
          _disable();
