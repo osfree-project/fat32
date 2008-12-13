@@ -478,22 +478,9 @@ USHORT usCBIndex;
                   fStoreSector(pVolInfo, ulSector + usIndex, p, fDirty);
                break;
             case TRUE  :
-               {
-               BOOL fIdent = FALSE;
-
-               if( fDirty )
-                  {
-                  PCACHE pCache;
-
-                  pCache = GetAddress(usCBIndex);
-                  fIdent = memcmp(p, pCache->bSector, SECTOR_SIZE) == 0;
-                  }
-
-               if( !fIdent )
-                  vReplaceSectorInCache(usCBIndex, p, fDirty);
+               vReplaceSectorInCache(usCBIndex, p, fDirty);
                UnlockBuffer(pCacheBase + usCBIndex);
                break;
-               }
             }
          p += SECTOR_SIZE;
          }
@@ -997,7 +984,7 @@ USHORT rc;
       rc = WAIT_TIMED_OUT;
       while (!f32Parms.fInShutDown && !pOptions->fTerminate &&
          rc == WAIT_TIMED_OUT)
-/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyThreshold */
+/*         f32Parms.usDirtySectors - f32Parms.usPendingFlush <= f32Parms.usDirtyTreshold */
          {
          rc = DevHelp_ProcBlock((ULONG)DoEmergencyFlush, 5000L, 1);
          _disable();
@@ -1481,11 +1468,6 @@ PCACHE pCache;
    pTar = MAKEP(pRQ->Sel, usEntry * SECTOR_SIZE);
    pCache = GetAddress(usCBIndex);
    memcpy(pTar, pCache->bSector, SECTOR_SIZE);
-
-/*
-   rgfDirty[usCBIndex] = FALSE;
-   f32Parms.usDirtySectors--;
-*/
 
    pBase->fFlushPending = SET;
    f32Parms.usPendingFlush++;
