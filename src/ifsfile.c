@@ -13,6 +13,8 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#define SECTORS_OF_2GB  (( LONG )( 2UL * 1024 * 1024 * 1024 / SECTOR_SIZE ))
+
 PRIVATE volatile PSHOPENINFO pGlobSH = NULL;
 
 PRIVATE VOID ResetAllCurrents(POPENINFO pOI);
@@ -398,7 +400,10 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors * SECTOR_SIZE;
+      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors;
+      /* if a less volume than 2GB, do normal IO else sector IO */
+      if( psffsi->sfi_size < SECTORS_OF_2GB )
+         psffsi->sfi_size *= SECTOR_SIZE;
       psffsi->sfi_ctime = 0;
       psffsi->sfi_cdate = 0;
       psffsi->sfi_atime = 0;
@@ -659,6 +664,15 @@ USHORT usBytesPerCluster;
    if (!((psffsi->sfi_mode & 0xFUL) == OPEN_ACCESS_READONLY) &&
        !((psffsi->sfi_mode & 0xFUL) == OPEN_ACCESS_READWRITE))
       {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_READEXIT;
+      }
+
+   if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
+       (pVolInfo->BootSect.bpb.BigTotalSectors >= SECTORS_OF_2GB ) &&
+       !pOpenInfo->fSectorMode )
+      {
+      /* User didn't enable sector IO on the larger volume than 2GB */
       rc = ERROR_ACCESS_DENIED;
       goto FS_READEXIT;
       }
@@ -1048,6 +1062,15 @@ USHORT usBytesPerCluster;
    if (!((psffsi->sfi_mode & 0xFUL) == OPEN_ACCESS_WRITEONLY) &&
        !((psffsi->sfi_mode & 0xFUL) == OPEN_ACCESS_READWRITE))
       {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_WRITEEXIT;
+      }
+
+   if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
+       (pVolInfo->BootSect.bpb.BigTotalSectors >= SECTORS_OF_2GB ) &&
+       !pOpenInfo->fSectorMode )
+      {
+      /* User didn't enable sector IO on the larger volume than 2GB */
       rc = ERROR_ACCESS_DENIED;
       goto FS_WRITEEXIT;
       }
