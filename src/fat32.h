@@ -20,7 +20,7 @@ BPB    bpb;
 ULONG  cTrackSize;
 PTRACKLAYOUT pTrack;
 ULONG  ulStartOfFAT;
-PBYTE  pbFATSector[512];
+PBYTE  pbFATSector[SECTOR_SIZE];
 ULONG  ulCurFATSector;
 PBYTE  pbCluster;
 ULONG  ulCurCluster;
