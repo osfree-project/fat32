@@ -2895,7 +2895,7 @@ USHORT rc;
 ******************************************************************/
 BOOL UpdateFSInfo(PVOLINFO pVolInfo)
 {
-static BYTE bSector[512] = "";
+static BYTE bSector[SECTOR_SIZE] = "";
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("UpdateFSInfo");
@@ -2923,7 +2923,7 @@ static BYTE bSector[512] = "";
 ******************************************************************/
 BOOL MarkDiskStatus(PVOLINFO pVolInfo, BOOL fClean)
 {
-static BYTE bSector[512] = "";
+static BYTE bSector[SECTOR_SIZE] = "";
 PULONG pulStatus;
 ULONG ulSector;
 USHORT usFat;

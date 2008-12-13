@@ -100,7 +100,7 @@ REQUEST rgReq[MAXRQENTRIES];
 
 typedef struct _Cache
 {
-BYTE  bSector[512];
+BYTE  bSector[SECTOR_SIZE];
 } CACHE, * PCACHE;
 
 #define SET  1
