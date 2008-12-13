@@ -101,7 +101,7 @@ BYTE  bPrevPrio;
       {
       DoCheckDisk(TRUE);
       if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
-         printf("Cache size has been set to zero, lazy writer will not be started!\n");
+         printf("FAT32: Cache size has been set to zero, lazy writer will not be started!\n");
       else if (fLoadDeamon)
          StartMe(rgArgv[0]);
       DosExit(EXIT_PROCESS, 0);
@@ -116,7 +116,7 @@ BYTE  bPrevPrio;
       FAT32_STARTLW, "FAT32", -1, FSCTL_FSDNAME);
    if (rc)
       {
-      printf("Starting LW failed, rc = %d\n", rc);
+      printf("FAT32: ERROR: Starting LW failed, rc = %d\n", rc);
       exit(1);
       }
 
@@ -126,11 +126,11 @@ BYTE  bPrevPrio;
 
    rc = DosCreateThread(&pOptions->ulEMTID, EMThread, 0L, 0, 8196);
    if (rc)
-      printf("DosCreateThread failed, rc = %d\n", rc);
+      printf("FAT32: ERROR: DosCreateThread failed, rc = %d\n", rc);
 
    rc = DosCreateThread(&pOptions->ulLWTID, LWThread, 0L, 0, 8196);
    if (rc)
-      printf("DosCreateThread failed, rc = %d\n", rc);
+      printf("FAT32: ERROR: DosCreateThread failed, rc = %d\n", rc);
 
    ulParmSize = sizeof f32Parms;
    rc = DosFSCtl(
@@ -201,7 +201,7 @@ ULONG  ulDataSize;
       (PVOID)pOptions, ulParmSize, &ulParmSize,
       FAT32_EMERGTHREAD, "FAT32", -1, FSCTL_FSDNAME);
    if (rc)
-      printf("EMThread: rc = %u\n", rc);
+      printf("FAT32: ERROR: EMThread: rc = %u\n", rc);
 
    ulArg = ulArg;
 }
@@ -211,7 +211,7 @@ ULONG  ulDataSize;
 ******************************************************************/
 VOID Handler(INT iSignal)
 {
-   printf("Signal %d was received\n", iSignal);
+   printf("FAT32: Signal %d was received\n", iSignal);
    exit(1);
 }
 
@@ -280,12 +280,12 @@ ULONG     ulParm;
       FAT32_GETPARMS, "FAT32", -1, FSCTL_FSDNAME);
    if (rc)
       {
-      printf("DosFSCtl, FAT32_GETPARMS failed, rc = %d\n", rc);
+      printf("FAT32: ERROR: DosFSCtl, FAT32_GETPARMS failed, rc = %d\n", rc);
       DosExit(EXIT_PROCESS, 1);
       }
    if (strcmp(f32Parms.szVersion, FAT32_VERSION))
       {
-      printf("ERROR: FAT32 version (%s) differs from CACHEF32 version (%s)\n", f32Parms.szVersion, FAT32_VERSION);
+      printf("FAT32: ERROR: FAT32 version (%s) differs from CACHEF32 version (%s)\n", f32Parms.szVersion, FAT32_VERSION);
       DosExit(EXIT_PROCESS, 1);
       }
 
@@ -316,13 +316,13 @@ ULONG     ulParm;
             case 'P':
                if (rgArgv[iArg][2] != ':')
                   {
-                  printf("Missing : after /P\n");
+                  printf("FAT32: ERROR: Missing : after /P\n");
                   DosExit(EXIT_PROCESS, 1);
                   }
                if (rgArgv[iArg][3] < '1' ||
                    rgArgv[iArg][3] > '4')
                   {
-                  printf("Lazy write priority should be from 1 to 4!\n");
+                  printf("FAT32: ERROR: Lazy write priority should be from 1 to 4!\n");
                   DosExit(EXIT_PROCESS, 1);
                   }
                pOptions->bLWPrio = rgArgv[iArg][3] - '0';
@@ -336,32 +336,32 @@ ULONG     ulParm;
                break;
 
             case 'T':
-               printf("The /T option is no longer supported.\n");
-               printf("Please read the documentation.\n");
+               printf("FAT32: WARNING: The /T option is no longer supported.\n");
+               printf("FAT32: Please read the documentation.\n");
                break;
 
             case 'Q' :
                if (fActive)
                   {
                   if (pOptions->fTerminate)
-                     printf("Terminate request already set!\n");
+                     printf("FAT32: Terminate request already set!\n");
                   pOptions->fTerminate = TRUE;
-                  printf("Terminating CACHEF32.EXE...\n");
+                  printf("FAT32: Terminating CACHEF32.EXE...\n");
                   DosExit(EXIT_PROCESS, 0);
                   }
-               printf("/Q is invalid, CACHEF32 is not running!\n");
+               printf("FAT32: ERROR: /Q is invalid, CACHEF32 is not running!\n");
                DosExit(EXIT_PROCESS, 1);
                break;
             case 'D':
                if (rgArgv[iArg][2] != ':')
                   {
-                  printf("ERROR: missing : in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: missing : in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                ulParm = atol(&rgArgv[iArg][3]);
                if (!ulParm)
                   {
-                  printf("ERROR: Invalid value in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: Invalid value in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                f32Parms.ulDiskIdle = ulParm / TIME_FACTOR;
@@ -371,13 +371,13 @@ ULONG     ulParm;
             case 'B':
                if (rgArgv[iArg][2] != ':')
                   {
-                  printf("ERROR: missing : in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: missing : in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                ulParm = atol(&rgArgv[iArg][3]);
                if (!ulParm)
                   {
-                  printf("ERROR: Invalid value in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: Invalid value in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                f32Parms.ulBufferIdle = ulParm / TIME_FACTOR;
@@ -387,13 +387,13 @@ ULONG     ulParm;
             case 'M':
                if (rgArgv[iArg][2] != ':')
                   {
-                  printf("ERROR: missing : in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: missing : in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                ulParm = atol(&rgArgv[iArg][3]);
                if (!ulParm)
                   {
-                  printf("ERROR: Invalid value in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: Invalid value in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                f32Parms.ulMaxAge = ulParm / TIME_FACTOR;
@@ -403,7 +403,7 @@ ULONG     ulParm;
             case 'R':
                if (rgArgv[iArg][2] != ':')
                   {
-                  printf("ERROR: missing : in %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: missing : in %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                SetRASectors(&rgArgv[iArg][3]);
@@ -416,13 +416,13 @@ ULONG     ulParm;
                }
                else if (rgArgv[iArg][2] == 'S' || rgArgv[iArg][2] == 'L' )
                {
-                  printf("Both /FS and /FL option is not supported any more.\n");
-                  printf("Please read the documentation.\n");
+                  printf("FAT32: WARNING: Both /FS and /FL option is not supported any more.\n");
+                  printf("FAT32: Please read the documentation.\n");
                   break;
                }
                else
                {
-                  printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: Unknown option %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                }
                break;
@@ -434,7 +434,7 @@ ULONG     ulParm;
                               NULL, 0, NULL,
                      FAT32_STARTLW, "FAT32", -1, FSCTL_FSDNAME);
                   if (rc)
-                     printf("Warning: Lazy writing is already active or cachesize is 0!\n");
+                     printf("FAT32: WARNING: Lazy writing is already active or cachesize is 0!\n");
                   }
                else if (!stricmp(&rgArgv[iArg][2], ":OFF"))
                   {
@@ -442,11 +442,11 @@ ULONG     ulParm;
                               NULL, 0, NULL,
                      FAT32_STOPLW, "FAT32", -1, FSCTL_FSDNAME);
                   if (rc)
-                     printf("Warning: Lazy writing is not active!\n");
+                     printf("FAT32: WARNING: Lazy writing is not active!\n");
                   }
                else
                   {
-                  printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
+                  printf("FAT32: ERROR: Unknown option %s\n", rgArgv[iArg]);
                   DosExit(EXIT_PROCESS, 1);
                   }
                break;
@@ -464,7 +464,7 @@ ULONG     ulParm;
                   ulParm = atol(&rgArgv[iArg][4]);
                   if( !ulParm )
                   {
-                    printf("ERROR: Invalid value in %s\n", rgArgv[iArg]);
+                    printf("FAT32: ERROR: Invalid value in %s\n", rgArgv[iArg]);
                     DosExit(EXIT_PROCESS, 1);
                   }
 
@@ -473,7 +473,7 @@ ULONG     ulParm;
                }
 
             default :
-               printf("ERROR: Unknown option %s\n", rgArgv[iArg]);
+               printf("FAT32: ERROR: Unknown option %s\n", rgArgv[iArg]);
                DosExit(EXIT_PROCESS, 1);
                break;
             }
@@ -488,7 +488,7 @@ ULONG     ulParm;
       {
       if (f32Parms.ulDiskIdle < f32Parms.ulBufferIdle)
          {
-         printf("DISKIDLE must be greater than BUFFERIDLE\n");
+         printf("FAT32: ERROR: DISKIDLE must be greater than BUFFERIDLE\n");
          DosExit(EXIT_PROCESS, 1);
          }
 
@@ -500,7 +500,7 @@ ULONG     ulParm;
 
       if (rc)
          {
-         printf("DosFSCtl FAT32_SETPARMS, failed, rc = %d\n", rc);
+         printf("FAT32: ERROR: DosFSCtl FAT32_SETPARMS, failed, rc = %d\n", rc);
          DosExit(EXIT_PROCESS, 1);
          }
       }
@@ -512,7 +512,7 @@ ULONG     ulParm;
          {
          if( !f32Parms.fForceLoad )
             {
-            printf("FAT32: No FAT32 partitions found, aborting...\n");
+            printf("FAT32: ERROR: No FAT32 partitions found, aborting...\n");
             printf("FAT32: Use /F option to load lazy write deamon\n");
             DosExit(EXIT_PROCESS, 1);
             }
@@ -604,7 +604,7 @@ ULONG  ulDataSize;
             NULL, 0, NULL,
             (PVOID)&usRASectors, ulDataSize, &ulDataSize);
          if (rc)
-            printf("DosDevIOCtl, FAT_QUERYRASECTORS for drive %s failed, rc = %d\n",
+            printf("FAT32: ERROR: DosDevIOCtl, FAT_QUERYRASECTORS for drive %s failed, rc = %d\n",
                szDisk, rc);
 
          DosClose(hDisk);
@@ -626,7 +626,7 @@ BYTE   szDisk[3];
 
    if (pszArg[1] != ':')
       {
-      printf("Invalid argument for /R option.\n");
+      printf("FAT32: ERROR: Invalid argument for /R option.\n");
       DosExit(EXIT_PROCESS, 1);
       }
    memset(szDisk, 0, sizeof szDisk);
@@ -635,7 +635,7 @@ BYTE   szDisk[3];
    pszArg+=2;
    if (*pszArg !=',')
       {
-      printf("Comma missing in /R:d:,n\n");
+      printf("FAT32: ERROR: Comma missing in /R:d:,n\n");
       DosExit(EXIT_PROCESS, 1);
       }
    pszArg++;
@@ -654,7 +654,7 @@ BYTE   szDisk[3];
 
    if (rc)
       {
-      printf("Cannot access drive %s, rc = %d\n",
+      printf("FAT32: ERROR: Cannot access drive %s, rc = %d\n",
          szDisk, rc);
       DosExit(EXIT_PROCESS, 1);
       }
@@ -667,7 +667,7 @@ BYTE   szDisk[3];
       NULL, 0, NULL);
    if (rc)
       {
-      printf("DosDevIOCtl, FAT_SETRASECTORS for drive %s failed, rc = %d\n",
+      printf("FAT32: ERROR: DosDevIOCtl, FAT_SETRASECTORS for drive %s failed, rc = %d\n",
          szDisk, rc);
       DosExit(EXIT_PROCESS, 1);
       }
@@ -756,7 +756,7 @@ RESULTCODES Res;
       szProgram);
    if (rc)
       {
-      printf("DosExecPgm Failed due to %s, rc = %d\n", szObjName, rc);
+      printf("FAT32: ERROR: DosExecPgm Failed due to %s, rc = %d\n", szObjName, rc);
       return FALSE;
       }
    return TRUE;
@@ -792,14 +792,14 @@ ULONG  ulDataSize;
       NULL, 0, NULL,
       (PVOID)&fClean, ulDataSize, &ulDataSize);
    if (rc)
-      printf("DosDevIOCtl, FAT_GETVOLCLEAN failed, rc = %d\n", rc);
+      printf("FAT32: ERROR: DosDevIOCtl, FAT_GETVOLCLEAN failed, rc = %d\n", rc);
 
    DosClose(hDisk);
    if (rc)
       return FALSE;
 
 //   if (!fClean)
-//      printf("FAT32: Drive %s was improperly stopped.\n", pszDisk);
+//      printf("FAT32: WARNING: Drive %s was improperly stopped.\n", pszDisk);
 
 
    return fClean;
@@ -846,7 +846,7 @@ RESULTCODES Res;
       QueryMyFullPath());
    if (rc)
       {
-      printf("FAT32: unable to start deamon (%s)\n. rc = %d for %s\n",
+      printf("FAT32: ERROR: unable to start deamon (%s)\n. rc = %d for %s\n",
          szArguments, rc, szObjName);
       return FALSE;
       }
@@ -944,8 +944,8 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
    rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModConv);
    if (rc)
       {
-      printf("No NLS support found (%s does not load).\n", rgData);
-      printf("No UNICODE translate table loaded!\n");
+      printf("FAT32: No NLS support found (%s does not load).\n", rgData);
+      printf("FAT32: No UNICODE translate table loaded!\n");
       rc = TRUE;
       goto free_exit;
       }
@@ -953,7 +953,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniCreateUconvObject", (PFN *)&pUniCreateUconvObject);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniCreateUconvObject.\n");
+      printf("FAT32: ERROR: Could not find address of UniCreateUconvObject.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -961,7 +961,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniUconvToUcs", (PFN *)&pUniUconvToUcs);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniUconvToUcs.\n");
+      printf("FAT32: ERROR: Could not find address of UniUconvToUcs.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -970,7 +970,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniUconvFromUcs", (PFN *)&pUniUconvFromUcs);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniUconvFromUcs.\n");
+      printf("FAT32: ERROR: Could not find address of UniUconvFromUcs.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -979,7 +979,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniMapCpToUcsCp", (PFN *)&pUniMapCpToUcsCp);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniMapCpToUcsCp.\n");
+      printf("FAT32: ERROR: Could not find address of UniMapCpToUcsCp.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -988,7 +988,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniQueryUconvObject", (PFN *)&pUniQueryUconvObject);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniQueryUconvObject.\n");
+      printf("FAT32: ERROR: Could not find address of UniQueryUconvObject.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -996,8 +996,8 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
    rc = DosLoadModule(rgData, sizeof rgData, "LIBUNI.DLL", &hModUni);
    if (rc)
       {
-      printf("No NLS support found (%s does not load).\n", rgData);
-      printf("No UNICODE translate table loaded!\n");
+      printf("FAT32: No NLS support found (%s does not load).\n", rgData);
+      printf("FAT32: No UNICODE translate table loaded!\n");
       rc = TRUE;
       goto free_exit;
       }
@@ -1006,7 +1006,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
       "UniTolower", (PFN *)&pUniTolower);
    if (rc)
       {
-      printf("ERROR: Could not find address of UniTolower.\n");
+      printf("FAT32: ERROR: Could not find address of UniTolower.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -1060,7 +1060,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
    rc = pUniMapCpToUcsCp( rgCP[ 0 ], ucsCp, sizeof( ucsCp ) / sizeof( UniChar ));
    if( rc != ULS_SUCCESS )
    {
-        printf("UniMapCpToUcsCp error: return code = %u\n", rc );
+        printf("FAT32: ERROR: UniMapCpToUcsCp error: return code = %u\n", rc );
         rc = FALSE;
         goto free_exit;
    }
@@ -1068,7 +1068,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
    rc = pUniCreateUconvObject( ucsCp, &uconv_object);
    if (rc != ULS_SUCCESS)
       {
-      printf("UniCreateUconvObject error: return code = %u\n", rc);
+      printf("FAT32: ERROR: UniCreateUconvObject error: return code = %u\n", rc);
       rc = FALSE;
       goto free_exit;
       }
@@ -1076,7 +1076,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
    rc = pUniQueryUconvObject( uconv_object, NULL, 0, rgFirst, NULL, NULL );
    if (rc != ULS_SUCCESS)
       {
-      printf("UniQueryUConvObject error: return code = %u\n", rc);
+      printf("FAT32: ERROR: UniQueryUConvObject error: return code = %u\n", rc);
       rc = FALSE;
       goto free_exit;
       }
@@ -1109,7 +1109,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
 
    if (rc != ULS_SUCCESS)
       {
-      printf("UniUconvToUcs failed, rc = %u\n", rc);
+      printf("FAT32: ERROR: UniUconvToUcs failed, rc = %u\n", rc);
       rc = FALSE;
       goto free_exit;
       }
@@ -1133,7 +1133,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
 
    if (rc != ULS_SUCCESS)
       {
-      printf("UniUconvFromUcs failed, rc = %u\n", rc);
+      printf("FAT32: ERROR: UniUconvFromUcs failed, rc = %u\n", rc);
       rc = FALSE;
       goto free_exit;
       }
@@ -1165,7 +1165,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
 
                   if (rc != ULS_SUCCESS)
                   {
-                     printf("UniUconvToUcs failed, rc = %u\n", rc);
+                     printf("FAT32: ERROR: UniUconvToUcs failed, rc = %u\n", rc);
                      rc = FALSE;
                      goto free_exit;
                   }
@@ -1179,7 +1179,7 @@ UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
                FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
    if (rc)
       {
-      printf("Unable to set translate table for current Codepage.\n");
+      printf("FAT32: ERROR: Unable to set translate table for current Codepage.\n");
       rc = FALSE;
       goto free_exit;
       }
@@ -1217,4 +1217,3 @@ FILE *fp;
 
    pszMessage = pszMessage;
 }
-
