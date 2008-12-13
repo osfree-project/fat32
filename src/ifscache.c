@@ -265,11 +265,13 @@ ULONG    linPageList;
 }
 
 
-#define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
-                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster ))
+#define Cluster2Sector( pVolInfo, ulCluster ) \
+    (( ULONG )(( pVolInfo )->ulStartOfData + \
+     (( ULONG )( ulCluster ) - 2) * ( pVolInfo )->BootSect.bpb.SectorsPerCluster ))
 
-#define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
-                                         pVolInfo->BootSect.bpb.SectorsPerCluster + 2 ))
+#define Sector2Cluster( pVolInfo, ulSector ) \
+    (( ULONG )((( ULONG )( ulSector ) - ( pVolInfo )->ulStartOfData ) / \
+     ( pVolInfo )->BootSect.bpb.SectorsPerCluster + 2 ))
 
 /******************************************************************
 *
@@ -340,8 +342,8 @@ USHORT usCBIndex;
    /* check bad cluster */
    if( ulSector >= pVolInfo->ulStartOfData )
    {
-        ULONG ulStartCluster = Sector2Cluster( ulSector );
-        ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
+        ULONG ulStartCluster = Sector2Cluster( pVolInfo, ulSector );
+        ULONG ulEndCluster = Sector2Cluster( pVolInfo, ulSector + usSectors - 1 );
         ULONG ulNextCluster = 0;
         ULONG ulCluster;
 
@@ -355,7 +357,7 @@ USHORT usCBIndex;
         if( ulNextCluster == FAT_BAD_CLUSTER )
         {
             usSectors = ( ulStartCluster != ulCluster ) ?
-                ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
+                ( min(( USHORT )( Cluster2Sector( pVolInfo, ulCluster ) - ulSector ), usSectors )) : 0;
         }
    }
 
