@@ -1325,3 +1325,16 @@ Version 0.9.12:
   be incorrect. At this time, you should use 'chkdsk' to correct it or
   '/CALCFREE' to avoid it.
 
+Version 0.9.13:
+
+- Fixed the problem that a program trying to READ/WRITE from/to memory object
+  with OBJ_ANY attribute is crashed. But READ/WRITE performance is decreased.
+  Reported by dixie.
+
+- Fixed the problem that CACHEF32.EXE prints 'Unicode translate table for xxx
+  loaded' even though '/S' is specified.
+
+- Clarified that messages of CACHEF32.EXE are related to FAT32.
+
+- Improved lazy-write performance.
+
