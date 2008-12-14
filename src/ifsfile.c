@@ -750,15 +750,15 @@ USHORT usBytesPerCluster;
 
             ulSector        = (ULONG)(psffsi->sfi_position / (ULONG)usBytesPerSector);
             usSectorOffset  = (USHORT)(psffsi->sfi_position % (ULONG)usBytesPerSector);
-            usRemaining     = (usSectorOffset + usBytesToRead) % usBytesPerSector;
+            usRemaining     = (usSectorOffset + usBytesToRead) > usBytesPerSector ? ((usSectorOffset + usBytesToRead) % usBytesPerSector) : 0;
             usNumSectors    = (usBytesToRead - usRemaining)/usBytesPerSector;
 
-            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
             {
-                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
+                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - ulSector);
                 usRemaining     = 0;
+                usBytesToRead   = usNumSectors*usBytesPerSector + ( usSectorOffset ? ( usBytesPerSector - usSectorOffset ) : 0 );
             }
-            usBytesToRead   = usNumSectors*usBytesPerSector;
         }
 
         if (ulSector >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -769,15 +769,19 @@ USHORT usBytesPerCluster;
 
         if (usSectorOffset)
         {
+            USHORT usCurBytesToRead = min(usBytesToRead, usBytesPerSector - usSectorOffset);
+
             rc = ReadSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_READEXIT;
             }
-            memcpy(pBufPosition,pbCluster + usSectorOffset,usBytesPerSector-usSectorOffset);
-            pBufPosition            += (usBytesPerSector - usSectorOffset);
-            psffsi->sfi_position    += (usBytesPerSector - usSectorOffset);
-            usBytesRead             += (usBytesPerSector - usSectorOffset);
+            memcpy(pBufPosition,pbCluster + usSectorOffset,usCurBytesToRead);
+            pBufPosition            += usCurBytesToRead;
+            psffsi->sfi_position    += usCurBytesToRead;
+            usBytesRead             += usCurBytesToRead;
+            usBytesToRead           -= usCurBytesToRead;
+            ulSector++;
         }
 
         if (usNumSectors)
@@ -788,8 +792,9 @@ USHORT usBytesPerCluster;
                 goto FS_READEXIT;
             }
             pBufPosition            += (ULONG)((ULONG)usNumSectors*(ULONG)usBytesPerSector);
-            psffsi->sfi_position    += usBytesToRead;
-            usBytesRead             += usBytesToRead;
+            psffsi->sfi_position    += usBytesToRead - usRemaining;
+            usBytesRead             += usBytesToRead - usRemaining;
+            ulSector                += usNumSectors;
         }
 
         if (usRemaining)
@@ -1115,10 +1120,10 @@ USHORT usBytesPerCluster;
 
             usTotNumBytes = usBytesToWrite * usBytesPerSector;
 
-            rc = MY_PROBEBUF(PB_OPWRITE, pBufPosition, usTotNumBytes);
+            rc = MY_PROBEBUF(PB_OPREAD, pBufPosition, usTotNumBytes);
             if (rc)
             {
-                Message("Protection VIOLATION in FS_READ! (SYS%d)", rc);
+                Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
                 goto FS_WRITEEXIT;
             }
 
@@ -1139,24 +1144,24 @@ USHORT usBytesPerCluster;
         }
         else
         {
-            rc = MY_PROBEBUF(PB_OPWRITE, pData, usBytesToWrite);
+            rc = MY_PROBEBUF(PB_OPREAD, pData, usBytesToWrite);
             if (rc)
             {
-                Message("Protection VIOLATION in FS_READ! (SYS%d)", rc);
+                Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
                 goto FS_WRITEEXIT;
             }
 
             ulSector        = (ULONG)(psffsi->sfi_position / (ULONG)usBytesPerSector);
             usSectorOffset  = (USHORT)(psffsi->sfi_position % (ULONG)usBytesPerSector);
-            usRemaining     = (usSectorOffset + usBytesToWrite) % usBytesPerSector;
+            usRemaining     = (usSectorOffset + usBytesToWrite) > usBytesPerSector ? ((usSectorOffset + usBytesToWrite) % usBytesPerSector) : 0;
             usNumSectors    = (usBytesToWrite - usRemaining)/usBytesPerSector;
 
-            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
             {
-                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
+                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - ulSector);
                 usRemaining     = 0;
+                usBytesToWrite  = usNumSectors*usBytesPerSector + ( usSectorOffset ? ( usBytesPerSector - usSectorOffset ) : 0 );
             }
-            usBytesToWrite   = usNumSectors*usBytesPerSector;
         }
 
         if (ulSector >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -1165,7 +1170,7 @@ USHORT usBytesPerCluster;
             goto FS_WRITEEXIT;
         }
 
-        if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+        if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
         {
             rc = ERROR_SECTOR_NOT_FOUND;
             goto FS_WRITEEXIT;
@@ -1173,21 +1178,25 @@ USHORT usBytesPerCluster;
 
         if (usSectorOffset)
         {
+            USHORT usCurBytesToWrite = min(usBytesToWrite, usBytesPerSector - usSectorOffset);
+
             rc = ReadSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_WRITEEXIT;
             }
-            memcpy(pbCluster + usSectorOffset, pBufPosition, usBytesPerSector-usSectorOffset);
+            memcpy(pbCluster + usSectorOffset, pBufPosition, usCurBytesToWrite);
             rc = WriteSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_WRITEEXIT;
             }
 
-            pBufPosition            += (usBytesPerSector - usSectorOffset);
-            psffsi->sfi_position    += (usBytesPerSector - usSectorOffset);
-            usBytesWritten          += (usBytesPerSector - usSectorOffset);
+            pBufPosition            += usCurBytesToWrite;
+            psffsi->sfi_position    += usCurBytesToWrite;
+            usBytesWritten          += usCurBytesToWrite;
+            usBytesToWrite          -= usCurBytesToWrite;
+            ulSector++;
         }
 
         if (usNumSectors)
@@ -1198,8 +1207,9 @@ USHORT usBytesPerCluster;
                 goto FS_WRITEEXIT;
             }
             pBufPosition            += (ULONG)((ULONG)usNumSectors*(ULONG)usBytesPerSector);
-            psffsi->sfi_position    += usBytesToWrite;
-            usBytesWritten          += usBytesToWrite;
+            psffsi->sfi_position    += usBytesToWrite - usRemaining;
+            usBytesWritten          += usBytesToWrite - usRemaining;
+            ulSector                += usNumSectors;
         }
 
         if (usRemaining)
