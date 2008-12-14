@@ -746,6 +746,11 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
          pOpenInfo = GetOpenInfo(pArgDat->sf.psffsd);
+
+         /* if a less volume than 2GB, converts a size from in bytes to in sectors. */
+         if(!pOpenInfo->fLargeVolume)
+            pArgDat->sf.psffsi->sfi_size /= SECTOR_SIZE;
+
          pOpenInfo->fSectorMode = TRUE;
          rc = 0;
          break;
