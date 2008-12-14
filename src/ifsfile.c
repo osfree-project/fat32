@@ -402,6 +402,8 @@ USHORT rc;
       /* if a less volume than 2GB, do normal IO else sector IO */
       if( psffsi->sfi_size < SECTORS_OF_2GB )
          psffsi->sfi_size *= SECTOR_SIZE;
+      else
+         pOpenInfo->fLargeVolume = TRUE;
 
 	  psffsi->sfi_ctime = 0;
 	  psffsi->sfi_cdate = 0;
@@ -671,8 +673,7 @@ USHORT usBytesPerCluster;
 	  }
 
    if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
-       (pVolInfo->BootSect.bpb.BigTotalSectors >= SECTORS_OF_2GB ) &&
-       !pOpenInfo->fSectorMode )
+       pOpenInfo->fLargeVolume && !pOpenInfo->fSectorMode )
       {
       /* User didn't enable sector IO on the larger volume than 2GB */
       rc = ERROR_ACCESS_DENIED;
@@ -1071,8 +1072,7 @@ USHORT usBytesPerCluster;
 	  }
 
    if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
-       (pVolInfo->BootSect.bpb.BigTotalSectors >= SECTORS_OF_2GB ) &&
-       !pOpenInfo->fSectorMode )
+       pOpenInfo->fLargeVolume && !pOpenInfo->fSectorMode )
       {
       /* User didn't enable sector IO on the larger volume than 2GB */
       rc = ERROR_ACCESS_DENIED;

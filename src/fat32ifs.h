@@ -207,6 +207,7 @@ PVOID       pNext;
 BOOL        fSectorMode;
 BOOL        fCommitAttr;
 ULONG       ulCurCluster;
+BOOL        fLargeVolume;
 } OPENINFO, *POPENINFO;
 
 typedef struct _EASizeBuf
@@ -367,4 +368,3 @@ IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 
 
 #endif
-
