@@ -91,8 +91,10 @@ BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritte
 
 void open_drive (char *path , HANDLE *hDevice)
 {
-  char DriveDevicePath[]="\\\\.\\Z:"; // for CreateFile
-  char *p = path;
+  char  DriveDevicePath[]="\\\\.\\Z:"; // for CreateFile
+  char  *p = path;
+  ULONG cbRet;
+  BOOL  bRet;
 
   if (strlen(path) == 2 && path[1] == ':')
   {
@@ -111,11 +113,27 @@ void open_drive (char *path , HANDLE *hDevice)
       FILE_FLAG_NO_BUFFERING,
       NULL);
   if ( *hDevice ==  INVALID_HANDLE_VALUE )
-      die( "Failed to open device - close any files before formatting,"
-           "and make sure you have Admin rights when using fat32format"
-            "Are you SURE you're formatting the RIGHT DRIVE!!!", -1 );
+      die( "Failed to open device - close any files before formatting,\n"
+           "and make sure you have Admin rights when using fat32format\n"
+            "Are you SURE you're formatting the RIGHT DRIVE!!!\n", -1 );
 
   hDev = *hDevice;
+
+  bRet = DeviceIoControl(
+	  (HANDLE) hDevice,              // handle to device
+	  FSCTL_ALLOW_EXTENDED_DASD_IO,  // dwIoControlCode
+	  NULL,                          // lpInBuffer
+	  0,                             // nInBufferSize
+	  NULL,                          // lpOutBuffer
+	  0,                             // nOutBufferSize
+	  &cbRet,				         // number of bytes returned
+	  NULL                           // OVERLAPPED structure
+	);
+
+  if ( !bRet )
+      printf ( "Failed to allow extended DASD on device" );
+  else
+      printf ( "FSCTL_ALLOW_EXTENDED_DASD_IO OK\n" ); 
 }
 
 void lock_drive(HANDLE hDevice)
@@ -148,6 +166,10 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   DISK_GEOMETRY          dgDrive;
   PARTITION_INFORMATION  piDrive;
 
+  PARTITION_INFORMATION_EX xpiDrive;
+  BOOL bGPTMode = FALSE;
+  SET_PARTITION_INFORMATION spiDrive;
+
   // work out drive params
   bRet = DeviceIoControl ( hDevice, IOCTL_DISK_GET_DRIVE_GEOMETRY,
                            NULL, 0, &dgDrive, sizeof(dgDrive),
@@ -162,7 +184,28 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
         &cbRet, NULL);
 
   if ( !bRet )
-      die( "Failed to get parition info", -10 );
+  {
+      //die( "Failed to get parition info", -10 );
+
+      printf ( "IOCTL_DISK_GET_PARTITION_INFO failed, \n"
+               "trying IOCTL_DISK_GET_PARTITION_INFO_EX\n" );
+
+      bRet = DeviceIoControl ( hDevice, 
+			IOCTL_DISK_GET_PARTITION_INFO_EX,
+			NULL, 0, &xpiDrive, sizeof(xpiDrive),
+			&cbRet, NULL);
+			
+      if (!bRet)
+          die( "Failed to get partition info (both regular and _ex)", -11 );
+
+      memset ( &piDrive, 0, sizeof(piDrive) );
+      piDrive.StartingOffset.QuadPart = xpiDrive.StartingOffset.QuadPart;
+      piDrive.PartitionLength.QuadPart = xpiDrive.PartitionLength.QuadPart;
+      piDrive.HiddenSectors = (DWORD) (xpiDrive.StartingOffset.QuadPart / dgDrive.BytesPerSector);
+		
+      bGPTMode = ( xpiDrive.PartitionStyle == PARTITION_STYLE_MBR ) ? 0 : 1;
+      printf ( "IOCTL_DISK_GET_PARTITION_INFO_EX ok, GPTMode=%d\n", bGPTMode );
+  }
 
   // Only support hard disks at the moment 
   //if ( dgDrive.BytesPerSector != 512 )
@@ -253,7 +296,8 @@ void check_vol_label(char *path, char **vol_label)
 {
     char c;
 
-    printf ( "Warning ALL data on drive '%s' will be lost irretrievably, are you sure\n(y/n) ", path );
+    printf ( "Warning ALL data on drive '%s' will be \n"
+             "lost irretrievably, are you sure\n(y/n) ", path );
     
     c = getchar();
 
@@ -271,7 +315,25 @@ void set_vol_label (char *path, char *vol)
 
 }
 
-void show_progress (char *str)
+void show_progress (float fPercentWritten)
 {
+    static char f = 0;
+    
+    if (! f)
+    {
+        printf("Percent written: ");
+        f = 1;
+    }
+}
 
+void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumFields, ...)
+{
+    va_list va;
+    UCHAR szBuf[1024];
+
+    va_start(va, usNumFields);
+    vsprintf ( szBuf, pszMsg, va );
+    va_end( va );
+
+    puts(szBuf);
 }

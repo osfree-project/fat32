@@ -111,8 +111,8 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     double fTime;
     double fBytesTotal;
     LONGLONG qBytesTotal, qBytesWritten;
-    float fPercentWritten;
-    char  Str[12];
+    float fPercentWritten, fPrevPercentWritten = 0;
+    //char  Str[12];
 
     //BurstSize = pdgDrive->SectorsPerTrack * pdgDrive->TracksPerCylinder;
     BurstSize = 128; // 64K
@@ -146,10 +146,19 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
             die ( "Failed to write", ret );  
 
         qBytesWritten += dwWritten;
-        fPercentWritten = ( qBytesWritten / qBytesTotal ) * 100;
 
-        // percent written indication
-        show_progress(fPercentWritten);
+        if (! fPrevPercentWritten) fPercentWritten;
+
+        fPercentWritten = ( qBytesWritten / qBytesTotal ) * 100;
+        //sprintf(Str, "%.2f%%...", fPercentWritten);
+
+        if ( fPercentWritten - fPrevPercentWritten >= 5 )
+        {
+          // update progress indicator if it has grown by >= 5%
+          fPrevPercentWritten = fPercentWritten;
+          // percent written indication
+          show_progress(fPercentWritten);
+        }
         
         NumSects -= WriteSize;
     }
@@ -343,13 +352,17 @@ int format_volume (char *path, format_params *params)
     // the FAT are reserved.
     if (  ClusterCount > 0x0FFFFFFF )
         {
-        die ( "This drive has more than 2^28 clusters, try to specify a larger cluster size or use the default (i.e. don't use -cXX)\n", -3 );
+        die ( "This drive has more than 2^28 clusters, \n"
+              "try to specify a larger cluster size or use \n"
+              "the default (i.e. don't use -cXX)\n", -3 );
         }
 
 	// Sanity check - < 64K clusters means that the volume will be misdetected as FAT16
 	if ( ClusterCount < 65536 )
 		{
-		die ( "FAT32 must have at least 65536 clusters, try to specify a smaller cluster size or use the default (i.e. don't use -cXX)\n", -4  );
+		die ( "FAT32 must have at least 65536 clusters, \n"
+                      "try to specify a smaller cluster size or \n"
+                      "use the default (i.e. don't use -cXX)\n", -4  );
 		}
 
     // Sanity check, make sure the fat is big enough
@@ -360,15 +373,16 @@ int format_volume (char *path, format_params *params)
     FatNeeded /= dp.BytesPerSect;
     if ( FatNeeded > dp.FatSize )
         {
-        die ( "This drive is too big for this version of fat32format, check for an upgrade\n", -5 );
+        die ( "This drive is too big for this version \n"
+              "of fat32format, check for an upgrade\n", -5 );
         }
 
 
     // Now we're commited - print some info first
     printf ( "Size : %g MB %u sectors\n", (double) (dp.PartitionLength / (1000*1000)), dp.TotalSectors );
     printf ( "%d Bytes Per Sector, Cluster size %d bytes\n", dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
-    printf ( "Volume Serial No. is %x:%x\n", VolumeId>>16, VolumeId&0xffff );
-    printf ( "Volume label is %s\n", vol );
+    printf ( "Volume Serial No. is %x:%x\n", VolumeId >> 16, VolumeId & 0xffff );
+    printf ( "Volume label is %s\n",  vol );
     printf ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
 
     printf ( "%d Total clusters\n", ClusterCount );
@@ -424,6 +438,7 @@ int format_volume (char *path, format_params *params)
     //    will let you use a 48bit LBA drive.
     //    see http://www.48bitlba.com/win98.htm for instructions
 
+    //set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     //printf("002\n");
     //set_vol_label (path, vol); // traps when booted from FAT32
     //printf("003\n");
@@ -439,9 +454,8 @@ int format_volume (char *path, format_params *params)
     //printf("008\n");
     close_drive ( hDevice );
     //printf("009\n");
-    //set_vol_label (path, vol); // traps when booted from FAT32
-    //set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
-    printf ( "Done.\n" );
+    set_vol_label (path, vol); // traps when booted from FAT32
+    ////set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     fflush(stdout);
     //printf("010\n");
 
@@ -450,18 +464,22 @@ int format_volume (char *path, format_params *params)
 
 void usage( char *s )
 {
-        printf ( "\nFat32format, ver. 1.05, see http://www.ridgecrop.demon.co.uk/fat32format.htm \n"
-                 "Use with care - Ridgecrop are not liable for data lost using this tool \n"
-                 "Modified by osFree project for ufat32.dll \n"
-                 "This software is covered by the GPL \n"
-                 "--------------------------------------------------\n"
-                 "Usage: c:\\> %s <d>: [options]\n\n"
+        printf ( "\nFat32format, ver. 1.07, \n"
+                 "see http://www.ridgecrop.demon.co.uk/fat32format.htm\n"
+                 "Modified and ported to OS/2 by osFree project \n"
+                 "(http://osfree.org) for ufat32.dll.\n"
+                 "This software is covered by the GPL.\n"
+                 "Use with care - Ridgecrop are not liable\n"
+		 "for data lost using this tool.\n"
+                 "Usage:[c:\\] %s <d>: [options]\n\n"
                  "/C:<N> with different cluster sizes:\n"
                  "    N: sectors per cluster:\n"
                  "    1 ( max size 137GB ) \n"
                  "    2 ( max size 274GB )\n"
                  "    4 ( max size 549GB )\n"
-                 "    8 ( max size 1TB ) ... until 128 sectors per cluster. \n"
+                 "    8 ( max size 1TB. \n"
+                 "    ... \n"
+                 "  128 - use 128 sectors per cluster (64K clusters)\n"
                  "/V:<volume label>\n"
                  "/? this help message\n\n", s );
 
@@ -507,10 +525,10 @@ int format(int argc, char *argv[], char *envp[])
 {
     format_params p;
     char cVolume;
-    int i=1;
+    int  i=1;
     char path[] = "Z:";
     char *s, *t;
-    char key[12], val[12]; 
+    char key[12], val[12];
 
     // set up signal handlers
     if (setup_signals())
@@ -602,7 +620,8 @@ int format(int argc, char *argv[], char *envp[])
         //i++;
     }
 
-    format_volume( path, &p );
+    if ( format_volume( path, &p ) )
+       show_message( "Done.", 1294, 0 );
 
     return 0;
 }

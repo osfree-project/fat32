@@ -16,17 +16,6 @@
 #include "fat32def.h"
 #include "portable.h"
 
-#define MAX_MESSAGE 2048
-
-#define BLOCK_SIZE  0x4000
-#define MAX_MESSAGE 2048
-#define TYPE_LONG    0
-#define TYPE_STRING  1
-#define TYPE_PERC    2
-#define TYPE_LONG2   3
-#define TYPE_DOUBLE  4
-#define TYPE_DOUBLE2 5
-
 typedef HFILE HANDLE;
 
 extern HANDLE hDev;
@@ -59,7 +48,7 @@ void die ( char * error, DWORD rc )
     APIRET ret;
    
     // Format failed
-    printf("%s\n", error);
+    printf("ERROR: %s\n", error);
     iShowMessage(NULL, 528, 0);
     printf("%s\n", GetOS2Error(rc));
 
@@ -119,11 +108,14 @@ void open_drive (char *path, HANDLE *hDevice)
               &ulAction,         // action taken by DosOpenL
               0,                 // cbFile
               0,                 // ulAttribute
-              OPEN_ACTION_OPEN_IF_EXISTS,
-              OPEN_FLAGS_FAIL_ON_ERROR | OPEN_FLAGS_WRITE_THROUGH | 
+              OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+              //OPEN_FLAGS_FAIL_ON_ERROR | OPEN_FLAGS_WRITE_THROUGH | 
               OPEN_FLAGS_NO_CACHE | OPEN_SHARE_DENYREADWRITE |
               OPEN_ACCESS_READWRITE, // | OPEN_FLAGS_DASD,
               NULL);             // peaop2
+
+     //!     OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+     //!     OPEN_FLAGS_DASD | OPEN_FLAGS_NO_CACHE | OPEN_ACCESS_READONLY | OPEN_SHARE_DENYREADWRITE,
 
      //      OPEN_SHARE_DENYNONE | OPEN_ACCESS_READWRITE |
      //      OPEN_FLAGS_NO_CACHE  | OPEN_FLAGS_WRITE_THROUGH, // | OPEN_FLAGS_DASD,
@@ -142,14 +134,15 @@ void open_drive (char *path, HANDLE *hDevice)
 
 void lock_drive(HANDLE hDevice)
 {
-  unsigned char  cmdinfo = '\0';
-  unsigned long  parmlen = sizeof(cmdinfo);
-  unsigned long  datalen = sizeof(cmdinfo);
+  unsigned char  parminfo  = 0;
+  unsigned char  datainfo  = 0;
+  unsigned long  parmlen   = 1;
+  unsigned long  datalen   = 1;
   APIRET rc;
 
-  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_LOCKDRIVE, &cmdinfo,
-                    sizeof(cmdinfo), &parmlen, &cmdinfo, // Param packet
-                    sizeof(cmdinfo), &datalen);
+  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_LOCKDRIVE, &parminfo,
+                    parmlen, &parmlen, &datainfo, // Param packet
+                    datalen, &datalen);
 
   if ( rc )
       die( "Failed to lock device" , rc);
@@ -158,18 +151,21 @@ void lock_drive(HANDLE hDevice)
 
 void unlock_drive(HANDLE hDevice)
 {
-  unsigned char  cmdinfo = '\0';
-  unsigned long  parmlen = sizeof(cmdinfo);
-  unsigned long  datalen = sizeof(cmdinfo);
+  unsigned char  parminfo = 0;
+  unsigned char  datainfo = 0;
+  unsigned long  parmlen  = 1;
+  unsigned long  datalen  = 1;
   APIRET rc;
 
-  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_UNLOCKDRIVE, &cmdinfo,
-                    sizeof(cmdinfo), &parmlen, &cmdinfo, // Param packet
-                    sizeof(cmdinfo), &datalen);
+  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_UNLOCKDRIVE, &parminfo,
+                    parmlen, &parmlen, &datainfo, // Param packet
+                    datalen, &datalen);
 
-  if ( rc )
-      die( "Failed to unlock device" , rc );
-
+  if ( rc ) 
+  {
+      printf( "WARNING: Failed to unlock device, rc = %lu!\n" , rc );
+      printf( "WARNING: probably, you need to reboot for changes to take in effect.\n" );
+  }
 }
 
 #pragma pack(1)
@@ -254,20 +250,19 @@ void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
         //}    
 }
 
-
 void begin_format (HANDLE hDevice)
 {
   // Detach the volume from the old FSD 
   // and attach to the new one
-  unsigned char  cmdinfo   = 0;
-  unsigned long  parmlen   = sizeof(cmdinfo);
-  unsigned char  fsdname[] = "FAT32"; 
-  unsigned long  datalen   = sizeof(fsdname);
+  unsigned char  parminfo[]  = "FAT32"; // FSD name
+  unsigned char  datainfo    = 0; 
+  unsigned long  parmlen     = sizeof(parminfo);
+  unsigned long  datalen     = 1;
   APIRET rc;
 
-  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &cmdinfo, 
-                    sizeof(cmdinfo), &parmlen, fsdname,
-                    sizeof(fsdname), &datalen);
+  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &parminfo, 
+                    parmlen, &parmlen, &datainfo,
+                    datalen, &datalen);
 
   if ( rc )
       die( "Failed to begin format device", rc );
@@ -276,18 +271,24 @@ void begin_format (HANDLE hDevice)
 void remount_media (HANDLE hDevice)
 {
   // Redetermine media
-  unsigned char cmdinfo  = 0;
-  unsigned long parmlen  = sizeof(cmdinfo);
-  unsigned char reserved = 0;
-  unsigned long datalen  = sizeof(reserved);
+  unsigned char parminfo  = 0;
+  unsigned char datainfo  = 0;
+  unsigned long parmlen   = 1;
+  unsigned long datalen   = 1;
   APIRET rc;
 
   rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_REDETERMINEMEDIA,
-                    &cmdinfo, sizeof(cmdinfo), &parmlen, // Param packet
-                    &reserved, sizeof(reserved), &datalen);
+                    &parminfo, parmlen, &parmlen, // Param packet
+                    &datainfo, datalen, &datalen);
 
-  if ( rc )
-      die( "Failed to do final remount!", rc );
+  if ( rc ) 
+  {
+      printf( "WARNING: Failed to do final remount, rc = %lu!\n" , rc );
+      printf( "WARNING: probably, you need to reboot for changes to take in effect.\n" );
+  }
+
+  //if ( rc )
+  //    die( "Failed to do final remount!", rc );
 }
 
 void close_drive(HANDLE hDevice)
@@ -329,6 +330,7 @@ void check_vol_label(char *path, char **vol_label)
     ULONG  rc;
 
     memset(cur_vol, 0, sizeof(cur_vol));
+    memset(testvol, 0, sizeof(testvol));
 
     // Query the filesystem info, 
     // including the current volume label
@@ -354,15 +356,15 @@ void check_vol_label(char *path, char **vol_label)
 
             // Read the volume label
             gets(testvol);
-
-            if (stricmp(testvol, cur_vol))
-            {
-                // Incorrect volume  label for
-                // disk %c is entered!
-                iShowMessage(NULL, 636, 0);
-                quit (1);
-            }
         }
+    }
+
+    if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
+    {
+        // Incorrect volume  label for
+        // disk %c is entered!
+        iShowMessage(NULL, 636, 0);
+        quit (1);
     }
 
     // Warning! All data on the specified hard disk
@@ -389,14 +391,14 @@ char *get_vol_label(char *path, char *vol)
         // Enter up to 11 characters for the volume label
         iShowMessage(NULL, 1288, 0);
 
-        label = &v;
+        label = v;
     }
 
     memset(label, 0, 12);
     gets(label);
 
     if (!*label)
-        label = &default_vol;
+        label = default_vol;
 
     if (strlen(label) > 11)
     {
@@ -416,45 +418,27 @@ void set_vol_label (char *path, char *vol)
   int diskno;
   int l;
 
-  //printf("0000\n");
-
   if (!vol || !*vol)
     return;
 
-  //printf("0001\n");
-
   l = strlen(vol);
-
-  //printf("0002\n");
 
   if (!path || !*path)
     return;
 
-  //printf("0003\n");
-
-  //printf("path=%s, vol=%s\n", path, vol);
-
   diskno = toupper(*path) - 'A' + 1;
 
   memset(&vl, 0, sizeof(VOLUMELABEL));
-  //printf("0004\n");
   strcpy(vl.szVolLabel, vol);
-  //strcpy(fsi.vol.szVolLabel, vol);
-  //printf("0005\n");
-  //vl.szVolLabel[l] = '\0';
-  //printf("0006\n");
   vl.cch = strlen(vl.szVolLabel);
 
-  //printf("0007\n");
-  //DosSleep(4);
-  
   rc = DosSetFSInfo(diskno, FSIL_VOLSER,
                     (PVOID)&vl, sizeof(VOLUMELABEL));
 
-  //printf("0008\n");
   if ( rc )
-    printf ("Warning: failed to set the volume label, rc=%lu\n", rc);
+    printf ("WARNING: failed to set the volume label, rc=%lu\n", rc);
 }
+
 
 void show_progress (float fPercentWritten)
 {
@@ -478,8 +462,21 @@ void show_progress (float fPercentWritten)
   sprintf(str, "%.2f%%", fPercentWritten);
   iShowMessage(NULL, 1312, 2, TYPE_STRING, str, 
                               TYPE_STRING, "...");
-  DosSleep(100);
+  //DosSleep(5);
   // restore cursor position
   printf("[u");
   fflush(stdout); 
+}
+
+void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumFields, ...)
+{
+    va_list va;
+    UCHAR szBuf[1024];
+
+    va_start(va, usNumFields);
+    vsprintf ( szBuf, pszMsg, va );
+    va_end( va );
+
+    //iShowMessage(NULL, usMsg, usNumFields, va);
+    puts (szBuf);
 }
