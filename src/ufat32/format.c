@@ -641,6 +641,7 @@ void cleanup ( void )
     remount_media ( hDev );
     unlock_drive ( hDev );
     close_drive ( hDev);
+    hDev = 0;
 }
 
 void quit (int rc)

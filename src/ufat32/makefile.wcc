@@ -12,10 +12,11 @@ TARGETS=ufat32.dll fat32fmt.exe ufat32.sym fat32fmt.sym
 SYS=os2v2
 !else
 # create win32 binaries
-OBJS2=format.obj win32.obj
+OBJS1=
+OBJS2=format.obh win32.obh
 COPT=-3s -s -sg -hw -mf -od -zq -q -u__OS2__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
 TARGETS=fat32fmt.exe
-SYS=win32
+SYS=nt
 !endif
 
 .SUFFIXES:
@@ -49,6 +50,7 @@ fat32fmt.lnk: $(OBJS2)
 !ifneq T win32
  @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
 !else
+ @%append $^@ RUNTIME CONSOLE
  @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
 !endif
  #@%append $^@ LIB os2,clibdll,os2386,clib3s

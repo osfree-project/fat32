@@ -259,7 +259,7 @@ void remount_media (HANDLE hDevice)
   if ( !bRet )
       die( "Failed to dismount device", -7 );
 
-  unlock_drive( hDevice );
+  //unlock_drive( hDevice );
 }
 
 void close_drive(HANDLE hDevice)
