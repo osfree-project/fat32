@@ -131,9 +131,6 @@ typedef struct {
     DWORD dTrailSig;     // 0xAA550000
 } FAT_FSINFO;
 
-
-#pragma pack(pop)
-
 typedef struct 
     {
     int sectors_per_cluster;        // can be zero for default or 1,2,4,8,16,32 or 64
@@ -149,15 +146,16 @@ struct extbpb
   BYTE NumFATs;
   WORD RootDirEnt;
   WORD TotalSectors16;
-  BYTE MedisDesc;
+  BYTE MediaDesc;
   WORD FatSize;
   WORD SectorsPerTrack;
   WORD TracksPerCylinder;
   DWORD HiddenSectors;
   DWORD TotalSectors;
-  BYTE Reserved[6];
-  ULONGLONG PartitionLength;
+  BYTE Reserved3[6];
 };
+
+#pragma pack(pop)
 
 //
 // API

@@ -1095,7 +1095,7 @@ USHORT usBytesPerCluster;
             rc = MY_PROBEBUF(PB_OPWRITE, pBufPosition, usTotNumBytes);
             if (rc)
             {
-                Message("Protection VIOLATION in FS_READ! (SYS%d)", rc);
+                Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
                 goto FS_WRITEEXIT;
             }
 
@@ -1119,7 +1119,7 @@ USHORT usBytesPerCluster;
             rc = MY_PROBEBUF(PB_OPWRITE, pData, usBytesToWrite);
             if (rc)
             {
-                Message("Protection VIOLATION in FS_READ! (SYS%d)", rc);
+                Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
                 goto FS_WRITEEXIT;
             }
 

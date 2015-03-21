@@ -65,15 +65,19 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     
     llOffset = Sector * BytesPerSect;
     rc = DosSetFilePtrL( hDevice, (LONGLONG)llOffset, FILE_BEGIN, &llActual );
+    //printf("seek_to_sect: hDevice=%lx, Sector=%lu, BytesPerSect=%lu\n", hDevice, Sector, BytesPerSect);
+    //printf("rc=%lu\n", rc);
 }
 
 void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
 {
     DWORD dwWritten;
-    BOOL ret;
+    ULONG ret;
 
     seek_to_sect ( hDevice, Sector, BytesPerSector );
     ret = DosWrite ( hDevice, Data, NumSects * BytesPerSector, (PULONG)&dwWritten );
+
+    //printf("write_sect: ret = %lu\n", ret);
 
     if ( ret )
         die ( "Failed to write", ret );
@@ -81,10 +85,15 @@ void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data
 
 BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten )
 {
-    BOOL ret = TRUE;
+    BOOL  ret = TRUE;
+    ULONG rc = 0;
 
-    if (DosWrite ( hDevice, pData, (ULONG)ulNumBytes, (PULONG)dwWritten ))
+    if ( rc = DosWrite ( hDevice, pData, (ULONG)ulNumBytes, (PULONG)dwWritten ) )
         ret = FALSE;
+
+    //printf("write_file: hDevice=%lu, pData=0x%lx, ulNumBytes=%lu, dwWritten=0x%lx\n", 
+    //        hDevice, pData, ulNumBytes, dwWritten);
+    //printf("write_file: rc = %lu, *dwWritten=%lu\n", rc, *dwWritten); // 87 == ERROR_INVALID_PARAMETER
 
     return ret;
 }
@@ -108,11 +117,14 @@ void open_drive (char *path, HANDLE *hDevice)
               &ulAction,         // action taken by DosOpenL
               0,                 // cbFile
               0,                 // ulAttribute
-              OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
-              //OPEN_FLAGS_FAIL_ON_ERROR | OPEN_FLAGS_WRITE_THROUGH | 
-              OPEN_FLAGS_NO_CACHE | OPEN_SHARE_DENYREADWRITE |
+              OPEN_ACTION_OPEN_IF_EXISTS, // | OPEN_ACTION_REPLACE_IF_EXISTS,
+              OPEN_FLAGS_FAIL_ON_ERROR |  // OPEN_FLAGS_WRITE_THROUGH | 
+              OPEN_SHARE_DENYREADWRITE |  // OPEN_FLAGS_NO_CACHE  |
               OPEN_ACCESS_READWRITE, // | OPEN_FLAGS_DASD,
-              NULL);             // peaop2
+              NULL);                 // peaop2
+
+     //      OPEN_ACTION_OPEN_IF_EXISTS, OPEN_FLAGS_DASD |
+     //      OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYREADWRITE |
 
      //!     OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
      //!     OPEN_FLAGS_DASD | OPEN_FLAGS_NO_CACHE | OPEN_ACCESS_READONLY | OPEN_SHARE_DENYREADWRITE,
@@ -123,6 +135,9 @@ void open_drive (char *path, HANDLE *hDevice)
      // OPEN_ACTION_OPEN_IF_EXISTS,         /* open flags   */
      // OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE | OPEN_FLAGS_DASD |
      // OPEN_FLAGS_WRITE_THROUGH, // | OPEN_FLAGS_NO_CACHE,
+
+  //printf("open_drive: DosOpenL(%s, ...) returned %lu, hDevice=%lu\n", path, rc, *hDevice);
+  //printf("ulAction=%lx\n", ulAction);
 
   if ( rc != 0 || hDevice == 0 )
       die( "Failed to open device - close any files before formatting,"
@@ -144,6 +159,8 @@ void lock_drive(HANDLE hDevice)
                     parmlen, &parmlen, &datainfo, // Param packet
                     datalen, &datalen);
 
+  //printf("lock_drive: func=DSK_LOCKDRIVE returned rc=%lu\n", rc);
+
   if ( rc )
       die( "Failed to lock device" , rc);
 
@@ -161,6 +178,8 @@ void unlock_drive(HANDLE hDevice)
                     parmlen, &parmlen, &datainfo, // Param packet
                     datalen, &datalen);
 
+  //printf("unlock_drive: func=DSK_UNLOCKDRIVE returned rc=%lu\n", rc);
+
   if ( rc ) 
   {
       printf( "WARNING: Failed to unlock device, rc = %lu!\n" , rc );
@@ -168,64 +187,60 @@ void unlock_drive(HANDLE hDevice)
   }
 }
 
+/* parameter packet */
 #pragma pack(1)
-struct parm {
+struct PARM {
     unsigned char command;
     unsigned char drive;
-};
-
-struct data {
-    BIOSPARAMETERBLOCK bpb;
 };
 #pragma pack()
 
 void get_drive_params(HANDLE hDevice, struct extbpb *dp)
 {
   APIRET rc;
-  struct parm p;
-  struct data d;
-  ULONG  parmio;
-  ULONG  dataio;
+  struct PARM        p;
+  BIOSPARAMETERBLOCK d; /* DDK/Watcom OS/2 headers */
+  ULONG  parmlen;
+  ULONG  datalen;
 
   memset(&d, 0, sizeof(d));
-  parmio = sizeof(p);
-  dataio = sizeof(d);
+  parmlen = sizeof(p);
+  datalen = sizeof(d);
   p.command = 1;
   p.drive   = 0;
 
   rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_GETDEVICEPARAMS,
-                      &p, parmio, &parmio,
-                      &d, dataio, &dataio);
+                      &p, parmlen, &parmlen,
+                      &d, datalen, &datalen);
+
+  //printf("get_drive_params: func=DSK_GETDEVICEPARAMS returned rc=%lu\n", rc);
 
   if ( rc )
       die( "Failed to get device geometry", rc );
 
-  dp->BytesPerSect = d.bpb.usBytesPerSector;
-  dp->SectorsPerTrack = d.bpb.usSectorsPerTrack;
-  dp->HiddenSectors = d.bpb.cHiddenSectors;
-  dp->TracksPerCylinder = d.bpb.cHeads;
+  dp->BytesPerSect = d.usBytesPerSector;
+  dp->SectorsPerTrack = d.usSectorsPerTrack;
+  dp->HiddenSectors = d.cHiddenSectors;
+  dp->TracksPerCylinder = d.cHeads;
 
-  //printf("cylinders=%u\n",   d.bpb.cCylinders);
-  //printf("device type=%u\n", d.bpb.bDeviceType);
-  //printf("device attr=%u\n", d.bpb.fsDeviceAttr);
+  //
+  //printf("cylinders=%u\n",   d.cCylinders);
+  //printf("device type=%u\n", d.bDeviceType);
+  //printf("device attr=%u\n", d.fsDeviceAttr);
 
-  //if ((d.bpb.cSectors == 0) && (d.bpb.cLargeSectors))
-      dp->TotalSectors = d.bpb.cLargeSectors;
-  //else if ((d.bpb.cSectors) && (d.bpb.cLargeSectors == 0))
-  //    dp->TotalSectors = d.bpb.cSectors;
-
-  dp->PartitionLength = (ULONGLONG)dp->TotalSectors;
-  dp->PartitionLength *= dp->BytesPerSect;
-
+  if ((d.cSectors == 0) && (d.cLargeSectors))
+      dp->TotalSectors = d.cLargeSectors;
+  else if ((d.cSectors) && (d.cLargeSectors == 0))
+      dp->TotalSectors = d.cSectors;
+  //
   //printf("TotalSectors=%lu, BytesPerSect=%u\n", 
   //       dp->TotalSectors, dp->BytesPerSect);
-
-  //printf("BytesPerSect=%u\n", d.bpb.usBytesPerSector);
-  //printf("SectorsPerTrack=%u\n", d.bpb.usSectorsPerTrack);
-  //printf("HiddenSectors=%lu\n", d.bpb.cHiddenSectors);
-  //printf("TracksPerCylinder=%u\n", d.bpb.cHeads);
+  //
+  //printf("SectorsPerTrack=%u\n", d.usSectorsPerTrack);
+  //printf("HiddenSectors=%lu\n", d.cHiddenSectors);
+  //printf("TracksPerCylinder=%u\n", d.cHeads);
   //printf("TotalSectors=%lu\n", dp->TotalSectors);
-  //printf("PartitionLength=%llu\n", dp->PartitionLength);
+  //
 }
 
 void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
@@ -254,15 +269,17 @@ void begin_format (HANDLE hDevice)
 {
   // Detach the volume from the old FSD 
   // and attach to the new one
-  unsigned char  parminfo[]  = "FAT32"; // FSD name
-  unsigned char  datainfo    = 0; 
-  unsigned long  parmlen     = sizeof(parminfo);
-  unsigned long  datalen     = 1;
+  unsigned char  cmdinfo     = 0;
+  unsigned long  parmlen     = sizeof(cmdinfo);
+  unsigned char  datainfo[]  = "FAT32"; // FSD name
+  unsigned long  datalen     = sizeof(datainfo); 
   APIRET rc;
 
-  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &parminfo, 
+  rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &cmdinfo, 
                     parmlen, &parmlen, &datainfo,
                     datalen, &datalen);
+
+  //printf("begin_format: func=DSK_BEGINFORMAT returned rc=%lu\n", rc);
 
   if ( rc )
       die( "Failed to begin format device", rc );
@@ -280,6 +297,8 @@ void remount_media (HANDLE hDevice)
   rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_REDETERMINEMEDIA,
                     &parminfo, parmlen, &parmlen, // Param packet
                     &datainfo, datalen, &datalen);
+
+  //printf("remount_media: func=DSK_REDETERMINEMEDIA returned rc=%lu\n", rc);
 
   if ( rc ) 
   {
@@ -299,8 +318,15 @@ void close_drive(HANDLE hDevice)
 
 void mem_alloc(void **p, ULONG cb)
 {
-    if (!(DosAllocMem ( (void **)p, cb, PAG_COMMIT | PAG_READ | PAG_WRITE )))
+    APIRET rc;
+
+    if (!(rc = DosAllocMem ( (void **)p, cb, PAG_COMMIT | PAG_READ | PAG_WRITE )))
+    //{
             memset(*p, 0, cb);
+            //printf("mem_alloc: rc=%lu\n", rc);
+    //}
+    //else
+    //        printf("mem_alloc failed, rc=%lu\n", rc);
 }
 
 void mem_free(void *p, ULONG cb)

@@ -131,7 +131,7 @@ void open_drive (char *path , HANDLE *hDevice)
 	);
 
   if ( !bRet )
-      printf ( "Failed to allow extended DASD on device" );
+      printf ( "Failed to allow extended DASD on device...\n" );
   else
       printf ( "FSCTL_ALLOW_EXTENDED_DASD_IO OK\n" ); 
 }
@@ -294,15 +294,69 @@ void query_time(ULONGLONG *time)
 
 void check_vol_label(char *path, char **vol_label)
 {
-    char c;
+    /* Current volume label  */
+    char  cur_vol[12];
+    char  testvol[12];
+    ULONG volSerNum;
+    ULONG maxFileNameLen;
+    ULONG fsFlags;
+    char  fsName[8];
+    char  c;
 
-    printf ( "Warning ALL data on drive '%s' will be \n"
-             "lost irretrievably, are you sure\n(y/n) ", path );
-    
+    memset(cur_vol, 0, sizeof(cur_vol));
+    memset(testvol, 0, sizeof(testvol));
+    memset(fsName,  0, sizeof(fsName));
+
+    // Query the filesystem info, 
+    // including the current volume label
+    GetVolumeInformation(path, cur_vol, sizeof(cur_vol),
+           &volSerNum, &maxFileNameLen, 
+           &fsFlags, fsName, sizeof(fsName));
+
+    // The current file system type is FAT32
+    printf("The current file system type is %s.\n", fsName);
+
+    //iShowMessage(NULL, 1293, 1, TYPE_STRING, "FAT32");
+    printf("The new file system type is: FAT32\n");
+
+    if (!cur_vol || !*cur_vol)
+        // The disk has no volume label
+        // iShowMessage(NULL, 125, 0);
+        printf("The disk has no volume label.\n");
+    else
+    {
+        if (!vol_label || !*vol_label || !**vol_label)
+        {
+            // Enter the current volume label
+            // ShowMessage(NULL, 1318, 1, TYPE_STRING, path);
+            printf("Enter no more than 11 characters of the current volume label: ");
+
+            // Read the volume label
+            gets(testvol);
+        }
+    }
+
+    if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
+    {
+        // Incorrect volume  label for
+        // disk %c is entered!
+        // iShowMessage(NULL, 636, 0);
+        printf("Incorrect volume label for disk %c: is entered!\n", *path);
+        quit (1);
+    }
+
+    // Warning! All data on the specified hard disk
+    // will be destroyed! Proceed with format (Yes(1)/No(0))?
+    // iShowMessage(NULL, 1271, 1, TYPE_STRING, path);
+    printf("Warning! All data on the specified hard disk\n"
+           "will be destroyed! Proceed with format (Yes(1)/Mo(0))? ");
+
     c = getchar();
 
-    if ( toupper(c) != 'Y' )
+    if ( c != '1' && toupper(c) != 'Y' )
         quit (1);
+ 
+    fflush(stdout);
 }
 
 char *get_vol_label(char *path, char *vol)
