@@ -469,7 +469,7 @@ void set_vol_label (char *path, char *vol)
 void show_progress (float fPercentWritten)
 {
   char str[128];
-  static int pos = 0;
+  int pos = 0;
   //USHORT row, col;
   //char   chr = ' ';
 
@@ -485,7 +485,7 @@ void show_progress (float fPercentWritten)
   //VioWrtCharStr(str, strlen(str), row, col, 0);
 
   // construct message
-  sprintf(str, "%.2f%%", fPercentWritten);
+  sprintf(str, "%3.f%%", fPercentWritten);
   iShowMessage(NULL, 1312, 2, TYPE_STRING, str, 
                               TYPE_STRING, "...");
   //DosSleep(5);

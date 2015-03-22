@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <math.h>
 
 #include "fat32c.h"
 
@@ -110,7 +111,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     ULONGLONG Start, End, Ticks, Frequency;
     double fTime;
     double fBytesTotal;
-    LONGLONG qBytesTotal, qBytesWritten;
+    ULONGLONG qBytesTotal, qBytesWritten;
     float fPercentWritten, fPrevPercentWritten = 0;
     //char  Str[12];
 
@@ -151,10 +152,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 
         qBytesWritten += dwWritten;
 
-        if (! fPrevPercentWritten) 
-          fPrevPercentWritten = fPercentWritten;
-
-        fPercentWritten = ( qBytesWritten / qBytesTotal ) * 100;
+        fPercentWritten = ( 100 * qBytesWritten ) / qBytesTotal;
         //sprintf(Str, "%.2f%%...", fPercentWritten);
 
         if ( fPercentWritten - fPrevPercentWritten >= 5 )
