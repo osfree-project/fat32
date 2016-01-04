@@ -27,7 +27,7 @@ PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_OPENCREATE(
+int far pascal _loadds  FS_OPENCREATE(
     struct cdfsi far * pcdfsi,      /* pcdfsi       */
     void far * pcdfsd,     /* pcdfsd      */
     char far * pName,           /* pName        */
@@ -562,7 +562,7 @@ PSHOPENINFO pSH = pOI->pSHInfo;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_CLOSE(
+int far pascal _loadds  FS_CLOSE(
     unsigned short usType,      /* close type   */
     unsigned short IOFlag,      /* IOflag   */
     struct sffsi far * psffsi,      /* psffsi   */
@@ -622,7 +622,7 @@ FS_CLOSEEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_READ(
+int far pascal _loadds  FS_READ(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * pData,           /* pData    */
@@ -1006,7 +1006,7 @@ FS_READEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_WRITE(
+int far pascal _loadds  FS_WRITE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * pData,           /* pData    */
@@ -1508,7 +1508,7 @@ ULONG ulCurCluster;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_CANCELLOCKREQUEST(
+int far pascal _loadds  FS_CANCELLOCKREQUEST(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     void far * pLockRang            /* pLockRang    */
@@ -1527,7 +1527,7 @@ int far pascal __loadds  FS_CANCELLOCKREQUEST(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_CHGFILEPTR(
+int far pascal _loadds  FS_CHGFILEPTR(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     long lOffset,           /* offset   */
@@ -1590,7 +1590,7 @@ FS_CHGFILEPTREXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_COMMIT(
+int far pascal _loadds  FS_COMMIT(
     unsigned short usType,      /* commit type  */
     unsigned short usIOFlag,        /* IOflag   */
     struct sffsi far * psffsi,      /* psffsi   */
@@ -1685,7 +1685,7 @@ FS_COMMITEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_FILELOCKS(
+int far pascal _loadds  FS_FILELOCKS(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     void far * pUnlockRange,            /* pUnLockRange */
@@ -1709,7 +1709,7 @@ int far pascal __loadds  FS_FILELOCKS(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_NEWSIZE(
+int far pascal _loadds  FS_NEWSIZE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned long ulLen,        /* len      */
@@ -1859,7 +1859,7 @@ ULONG ulCluster, ulNextCluster;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_FILEINFO(unsigned short usFlag,       /* flag     */
+int far pascal _loadds  FS_FILEINFO(unsigned short usFlag,       /* flag     */
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned short usLevel,     /* level    */
@@ -2170,7 +2170,7 @@ FS_FILEINFOEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_FILEIO(
+int far pascal _loadds  FS_FILEIO(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * cbCmdList,           /* cbCmdList    */
@@ -2195,7 +2195,7 @@ int far pascal __loadds  FS_FILEIO(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_NMPIPE(
+int far pascal _loadds  FS_NMPIPE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned short usOpType,        /* OpType   */

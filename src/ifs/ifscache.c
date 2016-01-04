@@ -52,8 +52,8 @@ PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE PRQLIST GetRequestList(PVOLINFO pVolInfo, BOOL fWait);
 PRIVATE BOOL   fAddToRLH(PRQLIST pRQ, USHORT usCBIndex, BYTE bPriority);
 PRIVATE VOID   vCallStrategy(PVOLINFO pVolInfo, PRQLIST pRQ);
-PRIVATE VOID __loadds  rlhNotify(VOID);
-PRIVATE VOID __loadds  rhNotify(VOID);
+PRIVATE VOID _loadds  rlhNotify(VOID);
+PRIVATE VOID _loadds  rhNotify(VOID);
 PRIVATE VOID   vCheckRequest(PREQUEST pRequest);
 PRIVATE USHORT usEmergencyFlush(VOID);
 
@@ -1547,7 +1547,7 @@ PB     _based(rqBase) * pPB;
 /******************************************************************
 *
 ******************************************************************/
-VOID __loadds rlhNotify(VOID)
+VOID _loadds rlhNotify(VOID)
 {
 PRQLIST pRQ;
 USHORT usCount;
@@ -1650,7 +1650,7 @@ PREQUEST pRequest;
 /******************************************************************
 *
 ******************************************************************/
-VOID __loadds rhNotify(VOID)
+VOID _loadds rhNotify(VOID)
 {
 WORD ESReg, BXReg;
 

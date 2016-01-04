@@ -16,7 +16,7 @@
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_OPENPAGEFILE (
+int far pascal _loadds  FS_OPENPAGEFILE (
     unsigned long far *pFlags,      /* pointer to Flags           */
     unsigned long far *pcMaxReq,    /* max # of reqs packed in list   */
     char far *         pName,       /* name of paging file        */

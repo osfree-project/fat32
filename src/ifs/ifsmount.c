@@ -17,7 +17,7 @@ static BOOL RemoveVolume(PVOLINFO pVolInfo);
 static USHORT CheckWriteProtect(PVOLINFO);
 PRIVATE BOOL IsFAT32(PBOOTSECT pBoot);
 
-int far pascal __loadds  FS_MOUNT(unsigned short usFlag,      /* flag     */
+int far pascal _loadds  FS_MOUNT(unsigned short usFlag,      /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
                         struct vpfsd far * pvpfsd,      /* pvpfsd   */
                         unsigned short hVBP,        /* hVPB     */

@@ -18,7 +18,7 @@ static BOOL GetCluster(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usClusterI
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
+int far pascal _loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
                             struct fsfsd far * pfsfsd)
 {
 PVOLINFO pVolInfo;
@@ -42,7 +42,7 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDFIRST(struct cdfsi far * pcdfsi,      /* pcdfsi   */
+int far pascal _loadds FS_FINDFIRST(struct cdfsi far * pcdfsi,      /* pcdfsi   */
                             struct cdfsd far * pcdfsd,      /* pcdfsd   */
                             char far * pName,           /* pName    */
                             unsigned short usCurDirEnd,     /* iCurDirEnd   */
@@ -287,7 +287,7 @@ FS_FINDFIRSTEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDFROMNAME(
+int far pascal _loadds FS_FINDFROMNAME(
     struct fsfsi far * pfsfsi,      /* pfsfsi   */
     struct fsfsd far * pfsfsd,      /* pfsfsd   */
     char far * pData,           /* pData    */
@@ -315,7 +315,7 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDNEXT(
+int far pascal _loadds FS_FINDNEXT(
     struct fsfsi far * pfsfsi,      /* pfsfsi   */
     struct fsfsd far * pfsfsd,      /* pfsfsd   */
     char far * pData,           /* pData    */
@@ -770,7 +770,7 @@ PLNENTRY pLN = (PLNENTRY)pDir;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDNOTIFYCLOSE( unsigned short usHandle)
+int far pascal _loadds FS_FINDNOTIFYCLOSE( unsigned short usHandle)
 {
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDNOTIFYCLOSE - NOT SUPPORTED");
@@ -782,7 +782,7 @@ int far pascal __loadds FS_FINDNOTIFYCLOSE( unsigned short usHandle)
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDNOTIFYFIRST(
+int far pascal _loadds FS_FINDNOTIFYFIRST(
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
     char far * pName,           /* pName    */
@@ -817,7 +817,7 @@ int far pascal __loadds FS_FINDNOTIFYFIRST(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FINDNOTIFYNEXT(
+int far pascal _loadds FS_FINDNOTIFYNEXT(
     unsigned short usHandle,        /* handle   */
     char far * pData,           /* pData    */
     unsigned short cbData,      /* cbData   */

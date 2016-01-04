@@ -59,7 +59,7 @@ static USHORT DBCSStrlen( const PSZ pszStr );
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_ATTACH(unsigned short usFlag,     /* flag     */
+int far pascal _loadds FS_ATTACH(unsigned short usFlag,     /* flag     */
                          char far * pDev,           /* pDev     */
                          void far * pvpfsd,         /* if remote drive
                                                  struct vpfsd far *
@@ -86,7 +86,7 @@ int far pascal __loadds FS_ATTACH(unsigned short usFlag,     /* flag     */
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_COPY(
+int far pascal _loadds FS_COPY(
     unsigned short usMode,      /* copy mode    */
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
@@ -349,7 +349,7 @@ FS_COPYEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_DELETE(
+int far pascal  _loadds FS_DELETE(
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
     char far * pFile,           /* pFile    */
@@ -479,7 +479,7 @@ FS_DELETEEXIT:
 /******************************************************************
 *
 ******************************************************************/
-void far pascal  __loadds FS_EXIT(
+void far pascal  _loadds FS_EXIT(
     unsigned short usUid,       /* uid      */
     unsigned short usPid,       /* pid      */
     unsigned short usPdb        /* pdb      */
@@ -545,7 +545,7 @@ USHORT rc;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_FLUSHBUF(
+int far pascal  _loadds FS_FLUSHBUF(
     unsigned short hVPB,        /* hVPB     */
     unsigned short usFlag       /* flag     */
 )
@@ -589,7 +589,7 @@ FS_FLUSHEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_FSCTL(
+int far pascal  _loadds FS_FSCTL(
     union argdat far * pArgDat,     /* pArgdat  */
     unsigned short usArgType,       /* iArgType */
     unsigned short usFunc,      /* func     */
@@ -942,7 +942,7 @@ FS_FSCTLEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_FSINFO(
+int far pascal _loadds FS_FSINFO(
     unsigned short usFlag,      /* flag     */
     unsigned short hVBP,        /* hVPB     */
     char far * pData,           /* pData    */
@@ -1223,7 +1223,7 @@ PBOOTSECT pBootSect;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_INIT(
+int far pascal _loadds FS_INIT(
     char far * pszParm,         /* szParm   */
     unsigned long pDevHlp,      /* pDevHlp  */
     unsigned long far * pMiniFSD    /* pMiniFSD */
@@ -1343,7 +1343,7 @@ USHORT usWritten;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds FS_IOCTL(
+int far pascal _loadds FS_IOCTL(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned short usCat,       /* cat      */
@@ -2015,7 +2015,7 @@ USHORT rc;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_MOVE(
+int far pascal  _loadds FS_MOVE(
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
     char far * pSrc,            /* pSrc     */
@@ -2324,7 +2324,7 @@ FS_MOVEEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_PROCESSNAME(
+int far pascal  _loadds FS_PROCESSNAME(
     char far *  pNameBuf        /* pNameBuf */
 )
 {
@@ -2357,7 +2357,7 @@ int far pascal  __loadds FS_PROCESSNAME(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal  __loadds FS_SHUTDOWN(
+int far pascal  _loadds FS_SHUTDOWN(
     unsigned short usType,      /* usType   */
     unsigned long    ulReserved /* ulReserved   */
 )
@@ -2414,7 +2414,7 @@ FS_SHUTDOWNEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_VERIFYUNCNAME(
+int far pascal _loadds  FS_VERIFYUNCNAME(
     unsigned short usFlag,      /* flag     */
     char far *  pName       /* pName    */
 )

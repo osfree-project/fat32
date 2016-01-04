@@ -12,7 +12,7 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-int far pascal __loadds  FS_CHDIR(
+int far pascal _loadds  FS_CHDIR(
     unsigned short usFlag,      /* flag     */
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
@@ -137,7 +137,7 @@ FS_CHDIREXIT:
    return rc;
 }
 
-int far pascal __loadds  FS_MKDIR(
+int far pascal _loadds  FS_MKDIR(
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
     char far * pName,           /* pName    */
@@ -253,7 +253,7 @@ FS_MKDIREXIT:
    return rc;
 }
 
-int far pascal __loadds FS_RMDIR(
+int far pascal _loadds FS_RMDIR(
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
     char far * pName,           /* pName    */

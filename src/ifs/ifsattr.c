@@ -15,7 +15,7 @@
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_FILEATTRIBUTE(
+int far pascal _loadds  FS_FILEATTRIBUTE(
     unsigned short usFlag,      /* flag     */
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
@@ -117,7 +117,7 @@ FS_FILEATTRIBUTEEXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal __loadds  FS_PATHINFO(
+int far pascal _loadds  FS_PATHINFO(
     unsigned short usFlag,      /* flag     */
     struct cdfsi far * pcdfsi,      /* pcdfsi   */
     struct cdfsd far * pcdfsd,      /* pcdfsd   */
