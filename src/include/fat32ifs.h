@@ -4,8 +4,13 @@
 #include "fsd.h"
 #include "fsh.h"
 #include "fat32def.h"
+
+#ifdef __WATCOMC__
 #include "devhelp.h"
-//#include "dhcalls.h"
+#else
+#include "dhcalls.h"
+#endif
+
 #include "strat2.h"
 
 #define CALL_YIELD
