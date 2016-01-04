@@ -9,10 +9,11 @@ OBJS1=f32stat.obj
 OBJS2=cachef32.obj
 OBJS3=monitor.obj
 OBJS4=diskinf0.obj diskinf1.obj diskinf2.obj
+OBJS5=diskdump.obj
 
-TARGETS=f32stat.exe monitor.exe diskinfo.exe  &
+TARGETS=f32stat.exe f32mon.exe diskinfo.exe  &
         cachef32.exe diskdump.exe diskdump.sym cachef32.sym &
-        diskinfo.sym monitor.sym f32stat.sym
+        diskinfo.sym f32mon.sym f32stat.sym
 
 SYS=os2v2
 
@@ -36,7 +37,7 @@ cachef32.ols: $(OBJS2)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
-monitor.ols: $(OBJS3)
+f32mon.ols: $(OBJS3)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
@@ -44,7 +45,7 @@ diskinfo.ols: $(OBJS4)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
-diskdump.ols: $(OBJS4)
+diskdump.ols: $(OBJS5)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
