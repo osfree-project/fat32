@@ -10,55 +10,65 @@ COPTS=/O
 LOPTS=
 !ENDIF
 
-MSGBIND=msgbind.exe
+MSGBIND = msgbind.exe
 CC = icc.exe
 LINK = ilink.exe
 
 CFLAGS =  /I..\include /Q+ /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(COPTS)
-LINKOPT = /NOI $(LOPTS) /PM:VIO /STACK:10000 /ALIGN:4 /MAP /BASE:0x10000
+LINKOPT = /NOI $(LOPTS)  /ALIGN:4 /MAP
+# /STACK:10000 /PM:VIO   /BASE:0x10000
 WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 
+OBJ_1 = format.obj msg.obj os2.obj
+OBJ_2 = ufat32.obj chkdsk.obj $(OBJ_1)
+
+.SUFFIXES:
+.SUFFIXES: .sym .map .exe .dll .obj .c .h .asm .inc
+
+ALL: ufat32.dll ufat32.sym #fat32fmt.exe fat32fmt.sym
 
 .c.obj:
    $(CC) $(CFLAGS) $(WOPTS) .\$*.c
 
-.obj.exe:
-    -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
-
 .map.sym:
    @mapsym $*.map >nul 2>&1
 
-$<
+#$<
+#$@
+#$*.MAP
+#LIBCONV.LIB+
+#LIBULS.LIB;
+#<<NOKEEP
+#    $(MSGBIND) <<
+#> $@
+#< $(IBMC)\HELP\DDE4.MSG
+#*
+#<<NOKEEP
+
+ufat32.dll : $(OBJ_2)
+        -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_2: = +^
+)
 $@
-$*.MAP
-LIBCONV.LIB+
-LIBULS.LIB;
-<<NOKEEP
-    $(MSGBIND) <<
-> $@
-< $(IBMC)\HELP\DDE4.MSG
-*
+$*.map
+
+..\lib\$*.def;
 <<NOKEEP
 
-
-ALL: fat32fmt.exe ufat32.dll # fat32fmt.sym ufat32.sym
-
-OBJS=ufat32.obj format.obj chkdsk.obj msg.obj os2.obj
-ufat32.dll : $(OBJS)
+fat32fmt.exe : $(OBJ_1)
         -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
-$(OBJS: = +^)
+$(OBJ_1: = +^
+)
 $@
-$*.MAP;
+$*.map
+
+..\lib\$*.def;
 <<NOKEEP
 
-fat32fmt.exe : format.obj msg.obj os2.obj
-        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
-$?
-$@
-$*.MAP;
-<<NOKEEP
-
-ufat32.dll    : ufat32.obj format.obj chkdsk.obj msg.obj os2.obj
-fat32fmt.exe  : format.obj msg.obj os2.obj
+format.obj : format.c ..\include\fat32c.h
+chkdsk.obj : chkdsk.c ..\include\fat32def.h ..\include\portable.h
+msg.obj    : msg.c ..\include\fat32c.h
+os2.obj    : os2.c ..\include\fat32c.h ..\include\fat32def.h ..\include\portable.h
+fat32.obj  : fat32.c
 
 

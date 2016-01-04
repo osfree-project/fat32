@@ -155,7 +155,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         fPercentWritten = ( 100 * qBytesWritten ) / qBytesTotal;
         //sprintf(Str, "%.2f%%...", fPercentWritten);
 
-        if ( fPercentWritten - fPrevPercentWritten >= 5 )
+        if ( fPercentWritten - fPrevPercentWritten >= 10 )
         {
           // update progress indicator if it has grown by >= 5%
           fPrevPercentWritten = fPercentWritten;

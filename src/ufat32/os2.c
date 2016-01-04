@@ -469,7 +469,7 @@ void set_vol_label (char *path, char *vol)
 void show_progress (float fPercentWritten)
 {
   char str[128];
-  int pos = 0;
+  static int pos = 0;
   //USHORT row, col;
   //char   chr = ' ';
 
