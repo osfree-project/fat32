@@ -1,0 +1,4 @@
+DIRS = fat32 ifs
+
+all: $(TARGETS)
+ @for %d in ($(DIRS)) do if exist %d @cd %d && wmake -f makefile.wcc all

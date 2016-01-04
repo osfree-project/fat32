@@ -1,0 +1,3 @@
+TARGETS = fat32.inf
+
+!include ..\makefile.mk

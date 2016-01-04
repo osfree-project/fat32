@@ -1,0 +1,3 @@
+TARGETS = ifs.inf
+
+!include ..\makefile.mk
