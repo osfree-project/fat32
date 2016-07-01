@@ -3,7 +3,7 @@ CC=wcc386
 LNK=wlink
 MAPCNV=..\mapsym.awk
 
-COPT=-3s -s -hw -mf -od -zq -q -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 
 OBJS1=f32stat.obj
 OBJS2=cachef32.obj
