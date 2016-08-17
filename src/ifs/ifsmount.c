@@ -17,7 +17,7 @@ static BOOL RemoveVolume(PVOLINFO pVolInfo);
 static USHORT CheckWriteProtect(PVOLINFO);
 PRIVATE BOOL IsFAT32(PBOOTSECT pBoot);
 
-int far pascal _loadds  FS_MOUNT(unsigned short usFlag,      /* flag     */
+int far pascal _loadds FS_MOUNT(unsigned short usFlag,      /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
                         struct vpfsd far * pvpfsd,      /* pvpfsd   */
                         unsigned short hVBP,        /* hVPB     */
@@ -33,7 +33,6 @@ P_DriverCaps pDevCaps;
 P_VolChars   pVolChars;
 
    _asm push es;
-   //_asm push bx;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_MOUNT for %c (%d):, flag = %d",
@@ -216,14 +215,15 @@ P_VolChars   pVolChars;
          rc = CheckWriteProtect(pVolInfo);
          if (rc && rc != ERROR_WRITE_PROTECT)
             {
-            Message("Cannot access drive, rc = %u", rc);
+            if (f32Parms.fMessageActive & LOG_FS)
+              Message("Cannot access drive, rc = %u", rc);
             goto FS_MOUNT_EXIT;
             }
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
 
          pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
-         if (!pVolInfo->fDiskCleanOnMount)
+         if (!pVolInfo->fDiskCleanOnMount && f32Parms.fMessageActive & LOG_FS)
             Message("DISK IS DIRTY!");
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
@@ -238,28 +238,35 @@ P_VolChars   pVolChars;
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
-         if (pDevCaps->Capabilities & GDC_DD_Read2)
-            Message("Read2 supported");
-         if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
-            Message("DMA on word alligned buffers supported");
-         if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
-            Message("DMA on byte alligned buffers supported");
-         if (pDevCaps->Capabilities & GDC_DD_Mirror)
-            Message("Disk Mirroring supported");
-         if (pDevCaps->Capabilities & GDC_DD_Duplex)
-            Message("Disk Duplexing supported");
-         if (pDevCaps->Capabilities & GDC_DD_No_Block)
-            Message("Strategy2 does not block");
-         if (pDevCaps->Capabilities & GDC_DD_16M)
-            Message(">16M supported");
+         if (f32Parms.fMessageActive & LOG_FS)
+         {
+            if (pDevCaps->Capabilities & GDC_DD_Read2)
+               Message("Read2 supported");
+            if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
+               Message("DMA on word alligned buffers supported");
+            if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
+               Message("DMA on byte alligned buffers supported");
+            if (pDevCaps->Capabilities & GDC_DD_Mirror)
+               Message("Disk Mirroring supported");
+            if (pDevCaps->Capabilities & GDC_DD_Duplex)
+               Message("Disk Duplexing supported");
+            if (pDevCaps->Capabilities & GDC_DD_No_Block)
+               Message("Strategy2 does not block");
+            if (pDevCaps->Capabilities & GDC_DD_16M)
+               Message(">16M supported");
+         }
+
          if (pDevCaps->Strategy2)
+         {
+            if (f32Parms.fMessageActive & LOG_FS)
             {
-            Message("Strategy2   address at %lX", pDevCaps->Strategy2);
-            Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
+               Message("Strategy2   address at %lX", pDevCaps->Strategy2);
+               Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
+            }
 
             pVolInfo->pfnStrategy = (STRATFUNC)pDevCaps->Strategy2;
             pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
-            }
+         }
 
          rc = 0;
          break;
@@ -342,28 +349,35 @@ P_VolChars   pVolChars;
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
-         if (pDevCaps->Capabilities & GDC_DD_Read2)
-            Message("Read2 supported");
-         if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
-            Message("DMA on word alligned buffers supported");
-         if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
-            Message("DMA on byte alligned buffers supported");
-         if (pDevCaps->Capabilities & GDC_DD_Mirror)
-            Message("Disk Mirroring supported");
-         if (pDevCaps->Capabilities & GDC_DD_Duplex)
-            Message("Disk Duplexing supported");
-         if (pDevCaps->Capabilities & GDC_DD_No_Block)
-            Message("Strategy2 does not block");
-         if (pDevCaps->Capabilities & GDC_DD_16M)
-            Message(">16M supported");
+         if (f32Parms.fMessageActive & LOG_FS)
+         {
+            if (pDevCaps->Capabilities & GDC_DD_Read2)
+               Message("Read2 supported");
+            if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
+               Message("DMA on word alligned buffers supported");
+            if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
+               Message("DMA on byte alligned buffers supported");
+            if (pDevCaps->Capabilities & GDC_DD_Mirror)
+               Message("Disk Mirroring supported");
+            if (pDevCaps->Capabilities & GDC_DD_Duplex)
+               Message("Disk Duplexing supported");
+            if (pDevCaps->Capabilities & GDC_DD_No_Block)
+               Message("Strategy2 does not block");
+            if (pDevCaps->Capabilities & GDC_DD_16M)
+               Message(">16M supported");
+         }
+
          if (pDevCaps->Strategy2)
+         {
+            if (f32Parms.fMessageActive & LOG_FS)
             {
-            Message("Strategy2   address at %lX", pDevCaps->Strategy2);
-            Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
+               Message("Strategy2   address at %lX", pDevCaps->Strategy2);
+               Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
+            }
 
             pVolInfo->pfnStrategy = (STRATFUNC)pDevCaps->Strategy2;
             pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
-            }
+         }
 
          rc = 0;
          break;
@@ -434,8 +448,8 @@ P_VolChars   pVolChars;
                   }
                usVolCount--;
                }
-            }    
- */
+            } */
+
          RemoveVolume(pVolInfo);
          freeseg(pVolInfo);
          rc = NO_ERROR;
@@ -450,8 +464,6 @@ FS_MOUNT_EXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_MOUNT returned %u\n", rc);
 
-   //_asm int  3
-   //_asm pop  bx;
    _asm pop  es;
 
    return rc;

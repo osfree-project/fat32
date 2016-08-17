@@ -16,7 +16,7 @@
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_OPENPAGEFILE (
+int far pascal _loadds FS_OPENPAGEFILE (
     unsigned long far *pFlags,      /* pointer to Flags           */
     unsigned long far *pcMaxReq,    /* max # of reqs packed in list   */
     char far *         pName,       /* name of paging file        */
@@ -47,7 +47,7 @@ int far pascal _loadds  FS_OPENPAGEFILE (
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_ALLOCATEPAGESPACE(
+int far pascal _loadds FS_ALLOCATEPAGESPACE(
     struct sffsi far *psffsi,       /* ptr to fs independent SFT */
     struct sffsd far *psffsd,       /* ptr to fs dependent SFT   */
     unsigned long     lSize,        /* new size          */
@@ -67,7 +67,7 @@ int far pascal _loadds  FS_ALLOCATEPAGESPACE(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_DOPAGEIO(
+int far pascal _loadds FS_DOPAGEIO(
     struct sffsi far *         psffsi,      /* ptr to fs independent SFT    */
     struct sffsd far *         psffsd,      /* ptr to fs dependent SFT      */
     struct PageCmdHeader far * pPageCmdList /* ptr to list of page commands */
@@ -85,12 +85,11 @@ int far pascal _loadds  FS_DOPAGEIO(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_SETSWAP(
+int far pascal _loadds FS_SETSWAP(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd       /* psffsd   */
 )
 {
-
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SETSWAP - NOT SUPPORTED");
    return ERROR_NOT_SUPPORTED;

@@ -27,7 +27,7 @@ PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_OPENCREATE(
+int far pascal _loadds FS_OPENCREATE(
     struct cdfsi far * pcdfsi,      /* pcdfsi       */
     void far * pcdfsd,     /* pcdfsd      */
     char far * pName,           /* pName        */
@@ -51,6 +51,7 @@ POPENINFO pOpenInfo = NULL;
 USHORT   usIOMode;
 USHORT rc;
 
+   _asm push es;
 
    usIOMode = 0;
    if (ulOpenMode & OPEN_FLAGS_NO_CACHE)
@@ -67,7 +68,10 @@ USHORT rc;
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_OPENCREATEEXIT;
+      }
 
    *pAction = 0;
 
@@ -428,6 +432,9 @@ FS_OPENCREATEEXIT:
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_OPENCREATE returned %u (Action = %u, OI=%lX)", rc, *pAction, pOpenInfo);
+
+   _asm pop es;
+
    return rc;
 }
 
@@ -562,16 +569,21 @@ PSHOPENINFO pSH = pOI->pSHInfo;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_CLOSE(
+int far pascal _loadds FS_CLOSE(
     unsigned short usType,      /* close type   */
     unsigned short IOFlag,      /* IOflag   */
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd       /* psffsd   */
 )
 {
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
-PVOLINFO pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+POPENINFO pOpenInfo;
+PVOLINFO pVolInfo;
 USHORT  rc = 0;
+
+   _asm push es;
+
+   pOpenInfo = GetOpenInfo(psffsd);
+   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
    if (f32Parms.fMessageActive & LOG_FS)
       {
@@ -585,7 +597,10 @@ USHORT  rc = 0;
       }
 
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_CLOSEEXIT;
+      }
 
    if (usType == FS_CL_FORSYS)
       {
@@ -616,13 +631,16 @@ USHORT  rc = 0;
 FS_CLOSEEXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CLOSE returned %u", rc);
+
+   _asm pop es;
+
    return rc;
 }
 
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_READ(
+int far pascal _loadds FS_READ(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * pData,           /* pData    */
@@ -632,7 +650,7 @@ int far pascal _loadds  FS_READ(
 {
 USHORT rc;
 PVOLINFO pVolInfo;
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+POPENINFO pOpenInfo;
 USHORT usBytesRead;
 USHORT usBytesToRead;
 PBYTE  pbCluster;
@@ -640,6 +658,9 @@ ULONG  ulClusterSector;
 USHORT usClusterOffset;
 USHORT usBytesPerCluster;
 
+   _asm push es;
+
+   pOpenInfo = GetOpenInfo(psffsd);
 
    usBytesToRead = *pLen;
    usBytesRead = 0;
@@ -1000,13 +1021,16 @@ FS_READEXIT:
 
     if (f32Parms.fMessageActive & LOG_FS)
         Message("FS_READ returned %u (%u bytes read)", rc, *pLen);
+
+   _asm pop es;
+
     return rc;
 }
 
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_WRITE(
+int far pascal _loadds FS_WRITE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * pData,           /* pData    */
@@ -1016,13 +1040,17 @@ int far pascal _loadds  FS_WRITE(
 {
 USHORT rc;
 PVOLINFO pVolInfo;
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+POPENINFO pOpenInfo;
 USHORT usBytesWritten;
 USHORT usBytesToWrite;
 PBYTE  pbCluster;
 ULONG  ulClusterSector;
 USHORT usClusterOffset;
 USHORT usBytesPerCluster;
+
+   _asm push es;
+
+   pOpenInfo = GetOpenInfo(psffsd);
 
    usBytesToWrite = *pLen;
    usBytesWritten = 0;
@@ -1484,6 +1512,9 @@ FS_WRITEEXIT:
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_WRITE returned %u (%u bytes written)", rc, *pLen);
+
+   _asm pop es;
+
    return rc;
 }
 
@@ -1508,7 +1539,7 @@ ULONG ulCurCluster;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_CANCELLOCKREQUEST(
+int far pascal _loadds FS_CANCELLOCKREQUEST(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     void far * pLockRang            /* pLockRang    */
@@ -1527,7 +1558,7 @@ int far pascal _loadds  FS_CANCELLOCKREQUEST(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_CHGFILEPTR(
+int far pascal _loadds FS_CHGFILEPTR(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     long lOffset,           /* offset   */
@@ -1536,9 +1567,13 @@ int far pascal _loadds  FS_CHGFILEPTR(
 )
 {
 PVOLINFO pVolInfo;
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+POPENINFO pOpenInfo;
 LONG  lNewOffset = 0;
 USHORT rc;
+
+   _asm push es;
+
+   pOpenInfo = GetOpenInfo(psffsd);
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CHGFILEPTR, Mode %d - offset %ld, current offset=%lu",
@@ -1546,7 +1581,10 @@ USHORT rc;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_CHGFILEPTREXIT;
+      }
 
    switch (usType)
       {
@@ -1581,6 +1619,9 @@ USHORT rc;
 FS_CHGFILEPTREXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_CHGFILEPTR returned %u", rc);
+
+   _asm pop es;
+
    return rc;
 
    IOFlag = IOFlag;
@@ -1590,7 +1631,7 @@ FS_CHGFILEPTREXIT:
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_COMMIT(
+int far pascal _loadds FS_COMMIT(
     unsigned short usType,      /* commit type  */
     unsigned short usIOFlag,        /* IOflag   */
     struct sffsi far * psffsi,      /* psffsi   */
@@ -1598,6 +1639,8 @@ int far pascal _loadds  FS_COMMIT(
 )
 {
 USHORT rc;
+
+   _asm push es;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_COMMIT, type %d", usType);
@@ -1614,10 +1657,16 @@ USHORT rc;
          ULONG  ulCluster;
 
          if (IsDriveLocked(pVolInfo))
-            return ERROR_DRIVE_LOCKED;
+            {
+            rc = ERROR_DRIVE_LOCKED;
+            goto FS_COMMITEXIT;
+            }
 
          if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
-            return ERROR_NOT_SUPPORTED;
+            {
+            rc = ERROR_NOT_SUPPORTED;
+            goto FS_COMMITEXIT;
+            }
 
          if (!pOpenInfo->pSHInfo->fMustCommit)
             {
@@ -1679,13 +1728,16 @@ FS_COMMITEXIT:
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_COMMIT returned %u", rc);
+
+   _asm pop es;
+
    return rc;
 }
 
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_FILELOCKS(
+int far pascal _loadds FS_FILELOCKS(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     void far * pUnlockRange,            /* pUnLockRange */
@@ -1709,7 +1761,7 @@ int far pascal _loadds  FS_FILELOCKS(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_NEWSIZE(
+int far pascal _loadds FS_NEWSIZE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned long ulLen,        /* len      */
@@ -1717,8 +1769,12 @@ int far pascal _loadds  FS_NEWSIZE(
 )
 {
 PVOLINFO pVolInfo;
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+POPENINFO pOpenInfo;
 USHORT rc;
+
+   _asm push es;
+
+   pOpenInfo = GetOpenInfo(psffsd);
 
    pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
@@ -1726,13 +1782,22 @@ USHORT rc;
       Message("FS_NEWSIZE newsize = %lu", ulLen);
 
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
-      return ERROR_NOT_SUPPORTED;
+      {
+      rc = ERROR_NOT_SUPPORTED;
+      goto FS_NEWSIZEEXIT;
+      }
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_NEWSIZEEXIT;
+      }
    if (pVolInfo->fWriteProtected)
-      return ERROR_WRITE_PROTECT;
+      {
+      rc = ERROR_WRITE_PROTECT;
+      goto FS_NEWSIZEEXIT;
+      }
 
    rc = NewSize(pVolInfo, psffsi, psffsd, ulLen, usIOFlag);
    if (!rc)
@@ -1740,6 +1805,9 @@ USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_NEWSIZE returned %u", rc);
+
+FS_NEWSIZEEXIT:
+   _asm pop es;
 
    return rc;
 }
@@ -1859,7 +1927,7 @@ ULONG ulCluster, ulNextCluster;
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_FILEINFO(unsigned short usFlag,       /* flag     */
+int far pascal _loadds FS_FILEINFO(unsigned short usFlag,       /* flag     */
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned short usLevel,     /* level    */
@@ -1869,12 +1937,14 @@ int far pascal _loadds  FS_FILEINFO(unsigned short usFlag,       /* flag     */
 )
 {
 PVOLINFO pVolInfo;
-POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+POPENINFO pOpenInfo;
 USHORT usNeededSize;
 USHORT rc;
 PSZ  pszFile;
 
+   _asm push es;
 
+   pOpenInfo = GetOpenInfo(psffsd);
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FILEINFO for %s, usFlag = %X, level %d",
@@ -1883,9 +1953,15 @@ PSZ  pszFile;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
-      return ERROR_NOT_SUPPORTED;
+      {
+      rc = ERROR_NOT_SUPPORTED;
+      goto FS_FILEINFOEXIT;
+      }
    if (IsDriveLocked(pVolInfo))
-      return ERROR_DRIVE_LOCKED;
+      {
+      rc = ERROR_DRIVE_LOCKED;
+      goto FS_FILEINFOEXIT;
+      }
 
    pszFile = strrchr(pOpenInfo->pSHInfo->szFileName, '\\');
    if (!pszFile)
@@ -1928,7 +2004,7 @@ PSZ  pszFile;
       if (rc)
          {
          Message("Protection VIOLATION in FS_FILEINFO!\n");
-         return rc;
+         goto FS_FILEINFOEXIT;
          }
 
       if (usLevel == FIL_STANDARD || usLevel == FIL_QUERYEASIZE)
@@ -2007,14 +2083,14 @@ PSZ  pszFile;
             if (rc)
                {
                Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
-               return rc;
+               goto FS_FILEINFOEXIT;
                }
 
             rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, (USHORT)pFEA->cbList);
             if (rc)
                {
                Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
-               return rc;
+               goto FS_FILEINFOEXIT;
                }
 
             if (!f32Parms.fEAS)
@@ -2034,14 +2110,14 @@ PSZ  pszFile;
             if (rc)
                {
                Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
-               return rc;
+               goto FS_FILEINFOEXIT;
                }
 
             rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFEA, (USHORT)pFEA->cbList);
             if (rc)
                {
                Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
-               return rc;
+               goto FS_FILEINFOEXIT;
                }
             if (!f32Parms.fEAS)
                {
@@ -2067,7 +2143,7 @@ PSZ  pszFile;
       if (rc)
          {
          Message("FAT32: Protection VIOLATION in FS_FILEINFO!\n");
-         return rc;
+         goto FS_FILEINFOEXIT;
          }
 
       if (!(psffsi->sfi_mode & OPEN_ACCESS_WRITEONLY) &&
@@ -2164,13 +2240,16 @@ PSZ  pszFile;
 FS_FILEINFOEXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FILEINFO returned %u", rc);
+
+   _asm pop es;
+
    return rc;
 }
 
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_FILEIO(
+int far pascal _loadds FS_FILEIO(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     char far * cbCmdList,           /* cbCmdList    */
@@ -2195,7 +2274,7 @@ int far pascal _loadds  FS_FILEIO(
 /******************************************************************
 *
 ******************************************************************/
-int far pascal _loadds  FS_NMPIPE(
+int far pascal _loadds FS_NMPIPE(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
     unsigned short usOpType,        /* OpType   */

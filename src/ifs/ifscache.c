@@ -52,8 +52,8 @@ PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE PRQLIST GetRequestList(PVOLINFO pVolInfo, BOOL fWait);
 PRIVATE BOOL   fAddToRLH(PRQLIST pRQ, USHORT usCBIndex, BYTE bPriority);
 PRIVATE VOID   vCallStrategy(PVOLINFO pVolInfo, PRQLIST pRQ);
-PRIVATE VOID _loadds  rlhNotify(VOID);
-PRIVATE VOID _loadds  rhNotify(VOID);
+PRIVATE VOID   _loadds rlhNotify(VOID);
+PRIVATE VOID   _loadds rhNotify(VOID);
 PRIVATE VOID   vCheckRequest(PREQUEST pRequest);
 PRIVATE USHORT usEmergencyFlush(VOID);
 
@@ -82,7 +82,7 @@ ULONG    linPageList;
 
    if (ulSectors > MAX_SECTORS)
       ulSectors = MAX_SECTORS;
-   Message("Allocating cache space for %ld sectors", ulSectors);
+   //Message("Allocating cache space for %ld sectors", ulSectors);
 
    f32Parms.usCacheSize = 0;
 
@@ -1497,6 +1497,9 @@ PB     _based(rqBase) * pPB;
    if (!pRQin)
       return;
 
+   _asm push es; // vs
+   _asm push bx; //
+
    rqBase = SELECTOROF(pRQin);
    pRQ = (RQLIST _based(rqBase) *)OFFSETOF(pRQin);
 
@@ -1533,14 +1536,12 @@ PB     _based(rqBase) * pPB;
    usOff = (USHORT)pRQ + offsetof(RQLIST, rlh);
 
    pfnStrategy = pVolInfo->pfnStrategy;
-   _asm push  es; // vs
-   //_asm push  bx; //
 
    _asm mov es, usSeg;
    _asm mov bx, usOff;
    (*pfnStrategy)();
 
-   //_asm pop   bx; // vs
+   _asm pop   bx; // vs
    _asm pop   es; //
 }
 
@@ -1557,7 +1558,7 @@ ULONG ulIndex, ulIndex2;
 PREQUEST pRequest;
 
    _asm push es; // vs
-   //_asm push bx; //
+   _asm push bx; //
 
    _asm mov ESReg, es
    _asm mov BXReg, bx
@@ -1640,7 +1641,7 @@ PREQUEST pRequest;
          break;
       }
 
-   //_asm pop  bx; // vs
+   _asm pop  bx; // vs
    _asm pop  es; //
 
    return;
@@ -1655,14 +1656,14 @@ VOID _loadds rhNotify(VOID)
 WORD ESReg, BXReg;
 
    _asm push es // vs
-   //_asm push bx //
+   _asm push bx //
 
    _asm mov ESReg, es
    _asm mov BXReg, bx
 
    vCheckRequest(MAKEP(ESReg, BXReg));
 
-   //_asm pop  bx; // vs
+   _asm pop  bx; // vs
    _asm pop  es; //
 }
 #pragma optimize("", on)
@@ -1759,4 +1760,3 @@ for( ulIndex = 0; ulIndex < pRequest->pb.Blocks_Xferred; ulIndex++ )
       }
    }
 }
-

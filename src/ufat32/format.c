@@ -427,10 +427,6 @@ int format_volume (char *path, format_params *params)
         }
 
     //printf("001\n");
-    // free memory
-    mem_free ( (void *)pFirstSectOfFat, dp.BytesPerSect );
-    mem_free ( (void *)pFAT32FsInfo, dp.BytesPerSect );
-    mem_free ( (void *)pFAT32BootSect, dp.BytesPerSect );
 
     // The filesystem recogniser in Windows XP doesn't use the partition type - in can be 
     // set to pretty much anything other Os's like Dos (still useful for Norton Ghost!) and Windows ME might, 
@@ -450,6 +446,7 @@ int format_volume (char *path, format_params *params)
     //set_vol_label (path, vol); // traps when booted from FAT32
     //printf("003\n");
     //set_vol_label (path, vol);
+    //DosSleep(3000);
     //printf("004\n");
     remount_media ( hDevice );
     //printf("005\n");
@@ -465,6 +462,11 @@ int format_volume (char *path, format_params *params)
     ////set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     fflush(stdout);
     //printf("010\n");
+
+    // free memory
+    mem_free ( (void *)pFirstSectOfFat, dp.BytesPerSect );
+    mem_free ( (void *)pFAT32FsInfo, dp.BytesPerSect );
+    mem_free ( (void *)pFAT32BootSect, dp.BytesPerSect );
 
     return( TRUE );
 }

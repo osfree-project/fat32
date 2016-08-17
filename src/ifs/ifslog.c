@@ -36,7 +36,7 @@ int cdecl sprintf(char * pszBuffer, const char *pszFormat, ...);
 
 static BOOL fWriteLogging(PSZ pszMessage);
 
-VOID cdecl Message(PSZ pszMessage, ...)
+VOID cdecl _loadds Message(PSZ pszMessage, ...)
 {
 static BYTE szMessage[512];
 va_list va;
@@ -44,8 +44,13 @@ PROCINFO Proc;
 ULONG ulmSecs = *pGITicks;
 USHORT usThreadID;
 
+   _asm push es;
+
    if (!f32Parms.fMessageActive)
+      {
+      _asm pop es;
       return;
+      }
 
    va_start(va, pszMessage);
 
@@ -61,7 +66,9 @@ USHORT usThreadID;
 
    vsprintf(szMessage + strlen(szMessage), pszMessage, va);
    fWriteLogging(szMessage);
-   //serout(serial_hw_port, szMessage);
+   serout(serial_hw_port, szMessage);
+
+   _asm pop es;
 }
 
 BOOL fWriteLogging(PSZ pszMessage)
@@ -148,7 +155,6 @@ USHORT rc;
    return rc;
 }
 
-
 /* Read a byte from a port.  */
 static _inline unsigned char
 inb (unsigned short port)
@@ -211,3 +217,4 @@ void serout(unsigned short port, char *s)
   comout(port, '\r');
   comout(port, '\n');
 }
+

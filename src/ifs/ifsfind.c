@@ -24,6 +24,8 @@ int far pascal _loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
 PVOLINFO pVolInfo;
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 
+   _asm push es;
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDCLOSE");
 
@@ -35,6 +37,8 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
          free(pFindInfo->pInfo);
       pFindInfo->pInfo = NULL;
       }
+
+   _asm pop es;
 
    return 0;
 }
@@ -69,6 +73,8 @@ ULONG ulNeededSpace;
 USHORT usEntriesWanted;
 EAOP   EAOP;
 PROCINFO ProcInfo;
+
+   _asm push es;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDFIRST for %s attr %X, Level %d, cbData %u, MaxEntries %u", pName, usAttr, usLevel, cbData, *pcMatch);
@@ -120,7 +126,7 @@ PROCINFO ProcInfo;
    if (rc)
       {
       Message("FAT32: Protection VIOLATION in FS_FINDFIRST! (SYS%d)", rc);
-      return rc;
+      goto FS_FINDFIRSTEXIT;
       }
 
    if (usLevel == FIL_QUERYEASFROMLIST)
@@ -280,6 +286,8 @@ FS_FINDFIRSTEXIT:
       FS_FINDCLOSE(pfsfsi, pfsfsd);
       }
 
+   _asm pop es;
+
    return rc;
 }
 
@@ -308,7 +316,6 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
          pFindInfo->ulCurEntry, ulPosition);
 
    pFindInfo->ulCurEntry = ulPosition + 1;
-
    return FS_FINDNEXT(pfsfsi, pfsfsd, pData, cbData, pcMatch, usLevel, usFlags);
 }
 
@@ -331,6 +338,8 @@ USHORT rc;
 USHORT usIndex;
 USHORT usNeededLen;
 USHORT usEntriesWanted;
+
+   _asm push es;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDNEXT, level %u, cbData %u, MaxEntries %u", usLevel, cbData, *pcMatch);
@@ -374,7 +383,7 @@ USHORT usEntriesWanted;
    if (rc)
       {
       Message("FAT32: Protection VIOLATION in FS_FINDNEXT!");
-      return rc;
+      goto FS_FINDNEXTEXIT;
       }
 
    if (usLevel == FIL_QUERYEASFROMLIST)
@@ -440,6 +449,9 @@ FS_FINDNEXTEXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDNEXT returned %d (%d entries)",
          rc, *pcMatch);
+
+   _asm pop es;
+
    return rc;
 }
 
