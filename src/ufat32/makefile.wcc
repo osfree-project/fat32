@@ -1,6 +1,11 @@
 CC=wcc386
 LNK=wlink op q
 MAPCNV=..\mapsym.awk
+_VENDOR=Netlabs
+_VERSION=0.10a4
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
+DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
+DESC2="Fat32Format, standalone version"
 # T=win32
 
 !ifneq T win32
@@ -28,7 +33,7 @@ ufat32.lnk: $(OBJS1)
  @%create $^@
  @%append $^@ SYSTEM $(SYS) dll initinstance terminstance
  @%append $^@ NAME $^*.dll
- @%append $^@ OPTION DESCRIPTION 'UFAT32 Helper DLL, Henk Kelder'
+ @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $^@ OPTION MIXED1632
  #@%append $^@ OPTION NODEFAULTLIBS
  @%append $^@ OPTION ST=81920
@@ -46,6 +51,7 @@ fat32fmt.lnk: $(OBJS2)
  @%create $^@
  @%append $^@ SYSTEM $(SYS)
  @%append $^@ NAME $^*.exe
+ @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
  @%append $^@ OPTION MAP=$^*.wmp
 !ifneq T win32
  @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2

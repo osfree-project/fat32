@@ -2,6 +2,10 @@ CC=wcc
 AS=wasm
 LNK=wlink
 MAPCNV=..\mapsym.awk
+_VENDOR=Netlabs
+_VERSION=0.10a4
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
+DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
 
 # COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
@@ -36,7 +40,7 @@ fat32.ols: $(OBJS)
  @%create $^@
  @%append $^@ SYSTEM $(SYS)
  @%append $^@ NAME $^*.ifs
- @%append $^@ OPTION DESCRIPTION 'Fat32 Installable filesystem, Henk Kelder & Netlabs'
+ @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  #@%append $^@ DEBUG ALL
  @%append $^@ option protmode
  @%append $^@ option quiet

@@ -68,7 +68,7 @@ typedef unsigned short APIRET;
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.9.13"
+#define FAT32_VERSION "0.10a4"
 
 #ifndef __MSC__
 #define _enable()	_asm { sti }

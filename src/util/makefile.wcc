@@ -2,6 +2,10 @@ CXX=wpp386
 CC=wcc386
 LNK=wlink
 MAPCNV=..\mapsym.awk
+_VENDOR=Netlabs
+_VERSION=0.10a4
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
+DESC="Fat32 utilities, Henk Kelder & Netlabs"
 
 COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 
@@ -53,7 +57,7 @@ diskdump.ols: $(OBJS5)
  @%create $^@
  @%append $^@ SYSTEM $(SYS)
  @%append $^@ NAME $^*.exe
- @%append $^@ OPTION DESCRIPTION 'UFAT32 Helper DLL, Henk Kelder'
+ @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $^@ OPTION ST=81920
  @%append $^@ OPTION QUIET
  @%append $^@ DEBUG ALL
