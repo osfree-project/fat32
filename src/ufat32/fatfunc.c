@@ -119,7 +119,7 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster);
 ULONG GetNextCluster2(PCDINFO pCD, ULONG ulCluster);
 BOOL  GetDiskStatus(PCDINFO pCD);
-ULONG GetFreeSpace(PCDINFO pVolInfo);
+ULONG GetFreeSpace(PCDINFO pCD);
 BOOL  MarkDiskStatus(PCDINFO pCD, BOOL fClean);
 ULONG FindDirCluster(PCDINFO pCD, PSZ pDir, USHORT usCurDirEnd, USHORT usAttrWanted, PSZ *pDirEnd);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
@@ -153,6 +153,7 @@ VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
 BOOL LoadTranslateTable(VOID);
 VOID GetCaseConversion( PUCHAR pCase );
+BOOL UpdateFSInfo(PCDINFO pCD);
 
 /******************************************************************
 *
@@ -289,7 +290,7 @@ ULONG GetFreeSpace(PCDINFO pCD)
    if (pCD->FSInfo.ulFreeClusters != ulTotalFree)
       {
       pCD->FSInfo.ulFreeClusters = ulTotalFree;
-      /* UpdateFSInfo(pVolInfo); */
+      UpdateFSInfo(pCD); ////
       }
 
    return ulTotalFree;
@@ -1623,10 +1624,8 @@ ULONG SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
    if (rc)
       return FAT_EOF;
 
-/*
-   if (fUpdateFSInfo)
-      UpdateFSInfo(pVolInfo);
-*/
+   if (fUpdateFSInfo) ////
+      UpdateFSInfo(pCD);
 
    return ulReturn;
 }
@@ -2049,7 +2048,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
       //}
 
    pCD->FSInfo.ulFreeClusters += ulClustersFreed;
-/*   UpdateFSInfo(pVolInfo);*/
+   UpdateFSInfo(pCD); ////
 
    //ReleaseFat(pVolInfo);
 
@@ -2431,4 +2430,35 @@ VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode )
 VOID GetCaseConversion( PUCHAR pCase )
 {
     memcpy( pCase, rgLCase, sizeof( rgLCase ));
+}
+
+/******************************************************************
+*
+******************************************************************/
+BOOL UpdateFSInfo(PCDINFO pCD)
+{
+   static BYTE bSector[SECTOR_SIZE] = "";
+
+   //if (f32Parms.fMessageActive & LOG_FUNCS)
+   //   Message("UpdateFSInfo");
+
+   //if (pCD->fFormatInProgress)
+   //   return FALSE;
+
+   //if (pCD->fWriteProtected)
+   //   return TRUE;
+
+   if (pCD->BootSect.bpb.FSinfoSec == 0xFFFF)
+      return TRUE;
+
+   if (!ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector))
+      {
+      memcpy(bSector + FSINFO_OFFSET, (void *)&pCD->FSInfo, sizeof (BOOTFSINFO));
+      if (!WriteSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector))
+         return TRUE;
+      }
+   //CritMessage("UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
+   //Message("ERROR: UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
+
+   return FALSE;
 }

@@ -74,6 +74,8 @@ VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID GetCaseConversion( PUCHAR pCase );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
 
+void remount_media (HFILE hDevice);
+
 INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 
@@ -522,6 +524,12 @@ ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    ulDataSize = nSectors * SECTOR_SIZE;
 
+   //if (pVolInfo->fWriteProtected)
+   //   return ERROR_WRITE_PROTECT;
+
+   //if (pVolInfo->fDiskClean)
+   //   MarkDiskStatus(pVolInfo, FALSE);
+
    if ( (rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
@@ -674,6 +682,8 @@ ULONG  dummy = 0;
 
    if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
       {
+      printf("pCD->DiskInfo.avail_clusters=%lu\n", pCD->DiskInfo.avail_clusters);
+      printf("pCD->ulFreeClusters=%lu\n", pCD->ulFreeClusters);
       printf("The stored free disk space is incorrect.\n");
       printf("(%lu free allocation units are reported while %lu free units are detected.)\n",
          pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
@@ -753,10 +763,14 @@ ULONG  dummy = 0;
       else
          printf("Still errors found on disk. Please run Windows 95 ScanDisk!\n");
       }
-   //else if (pCD->fFix)
+   else if (pCD->fFix)
+      {
       //DosDevIOCtl(NULL, NULL, FAT32_MARKVOLCLEAN, IOCTL_FAT32, pCD->hDisk);
       //DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_MARKVOLCLEAN,
       //            NULL, 0, NULL, NULL, 0, NULL);
+      MarkDiskStatus(pCD, TRUE);
+      remount_media(pCD->hDisk);
+      }
 
    return 0;
 }
