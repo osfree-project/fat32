@@ -372,7 +372,7 @@ ULONG    ulDirCluster;
 PSZ      pszFile;
 USHORT   rc;
 DIRENTRY DirEntry;
-POPENINFO pOpenInfo;
+POPENINFO pOpenInfo = NULL;
 BYTE     szLongName[ FAT32MAXPATH ];
 
    _asm push es;
@@ -381,6 +381,8 @@ BYTE     szLongName[ FAT32MAXPATH ];
     Message("FS_DELETE for %s", pFile);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   Message("000\n");
 
    if (IsDriveLocked(pVolInfo))
       {
@@ -398,6 +400,8 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_DELETEEXIT;
       }
 
+   Message("001\n");
+
    pOpenInfo = malloc(sizeof (OPENINFO));
    if (!pOpenInfo)
       {
@@ -405,9 +409,11 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_DELETEEXIT;
       }
 
+   Message("002\n");
    if( TranslateName(pVolInfo, 0L, pFile, szLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szLongName, pFile );
 
+   Message("003\n");
    pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
    if (!pOpenInfo->pSHInfo)
       {
@@ -415,6 +421,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_DELETEEXIT;
       }
    pOpenInfo->pSHInfo->sOpenCount++;
+   Message("004\n");
    if (pOpenInfo->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -422,12 +429,14 @@ BYTE     szLongName[ FAT32MAXPATH ];
       }
    pOpenInfo->pSHInfo->fLock = TRUE;
 
+   Message("005\n");
    if (strlen(pFile) > FAT32MAXPATH)
       {
       rc = ERROR_FILENAME_EXCED_RANGE;
       goto FS_DELETEEXIT;
       }
 
+   Message("006\n");
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
@@ -441,6 +450,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_DELETEEXIT;
       }
 
+   Message("007\n");
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
    if (ulCluster == FAT_EOF)
       {
@@ -449,18 +459,21 @@ BYTE     szLongName[ FAT32MAXPATH ];
       }
 
 
+   Message("008\n");
    if (DirEntry.bAttr & FILE_DIRECTORY)
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_DELETEEXIT;
       }
 
+   Message("009\n");
    if (DirEntry.bAttr & FILE_READONLY)
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_DELETEEXIT;
       }
 
+   Message("010\n");
    if (f32Parms.fEAS)
       {
       rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFile);
@@ -472,10 +485,12 @@ BYTE     szLongName[ FAT32MAXPATH ];
 #endif
       }
 
+   Message("011\n");
    rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, 0);
    if (rc)
       goto FS_DELETEEXIT;
 
+   Message("012\n");
    if (ulCluster)
       DeleteFatChain(pVolInfo, ulCluster);
    rc = 0;
@@ -483,6 +498,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
 
 FS_DELETEEXIT:
 
+   Message("013\n");
    if (pOpenInfo)
       {
       if (pOpenInfo->pSHInfo)

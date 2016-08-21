@@ -144,7 +144,6 @@ ULONG  ulDeadFace = 0xDEADFACE;
 ULONG  ulParmSize;
 ULONG  ulDataSize;
 ULONG  cbDataLen;
-LONGLONG llSize;
 
    DosError(1); /* Enable hard errors */
 
