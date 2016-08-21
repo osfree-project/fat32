@@ -31,13 +31,13 @@ MSG_1306, AvailableClusters
 #define INCL_DOSERRORS
 #define INCL_DOSDEVICES
 #define INCL_DOSDEVIOCTL
+#define INCL_LONGLONG
 #include <os2.h>
 #include "portable.h"
 #include "fat32def.h"
 
 PRIVATE ULONG ChkDskMain(PCDINFO pCD);
 PRIVATE ULONG MarkVolume(PCDINFO pCD, BOOL fClean);
-PRIVATE ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 PRIVATE ULONG CheckFats(PCDINFO pCD);
 PRIVATE ULONG CheckFiles(PCDINFO pCD);
 PRIVATE ULONG CheckFreeSpace(PCDINFO pCD);
@@ -45,7 +45,6 @@ PRIVATE ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulPar
 PRIVATE BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
 PRIVATE ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
 PRIVATE ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNextCluster);
-PRIVATE ULONG ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
 PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE PSZ    MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
@@ -57,10 +56,28 @@ PRIVATE BOOL LostToFile(PCDINFO pCD, ULONG ulCluster, ULONG ulSize);
 PRIVATE BOOL ClusterInChain(PCDINFO pCD, ULONG ulStart, ULONG ulCluster);
 PRIVATE BOOL OutputToFile(VOID);
 
+ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
+ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
+
+BOOL  GetDiskStatus(PCDINFO pCD);
+ULONG GetFreeSpace(PCDINFO pVolInfo);
+BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean);
+USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark);
+USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
+USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
+USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName);
+BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster);
+BOOL LoadTranslateTable(VOID);
+VOID GetFirstInfo( PBOOL pFirstInfo );
+VOID GetCaseConversion( PUCHAR pCase );
+VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
+
 INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 
-static F32PARMS  f32Parms;
+F32PARMS  f32Parms = {0};
 static BOOL fToFile;
 
 #if 1  /* by OAX */
@@ -72,9 +89,10 @@ VOID TranslateInitDBCSEnv( VOID )
    ULONG ulDataSize;
    ULONG ulParamSize;
 
-   DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
-      NULL, 0, &ulParamSize,
-      FAT32_GETFIRSTINFO, "FAT32", -1, FSCTL_FSDNAME );
+   //DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
+   //   NULL, 0, &ulParamSize,
+   //   FAT32_GETFIRSTINFO, "FAT32", -1, FSCTL_FSDNAME );
+   GetFirstInfo(( PBOOL )rgFirstInfo );
 }
 
 BOOL IsDBCSLead( UCHAR uch)
@@ -87,9 +105,10 @@ VOID CaseConversionInit( VOID )
    ULONG ulDataSize;
    ULONG ulParamSize;
 
-   DosFSCtl( rgLCase, sizeof( rgLCase ), &ulDataSize,
-      NULL, 0, &ulParamSize,
-      FAT32_GETCASECONVERSION, "FAT32", -1, FSCTL_FSDNAME );
+   //DosFSCtl( rgLCase, sizeof( rgLCase ), &ulDataSize,
+   //   NULL, 0, &ulParamSize,
+   //   FAT32_GETCASECONVERSION, "FAT32", -1, FSCTL_FSDNAME );
+   GetCaseConversion(rgLCase);
 }
 
 /* Get the last-character. (sbcs/dbcs) */
@@ -125,8 +144,13 @@ ULONG  ulDeadFace = 0xDEADFACE;
 ULONG  ulParmSize;
 ULONG  ulDataSize;
 ULONG  cbDataLen;
+LONGLONG llSize;
 
    DosError(1); /* Enable hard errors */
+
+   f32Parms.fEAS = TRUE;
+
+   LoadTranslateTable();
 
    TranslateInitDBCSEnv();
 
@@ -174,21 +198,20 @@ ULONG  cbDataLen;
       }
 
    ulDataSize = sizeof(f32Parms);
-   rc = DosFSCtl(
-      (PVOID)&f32Parms, ulDataSize, &ulDataSize,
-      NULL, 0, &ulParmSize,
-      FAT32_GETPARMS, "FAT32", -1, FSCTL_FSDNAME);
-   if (rc)
-      {
-      printf("DosFSCtl, FAT32_GETPARMS failed, rc = %d\n", rc);
-      DosExit(EXIT_PROCESS, 1);
-      }
-   if (strcmp(f32Parms.szVersion, FAT32_VERSION))
-      {
-      printf("ERROR: FAT32 version (%s) differs from UFAT32.DLL version (%s)\n", f32Parms.szVersion, FAT32_VERSION);
-      DosExit(EXIT_PROCESS, 1);
-      }
-
+   //rc = DosFSCtl(
+   //   (PVOID)&f32Parms, ulDataSize, &ulDataSize,
+   //   NULL, 0, &ulParmSize,
+   //   FAT32_GETPARMS, "FAT32", -1, FSCTL_FSDNAME);
+   //if (rc)
+   //   {
+   //   printf("DosFSCtl, FAT32_GETPARMS failed, rc = %d\n", rc);
+   //   DosExit(EXIT_PROCESS, 1);
+   //   }
+   //if (strcmp(f32Parms.szVersion, FAT32_VERSION))
+   //   {
+   //   printf("ERROR: FAT32 version (%s) differs from UFAT32.DLL version (%s)\n", f32Parms.szVersion, FAT32_VERSION);
+   //   DosExit(EXIT_PROCESS, 1);
+   //   }
 
    if (!strlen(pCD->szDrive))
       {
@@ -198,19 +221,15 @@ ULONG  cbDataLen;
       pCD->szDrive[0] = (BYTE)(ulDisk + '@');
       pCD->szDrive[1] = ':';
       }
-   //printf("000\n");
-   //printf("DosOpen pCD->szDrive=%s\n", pCD->szDrive);
-   rc = DosOpen(pCD->szDrive,
+   rc = DosOpenL(pCD->szDrive,
       &hFile,
       &ulAction,                         /* action taken */
-      0L,                                /* new size     */
+      0LL,                               /* new size     */
       0,                                 /* attributes   */
       OPEN_ACTION_OPEN_IF_EXISTS,        /* open flags   */
       OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE | OPEN_FLAGS_DASD |
       OPEN_FLAGS_WRITE_THROUGH,         /* OPEN_FLAGS_NO_CACHE , */
       0L);
-   //printf("rc=%lu\n", rc);
-   //printf("001\n");
    if (rc)
       {
       if (rc == ERROR_DRIVE_LOCKED)
@@ -220,32 +239,30 @@ ULONG  cbDataLen;
       DosExit(EXIT_PROCESS, 1);
       }
    ulParmSize = sizeof(ulDeadFace);
-   //printf("002\n");
-   rc = DosFSCtl(NULL, 0, 0,
-                 (PBYTE)&ulDeadFace, ulParmSize, &ulParmSize,
-                 FAT32_SECTORIO,
-                 NULL,
-                 hFile,
-                 FSCTL_HANDLE);
-   if (rc)
-      {
-      printf("DosFSCtl (SectorIO) failed:\n%s\n", GetOS2Error(rc));
-      exit(1);
-      }
-   //printf("003\n");
-   rc = DosDevIOCtl(hFile, IOCTL_FAT32, FAT32_GETVOLCLEAN,
-                    NULL, 0, NULL,
-                    (PVOID)&pCD->fCleanOnBoot, sizeof(pCD->fCleanOnBoot), &cbDataLen);
+   //rc = DosFSCtl(NULL, 0, 0,
+   //              (PBYTE)&ulDeadFace, ulParmSize, &ulParmSize,
+   //              FAT32_SECTORIO,
+   //              NULL,
+   //              hFile,
+   //              FSCTL_HANDLE);
+   //if (rc)
+   //   {
+   //   printf("DosFSCtl (SectorIO) failed:\n%s\n", GetOS2Error(rc));
+   //   exit(1);
+   //   }
+   //rc = DosDevIOCtl(hFile, IOCTL_FAT32, FAT32_GETVOLCLEAN,
+   //                 NULL, 0, NULL,
+   //                 (PVOID)&pCD->fCleanOnBoot, sizeof(pCD->fCleanOnBoot), &cbDataLen);
    //rc = DosDevIOCtl2((PVOID)&pCD->fCleanOnBoot, sizeof(pCD->fCleanOnBoot),
    //   NULL, 0,
    //   FAT32_GETVOLCLEAN, IOCTL_FAT32, hFile);
-   //printf("DosDevIOCtl, rc=%lu\n", rc);
+   pCD->fCleanOnBoot = GetDiskStatus(pCD);
+
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
       pCD->fAutoRecover = FALSE;
 
    if (pCD->fFix)
       {
-      //printf("004\n");
       rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_LOCKDRIVE,
                        NULL, 0, NULL,
                        NULL, 0, NULL);
@@ -259,7 +276,6 @@ ULONG  cbDataLen;
          DosExit(EXIT_PROCESS, 1);
          }
       }
-   //printf("005\n");
 
    rc = DosQueryFSInfo(pCD->szDrive[0] - '@', FSIL_ALLOC,
       (PBYTE)&pCD->DiskInfo, sizeof (DISKINFO));
@@ -270,7 +286,6 @@ ULONG  cbDataLen;
       }
    pCD->hDisk = hFile;
 
-   //printf("006\n");
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
       {
@@ -279,7 +294,6 @@ ULONG  cbDataLen;
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
 
-   //printf("007\n");
    rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
    if (rc)
       {
@@ -287,13 +301,10 @@ ULONG  cbDataLen;
       return rc;
       }
 
-   //printf("008\n");
    rc = ChkDskMain(pCD);
-   //printf("009\n");
 
    if (pCD->fFix)
       {
-      //printf("0090\n");
       rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_UNLOCKDRIVE,
                        NULL, 0, NULL,
                        NULL, 0, NULL);
@@ -306,8 +317,6 @@ ULONG  cbDataLen;
       }
    DosClose(hFile);
    free(pCD);
-
-   //printf("010\n");
 
    DosExit(EXIT_PROCESS, rc);
    return rc;
@@ -337,32 +346,134 @@ ULONG ulAttr;
    return FALSE;
 }
 
+#if 1
+ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
+{
+   ULONG ulSector;
+   USHORT rc;
+
+   if (ulCluster < 2 || ulCluster >= pCD->ulTotalClusters + 2)
+      return ERROR_SECTOR_NOT_FOUND;
+
+   ulSector = pCD->ulStartOfData +
+      (ulCluster - 2) * pCD->BootSect.bpb.SectorsPerCluster;
+
+   rc = ReadSector(pCD, ulSector,
+      pCD->BootSect.bpb.SectorsPerCluster,
+      pbCluster);
+
+   if (rc)
+      return rc;
+
+   return 0;
+}
+#else
 ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
 {
    ULONG dummy1 = 0, dummy2 = 0;
    ULONG ulDataSize = pCD->usClusterSize;
    ULONG rc;
 
-   //printf("pCD->usClusterSize=%lu\n", ulDataSize);   
-   //printf("ulCluster=%lu\n", ulCluster);   
 //   return DosDevIOCtl2(
 //     (PVOID)pbCluster, pCD->usClusterSize,
 //      (PVOID)&ulCluster, sizeof(ulCluster),
 //      FAT32_READCLUSTER, IOCTL_FAT32, pCD->hDisk);
-   //printf("240\n");
    rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_READCLUSTER,
                       (PVOID)&ulCluster, sizeof(ulCluster), &dummy1,
                       (PVOID)pbCluster, ulDataSize, &dummy2);
-   //printf("241\n");
    return rc;
 }
+#endif
 
+#if 1
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 {
-READSECTORDATA rsd;
-ULONG ulDataSize;
-ULONG dummy1 = 0, dummy2 = 0;
-ULONG rc;
+   ULONG ulDataSize;
+   BIOSPARAMETERBLOCK bpb;
+
+   #pragma pack(1)
+
+   /* parameter packet */
+   struct {
+       unsigned char command;
+       unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   #define BUFSIZE 0x4000
+
+   char buf[BUFSIZE];
+
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   ULONG cbRead32;
+   ULONG rc;
+   ULONG parmlen4;
+   char trkbuf[sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * 255];
+   PTRACKLAYOUT ptrk = (PTRACKLAYOUT)trkbuf;
+   ULONG datalen4 = BUFSIZE;
+   USHORT cyl, head, sec, n;
+   ULONGLONG off;
+   int i;
+
+   ulDataSize = nSectors * SECTOR_SIZE;
+
+   if ( (rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+       return rc;
+
+   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+   cbRead32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+   memset((char *)trkbuf, 0, sizeof(trkbuf));
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= SECTOR_SIZE;
+
+   for (i = 0; i < bpb.usSectorsPerTrack; i++)
+   {
+       ptrk->TrackTable[i].usSectorNumber = i + 1;
+       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+   }
+
+   do
+   {
+       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+
+       if (sec + cbRead32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
+           n = bpb.usSectorsPerTrack - sec + 1;
+       else
+           n = cbRead32 / SECTOR_SIZE;
+
+       ptrk->bCommand = 1;
+       ptrk->usHead = head;
+       ptrk->usCylinder = cyl;
+       ptrk->usFirstSector = sec;
+       ptrk->cSectors = n;
+
+       rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_READTRACK,
+                        trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       if (rc)
+           break;
+
+       memcpy(pbSector, buf, min(datalen4, ulDataSize));
+
+       off           += cbRead32;
+       ulDataSize    -= cbRead32;
+       pbSector      = (char *)pbSector + cbRead32;
+
+    } while ((ulDataSize > 0) && ! rc);
+
+    return rc;
+}
+#else
+ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
+   READSECTORDATA rsd;
+   ULONG ulDataSize;
+   ULONG dummy1 = 0, dummy2 = 0;
 
    rsd.ulSector = ulSector;
    rsd.nSectors = nSectors;
@@ -373,9 +484,121 @@ ULONG rc;
 //      (PVOID)pbSector, usDataSize,
 //      (PVOID)&rsd, sizeof(rsd),
 //      FAT32_READSECTOR, IOCTL_FAT32, pCD->hDisk);
-   return DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_READSECTOR,
-                      (PVOID)&rsd, sizeof(rsd), &dummy1,
-                      (PVOID)pbSector, ulDataSize, &dummy2);
+   rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_READSECTOR,
+                    (PVOID)&rsd, sizeof(rsd), &dummy1,
+                    (PVOID)pbSector, ulDataSize, &dummy2);
+}
+#endif
+
+ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
+   ULONG ulDataSize;
+   BIOSPARAMETERBLOCK bpb;
+
+   #pragma pack(1)
+
+   /* parameter packet */
+   struct {
+       unsigned char command;
+       unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   #define BUFSIZE 0x4000
+
+   char buf[BUFSIZE];
+
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   ULONG cbWrite32;
+   ULONG rc;
+   ULONG parmlen4;
+   char trkbuf[sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * 255];
+   PTRACKLAYOUT ptrk = (PTRACKLAYOUT)trkbuf;
+   ULONG datalen4 = BUFSIZE;
+   USHORT cyl, head, sec, n;
+   ULONGLONG off;
+   int i;
+
+   ulDataSize = nSectors * SECTOR_SIZE;
+
+   if ( (rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+       return rc;
+
+   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+   cbWrite32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+   memset((char *)trkbuf, 0, sizeof(trkbuf));
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= SECTOR_SIZE;
+
+   for (i = 0; i < bpb.usSectorsPerTrack; i++)
+   {
+       ptrk->TrackTable[i].usSectorNumber = i + 1;
+       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+   }
+
+   do
+   {
+       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+
+       if (sec + cbWrite32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
+           n = bpb.usSectorsPerTrack - sec + 1;
+       else
+           n = cbWrite32 / SECTOR_SIZE;
+
+       ptrk->bCommand = 1;
+       ptrk->usHead = head;
+       ptrk->usCylinder = cyl;
+       ptrk->usFirstSector = sec;
+       ptrk->cSectors = n;
+
+       memcpy(buf, pbSector, min(datalen4, ulDataSize));
+
+       rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_WRITETRACK,
+                        trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       if (rc)
+           break;
+
+       off           += cbWrite32;
+       ulDataSize    -= cbWrite32;
+       pbSector      = (char *)pbSector + cbWrite32;
+
+    } while ((ulDataSize > 0) && ! rc);
+
+    return rc;
+}
+
+ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster)
+{
+   ULONG ulSector;
+   ULONG rc;
+
+   if (ulCluster < 2 || ulCluster >= pCD->ulTotalClusters + 2)
+      //{
+      //CritMessage("ERROR: Cluster %ld does not exist on disk %c:",
+      //   ulCluster, pVolInfo->bDrive + 'A');
+      //Message("ERROR: Cluster %ld does not exist on disk %c:",
+      //   ulCluster, pVolInfo->bDrive + 'A');
+      return ERROR_SECTOR_NOT_FOUND;
+      //}
+
+   ulSector = pCD->ulStartOfData +
+      (ulCluster - 2) * pCD->BootSect.bpb.SectorsPerCluster;
+
+   rc = WriteSector(pCD, ulSector,
+      pCD->BootSect.bpb.SectorsPerCluster, pbCluster);
+   if (rc)
+      //{
+      //Message("WriteCluster: Cluster %lu failed!", ulCluster);
+      return rc;
+      //}
+
+   return 0;
 }
 
 ULONG ChkDskMain(PCDINFO pCD)
@@ -414,15 +637,12 @@ ULONG  dummy = 0;
       printf("Not enough memory for FATBITS\n");
       return ERROR_NOT_ENOUGH_MEMORY;
       }
-   //printf("100\n");
 
    memset(szString, 0, sizeof(szString));
 #if 0
    strncpy(szString, pCD->BootSect.VolumeLabel, 11);
 #else
-   //printf("101\n");
    fGetVolLabel( pCD, szString );
-   //printf("102\n");
 #endif
    p = szString + strlen(szString);
    while (p > szString && *(p-1) == ' ')
@@ -434,28 +654,21 @@ ULONG  dummy = 0;
    sprintf(szString, "%4.4X-%4.4X",
       HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
    iShowMessage(pCD, 1243, 1, TYPE_STRING, szString);
-   //printf("103\n");
    if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
       {
       printf("The media descriptor is incorrect\n");
       pCD->ulErrorCount++;
       }
-   //printf("104\n");
 
    rc = CheckFats(pCD);
-   //printf("105\n");
    if (rc)
       {
       printf("The copies of the FATs do not match.\n");
       printf("Please run SCANDISK to correct this problem.\n");
       return rc;
       }
-   //printf("106\n");
    rc = CheckFiles(pCD);
-   //printf("107\n");
    rc = CheckFreeSpace(pCD);
-   //printf("108\n");
-
 
    if (pCD->DiskInfo.total_clusters != pCD->ulTotalClusters)
       printf("Total clusters mismatch!\n");
@@ -468,28 +681,26 @@ ULONG  dummy = 0;
       if (pCD->fFix)
          {
          ULONG ulFreeBlocks;
-         //printf("109\n");
-         rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_GETFREESPACE,
-                          NULL, 0, NULL,
-                          &ulFreeBlocks, sizeof(ulFreeBlocks), &dummy);
+         //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_GETFREESPACE,
+         //                 NULL, 0, NULL,
+         //                 &ulFreeBlocks, sizeof(ulFreeBlocks), &dummy);
          //rc = DosDevIOCtl2(&ulFreeBlocks, sizeof(ulFreeBlocks),
          //   NULL, 0,
          //   FAT32_GETFREESPACE, IOCTL_FAT32, pCD->hDisk);
-         //printf("110\n");
-         if (!rc)
+         ulFreeBlocks = GetFreeSpace(pCD);
+         //if (!rc)
             printf("The correct free space is set to %lu allocation units.\n",
                ulFreeBlocks);
-         else
-            {
-            printf("Setting correct free space failed, rc = %u.\n", rc);
-            pCD->ulErrorCount++;
-            }
+         //else
+            //{
+            //printf("Setting correct free space failed, rc = %u.\n", rc);
+            //pCD->ulErrorCount++;
+            //}
          }
       else
          pCD->ulErrorCount++;
       }
 
-   //printf("111\n");
    iShowMessage(pCD, 1361, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->usClusterSize);
    if (pCD->ulBadClusters)
@@ -507,44 +718,34 @@ ULONG  dummy = 0;
       TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->usClusterSize,
       TYPE_LONG, pCD->ulUserFiles);
 
-   //printf("112\n");
    if (pCD->ulRecoveredClusters)
       iShowMessage(pCD, 1365, 2,
          TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->usClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
 
-   //printf("113\n");
    if (pCD->ulLostClusters)
       iShowMessage(pCD, 1359, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->usClusterSize);
 
-
-   //printf("114\n");
    iShowMessage(pCD, 1368, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->usClusterSize,
       TYPE_LONG, 0L);
 
    printf("\n");
 
-
-   //printf("115\n");
    iShowMessage(pCD, 1304, 1,
       TYPE_LONG, (ULONG)pCD->usClusterSize);
 
-   //printf("116\n");
    iShowMessage(pCD, 1305, 1,
       TYPE_LONG, pCD->ulTotalClusters);
 
-   //printf("117\n");
    iShowMessage(pCD, 1306, 1,
       TYPE_LONG, pCD->ulFreeClusters);
 
-   //printf("118\n");
    if (pCD->ulTotalChains > 0)
       printf("\n%u%% of the files and directories are fragmented.\n",
          (USHORT)(pCD->ulFragmentedChains * 100 / pCD->ulTotalChains));
 
-   //printf("119\n");
    if (pCD->ulErrorCount)
       {
       printf("\n");
@@ -553,12 +754,11 @@ ULONG  dummy = 0;
       else
          printf("Still errors found on disk. Please run Windows 95 ScanDisk!\n");
       }
-   else if (pCD->fFix)
+   //else if (pCD->fFix)
       //DosDevIOCtl(NULL, NULL, FAT32_MARKVOLCLEAN, IOCTL_FAT32, pCD->hDisk);
-      DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_MARKVOLCLEAN, 
-                  NULL, 0, NULL, NULL, 0, NULL);
+      //DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_MARKVOLCLEAN,
+      //            NULL, 0, NULL, NULL, 0, NULL);
 
-   //printf("120\n");
    return 0;
 }
 
@@ -568,16 +768,17 @@ ULONG MarkVolume(PCDINFO pCD, BOOL fClean)
 ULONG rc;
 ULONG dummy = 0;
 
-   rc = DosDevIOCtl(pCD->hDisk,
-          IOCTL_FAT32,
-          FAT32_FORCEVOLCLEAN,
-          (PVOID)&fClean, sizeof(fClean), &dummy,
-          NULL, 0, NULL);
+   //rc = DosDevIOCtl(pCD->hDisk,
+   //       IOCTL_FAT32,
+   //       FAT32_FORCEVOLCLEAN,
+   //       (PVOID)&fClean, sizeof(fClean), &dummy,
+   //       NULL, 0, NULL);
 //   rc = DosDevIOCtl2( NULL, 0,
 //      (PVOID)&fClean, sizeof(fClean),
 //      FAT32_FORCEVOLCLEAN,
 //      IOCTL_FAT32,
 //      pCD->hDisk);
+   rc = MarkDiskStatus(pCD, fClean);
 
    return rc;
 }
@@ -607,12 +808,10 @@ USHORT fRetco;
       return 0;
       }
 
-
    //pSector = halloc(pCD->BootSect.bpb.NumberOfFATs, BLOCK_SIZE);
    pSector = calloc(pCD->BootSect.bpb.NumberOfFATs, BLOCK_SIZE);
    if (!pSector)
       return ERROR_NOT_ENOUGH_MEMORY;
-
 
    fDiff = FALSE;
    ulCluster = 0L;
@@ -621,7 +820,6 @@ USHORT fRetco;
       {
       USHORT usNew  = (USHORT)(ulSector * 100 / pCD->BootSect.bpb.BigSectorsPerFat);
       USHORT nSectors;
-
 
       if (!pCD->fPM && !fToFile && usNew != usPerc)
          {
@@ -672,8 +870,6 @@ USHORT fRetco;
          pulCluster++;
          ulCluster++;
          }
-
-
       }
 
    if (!pCD->fPM && !fToFile)
@@ -801,13 +997,14 @@ ULONG dummy = 0;
                LostToFile(pCD, pCD->rgulLost[usIndex], pCD->rgulSize[usIndex]);
             else
                {
-               rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_DELETECHAIN, 
-                            (PVOID)&pCD->rgulLost[usIndex], 4, &dummy,
-                            NULL, 0, NULL);
+               //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_DELETECHAIN, 
+               //             (PVOID)&pCD->rgulLost[usIndex], 4, &dummy,
+               //             NULL, 0, NULL);
                //rc = DosDevIOCtl2(NULL, 0,
                //   (PVOID)&pCD->rgulLost[usIndex], 4,
                //   FAT32_DELETECHAIN, IOCTL_FAT32, pCD->hDisk);
-               if (rc)
+               rc = DeleteFatChain(pCD, pCD->rgulLost[usIndex]);
+               if (rc == FALSE)
                   {
                   printf("CHKDSK was unable to delete a lost chain.\n");
                   pCD->ulErrorCount++;
@@ -1010,12 +1207,13 @@ ULONG dummy = 0;
                 {
                      strcpy(Mark.szFileName, pbPath);
                      Mark.fEAS = ( BYTE )( pDir->fEAS == FILE_HAS_OLD_EAS ? FILE_HAS_EAS : FILE_HAS_CRITICAL_EAS );
-                     rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS,
-                                     (PVOID)&Mark, sizeof(Mark), &dummy,
-                                     NULL, 0, NULL);
+                     //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS,
+                     //                (PVOID)&Mark, sizeof(Mark), &dummy,
+                     //                NULL, 0, NULL);
                      //rc = DosDevIOCtl2(NULL, 0,
                      //                  (PVOID)&Mark, sizeof(Mark),
                      //                  FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
+                     rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
                         printf("This has been corrected.\n");
                      else
@@ -1052,12 +1250,13 @@ ULONG dummy = 0;
                      {
                      strcpy(Mark.szFileName, pbPath);
                      Mark.fEAS = FILE_HAS_NO_EAS;
-                     rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
-                                   (PVOID)&Mark, sizeof(Mark), &dummy,
-                                   NULL, 0, NULL);
+                     //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
+                     //              (PVOID)&Mark, sizeof(Mark), &dummy,
+                     //              NULL, 0, NULL);
                      //rc = DosDevIOCtl2(NULL, 0,
                      //   (PVOID)&Mark, sizeof(Mark),
                      //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
+                     rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
                         printf("This has been corrected.\n");
                      else
@@ -1072,12 +1271,13 @@ ULONG dummy = 0;
                      unlink(Mark.szFileName);
                      strcpy(Mark.szFileName, pbPath);
                      Mark.fEAS = FILE_HAS_NO_EAS;
-                     rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
-                            (PVOID)&Mark, sizeof(Mark), &dummy,
-                            NULL, 0, NULL);
+                     //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
+                     //       (PVOID)&Mark, sizeof(Mark), &dummy,
+                     //       NULL, 0, NULL);
                      //rc = DosDevIOCtl2(NULL, 0,
                      //   (PVOID)&Mark, sizeof(Mark),
                      //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
+                     rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
                         printf("This has been corrected.\n");
                      else
@@ -1102,12 +1302,13 @@ ULONG dummy = 0;
                   memset(&Mark, 0, sizeof(Mark));
                   memcpy(Mark.szFileName, pbPath, pEA - pbPath);
 
-                  rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_QUERYEAS, 
-                                   (PVOID)&Mark, sizeof(Mark), &dummy,
-                                   NULL, 0, NULL);
+                  //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_QUERYEAS, 
+                  //                 (PVOID)&Mark, sizeof(Mark), &dummy,
+                  //                 NULL, 0, NULL);
                   //rc = DosDevIOCtl2(NULL, 0,
                   //   (PVOID)&Mark, sizeof(Mark),
                   //   FAT32_QUERYEAS, IOCTL_FAT32, pCD->hDisk);
+                  rc = GetSetFileEAS(pCD, FAT32_QUERYEAS, (PMARKFILEEASBUF)&Mark);
                   if (rc == 2 || rc == 3)
                      {
                      printf("A lost Extended attribute was found (for %s)\n",
@@ -1149,12 +1350,13 @@ ULONG dummy = 0;
                         if (pCD->fFix)
                            {
                            Mark.fEAS = FILE_HAS_EAS;
-                           rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
-                                        (PVOID)&Mark, sizeof(Mark), &dummy,
-                                        NULL, 0, NULL);
+                           //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETEAS, 
+                           //             (PVOID)&Mark, sizeof(Mark), &dummy,
+                           //             NULL, 0, NULL);
                            //rc = DosDevIOCtl2(NULL, 0,
                            //   (PVOID)&Mark, sizeof(Mark),
                            //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
+                           rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                            if (!rc)
                               printf("This has been corrected.\n");
                            else
@@ -1196,12 +1398,13 @@ ULONG dummy = 0;
                         strcat(fs.szFileName, "\\");
                      strcat(fs.szFileName, MakeName(pDir, szShortName, sizeof(szShortName)));
                      fs.ulFileSize = ulClustersUsed * pCD->usClusterSize;
-                     rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETFILESIZE, 
-                               (PVOID)&fs, sizeof(fs), &dummy,
-                               NULL, 0, NULL);
+                     //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETFILESIZE, 
+                     //          (PVOID)&fs, sizeof(fs), &dummy,
+                     //          NULL, 0, NULL);
                      //rc = DosDevIOCtl2(NULL, 0, 
                      //   (PVOID)&fs, sizeof(fs),
                      //   FAT32_SETFILESIZE, IOCTL_FAT32, pCD->hDisk);
+                     rc = SetFileSize(pCD, (PFILESIZEDATA)&fs);
                      strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
                      if (rc)
                         {
@@ -1463,37 +1666,29 @@ BOOL     fFound;
 
    pDir = NULL;
 
-   //printf("200\n");
-
    pDirStart = malloc(pCD->usClusterSize);
    if (!pDirStart)
       return ERROR_NOT_ENOUGH_MEMORY;
-   //printf("210\n");
 
    fFound = FALSE;
    ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
    while (!fFound && ulCluster != FAT_EOF)
       {
-      //printf("211\n");
       ReadCluster(pCD, ulCluster, (PBYTE)pDirStart);
-      //printf("212\n");
       pDir = pDirStart;
       pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->usClusterSize);
-      //printf("213\n");
       while (pDir < pDirEnd)
          {
          if ((pDir->bAttr & 0x0F) == FILE_VOLID && pDir->bFileName[0] != DELETED_ENTRY)
             {
             fFound = TRUE;
             memcpy(&DirEntry, pDir, sizeof (DIRENTRY));
-            //printf("xx\n");
             break;
             }
          pDir++;
          }
       if (!fFound)
          {
-         //printf("220\n");
          ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
          if (!ulCluster)
             ulCluster = FAT_EOF;
@@ -1504,7 +1699,6 @@ BOOL     fFound;
       memset(pszVolLabel, 0, 11);
    else
       memcpy(pszVolLabel, DirEntry.bFileName, 11);
-   //printf("230\n");
 
    return 0;
 }
@@ -1548,12 +1742,13 @@ PLNENTRY pLN = (PLNENTRY)pDir;
    //      -1,
    //      FSCTL_FSDNAME,
    //      0);
-   DosFSCtl(szLongName,  ulDataSize, &ulDataSize,
-         (PVOID)uniName, ulParmSize, &ulParmSize,
-         FAT32_WIN2OS,
-         "FAT32",
-         -1,
-         FSCTL_FSDNAME);
+   //DosFSCtl(szLongName,  ulDataSize, &ulDataSize,
+   //      (PVOID)uniName, ulParmSize, &ulParmSize,
+   //      FAT32_WIN2OS,
+   //      "FAT32",
+   //      -1,
+   //      FSCTL_FSDNAME);
+   Translate2OS2((PUSHORT)uniName, szLongName, ulDataSize);
 
    wNameSize = strlen( szLongName );
 
@@ -1573,11 +1768,9 @@ PULONG pulCluster;
 ULONG  ulSector;
 ULONG  ulRet;
 
-   //printf("300\n");
    ulSector = ulCluster / 128;
    if (!ReadFATSector(pCD, ulSector))
       return FAT_EOF;
-   //printf("301\n");
 
    pulCluster = (PULONG)pCD->pbFATSector + ulCluster % 128;
 
@@ -1585,12 +1778,8 @@ ULONG  ulRet;
    if (ulRet >= FAT_EOF2 && ulRet <= FAT_EOF)
       return FAT_EOF;
 
-   //printf("302\n");
-
    if (ulRet == FAT_BAD_CLUSTER && fAllowBad)
       return ulRet;
-
-   //printf("303\n");
 
    if (ulRet >= pCD->ulTotalClusters  + 2)
       {
@@ -1598,7 +1787,6 @@ ULONG  ulRet;
          ulCluster, *pulCluster);
       return FAT_EOF;
       }
-   //printf("304\n");
 
    return ulRet;
 }
@@ -1615,12 +1803,18 @@ ULONG  dummy = 0;
    SetCluster.ulNextCluster = ulNextCluster;
 
 
-   rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETCLUSTER, 
-          (PVOID)&SetCluster, sizeof(SetCluster), &dummy,
-          NULL, 0, NULL);
+   //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETCLUSTER, 
+   //       (PVOID)&SetCluster, sizeof(SetCluster), &dummy,
+   //       NULL, 0, NULL);
    //rc = DosDevIOCtl2(NULL, 0,
    //   (PVOID)&SetCluster, sizeof(SetCluster),
    //   FAT32_SETCLUSTER, IOCTL_FAT32, pCD->hDisk);
+   if (SetNextCluster(pCD, SetCluster.ulCluster,
+                      SetCluster.ulNextCluster) != SetCluster.ulNextCluster)
+       rc = ERROR_SECTOR_NOT_FOUND;
+   else
+       rc = 0;
+
    if (rc)
       return rc;
 
@@ -1662,7 +1856,6 @@ USHORT usIndex;
       pCD->ulLostClusters ++;
       return TRUE;
       }
-
 
    for (usIndex = 0; usIndex < pCD->usLostChains &&
                      usIndex < MAX_LOST_CHAINS; usIndex++)
@@ -1710,12 +1903,13 @@ BYTE   szRecovered[CCHMAXPATH];
 ULONG  rc, dummy1 = 0, dummy2 = 0;
 
    memset(szRecovered, 0, sizeof(szRecovered));
-   rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_RECOVERCHAIN, 
-              (PVOID)&ulCluster, 4, &dummy1,
-              szRecovered, sizeof(szRecovered), &dummy2);
+   //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_RECOVERCHAIN, 
+   //           (PVOID)&ulCluster, 4, &dummy1,
+   //           szRecovered, sizeof(szRecovered), &dummy2);
    //rc = DosDevIOCtl2(szRecovered, sizeof(szRecovered),
    //   (PVOID)&ulCluster, 4,
    //   FAT32_RECOVERCHAIN, IOCTL_FAT32, pCD->hDisk);
+   rc = RecoverChain2(pCD, ulCluster, szRecovered, sizeof(szRecovered));
    if (rc)
       {
       pCD->ulErrorCount++;

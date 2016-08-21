@@ -28,7 +28,7 @@ libc: .symbolic
 
 OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj &
      ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj &
-     ifsea.obj ifslang.obj 
+     ifsea.obj ifslang.obj ifsachk.obj
 
 # helpers.obj
 

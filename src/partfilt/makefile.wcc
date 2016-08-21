@@ -2,6 +2,10 @@ CC=wcc
 AS=wasm
 LNK=wlink op q
 MAPCNV=..\mapsym.awk
+_VENDOR=Netlabs
+_VERSION=0.10a4
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
+DESC="General Partition filter, Deon van der Westhuysen"
 
 # create OS/2 binaries
 OBJ_1 = e2header.obj e2wrap.obj e2data.obj
@@ -29,7 +33,7 @@ partfilt.lnk: $(OBJS)
  @%create $^@
  @%append $^@ format os2 lx phys
  @%append $^@ name $^*.flt
- @%append $^@ option description 'General Partition filter'
+ @%append $^@ option description '$(FILEVER)  $(DESC)'
  #@%append $^@ option mixed1632
  @%append $^@ option quiet
  @%append $^@ option nostub

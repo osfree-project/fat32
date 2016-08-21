@@ -1,0 +1,51 @@
+AS=wasm
+CC=wcc
+LNK=wlink op q
+MAPCNV=..\mapsym.awk
+_VENDOR=Netlabs
+_VERSION=0.10a4
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
+DESC="CHKDSK autocheck helper"
+
+OBJS=fat32chk.obj
+COPT=-2 -sg -hw -mm -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+ASMOPT=-dDEBUG -zcm=masm -mm
+TARGETS=fat32chk.exe fat32chk.sym
+SYS=os2
+
+.SUFFIXES:
+.SUFFIXES: .exe .lnk .obj .c .asm .sym .map .wmp
+
+all: $(TARGETS)
+
+fat32chk.lnk: $(OBJS)
+ @%create $^@
+ @%append $^@ SYSTEM $(SYS)
+ @%append $^@ NAME $^*.exe
+ @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $^@ OPTION ST=24576
+ @%append $^@ DEBUG ALL
+ @%append $^@ OPTION MAP=$^*.wmp
+ @%append $^@ ALIAS &
+   DosPutMessage=DOSPUTMESSAGE, &
+   DosExit=DOSEXIT, &
+   DosGetProcAddr=DOSGETPROCADDR, &
+   DosLoadModule=DOSLOADMODULE, &
+   DosFreeModule=DOSFREEMODULE, &
+   DosGetEnv=DOSGETENV
+ @for %e in ($(OBJS)) do @%append $^@ FILE %e
+
+clean: .symbolic
+ @del *.obj *.obh *.lnk *.wmp *.map >nul 2>&1
+
+.lnk.exe:
+ $(LNK) @$<
+
+.c.obj: .AUTODEPEND
+ $(CC) $(COPT) $<
+
+.wmp.map:
+ @awk -f $(MAPCNV) $< >$@
+
+.map.sym:
+ @mapsym $< >nul 2>&1

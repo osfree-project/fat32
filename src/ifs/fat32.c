@@ -56,6 +56,11 @@ static USHORT MakeChain(PVOLINFO pVolInfo, ULONG ulFirstCluster, ULONG ulSize);
 static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark);
 static USHORT DBCSStrlen( const PSZ pszStr );
 
+extern ULONG autocheck_mask;
+extern ULONG force_mask;
+
+void _cdecl autocheck(char *args);
+
 /******************************************************************
 *
 ******************************************************************/
@@ -1276,6 +1281,7 @@ int far pascal _loadds FS_INIT(
 {
 BOOL fSilent = FALSE;
 PSZ  p;
+PSZ  cmd = NULL;
 
    _asm push es;
 
@@ -1358,6 +1364,54 @@ PSZ  p;
       if( p )
          f32Parms.fCalcFree = TRUE;
 
+      p = strstr( szArguments, "/cacheopt");
+      if( !p )
+         p = strstr( szArguments, "-cacheopt");
+      if( p )
+         {
+         p += 9;
+         cmd = p;
+         }
+
+      p = strstr(szArguments, "/autocheck:");
+      if (!p)
+         p = strstr(szArguments, "-autocheck:");
+      if (p)
+         {
+         p += 11;
+         }
+      else
+         {
+         p = strstr(szArguments, "/ac:");
+         if (!p)
+            p = strstr(szArguments, "-ac:");
+         if (p)
+            {
+            p += 4;
+
+            while (*p != '\0' && *p != ' ')
+               {
+               char ch = tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  autocheck_mask |= (1UL << num);
+                  }
+               else if (*p == '+')
+                  {
+                  force_mask |= (1UL << num);
+                  }
+               else if (*p == '*')
+                  {
+                  autocheck_mask = 0xffffffff;
+                  break;
+                  }
+               p++;
+               }
+            }
+         }
+
 #if 1
    if (!DosGetInfoSeg(&sGlob, &sLoc))
 #else
@@ -1376,6 +1430,12 @@ PSZ  p;
 
    if (!ulCacheSectors)
       InitMessage("FAT32: Warning CACHE size is zero!\r\n");
+
+   // add bootdrive to autocheck mask
+   autocheck_mask |= (1UL << pGI->bootdrive);
+
+   /* disk autocheck */
+   autocheck(cmd);
 
    _asm pop es;
 
