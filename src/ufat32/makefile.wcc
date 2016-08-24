@@ -7,10 +7,11 @@ FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
 DESC2="Fat32Format, standalone version"
 # T=win32
+CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 !ifneq T win32
 # create OS/2 binaries
-OBJS1=ufat32.obj format.obj os2.obj msg.obj chkdsk.obj fatfunc.obj
+OBJS1=ufat32.obj sys.obj format.obj os2.obj msg.obj chkdsk.obj fatfunc.obj
 OBJS2=format.obh os2.obh msg.obh
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 TARGETS=ufat32.dll fat32fmt.exe ufat32.sym fat32fmt.sym
@@ -63,7 +64,7 @@ fat32fmt.lnk: $(OBJS2)
  @for %e in ($(OBJS2)) do @%append $^@ FILE %e
 
 clean: .symbolic
- @del *.obj *.obh *.lnk *.wmp *.map >nul 2>&1
+ -@del $(CLEANUP)  >nul 2>&1
 
 .lnk.exe:
  $(LNK) @$<

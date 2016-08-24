@@ -7,5 +7,5 @@ set TOOLKIT=f:\os2tk45
 set PATH=%toolkit%\bin;%path%
 set BEGINLIBPATH=%toolkit%\dll
 call %WATCOM%\owsetenv.cmd
-wmake -f makefile.wcc
+wmake -f makefile.wcc %1
 endlocal

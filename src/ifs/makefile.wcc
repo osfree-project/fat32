@@ -6,6 +6,7 @@ _VENDOR=Netlabs
 _VERSION=0.10a4
 FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
+CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 # COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
@@ -20,6 +21,12 @@ SYS=os2 dll initglobal
 .SUFFIXES: .ifs .dll .exe .lnk .ols .obh .obj .c .h .asm .sym .map .wmp
 
 all: $(TARGETS)
+
+clean: .symbolic
+ -@del $(CLEANUP)  >nul 2>&1
+ @cd libc
+ wmake -f makefile.wcc clean
+ @cd ..
 
 libc: .symbolic
  @cd libc

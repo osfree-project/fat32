@@ -1,6 +1,6 @@
-DIRS = fat32 ifs
+DIRS = ufat32 util ifs fat32chk partfilt ifsinf
 
-all: .SYMBOLIC 
+all: .SYMBOLIC
  @for %d in ($(DIRS)) do if exist %d @cd %d && wmake -f makefile.wcc
 
 clean: .symbolic

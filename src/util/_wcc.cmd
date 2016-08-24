@@ -4,5 +4,5 @@ rem
 setlocal
 set WATCOM=f:\dev\watcom
 call %WATCOM%\owsetenv.cmd
-wmake -f makefile.wcc
+wmake -f makefile.wcc %1
 endlocal

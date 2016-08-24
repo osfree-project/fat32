@@ -6,6 +6,7 @@ _VENDOR=Netlabs
 _VERSION=0.10a4
 FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="General Partition filter, Deon van der Westhuysen"
+CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 # create OS/2 binaries
 OBJ_1 = e2header.obj e2wrap.obj e2data.obj
@@ -72,7 +73,7 @@ partfilt.lnk: $(OBJS)
 # 'InitCode'	CLASS 'CODE' IOPL
 
 clean: .symbolic
- @del *.obj *.lnk *.wmp *.map *.err >nul 2>&1
+ -@del $(CLEANUP)  >nul 2>&1
 
 .lnk.flt:
  $(LNK) @$<

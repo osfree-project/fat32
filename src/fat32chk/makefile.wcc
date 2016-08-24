@@ -6,6 +6,7 @@ _VENDOR=Netlabs
 _VERSION=0.10a4
 FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="CHKDSK autocheck helper"
+CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 OBJS=fat32chk.obj
 COPT=-2 -sg -hw -mm -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
@@ -35,9 +36,6 @@ fat32chk.lnk: $(OBJS)
    DosGetEnv=DOSGETENV
  @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
-clean: .symbolic
- @del *.obj *.obh *.lnk *.wmp *.map >nul 2>&1
-
 .lnk.exe:
  $(LNK) @$<
 
@@ -49,3 +47,6 @@ clean: .symbolic
 
 .map.sym:
  @mapsym $< >nul 2>&1
+
+clean: .symbolic
+ -@del $(CLEANUP)  >nul 2>&1

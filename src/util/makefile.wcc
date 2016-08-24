@@ -6,6 +6,7 @@ _VENDOR=Netlabs
 _VERSION=0.10a4
 FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="Fat32 utilities, Henk Kelder & Netlabs"
+CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 
@@ -80,3 +81,6 @@ diskdump.ols: $(OBJS5)
 
 .map.sym:
  @mapsym $[@ >nul 2>&1
+
+clean: .symbolic
+ -@del $(CLEANUP)  >nul 2>&1

@@ -1,3 +1,4 @@
 TARGETS = fat32.inf
 
+all: .SYMBOLIC
 !include ..\makefile.mk
