@@ -228,11 +228,13 @@ ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
       {
       rc = WriteSector(pCD, pCD->ulActiveFatStart + ulSector, 1,
          pCD->pbFATSector);
+
       if (rc)
          return rc;
 
       if (pCD->BootSect.bpb.ExtFlags & 0x0080)
          break;
+
       ulSector += pCD->BootSect.bpb.BigSectorsPerFat;
       }
 

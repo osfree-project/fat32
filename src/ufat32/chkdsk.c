@@ -60,6 +60,8 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
 ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
+ULONG ReadSect(HFILE hFile, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pVolInfo);
@@ -389,6 +391,11 @@ ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
 #if 1
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 {
+   return ReadSect(pCD->hDisk, ulSector, nSectors, pbSector);
+}
+
+ULONG ReadSect(HFILE hFile, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
    ULONG ulDataSize;
    BIOSPARAMETERBLOCK bpb;
 
@@ -420,7 +427,7 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    ulDataSize = nSectors * SECTOR_SIZE;
 
-   if ( (rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+   if ( (rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
 
@@ -453,7 +460,7 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
        ptrk->usFirstSector = sec;
        ptrk->cSectors = n;
 
-       rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_READTRACK,
+       rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_READTRACK,
                         trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
 
        if (rc)
@@ -493,6 +500,11 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 
 ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 {
+   return WriteSect(pCD->hDisk, ulSector, nSectors, pbSector);
+}
+
+ULONG WriteSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
    ULONG ulDataSize;
    BIOSPARAMETERBLOCK bpb;
 
@@ -530,7 +542,7 @@ ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
    //if (pVolInfo->fDiskClean)
    //   MarkDiskStatus(pVolInfo, FALSE);
 
-   if ( (rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+   if ( (rc = DosDevIOCtl(hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
 
@@ -565,7 +577,7 @@ ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 
        memcpy(buf, pbSector, min(datalen4, ulDataSize));
 
-       rc = DosDevIOCtl(pCD->hDisk, IOCTL_DISK, DSK_WRITETRACK,
+       rc = DosDevIOCtl(hf, IOCTL_DISK, DSK_WRITETRACK,
                         trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
 
        if (rc)
@@ -768,7 +780,9 @@ ULONG  dummy = 0;
       //DosDevIOCtl(NULL, NULL, FAT32_MARKVOLCLEAN, IOCTL_FAT32, pCD->hDisk);
       //DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_MARKVOLCLEAN,
       //            NULL, 0, NULL, NULL, 0, NULL);
+      // set disk clean
       MarkDiskStatus(pCD, TRUE);
+      // remount disk for changes to take effect
       remount_media(pCD->hDisk);
       }
 

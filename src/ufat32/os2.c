@@ -310,6 +310,20 @@ void remount_media (HANDLE hDevice)
   //    die( "Failed to do final remount!", rc );
 }
 
+APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize)
+{
+    // Read Device
+    return DosRead ( hDevice, pBuf, *cbSize, cbSize );
+}
+
+APIRET write_drive(HANDLE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize)
+{
+    // Seek
+    APIRET rc = DosSetFilePtrL(hDevice, off, FILE_BEGIN, &off);
+    // Write Device
+    return DosWrite ( hDevice, pBuf, *cbSize, cbSize );
+}
+
 void close_drive(HANDLE hDevice)
 {
     // Close Device
