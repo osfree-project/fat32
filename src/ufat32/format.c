@@ -456,10 +456,10 @@ int format_volume (char *path, format_params *params)
     //printf("007\n");
     unlock_drive ( hDevice );
     //printf("008\n");
+    set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     close_drive ( hDevice );
     //printf("009\n");
     set_vol_label (path, vol); // traps when booted from FAT32
-    ////set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     fflush(stdout);
     //printf("010\n");
 

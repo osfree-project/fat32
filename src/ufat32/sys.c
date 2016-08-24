@@ -99,6 +99,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu opening %s disk.\n", rc, drive);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -109,6 +110,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu reading %s disk.\n", rc, drive);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -151,6 +153,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu doing FAT32_SECTORIO to %s disk.\n", rc, drive);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -159,6 +162,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s disk.\n", rc, drive);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -191,6 +195,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu creating %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -199,6 +204,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -209,6 +215,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu reading from %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -223,6 +230,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -242,6 +250,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu creating %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -250,6 +259,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -271,6 +281,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu creating %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -279,6 +290,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -298,6 +310,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu creating %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 
@@ -306,6 +319,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     printf("Error %lu writing to %s file.\n", rc, file);
+    printf("%s\n", GetOS2Error(rc));
     return;
   }
 

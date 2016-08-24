@@ -23,6 +23,34 @@ extern HANDLE hDev;
 INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 
+ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector);
+
+#pragma pack(1)
+
+typedef struct _PT
+{
+    char boot_ind;
+    char starting_head;
+    unsigned short starting_sector:6;
+    unsigned short starting_cyl:10;
+    char system_id;
+    char ending_head;
+    unsigned short ending_sector:6;
+    unsigned short ending_cyl:10;
+    unsigned long relative_sector;
+    unsigned long total_sectors;
+} PT;
+
+struct _mbr
+{
+    char pad[0x1be];
+    PT   pt[4];
+    unsigned short boot_ind; /* 0x55aa */
+} mbr;
+
+#pragma pack()
+
 DWORD get_vol_id (void)
 {
     DATETIME s;
@@ -67,6 +95,178 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     rc = DosSetFilePtrL( hDevice, (LONGLONG)llOffset, FILE_BEGIN, &llActual );
     //printf("seek_to_sect: hDevice=%lx, Sector=%lu, BytesPerSect=%lu\n", hDevice, Sector, BytesPerSect);
     //printf("rc=%lu\n", rc);
+}
+
+ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
+   ULONG ulDataSize;
+   BIOSPARAMETERBLOCK bpb;
+
+   #pragma pack(1)
+
+   /* parameter packet */
+   struct {
+       unsigned char command;
+       unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   #define BUFSIZE 0x4000
+
+   char buf[BUFSIZE];
+
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   ULONG cbRead32;
+   ULONG rc;
+   ULONG parmlen4;
+   char trkbuf[sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * 255];
+   PTRACKLAYOUT ptrk = (PTRACKLAYOUT)trkbuf;
+   ULONG datalen4 = BUFSIZE;
+   USHORT cyl, head, sec, n;
+   ULONGLONG off;
+   int i;
+
+   ulDataSize = nSectors * SECTOR_SIZE;
+
+   if ( (rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+       return rc;
+
+   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+   cbRead32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+   memset((char *)trkbuf, 0, sizeof(trkbuf));
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= SECTOR_SIZE;
+
+   for (i = 0; i < bpb.usSectorsPerTrack; i++)
+   {
+       ptrk->TrackTable[i].usSectorNumber = i + 1;
+       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+   }
+
+   do
+   {
+       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+
+       if (sec + cbRead32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
+           n = bpb.usSectorsPerTrack - sec + 1;
+       else
+           n = cbRead32 / SECTOR_SIZE;
+
+       ptrk->bCommand = 1;
+       ptrk->usHead = head;
+       ptrk->usCylinder = cyl;
+       ptrk->usFirstSector = sec;
+       ptrk->cSectors = n;
+
+       rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_READTRACK,
+                        trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       if (rc)
+           break;
+
+       memcpy(pbSector, buf, min(datalen4, ulDataSize));
+
+       off           += cbRead32;
+       ulDataSize    -= cbRead32;
+       pbSector      = (char *)pbSector + cbRead32;
+
+    } while ((ulDataSize > 0) && ! rc);
+
+    return rc;
+}
+
+ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
+{
+   ULONG ulDataSize;
+   BIOSPARAMETERBLOCK bpb;
+
+   #pragma pack(1)
+
+   /* parameter packet */
+   struct {
+       unsigned char command;
+       unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   #define BUFSIZE 0x4000
+
+   char buf[BUFSIZE];
+
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   ULONG cbWrite32;
+   ULONG rc;
+   ULONG parmlen4;
+   char trkbuf[sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * 255];
+   PTRACKLAYOUT ptrk = (PTRACKLAYOUT)trkbuf;
+   ULONG datalen4 = BUFSIZE;
+   USHORT cyl, head, sec, n;
+   ULONGLONG off;
+   int i;
+
+   ulDataSize = nSectors * SECTOR_SIZE;
+
+   //if (pVolInfo->fWriteProtected)
+   //   return ERROR_WRITE_PROTECT;
+
+   //if (pVolInfo->fDiskClean)
+   //   MarkDiskStatus(pVolInfo, FALSE);
+
+   if ( (rc = DosDevIOCtl(hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+       return rc;
+
+   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+   cbWrite32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+   memset((char *)trkbuf, 0, sizeof(trkbuf));
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= SECTOR_SIZE;
+
+   for (i = 0; i < bpb.usSectorsPerTrack; i++)
+   {
+       ptrk->TrackTable[i].usSectorNumber = i + 1;
+       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+   }
+
+   do
+   {
+       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+
+       if (sec + cbWrite32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
+           n = bpb.usSectorsPerTrack - sec + 1;
+       else
+           n = cbWrite32 / SECTOR_SIZE;
+
+       ptrk->bCommand = 1;
+       ptrk->usHead = head;
+       ptrk->usCylinder = cyl;
+       ptrk->usFirstSector = sec;
+       ptrk->cSectors = n;
+
+       memcpy(buf, pbSector, min(datalen4, ulDataSize));
+
+       rc = DosDevIOCtl(hf, IOCTL_DISK, DSK_WRITETRACK,
+                        trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       if (rc)
+           break;
+
+       off           += cbWrite32;
+       ulDataSize    -= cbWrite32;
+       pbSector      = (char *)pbSector + cbWrite32;
+
+    } while ((ulDataSize > 0) && ! rc);
+
+    return rc;
 }
 
 void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
@@ -245,24 +445,28 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
 
 void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
 {
-  //if ( rc && dp->HiddenSectors )
-  //    die( "Failed to set parition info", rc );
+  APIRET rc;
+  int i;
 
-  //rc = DosDevIOCtl( hDevice, IOCTL_DISK, DSK_SETDEVICEPARAMS, 
-  //                  &p, parmio, &parmio,
-  //                 &d, dataio, &dataio);
-  //if ( rc )
-  //      {
-        // This happens because the drive is a Super Floppy
-        // i.e. with no partition table. Disk.sys creates a PARTITION_INFORMATION
-        // record spanning the whole disk and then fails requests to set the 
-        // partition info since it's not actually stored on disk. 
-	// So only complain if there really is a partition table to set      
+  rc = ReadSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
 
+  if (rc)
+      die("Error reading MBR\n", rc);
 
-        //if ( d.bpb.cHiddenSectors  )
-	//		die( "Failed to set parition info", -6 );
-        //}    
+  for (i = 0; i < 4; i++)
+  {
+    if (mbr.pt[i].relative_sector == dp->HiddenSectors)
+    {
+      // set type to FAT32
+      mbr.pt[i].system_id = 0x0C;
+      WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
+
+      if (rc)
+          die("Error writing MBR\n", rc);
+
+      break;
+    }
+  }
 }
 
 void begin_format (HANDLE hDevice)
