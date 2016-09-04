@@ -63,6 +63,8 @@ ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadSect(HFILE hFile, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 
+//ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
+ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pVolInfo);
 BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean);
@@ -191,6 +193,9 @@ ULONG  cbDataLen;
             case 'C':
                pCD->fAutoRecover = TRUE;
                break;
+            case 'A':
+               pCD->fAutoCheck = TRUE;
+               break;
             default :
                iShowMessage(pCD, 543, 1, TYPE_STRING, rgArgv[iArg]);
                exit(543);
@@ -259,10 +264,6 @@ ULONG  cbDataLen;
    //rc = DosDevIOCtl2((PVOID)&pCD->fCleanOnBoot, sizeof(pCD->fCleanOnBoot),
    //   NULL, 0,
    //   FAT32_GETVOLCLEAN, IOCTL_FAT32, hFile);
-   pCD->fCleanOnBoot = GetDiskStatus(pCD);
-
-   if (pCD->fAutoRecover && pCD->fCleanOnBoot)
-      pCD->fAutoRecover = FALSE;
 
    if (pCD->fFix)
       {
@@ -507,6 +508,15 @@ ULONG  dummy = 0;
       printf("The media descriptor is incorrect\n");
       pCD->ulErrorCount++;
       }
+
+   pCD->fCleanOnBoot = GetDiskStatus(pCD);
+
+   if (pCD->fAutoRecover && pCD->fCleanOnBoot)
+      pCD->fAutoRecover = FALSE;
+
+   if (pCD->fAutoCheck && pCD->fCleanOnBoot)
+      // cancel autocheck if disk is clean
+      return 0;
 
    rc = CheckFats(pCD);
    if (rc)
@@ -1427,11 +1437,11 @@ BOOL  fShown = FALSE;
             {
             printf("CHKDSK found an improperly terminated cluster chain for %s ", pszFile);
             if (SetNextCluster(pCD, ulCluster, FAT_EOF))
-               {
-               printf(", but was unable to fix it.\n");
-               pCD->ulErrorCount++;
-               }
-            else
+               //{
+               //printf(", but was unable to fix it.\n");
+               //pCD->ulErrorCount++;
+               //}
+            //else
                printf(" and corrected the problem.\n");
             }
          else
@@ -1655,7 +1665,6 @@ ULONG  dummy = 0;
 
    SetCluster.ulCluster = ulCluster;
    SetCluster.ulNextCluster = ulNextCluster;
-
 
    //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETCLUSTER, 
    //       (PVOID)&SetCluster, sizeof(SetCluster), &dummy,
