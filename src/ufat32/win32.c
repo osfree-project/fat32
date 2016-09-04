@@ -126,7 +126,7 @@ void open_drive (char *path , HANDLE *hDevice)
 	  0,                             // nInBufferSize
 	  NULL,                          // lpOutBuffer
 	  0,                             // nOutBufferSize
-	  &cbRet,				         // number of bytes returned
+	  &cbRet,        	         // number of bytes returned
 	  NULL                           // OVERLAPPED structure
 	);
 
@@ -213,7 +213,8 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   //    die ( "This version of fat32format only supports hard disks with 512 bytes per sector.\n" );
   //}
   dp->BytesPerSect = dgDrive.BytesPerSector;
-  dp->PartitionLength = piDrive.PartitionLength.QuadPart;
+  //dp->PartitionLength = piDrive.PartitionLength.QuadPart;
+  dp->TotalSectors = piDrive.PartitionLength.QuadPart / dp->BytesPerSect;
   dp->SectorsPerTrack = dgDrive.SectorsPerTrack;
   dp->HiddenSectors =  piDrive.HiddenSectors;
   dp->TracksPerCylinder = dgDrive.TracksPerCylinder;

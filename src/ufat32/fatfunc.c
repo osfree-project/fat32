@@ -728,20 +728,14 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
        usMode == MODIFY_DIR_INSERT)
       {
       if (!pNew || !pszLongName)
-         //{
-         //Message("Modify directory: Invalid parameters 1");
          return ERROR_INVALID_PARAMETER;
-         //}
 
       memcpy(&DirNew, pNew, sizeof (DIRENTRY));
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
          rc = MakeShortName(pCD, ulDirCluster, pszLongName, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
-            //{
-            //Message("Modify directory: Longname error");
             return ERROR_FILE_EXISTS;
-            //}
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
@@ -765,18 +759,12 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
        usMode == MODIFY_DIR_UPDATE)
       {
       if (!pOld)
-         //{
-         //Message("Modify directory: Invalid parameter 2 ");
          return ERROR_INVALID_PARAMETER;
-         //}
       }
 
    pDirectory = (PDIRENTRY)malloc(2 * pCD->usClusterSize);
    if (!pDirectory)
-      //{
-      //Message("Modify directory: Not enough memory");
       return ERROR_NOT_ENOUGH_MEMORY;
-      //}
 
    memset(pDirectory, 0, pCD->usClusterSize);
    pDir2 =(PDIRENTRY)((PBYTE)pDirectory + pCD->usClusterSize);

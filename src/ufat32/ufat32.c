@@ -70,7 +70,29 @@ short _Far16 _Pascal _loadds FORMAT(short argc, char *_Seg16 *_Seg16 argv, char 
 
 short _Far16 _Pascal _loadds RECOVER(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp)
 {
-   printf("RECOVER is not implemented\n");
+   short Argc = argc;
+   char  **Argv;
+   char  **Envp;
+   char  * _Seg16 * _Seg16 p;
+   short rc;
+   int   i, n;
+
+   Argv = (char **)malloc(Argc * sizeof(char * _Seg16));
+
+   for (i = 0, p = argv; i < argc; i++, p++)
+       Argv[i] = (char *)(*p);
+
+   for (n = 0, p = envp; p && *p; n++, p++) ;
+
+   Envp = (char **)malloc(n * sizeof(char * _Seg16));
+
+   for (i = 0, p = envp; i < n; i++, p++)
+       Envp[i] = (char *)(*p);
+   
+   rc = recover(Argc, Argv, Envp);
+
+   free(Envp); free(Argv);
+
    return NO_ERROR;
 }
 

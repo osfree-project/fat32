@@ -134,8 +134,6 @@ ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
 
-   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
-   cbRead32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;
    off *= SECTOR_SIZE;
@@ -148,14 +146,20 @@ ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    do
    {
+       cbRead32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+       parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+       datalen4 = BUFSIZE;
+
        cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
        head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
        sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
 
        if (sec + cbRead32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
-           n = bpb.usSectorsPerTrack - sec + 1;
-       else
-           n = cbRead32 / SECTOR_SIZE;
+           cbRead32 = (bpb.usSectorsPerTrack - sec) * SECTOR_SIZE;
+
+       n = cbRead32 / SECTOR_SIZE;
+
+       //printf("cyl=%u, head=%u, sec=%u, n=%u, ", cyl, head, sec, n);
 
        ptrk->bCommand = 1;
        ptrk->usHead = head;
@@ -165,6 +169,8 @@ ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
        rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_READTRACK,
                         trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       //printf("rc=%lu\n", rc);
 
        if (rc)
            break;
@@ -223,8 +229,6 @@ ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
 
-   parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
-   cbWrite32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;
    off *= SECTOR_SIZE;
@@ -237,14 +241,20 @@ ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    do
    {
+       cbWrite32 = (ulDataSize > BUFSIZE) ? BUFSIZE : (ULONG)ulDataSize;
+       parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
+       datalen4 = BUFSIZE;
+
        cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
        head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
        sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
 
        if (sec + cbWrite32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
-           n = bpb.usSectorsPerTrack - sec + 1;
-       else
-           n = cbWrite32 / SECTOR_SIZE;
+           cbWrite32 = (bpb.usSectorsPerTrack - sec) * SECTOR_SIZE;
+
+       n = cbWrite32 / SECTOR_SIZE;
+
+       //printf("cyl=%u, head=%u, sec=%u, n=%u, ", cyl, head, sec, n);
 
        ptrk->bCommand = 1;
        ptrk->usHead = head;
@@ -256,6 +266,8 @@ ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
        rc = DosDevIOCtl(hf, IOCTL_DISK, DSK_WRITETRACK,
                         trkbuf, parmlen4, &parmlen4, buf, datalen4, &datalen4);
+
+       //printf("rc=%lu\n", rc);
 
        if (rc)
            break;

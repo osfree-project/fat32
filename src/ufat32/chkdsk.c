@@ -284,7 +284,7 @@ ULONG  cbDataLen;
       (PBYTE)&pCD->DiskInfo, sizeof (DISKINFO));
    if (rc)
       {
-      fprintf(stderr, "DosQFSInfo failed, %s\n", GetOS2Error(rc));
+      fprintf(stderr, "DosQueryFSInfo failed, %s\n", GetOS2Error(rc));
       DosExit(EXIT_PROCESS, 1);
       }
    pCD->hDisk = hFile;
@@ -523,8 +523,6 @@ ULONG  dummy = 0;
 
    if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
       {
-      printf("pCD->DiskInfo.avail_clusters=%lu\n", pCD->DiskInfo.avail_clusters);
-      printf("pCD->ulFreeClusters=%lu\n", pCD->ulFreeClusters);
       printf("The stored free disk space is incorrect.\n");
       printf("(%lu free allocation units are reported while %lu free units are detected.)\n",
          pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
