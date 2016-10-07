@@ -177,7 +177,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     mem_free(pZeroSect, BytesPerSect * BurstSize);
 
     fBytesTotal = (double) qBytesTotal;
-    printf ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 
+    printf ( "Wrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 
              qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
@@ -233,6 +233,7 @@ int format_volume (char *path, format_params *params)
     get_drive_params(hDevice, &dp);
     lock_drive(hDevice);
     begin_format(hDevice);
+    sectorio(hDevice);
 
     // Checks on Disk Size
     // qTotalSectors = dp.PartitionLength / dp.BytesPerSect;
