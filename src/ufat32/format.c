@@ -147,8 +147,8 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         //ret = WriteFile ( hDevice, pZeroSect, WriteSize*BytesPerSect, &dwWritten, NULL );   
         ret = write_file ( hDevice, pZeroSect, WriteSize * BytesPerSect, &dwWritten );
 
-        if ( !ret )
-            die ( "Failed to write", ret );  
+        //if ( !ret )
+        //    die ( "Failed to write", ret );  
 
         qBytesWritten += dwWritten;
 
@@ -184,6 +184,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 int format_volume (char *path, format_params *params)
 {
     // First open the device
+    char     *p;
     DWORD    i;
     HANDLE   hDevice;
     UCHAR    PartitionType = 0x0c;
@@ -229,8 +230,8 @@ int format_volume (char *path, format_params *params)
 
     // Open drive
     open_drive (path, &hDevice);
-    lock_drive(hDevice);
     get_drive_params(hDevice, &dp);
+    lock_drive(hDevice);
     begin_format(hDevice);
 
     // Checks on Disk Size
@@ -300,11 +301,13 @@ int format_volume (char *path, format_params *params)
 
     // Specify volume label
     if (!*vol)
-        vol = strupr(get_vol_label(path, vol));
+        vol = get_vol_label(path, vol);
+
+    vol = strupr(vol);
 
     pFAT32BootSect->dBS_VolID = VolumeId;
-    memcpy ( pFAT32BootSect->sVolLab, vol, 11 );
-    memcpy( pFAT32BootSect->sBS_FilSysType, "FAT32   ", 8 );
+    strncpy ( pFAT32BootSect->sVolLab, vol, 11 );
+    strncpy ( pFAT32BootSect->sBS_FilSysType, "FAT32   ", 8 );
     ((BYTE*)pFAT32BootSect)[510] = 0x55;
     ((BYTE*)pFAT32BootSect)[511] = 0xaa;
 
@@ -418,15 +421,12 @@ int format_volume (char *path, format_params *params)
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFAT32BootSect, 1 );
         write_sect ( hDevice, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
         }
-    //printf("000\n");
     // Write the first fat sector in the right places
     for ( i=0; i<dp.NumFATs; i++ )
         {
         int SectorStart = dp.ReservedSectCount + (i * dp.FatSize );
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
         }
-
-    //printf("001\n");
 
     // The filesystem recogniser in Windows XP doesn't use the partition type - in can be 
     // set to pretty much anything other Os's like Dos (still useful for Norton Ghost!) and Windows ME might, 
@@ -441,27 +441,13 @@ int format_volume (char *path, format_params *params)
     //    will let you use a 48bit LBA drive.
     //    see http://www.48bitlba.com/win98.htm for instructions
 
-    //set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
-    //printf("002\n");
-    //set_vol_label (path, vol); // traps when booted from FAT32
-    //printf("003\n");
-    //set_vol_label (path, vol);
-    //DosSleep(3000);
-    //printf("004\n");
+    set_part_type (hDevice, &dp, 0xc);
     remount_media ( hDevice );
-    //printf("005\n");
-    //// --- set_vol_label (path, vol);
-    //printf("006\n");
-    //// --- set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
-    //printf("007\n");
     unlock_drive ( hDevice );
-    //printf("008\n");
-    set_part_type ((toupper(path[0]) - 'A' + 1), hDevice, &dp );
     close_drive ( hDevice );
-    //printf("009\n");
-    set_vol_label (path, vol); // traps when booted from FAT32
     fflush(stdout);
-    //printf("010\n");
+
+    set_vol_label (path, vol);
 
     // free memory
     mem_free ( (void *)pFirstSectOfFat, dp.BytesPerSect );

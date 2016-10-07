@@ -220,13 +220,13 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   dp->TracksPerCylinder = dgDrive.TracksPerCylinder;
 }
 
-void set_part_type(UCHAR Drv, HANDLE hDevice, struct extbpb *dp)
+void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
 {
   BOOL  bRet;
   DWORD cbRet;
   SET_PARTITION_INFORMATION spiDrive;
 
-  spiDrive.PartitionType = 0x0c; // FAT32 LBA. 
+  spiDrive.PartitionType = type; // FAT32 LBA. 
   bRet = DeviceIoControl ( hDevice, 
       IOCTL_DISK_SET_PARTITION_INFO,
       &spiDrive, sizeof(spiDrive),
@@ -261,6 +261,10 @@ void remount_media (HANDLE hDevice)
       die( "Failed to dismount device", -7 );
 
   //unlock_drive( hDevice );
+}
+
+void sectorio(HANDLE hDevice)
+{
 }
 
 void close_drive(HANDLE hDevice)

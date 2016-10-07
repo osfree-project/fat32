@@ -1,17 +1,18 @@
-#define  INCL_BASE
-#define  INCL_LONGLONG
-#define  INCL_DOSPROCESS
-#define  INCL_DOSDEVIOCTL
-#include <os2.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <process.h>
 #include <malloc.h>
 
-#include "portable.h"
+#include "fat32c.h"
 #include "fat32def.h"
+#include "portable.h"
 #include "sys.h"
+
+#define  INCL_BASE
+#define  INCL_LONGLONG
+#define  INCL_DOSPROCESS
+#define  INCL_DOSDEVIOCTL
+#include <os2.h>
 
 void open_drive (char *path, HFILE *hDevice);
 void close_drive(HFILE hDevice);
@@ -79,8 +80,6 @@ struct _ldr0hdr
 void _System sysinstx_thread(ULONG args)
 {
   ULONG cbSize, ulAction, cbActual, cbOffActual;
-  ULONG  ulDeadFace = 0xDEADFACE;
-  ULONG  ulParmSize;
   char   file[20];
   char   *drive = (char *)args;
   HFILE  hf;
@@ -142,20 +141,7 @@ void _System sysinstx_thread(ULONG args)
   strncpy(&fat32buf.FS, "fat", 3);
   fat32buf.FS[3] = 0;
 
-  ulParmSize = sizeof(ulDeadFace);
-  rc = DosFSCtl(NULL, 0, 0,
-                (PBYTE)&ulDeadFace, ulParmSize, &ulParmSize,
-                FAT32_SECTORIO,
-                NULL,
-                hf,
-                FSCTL_HANDLE);
-
-  if (rc)
-  {
-    printf("Error %lu doing FAT32_SECTORIO to %s disk.\n", rc, drive);
-    printf("%s\n", GetOS2Error(rc));
-    return;
-  }
+  sectorio(hf);
 
   rc = WriteSect(hf, 0, sizeof(fat32buf) / 512, (char *)&fat32buf);
 

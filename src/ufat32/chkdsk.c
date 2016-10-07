@@ -534,7 +534,7 @@ ULONG  dummy = 0;
    if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
       {
       printf("The stored free disk space is incorrect.\n");
-      printf("(%lu free allocation units are reported while %lu free units are detected.)\n",
+      printf("(%lu free allocation units are reported,\nwhile %lu free units are detected.)\n",
          pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
       if (pCD->fFix)
          {

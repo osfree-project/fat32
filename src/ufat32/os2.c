@@ -286,8 +286,9 @@ void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data
     DWORD dwWritten;
     ULONG ret;
 
-    seek_to_sect ( hDevice, Sector, BytesPerSector );
-    ret = DosWrite ( hDevice, Data, NumSects * BytesPerSector, (PULONG)&dwWritten );
+    //seek_to_sect ( hDevice, Sector, BytesPerSector );
+    //ret = DosWrite ( hDevice, Data, NumSects * BytesPerSector, (PULONG)&dwWritten );
+    ret = WriteSect( hDevice, Sector, NumSects, Data);
 
     //printf("write_sect: ret = %lu\n", ret);
 
@@ -314,13 +315,13 @@ void open_drive (char *path, HANDLE *hDevice)
 {
   APIRET rc;
   ULONG  ulAction;
-  char DriveDevicePath[]="\\\\.\\Z:"; // for DosOpenL
+  char DriveDevicePath[]="Z:"; // for DosOpenL
   char *p = path;
 
   if (path[1] == ':' && path[2] == '\0')
   {
     // drive letter (UNC)
-    DriveDevicePath[4] = *path;
+    DriveDevicePath[0] = *path;
     p = DriveDevicePath;
   }
 
@@ -332,7 +333,7 @@ void open_drive (char *path, HANDLE *hDevice)
               OPEN_ACTION_OPEN_IF_EXISTS, // | OPEN_ACTION_REPLACE_IF_EXISTS,
               OPEN_FLAGS_FAIL_ON_ERROR |  // OPEN_FLAGS_WRITE_THROUGH | 
               OPEN_SHARE_DENYREADWRITE |  // OPEN_FLAGS_NO_CACHE  |
-              OPEN_ACCESS_READWRITE, // | OPEN_FLAGS_DASD,
+              OPEN_ACCESS_READWRITE | OPEN_FLAGS_DASD,
               NULL);                 // peaop2
 
      //      OPEN_ACTION_OPEN_IF_EXISTS, OPEN_FLAGS_DASD |
@@ -455,7 +456,7 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   //
 }
 
-void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
+void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
 {
   APIRET rc;
   int i;
@@ -470,7 +471,7 @@ void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
     if (mbr.pte[i].relative_sector == dp->HiddenSectors)
     {
       // set type to FAT32
-      mbr.pte[i].system_id = 0x0C;
+      mbr.pte[i].system_id = type;
       WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
 
       if (rc)
@@ -524,6 +525,27 @@ void remount_media (HANDLE hDevice)
 
   //if ( rc )
   //    die( "Failed to do final remount!", rc );
+}
+
+void sectorio(HANDLE hDevice)
+{
+  ULONG ulDeadFace = 0xdeadface;
+  ULONG ulParmSize = sizeof(ulDeadFace);
+  APIRET rc;
+
+  rc = DosFSCtl(NULL, 0, 0,
+                (PBYTE)&ulDeadFace, ulParmSize, &ulParmSize,
+                FAT32_SECTORIO,
+                NULL,
+                hDevice,
+                FSCTL_HANDLE);
+
+  if (rc)
+  {
+    printf("Error %lu doing FAT32_SECTORIO.\n", rc);
+    printf("%s\n", GetOS2Error(rc));
+    return;
+  }
 }
 
 APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize)
@@ -638,7 +660,7 @@ void check_vol_label(char *path, char **vol_label)
 char *get_vol_label(char *path, char *vol)
 {
     static char default_vol[12] = "NO NAME    ";
-    static char v[12];
+    static char v[12] = "           ";
     char *label = vol;
 
     if (!vol || !*vol)
