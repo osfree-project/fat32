@@ -2,6 +2,7 @@ rem
 rem Build with MSC 6.0/VAC/MASM
 rem
 setlocal
+@echo off
 SET DEBUG=0
 SET COMSPEC=D:\OS2\CMD.EXE
 SET OS2_SHELL=D:\OS2\CMD.EXE
