@@ -48,6 +48,13 @@ BYTE     szDirLongName[ FAT32MAXPATH ];
             }
 
          pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+         if (! pVolInfo)
+            {
+            rc = ERROR_INVALID_DRIVE;
+            goto FS_CHDIREXIT;
+            }
+
          if (IsDriveLocked(pVolInfo))
             {
             rc = ERROR_DRIVE_LOCKED;
@@ -168,6 +175,13 @@ PBYTE    pbCluster;
       Message("FS_MKDIR - %s", pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_MKDIREXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -300,6 +314,12 @@ BYTE     szLongName[ FAT32MAXPATH ];
       Message("FS_RMDIR %s", pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_RMDIREXIT;
+      }
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;

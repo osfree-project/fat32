@@ -451,7 +451,10 @@ P_VolChars   pVolChars;
             } */
 
          RemoveVolume(pVolInfo);
-         freeseg(pVolInfo);
+         // free() should free a selector as well
+         //freeseg(pVolInfo);
+         *(PVOLINFO *)pvpfsd = NULL;
+         free(pVolInfo);
          rc = NO_ERROR;
          break;
 

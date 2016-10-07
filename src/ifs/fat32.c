@@ -122,6 +122,13 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       Message("FS_COPY %s to %s, mode %d", pSrc, pDst, usMode);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_COPYEXIT;
+      }
+
    pVolInfo->ulOpenFiles++;
 
    pOpenInfo = malloc(sizeof (OPENINFO));
@@ -382,6 +389,12 @@ BYTE     szLongName[ FAT32MAXPATH ];
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_DELETEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -584,6 +597,12 @@ USHORT rc;
    _asm push es;
 
    pVolInfo = GetVolInfo(hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FLUSHEXIT;
+      }
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FLUSHBUF, flag = %d", usFlag);
@@ -1004,6 +1023,12 @@ USHORT rc;
       Message("FS_FSINFO, Flag = %d, Level = %d", usFlag, usLevel);
 
    pVolInfo = GetVolInfo(hVBP);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FSINFOEXIT;
+      }
 
    if (IsDriveLocked(pVolInfo))
       {
@@ -1480,6 +1505,12 @@ PBIOSPARAMETERBLOCK pBPB;
          usCat, usFunc, psffsi->sfi_selfsfn);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_IOCTLEXIT;
+      }
 
    rc = 0;
 
@@ -2158,6 +2189,13 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       Message("FS_MOVE %s to %s", pSrc, pDst);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_MOVEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -3416,6 +3454,12 @@ struct vpfsi far * pvpfsi;
 struct vpfsd far * pvpfsd;
 PVOLINFO pVolInfo;
 
+   // handling the removable volume change
+   rc = FSH_SETVOLUME(hVBP, 0);
+
+   if (rc == ERROR_VOLUME_CHANGED)
+      return NULL;
+
    rc = FSH_GETVOLPARM(hVBP, &pvpfsi, &pvpfsd);
    if (rc)
       {
@@ -3424,6 +3468,10 @@ PVOLINFO pVolInfo;
       }
 
    pVolInfo = *(PVOLINFO *)pvpfsd;
+
+   if (! pVolInfo)
+      return NULL;
+
    rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pVolInfo, sizeof (VOLINFO));
    if (rc)
       {

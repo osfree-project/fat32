@@ -38,6 +38,13 @@ USHORT rc;
       Message("FS_FILEATTRIBUTE, Flag = %X for %s", usFlag, pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FILEATTRIBUTEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -154,6 +161,13 @@ USHORT rc;
           usFlag, usLevel, pName, cbData);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_PATHINFOEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;

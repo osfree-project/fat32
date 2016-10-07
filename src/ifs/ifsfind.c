@@ -23,6 +23,7 @@ int far pascal _loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
 {
 PVOLINFO pVolInfo;
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
+APIRET rc = 0;
 
    _asm push es;
 
@@ -31,6 +32,13 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 
    pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
 
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FINDCLOSEEXIT;
+      }
+
+
    if (pFindInfo->pInfo)
       {
       if (RemoveFindEntry(pVolInfo, pFindInfo->pInfo))
@@ -38,9 +46,10 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
       pFindInfo->pInfo = NULL;
       }
 
+FS_FINDCLOSEEXIT:
    _asm pop es;
 
-   return 0;
+   return rc;
 }
 
 /******************************************************************
@@ -91,6 +100,13 @@ PROCINFO ProcInfo;
    memset(pfsfsd, 0, sizeof (struct fsfsd));
 
    pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FINDFIRSTEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -348,6 +364,13 @@ USHORT usEntriesWanted;
    *pcMatch = 0;
 
    pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FINDNEXTEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;

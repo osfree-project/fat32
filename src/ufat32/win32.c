@@ -265,6 +265,7 @@ void remount_media (HANDLE hDevice)
 
 void sectorio(HANDLE hDevice)
 {
+    // none
 }
 
 void close_drive(HANDLE hDevice)

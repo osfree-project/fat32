@@ -17,7 +17,7 @@ PRIVATE volatile PSHOPENINFO pGlobSH = NULL;
 
 PRIVATE VOID ResetAllCurrents(POPENINFO pOI);
 
-PRIVATE ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset);
+ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset);
 PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
@@ -67,6 +67,13 @@ USHORT rc;
       }
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_OPENCREATEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -585,6 +592,12 @@ USHORT  rc = 0;
    pOpenInfo = GetOpenInfo(psffsd);
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_CLOSEEXIT;
+      }
+
    if (f32Parms.fMessageActive & LOG_FS)
       {
       if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
@@ -672,6 +685,13 @@ USHORT usBytesPerCluster;
          usBytesToRead, psffsi->sfi_position);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_READEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
    {
       rc = ERROR_DRIVE_LOCKED;
@@ -1062,6 +1082,13 @@ USHORT usBytesPerCluster;
       usBytesToWrite, psffsi->sfi_position, pData, *pLen, usIOFlag, psffsi->sfi_size);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_WRITEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
    {
       rc = ERROR_DRIVE_LOCKED;
@@ -1580,6 +1607,13 @@ USHORT rc;
       usType, lOffset, psffsi->sfi_position);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_CHGFILEPTREXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -1649,12 +1683,22 @@ USHORT rc;
       {
       case FS_COMMIT_ONE:
          {
-         PVOLINFO pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
-         POPENINFO pOpenInfo = GetOpenInfo(psffsd);
+         PVOLINFO pVolInfo;
+         POPENINFO pOpenInfo;
          PSZ  pszFile;
          DIRENTRY DirEntry;
          DIRENTRY DirOld;
          ULONG  ulCluster;
+
+         pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+         if (! pVolInfo)
+            {
+            rc = ERROR_INVALID_DRIVE;
+            goto FS_COMMITEXIT;
+            }
+
+         pOpenInfo = GetOpenInfo(psffsd);
 
          if (IsDriveLocked(pVolInfo))
             {
@@ -1788,6 +1832,13 @@ USHORT rc;
       }
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_NEWSIZEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -1952,6 +2003,13 @@ PSZ  pszFile;
          usFlag, usLevel);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_FILEINFOEXIT;
+      }
+
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
       {
       rc = ERROR_NOT_SUPPORTED;
