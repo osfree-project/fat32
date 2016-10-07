@@ -13,10 +13,10 @@ BEGIN {
 
 /^Executable Image:/ {
  # delete the driveletter (if any)
- sub("^[a-zA-Z]\:", "", $3)
+ sub("^[a-zA-Z]:", "", $3)
 
  # change slashes to backslashes
- gsub("\/", "\\", $3)
+ gsub("/", "\\", $3)
 
  # extract the basename
  while ((p = index($3, "\\")) > 0) {

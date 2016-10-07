@@ -28,7 +28,7 @@ ULONG WriteSect(HFILE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector);
 
 #pragma pack(1)
 
-typedef struct _PT
+typedef struct _PTE
 {
     char boot_ind;
     char starting_head;
@@ -40,12 +40,12 @@ typedef struct _PT
     unsigned short ending_cyl:10;
     unsigned long relative_sector;
     unsigned long total_sectors;
-} PT;
+} PTE;
 
 struct _mbr
 {
     char pad[0x1be];
-    PT   pt[4];
+    PTE  pte[4];
     unsigned short boot_ind; /* 0x55aa */
 } mbr;
 
@@ -467,10 +467,10 @@ void set_part_type(UCHAR Dev, HANDLE hDevice, struct extbpb *dp)
 
   for (i = 0; i < 4; i++)
   {
-    if (mbr.pt[i].relative_sector == dp->HiddenSectors)
+    if (mbr.pte[i].relative_sector == dp->HiddenSectors)
     {
       // set type to FAT32
-      mbr.pt[i].system_id = 0x0C;
+      mbr.pte[i].system_id = 0x0C;
       WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
 
       if (rc)

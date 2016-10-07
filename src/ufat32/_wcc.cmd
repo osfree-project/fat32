@@ -1,11 +1,2 @@
-rem
-rem Build with OpenWatcom tools
-rem
-setlocal
-set WATCOM=f:\dev\watcom
-set TOOLKIT=f:\os2tk45
-set PATH=%toolkit%\bin;%path%
-set BEGINLIBPATH=%toolkit%\dll
-call %WATCOM%\owsetenv.cmd
-wmake -f makefile.wcc %1
-endlocal
+set path=..;%path%
+call buildw.cmd %1 %2 %3 %4 %5 %6 %7 %8 %9

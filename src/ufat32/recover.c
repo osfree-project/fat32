@@ -195,7 +195,7 @@ int recover(int argc, char *argv[], char *envp[])
   if (rc)
     return rc;
 
-  // call sysinstx_thread on new stack
+  // call recover_thread on new stack
   _asm {
     mov eax, esp
     mov edx, stack

@@ -1058,8 +1058,8 @@ USHORT usBytesPerCluster;
    pbCluster = NULL;
 
    if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_WRITE, %u bytes at offset %ld, ioflag %X, size = %lu",
-      usBytesToWrite, psffsi->sfi_position, usIOFlag, psffsi->sfi_size);
+      Message("FS_WRITE, %u bytes at offset %ld, pData=%lx, Len=%u, ioflag %X, size = %lu",
+      usBytesToWrite, psffsi->sfi_position, pData, *pLen, usIOFlag, psffsi->sfi_size);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
    if (IsDriveLocked(pVolInfo))
