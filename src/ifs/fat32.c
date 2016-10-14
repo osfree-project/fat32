@@ -26,15 +26,17 @@ PUBLIC PGINFOSEG pGI = NULL;
 PUBLIC PULONG    pGITicks = NULL;
 PUBLIC F32PARMS  f32Parms = {0};
 
+PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
+
 static BYTE szDiskLocked[]="The disk is in use or locked by another process.\r\n";
 static BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
-static ULONG ulSemRWFat = 0;
+static ULONG ulSemRWFat = 0UL;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
-"Made by Henk Kelder + Netlabs\r\n";
+"Made by Henk Kelder + Netlabs";
 
 static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 static PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
@@ -51,7 +53,6 @@ static USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector);
 static ULONG  GetVolDevice(PVOLINFO pVolInfo);
 static USHORT SetFileSize(PVOLINFO pVolInfo, PFILESIZEDATA pFileSize);
 static ULONG GetChainSize(PVOLINFO pVolInfo, ULONG ulCluster);
-static VOID InitMessage(PSZ pszMessage);
 static USHORT MakeChain(PVOLINFO pVolInfo, ULONG ulFirstCluster, ULONG ulSize);
 static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark);
 static USHORT DBCSStrlen( const PSZ pszStr );
@@ -166,7 +167,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_COPYEXIT;
       }
-   pOpenInfo->pSHInfo->sOpenCount++;
+   //pOpenInfo->pSHInfo->sOpenCount++;
    if (pOpenInfo->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -427,7 +428,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_DELETEEXIT;
       }
-   pOpenInfo->pSHInfo->sOpenCount++;
+   //pOpenInfo->pSHInfo->sOpenCount++;
    if (pOpenInfo->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -807,6 +808,11 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
          pOpenInfo = GetOpenInfo(pArgDat->sf.psffsd);
+
+         /* if a less volume than 2GB, converts a size from in bytes to in sectors. */
+         if(!pOpenInfo->fLargeVolume)
+            pArgDat->sf.psffsi->sfi_size /= SECTOR_SIZE;
+
          pOpenInfo->fSectorMode = TRUE;
          rc = 0;
          break;
@@ -1353,7 +1359,7 @@ PSZ  cmd = NULL;
          }
       else
          {
-         InitMessage("FAT32: Using default cache size of 1024 Kb.\r\n");
+         InitMessage("FAT32: Using default cache size of 1024 Kb.");
          }
 
       /*
@@ -1445,7 +1451,7 @@ PSZ  cmd = NULL;
       pGI = MAKEPGINFOSEG(sGlob);
    else
       {
-      InitMessage("FAT32: Unable to acquire Global Infoseg!\r\n");
+      InitMessage("FAT32: Unable to acquire Global Infoseg!");
       _asm pop es;
       return 1;
       }
@@ -1454,7 +1460,9 @@ PSZ  cmd = NULL;
       InitMessage(szBanner);
 
    if (!ulCacheSectors)
-      InitMessage("FAT32: Warning CACHE size is zero!\r\n");
+      InitMessage("FAT32: Warning CACHE size is zero!");
+   //else
+   //   InitCache(ulCacheSectors);
 
    // add bootdrive to autocheck mask
    autocheck_mask |= (1UL << pGI->bootdrive);
@@ -1467,11 +1475,18 @@ PSZ  cmd = NULL;
    return 0;
 }
 
-VOID InitMessage(PSZ pszMessage)
+VOID _cdecl InitMessage(PSZ pszMessage,...)
 {
-USHORT usWritten;
+    UCHAR pszBuf[256];
+    USHORT usWritten;
+    va_list arg_ptr;
 
-   DosWrite(1, pszMessage, strlen(pszMessage), &usWritten);
+    va_start(arg_ptr,pszMessage);
+    vsprintf(pszBuf, pszMessage, arg_ptr);
+    va_end(arg_ptr);
+    strcat(pszBuf,"\r\n");
+
+    DosWrite(1, pszBuf, strlen(pszBuf), &usWritten);
 
 }
 
@@ -1494,7 +1509,6 @@ int far pascal _loadds FS_IOCTL(
 USHORT rc;
 PVOLINFO pVolInfo;
 ULONG hDEV;
-PBIOSPARAMETERBLOCK pBPB;
 
    _asm push es;
 
@@ -1546,7 +1560,7 @@ PBIOSPARAMETERBLOCK pBPB;
       {
       if (cbParm > 0)
          {
-         rc = MY_PROBEBUF(PB_OPREAD, pParm, cbParm);
+         rc = MY_PROBEBUF(PB_OPWRITE, pParm, cbParm);
          if (rc)
             {
             Message("Protection VIOLATION in parm of FS_IOCTL, address %lX, len %u!",
@@ -1556,7 +1570,7 @@ PBIOSPARAMETERBLOCK pBPB;
          }
       if (pcbParm)
          {
-         rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pcbParm, sizeof (unsigned));
+         rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pcbParm, sizeof (unsigned));
          if (rc)
             pcbParm = NULL;
          }
@@ -1572,176 +1586,100 @@ PBIOSPARAMETERBLOCK pBPB;
    switch (usCat)
       {
       case IOCTL_DISK    :
-         Message("pVolInfo->fLocked=%u, pVolInfo->ulOpenFiles=%lx", pVolInfo->fLocked, pVolInfo->ulOpenFiles);
          switch (usFunc)
             {
             case DSK_LOCKDRIVE:
-               if (pVolInfo->fLocked)
-                  {
-                  Message("Drive locked, pVolInfo->fLocked=%lu", pVolInfo->fLocked);
-                  rc = ERROR_DRIVE_LOCKED;
-                  goto FS_IOCTLEXIT;
-                  }
-               if (pVolInfo->ulOpenFiles > 1L)
-                  {
-                  Message("Cannot lock, %lu open files", pVolInfo->ulOpenFiles);
-                  rc = ERROR_DRIVE_LOCKED;
-                  goto FS_IOCTLEXIT;
-                  }
-
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
-
-               if (!rc) {
-                 pVolInfo->fLocked = TRUE;
-
-                 if (pcbData) {
-                   *pcbData = cbData;
-                 }
-
-                 if (pcbParm) {
-                   *pcbParm = cbParm;
-                 }
-               }
-
-               GetProcInfo(&pVolInfo->ProcLocked, sizeof (PROCINFO));
-               break;
+                cbParm = sizeof(UCHAR);
+                if (pcbParm)
+                {
+                    *pcbParm = cbParm;
+                }
+                cbData = sizeof(UCHAR);
+                if (pcbData)
+                {
+                    *pcbData = cbData;
+                }
+                hDEV = GetVolDevice(pVolInfo);
+                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                if (rc == NO_ERROR)
+                {
+                    pVolInfo->fLocked = TRUE;
+                    GetProcInfo(&pVolInfo->ProcLocked, sizeof (PROCINFO));
+                }
+                break;
 
             case DSK_UNLOCKDRIVE:
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
-
-               if (!rc) {
-
-                 if (pcbData) {
-                   *pcbData = cbData;
-                 }
-
-                 if (pcbParm) {
-                   *pcbParm = cbParm;
-                 }
-
-                 if (pVolInfo->fLocked)
-                    {
-                    pVolInfo->fLocked = FALSE;
-                    //rc = 0;
-                    }
-                 //else
-                 //   rc = ERROR_INVALID_PARAMETER;
-               }
-               break;
-
-            case DSK_BLOCKREMOVABLE :
-               //if (pcbData)
-               //   *pcbData = sizeof (BYTE);
-
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
-
-               if (!rc) {
-
-                 if (pcbData) {
-                   *pcbData = cbData;
-                 }
-
-                 if (pcbParm) {
-                   *pcbParm = cbParm;
-                 }
-               }
-
-               break;
-/*
-            case DSK_QUERYMEDIASENSE :
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
-
-               if (rc == ERROR_SECTOR_NOT_FOUND)
-                  rc = ERROR_NOT_DOS_DISK;
-               else if (rc)
-                  rc = 0;                                            
-
-                  if (pData)
-                     *pData = 0;
-
-               if (!rc) {
-
-                  if (pcbData) {
-                     *pcbData = cbData;
-                  }
-
-                  if (pcbParm) {
-                     *pcbParm = cbParm;
-                  }
-               }
-
-               break;
- */
-            case 0x66 : /* DSK_GETLOCKSTATUS */
-               if (pcbData)
-                  *pcbData = sizeof (USHORT);
-               if (cbData < 2)
-                  {
-                  rc = ERROR_BUFFER_OVERFLOW;
-                  goto FS_IOCTLEXIT;
-                  }
-               if (pVolInfo->fLocked)
-                  *(PWORD)pData = 0x0005;
-               else
-                  *(PWORD)pData = 0x0006;
-
-               rc = 0;
-               break;
-
-            case DSK_GETDEVICEPARAMS :
-               if (pcbData)
-                  *pcbData = sizeof (BIOSPARAMETERBLOCK);
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
-               if (!rc) {
-
-                  if (pcbData) {
-                    *pcbData = sizeof (BIOSPARAMETERBLOCK);
-                  }
-
-                  if (pcbParm) {
+                cbParm = sizeof(UCHAR);
+                if (pcbParm)
+                {
                     *pcbParm = cbParm;
-                  }
+                }
+                cbData = sizeof(UCHAR);
+                if (pcbData)
+                {
+                    *pcbData = cbData;
+                }
+                hDEV = GetVolDevice(pVolInfo);
+                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                if (rc == NO_ERROR)
+                {
+                    pVolInfo->fLocked = FALSE;
+                }
+                break;
 
-                  pBPB = (PBIOSPARAMETERBLOCK)pData;
+            case DSK_BLOCKREMOVABLE:
+                cbParm = 2*sizeof(UCHAR);
+                if (pcbParm)
+                {
+                    *pcbParm = cbParm;
+                }
+                cbData = sizeof(UCHAR);
+                if (pcbData)
+                {
+                    *pcbData = cbData;
+                }
+                hDEV = GetVolDevice(pVolInfo);
+                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                break;
 
-                  pBPB->bSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
-                  pBPB->usReservedSectors = pVolInfo->BootSect.bpb.ReservedSectors;
-                  pBPB->cFATs = pVolInfo->BootSect.bpb.NumberOfFATs;
-                  pBPB->cRootEntries = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
-                  if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000L)
-                     pBPB->usSectorsPerFAT = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
-                  else
-                     pBPB->usSectorsPerFAT = 0xFFFF; // ??? vs!
-               }
+            case DSK_GETDEVICEPARAMS:
+                cbParm = 2*sizeof(UCHAR);
+                if (pcbParm)
+                {
+                    *pcbParm = cbParm;
+                }
+                cbData = sizeof(BIOSPARAMETERBLOCK);
+                if (pcbData)
+                {
+                    *pcbData = cbData;
+                }
+                hDEV = GetVolDevice(pVolInfo);
+                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                    usCat, usFunc, pParm, cbParm, pData, cbData);
 
-               break;
+                if (rc == NO_ERROR)
+                {
+                    PBIOSPARAMETERBLOCK pBPB = (PBIOSPARAMETERBLOCK)pData;
+
+                    pBPB->bSectorsPerCluster    = pVolInfo->BootSect.bpb.SectorsPerCluster;
+                    pBPB->usReservedSectors     = pVolInfo->BootSect.bpb.ReservedSectors;
+                    pBPB->cFATs                 = pVolInfo->BootSect.bpb.NumberOfFATs;
+                    pBPB->cRootEntries          = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
+                    if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000UL)
+                        pBPB->usSectorsPerFAT   = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
+                    else
+                        pBPB->usSectorsPerFAT   = 0xFFFF;
+                }
+                break;
+
 
             default  :
                hDEV = GetVolDevice(pVolInfo);
                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
                   usCat, usFunc, pParm, cbParm, pData, cbData);
-
-                if (!rc) {
-                 if (pcbData) {
-                   *pcbData = cbData;
-                 }
-  
-                 if (pcbParm) {
-                   *pcbParm = cbParm;
-                 }
-               }
-
-               //Message("usFunc=default, cat=%u, func=%u rc=%u", usCat, usFunc, rc);
                break;
             }
          break;
@@ -1979,17 +1917,6 @@ PBIOSPARAMETERBLOCK pBPB;
          hDEV = GetVolDevice(pVolInfo);
          rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
             usCat, usFunc, pParm, cbParm, pData, cbData);
-
-         if (!rc) {
-           if (pcbData) {
-             *pcbData = cbData;
-           }
-
-           if (pcbParm) {
-             *pcbParm = cbParm;
-           }
-         }
-
          break;
       }
 
@@ -2231,7 +2158,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_MOVEEXIT;
       }
-   pOISrc->pSHInfo->sOpenCount++;
+   //pOISrc->pSHInfo->sOpenCount++;
    if (pOISrc->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -2254,7 +2181,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
             rc = ERROR_TOO_MANY_OPEN_FILES;
             goto FS_MOVEEXIT;
         }
-        pOIDst->pSHInfo->sOpenCount++;
+        //pOIDst->pSHInfo->sOpenCount++;
         if (pOIDst->pSHInfo->sOpenCount > 1)
         {
             rc = ERROR_ACCESS_DENIED;
@@ -2358,7 +2285,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
         goto FS_MOVEEXIT;
       }
 
-      pOISrc->pSHInfo->sOpenCount++;
+      //pOISrc->pSHInfo->sOpenCount++;
       if (pOISrc->pSHInfo->sOpenCount > 1)
       {
         rc = ERROR_ACCESS_DENIED;
@@ -2657,9 +2584,10 @@ PVOID pRet;
 /******************************************************************
 *
 ******************************************************************/
+/*
 ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore)
 {
-USHORT rc;
+ULONG rc;
 ULONG ulFlags;
 ULONG ulAddress;
 ULONG ulReserved;
@@ -2688,6 +2616,55 @@ PVOID pv = &ulReserved;
       return 0xFFFFFFFF;
       }
    return ulAddress;
+}
+*/
+
+APIRET linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore, PULONG pulPhysAddr)
+{
+APIRET rc=NO_ERROR;
+ULONG  ulFlags=0UL;
+LIN    lulAddress=0UL;
+LIN    lulPhysAddr = 0UL;
+PVOID pv=NULL;
+
+    if (f32Parms.fMessageActive & LOG_FUNCS)
+        Message("linAlloc");
+
+    rc = DevHelp_VirtToLin(     SELECTOROF(pulPhysAddr),
+                                OFFSETOF(pulPhysAddr),
+                                &lulPhysAddr);
+
+    if (rc != NO_ERROR)
+    {
+        if (f32Parms.fMessageActive & LOG_FUNCS)
+            Message("ERROR: linalloc VirtToLin failed, rc = %d", rc);
+
+        if( !fIgnore )
+            CritMessage("linalloc VirtToLin failed, rc = %d", rc);
+
+        return rc;
+    }
+
+    ulFlags = VMDHA_FIXED | VMDHA_CONTIG;
+    if( fHighMem )
+        ulFlags |= VMDHA_USEHIGHMEM;
+
+    rc = DevHelp_VMAlloc( ulFlags,
+                    tSize,
+                    lulPhysAddr,
+                    &lulAddress,
+                    &pv);
+
+    if (rc)
+    {
+        if (f32Parms.fMessageActive & LOG_FUNCS)
+            Message("ERROR: linalloc VMAlloc failed, rc = %d", rc);
+
+        if( !fIgnore )
+            CritMessage("linalloc VMAlloc failed, rc = %d", rc);
+
+    }
+    return rc;
 }
 
 /******************************************************************
@@ -2744,9 +2721,6 @@ USHORT rc;
          ulCluster, ulCluster, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
-
-   //Message("ulStartOfData=%lu, ulCluster=%lu, SectorsPerCluster=%u",
-   //        pVolInfo->ulStartOfData, ulCluster, pVolInfo->BootSect.bpb.SectorsPerCluster);
 
    ulSector = pVolInfo->ulStartOfData +
       (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
@@ -3467,7 +3441,8 @@ PVOLINFO pVolInfo;
       return pGlobVolInfo;
       }
 
-   pVolInfo = *(PVOLINFO *)pvpfsd;
+   pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
+   //pVolInfo = *(PVOLINFO *)pvpfsd;
 
    if (! pVolInfo)
       return NULL;
@@ -4045,9 +4020,12 @@ int cdecl sprintf(char * pszBuffer, const char *pszFormat, ...)
 #endif
 {
 va_list va;
+int ret;
 
    va_start(va, pszFormat);
-   return vsprintf(pszBuffer, pszFormat, va);
+   ret = vsprintf(pszBuffer, pszFormat, va);
+   va_end( va);
+   return ret;
 }
 
 /******************************************************************
@@ -4061,6 +4039,7 @@ va_list va;
    memset(szMessage, 0, sizeof szMessage);
    va_start(va, pszMessage);
    vsprintf(szMessage, pszMessage, va);
+   va_end(va);
    strcat(szMessage, "\r\n");
    return FSH_CRITERROR(strlen(szMessage) + 1, szMessage, 0, "", CE_ALLABORT | CE_ALLRETRY);
 }
@@ -4073,6 +4052,7 @@ va_list va;
    memset(szMessage, 0, sizeof szMessage);
    va_start(va, pszMessage);
    vsprintf(szMessage, pszMessage, va);
+   va_end(va);
    strcat(szMessage, "\r\n");
    FSH_INTERR(szMessage, strlen(szMessage) + 1);
 }
@@ -5321,10 +5301,17 @@ static PBYTE pYieldFlag = NULL;
 
 USHORT MY_PROBEBUF(USHORT usOperation, char far * pData, USHORT cbData)
 {
-   return DevHelp_VerifyAccess(SELECTOROF(pData),
-      cbData,
-      OFFSETOF(pData),
-      (UCHAR)usOperation);
+    USHORT rc;
+    rc = DevHelp_VerifyAccess(SELECTOROF(pData),
+                                cbData,
+                                OFFSETOF(pData),
+                                (UCHAR)usOperation);
+
+    if (rc)
+    {
+        rc = ERROR_PROTECTION_VIOLATION;
+    }
+    return rc;
 }
 
 USHORT DBCSStrlen( const PSZ pszStr )

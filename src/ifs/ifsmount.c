@@ -12,10 +12,53 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#include "devhdr.h"
+#include "devcmd.h"
+#include "sas.h"
 
-static BOOL RemoveVolume(PVOLINFO pVolInfo);
-static USHORT CheckWriteProtect(PVOLINFO);
+/*
+**  Request Packet Header
+*/
+
+typedef struct _RPH  RPH;
+typedef struct _RPH  FAR *PRPH;
+typedef struct _RPH  *NPRPH;
+
+typedef struct _RPH  {                  /* RPH */
+
+  UCHAR         Len;
+  UCHAR         Unit;
+  UCHAR         Cmd;
+  USHORT        Status;
+  UCHAR         Flags;
+  UCHAR         Reserved_1[3];
+  PRPH          Link;
+} RPH;
+
+/*
+**  Get Driver Capabilities  0x1D
+*/
+
+typedef struct _RP_GETDRIVERCAPS  {     /* RPDC */
+
+  RPH           rph;
+  UCHAR         Reserved[3];
+  P_DriverCaps  pDCS;
+  P_VolChars    pVCS;
+
+} RP_GETDRIVERCAPS, FAR *PRP_GETDRIVERCAPS;
+
+
+//static BOOL RemoveVolume(PVOLINFO pVolInfo);
+//static USHORT CheckWriteProtect(PVOLINFO);
+
+PRIVATE BOOL RemoveVolume(PVOLINFO pVolInfo);
+PRIVATE USHORT CheckWriteProtect(PVOLINFO);
 PRIVATE BOOL IsFAT32(PBOOTSECT pBoot);
+PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR);
+IMPORT SEL cdecl SaSSel(void);
+
+#pragma optimize("eglt",off)
 
 int far pascal _loadds FS_MOUNT(unsigned short usFlag,      /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
@@ -23,16 +66,28 @@ int far pascal _loadds FS_MOUNT(unsigned short usFlag,      /* flag     */
                         unsigned short hVBP,        /* hVPB     */
                         char far *  pBoot       /* pBoot    */)
 {
-PBOOTSECT pSect;
-PVOLINFO  pVolInfo;
-PVOLINFO  pNext, pPrev;
+PBOOTSECT pSect    = NULL;
+PVOLINFO  pVolInfo = NULL;
+PVOLINFO  pNext = NULL;
+PVOLINFO  pPrev = NULL;
+USHORT hDupVBP  = 0;
+USHORT rc = NO_ERROR;
 USHORT usVolCount;
-USHORT hDupVBP;
-USHORT rc;
+
+//PBOOTSECT pSect;
+//PVOLINFO  pVolInfo;
+//PVOLINFO  pNext, pPrev;
+//USHORT hDupVBP;
+//USHORT rc;
+
 P_DriverCaps pDevCaps;
 P_VolChars   pVolChars;
 
+   /*
+    openjfs source does the same, just be on the safe side
+   */
    _asm push es;
+   _asm sti;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_MOUNT for %c (%d):, flag = %d",
@@ -44,56 +99,51 @@ P_VolChars   pVolChars;
       {
       case MOUNT_MOUNT  :
 
-        pSect = (PBOOTSECT)pBoot;
-/*
-        if (!IsFAT32((BOOTSECT far *)pBoot))
-           {
-           rc = ERROR_VOLUME_NOT_MOUNTED;
-           goto FS_MOUNT_EXIT;
-           }
- */
-        if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
-           hDupVBP = 0;
+         pSect = (PBOOTSECT)pBoot;
 
-        if (memicmp(pSect->FileSystem, "FAT32", 5))
+//        if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
+//           hDupVBP = 0;
+
+//        pSect = (PBOOTSECT)pBoot;
+//        if (memicmp(pSect->FileSystem, "FAT32", 5))
+         if (!IsFAT32(pSect))
             {
             rc = ERROR_VOLUME_NOT_MOUNTED;
             goto FS_MOUNT_EXIT;
             }
 
-        if (pSect->bpb.BytesPerSector != SECTOR_SIZE)
-            {
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
-/*
-        if(( ULONG )pSect->bpb.BytesPerSector * pSect->bpb.SectorsPerCluster > MAX_CLUSTER_SIZE )
-            {
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
- */
-    if (!hDupVBP)   /* initial mounting of the volume */
+         if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
+            hDupVBP = 0;
+
+//        if (pSect->bpb.BytesPerSector != SECTOR_SIZE)
+//            {
+//            rc = ERROR_VOLUME_NOT_MOUNTED;
+//            goto FS_MOUNT_EXIT;
+//            }
+
+        if (!hDupVBP)   /* initial mounting of the volume */
 //        if(( ULONG )pSect->bpb.BytesPerSector * pSect->bpb.SectorsPerCluster > MAX_CLUSTER_SIZE )
-        {
-        pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
-
-        if (!pVolInfo)
             {
-            rc = ERROR_NOT_ENOUGH_MEMORY;
-            goto FS_MOUNT_EXIT;
-            }
-        rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
-        if (rc)
-            {
-            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
-            rc = ERROR_GEN_FAILURE;
-            goto FS_MOUNT_EXIT;
-            }
+            pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
+            if (!pVolInfo)
+               {
+               rc = ERROR_NOT_ENOUGH_MEMORY;
+               goto FS_MOUNT_EXIT;
+               }
+            rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
+            if (rc)
+               {
+               FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+               rc = ERROR_GEN_FAILURE;
+               goto FS_MOUNT_EXIT;
+               }
+            *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
+//            rc = ERROR_VOLUME_NOT_MOUNTED;
+//            goto FS_MOUNT_EXIT;
+//            }
 
-        *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
-        memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
-        pVolInfo->pNextVolInfo = NULL;
+            memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
+            pVolInfo->pNextVolInfo = NULL;
 
 //        pvpfsi->vpi_vid    = pSect->ulVolSerial;
 //        pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
@@ -125,6 +175,8 @@ P_VolChars   pVolChars;
                 memcpy(pvpfsi->vpi_text, pSect->VolumeLabel, sizeof pSect->VolumeLabel);
             }
          else  /* remount of volume */
+//        pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
+//        if (!pVolInfo)
             {
             FSH_GETVOLPARM(hDupVBP,&pvpfsi,&pvpfsd);    /* Get the volume dependent/independent structure from the original volume block */
             pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
@@ -133,8 +185,13 @@ P_VolChars   pVolChars;
 //            rc = ERROR_NOT_ENOUGH_MEMORY;
 //            goto FS_MOUNT_EXIT;
             }
-
-         InitCache(ulCacheSectors);
+//        rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
+//        if (rc)
+//            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+//
+//         memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
+//
+//         InitCache(ulCacheSectors); //// ?
 
          /* continue mount in both cases:
             for a first time mount it's an initializaton
@@ -185,40 +242,42 @@ P_VolChars   pVolChars;
          else
             memset(pVolInfo->pBootFSInfo, 0, sizeof (BOOTFSINFO));
 
-/*         *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
+        rc = CheckWriteProtect(pVolInfo);
+        if (rc && rc != ERROR_WRITE_PROTECT)
+        {
 
-         if (!pGlobVolInfo)
-            {
-            pGlobVolInfo = pVolInfo;
-            usVolCount = 1;
-            }
-         else
-            {
-            pNext = pGlobVolInfo;
-            usVolCount = 1;
-            if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
-               pVolInfo->hDupVBP = pNext->hVBP;
-            while (pNext->pNextVolInfo)
-               {
-               pNext = (PVOLINFO)pNext->pNextVolInfo;
-               if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
-                  pVolInfo->hDupVBP = pNext->hVBP;
-               usVolCount++;
-               }
-            pNext->pNextVolInfo = pVolInfo;
-            usVolCount++;
-            }
-         if (f32Parms.fMessageActive & LOG_FS)
-            Message("%u Volumes mounted!", usVolCount);
- */
-
-         rc = CheckWriteProtect(pVolInfo);
-         if (rc && rc != ERROR_WRITE_PROTECT)
-            {
-            if (f32Parms.fMessageActive & LOG_FS)
-              Message("Cannot access drive, rc = %u", rc);
+//         *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
+//
+//         if (!pGlobVolInfo)
+//            {
+//            pGlobVolInfo = pVolInfo;
+//            usVolCount = 1;
+//            }
+//         else
+//            {
+//            pNext = pGlobVolInfo;
+//            usVolCount = 1;
+//            if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
+//               pVolInfo->hDupVBP = pNext->hVBP;
+//            while (pNext->pNextVolInfo)
+//               {
+//               pNext = (PVOLINFO)pNext->pNextVolInfo;
+//               if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
+//                  pVolInfo->hDupVBP = pNext->hVBP;
+//               usVolCount++;
+//               }
+//            pNext->pNextVolInfo = pVolInfo;
+//            usVolCount++;
+//            }
+//         if (f32Parms.fMessageActive & LOG_FS)
+//            Message("%u Volumes mounted!", usVolCount);
+//
+//         rc = CheckWriteProtect(pVolInfo);
+//         if (rc && rc != ERROR_WRITE_PROTECT)
+//            {
+            Message("Cannot access drive, rc = %u", rc);
             goto FS_MOUNT_EXIT;
-            }
+         }
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
 
@@ -228,48 +287,60 @@ P_VolChars   pVolChars;
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
-         if (!pVolInfo->hDupVBP &&
-                (f32Parms.fCalcFree ||
-                 pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
-               /*!pVolInfo->fDiskClean ||*/
-                 pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF))
-            GetFreeSpace(pVolInfo);
+        if (f32Parms.fCalcFree ||
+            pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
+          /*!pVolInfo->fDiskClean ||*/
+            pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF)
+        GetFreeSpace(pVolInfo);
 
-         pDevCaps  = pvpfsi->vpi_pDCS;
-         pVolChars = pvpfsi->vpi_pVCS;
+//         if (!pVolInfo->hDupVBP &&
+//                (f32Parms.fCalcFree ||
+//                 pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
+//               /*!pVolInfo->fDiskClean ||*/
+//                 pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF))
+//            GetFreeSpace(pVolInfo);
 
-         if (f32Parms.fMessageActive & LOG_FS)
-         {
-            if (pDevCaps->Capabilities & GDC_DD_Read2)
-               Message("Read2 supported");
-            if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
-               Message("DMA on word alligned buffers supported");
-            if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
-               Message("DMA on byte alligned buffers supported");
-            if (pDevCaps->Capabilities & GDC_DD_Mirror)
-               Message("Disk Mirroring supported");
-            if (pDevCaps->Capabilities & GDC_DD_Duplex)
-               Message("Disk Duplexing supported");
-            if (pDevCaps->Capabilities & GDC_DD_No_Block)
-               Message("Strategy2 does not block");
-            if (pDevCaps->Capabilities & GDC_DD_16M)
-               Message(">16M supported");
-         }
+        pDevCaps  = pvpfsi->vpi_pDCS;
+        pVolChars = pvpfsi->vpi_pVCS;
 
-         if (pDevCaps->Strategy2)
-         {
-            if (f32Parms.fMessageActive & LOG_FS)
-            {
-               Message("Strategy2   address at %lX", pDevCaps->Strategy2);
-               Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
-            }
+        if (!pDevCaps)
+           {
+           Message("Strategy2 not found, searching Device Driver chain !");
+           pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+           }
 
-            pVolInfo->pfnStrategy = (STRATFUNC)pDevCaps->Strategy2;
-            pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
-         }
+        if (f32Parms.fMessageActive & LOG_FS)
+           {
+           if (pDevCaps->Capabilities & GDC_DD_Read2)
+              Message("Read2 supported");
+           if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
+              Message("DMA on word alligned buffers supported");
+           if (pDevCaps->Capabilities & GDC_DD_DMA_Byte)
+             Message("DMA on byte alligned buffers supported");
+           if (pDevCaps->Capabilities & GDC_DD_Mirror)
+              Message("Disk Mirroring supported");
+           if (pDevCaps->Capabilities & GDC_DD_Duplex)
+              Message("Disk Duplexing supported");
+           if (pDevCaps->Capabilities & GDC_DD_No_Block)
+              Message("Strategy2 does not block");
+           if (pDevCaps->Capabilities & GDC_DD_16M)
+              Message(">16M supported");
+           }
 
-         rc = 0;
-         break;
+        if (pDevCaps->Strategy2)
+           {
+           if (f32Parms.fMessageActive & LOG_FS)
+              {
+              Message("Strategy2   address at %lX", pDevCaps->Strategy2);
+              Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
+              }
+
+           pVolInfo->pfnStrategy = (STRATFUNC)pDevCaps->Strategy2;
+           pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
+           }
+
+        rc = 0;
+        break;
 
       case MOUNT_ACCEPT :
 
@@ -281,7 +352,7 @@ P_VolChars   pVolChars;
             rc = ERROR_VOLUME_NOT_MOUNTED;
             goto FS_MOUNT_EXIT;
             }
-
+      
          pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
          if (!pVolInfo)
             {
@@ -303,7 +374,7 @@ P_VolChars   pVolChars;
          pVolInfo->fDiskCleanOnMount = FALSE;
 
          pVolInfo->hVBP = hVBP;
-         pVolInfo->hDupVBP = hDupVBP;
+         pVolInfo->hDupVBP = hDupVBP; //// ?
          pVolInfo->bDrive = pvpfsi->vpi_drive;
          pVolInfo->bUnit  = pvpfsi->vpi_unit;
          pVolInfo->pNextVolInfo = NULL;
@@ -349,8 +420,14 @@ P_VolChars   pVolChars;
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
+         if (!pDevCaps)
+            {
+            Message("Strategy2 not found, searching Device Driver chain !");
+            pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+            }
+
          if (f32Parms.fMessageActive & LOG_FS)
-         {
+            {
             if (pDevCaps->Capabilities & GDC_DD_Read2)
                Message("Read2 supported");
             if (pDevCaps->Capabilities & GDC_DD_DMA_Word)
@@ -365,19 +442,19 @@ P_VolChars   pVolChars;
                Message("Strategy2 does not block");
             if (pDevCaps->Capabilities & GDC_DD_16M)
                Message(">16M supported");
-         }
+            }
 
          if (pDevCaps->Strategy2)
-         {
-            if (f32Parms.fMessageActive & LOG_FS)
             {
+            if (f32Parms.fMessageActive & LOG_FS)
+               {
                Message("Strategy2   address at %lX", pDevCaps->Strategy2);
                Message("ChgPriority address at %lX", pDevCaps->ChgPriority);
-            }
+               }
 
             pVolInfo->pfnStrategy = (STRATFUNC)pDevCaps->Strategy2;
             pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
-         }
+            }
 
          rc = 0;
          break;
@@ -395,36 +472,21 @@ P_VolChars   pVolChars;
             goto FS_MOUNT_EXIT;
             }
 
-         //if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
-           //hDupVBP = 0;
-
          if (!pVolInfo->hDupVBP)
-         //if (!hDupVBP)
-           {
+            {
             if (f32Parms.fMessageActive & LOG_FS)
                 Message("hDupVBP == 0\n");
 
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
 
             //if (f32Parms.usDirtySectors) // vs
-            UpdateFSInfo(pVolInfo);  //
-
-            MarkDiskStatus(pVolInfo, TRUE);
-           }
-/*
-         if (!pVolInfo->hDupVBP)
-         {
-            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
-
-            if (f32Parms.usDirtySectors) // vs
                 UpdateFSInfo(pVolInfo);  //
 
             MarkDiskStatus(pVolInfo, TRUE);
-         }
- */
+            }
 
-/*         // delete pVolInfo from the list
-         if (pGlobVolInfo)
+         // delete pVolInfo from the list
+/*         if (pGlobVolInfo)
             {
             pNext = pPrev = pGlobVolInfo;
 
@@ -448,7 +510,7 @@ P_VolChars   pVolChars;
                   }
                usVolCount--;
                }
-            } */
+            }  */
 
          RemoveVolume(pVolInfo);
          // free() should free a selector as well
@@ -467,12 +529,16 @@ FS_MOUNT_EXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_MOUNT returned %u\n", rc);
 
-   _asm pop  es;
+
+   _asm pop es;
 
    return rc;
 }
 
-static USHORT CheckWriteProtect(PVOLINFO pVolInfo)
+#pragma optimize("",on)
+
+
+USHORT CheckWriteProtect(PVOLINFO pVolInfo)
 {
 USHORT rc;
 USHORT usSectors = 1;
@@ -490,7 +556,7 @@ USHORT usSectors = 1;
    return rc;
 }
 
-static BOOL RemoveVolume(PVOLINFO pVolInfo)
+BOOL RemoveVolume(PVOLINFO pVolInfo)
 {
 PVOLINFO pNext;
 USHORT rc;
@@ -521,7 +587,8 @@ USHORT rc;
    return FALSE;
 }
 
-static BOOL IsFAT32(BOOTSECT far *pSect)
+
+static BOOL IsFAT32(PBOOTSECT pSect)
 {
 /*
    check for FAT32 according to the Microsoft FAT32 specification
@@ -597,3 +664,65 @@ static BOOL IsFAT32(BOOTSECT far *pSect)
         return FALSE;
     } /* endif */
 }
+
+
+#pragma optimize("eglt",off)
+
+P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
+{
+    RP_GETDRIVERCAPS rp={0};
+    PRP_GETDRIVERCAPS pRH = &rp;
+    PFN pStrat = NULL;
+    SEL dsSel = 0;
+    SEL SAS_selector;
+    struct SAS far *pSas;
+    struct SAS_dd_section far *pDDSection;
+    struct SysDev far *pDD;
+
+    SAS_selector    = SaSSel();
+    pSas            = (struct SAS far *)MAKEP(SAS_selector,0);
+    pDDSection      = (struct SAS_dd_section far *)MAKEP(SAS_selector,pSas->SAS_dd_data);
+    pDD             = (struct SysDev far *)MAKEP(SAS_selector,pDDSection->SAS_dd_bimodal_chain);
+
+    while (pDD && (pDD != (struct SysDev far *)-1))
+    {
+        if (
+            (memicmp(&pDD->SDevName[1],"Disk DD",7) == 0) &&        // found OS2DASD.DMD
+            (pDD->SDevAtt == (DEV_NON_IBM | DEVLEV_1 | DEV_30))     // found OS2DASD.DMD
+            )
+        {
+            pStrat = (PFN)MAKEP(pDD->SDevProtCS,pDD->SDevStrat);
+            dsSel   = pDD->SDevProtDS;
+
+            if (pStrat)
+            {
+
+                pRH->rph.Len    = sizeof(rp);
+                pRH->rph.Unit   = ucUnit;
+                pRH->rph.Cmd    = CMDGetDevSupport;
+
+                _asm {
+                    push ds
+                    push es
+                    push bx
+                    mov ax,dsSel
+                    mov ds,ax
+                    mov es,word ptr pRH+2
+                    mov bx,word ptr pRH
+                    call dword ptr pStrat
+                    pop bx
+                    pop es
+                    pop ds
+                }
+                return pRH->pDCS;
+            }
+
+            break;
+        }
+        pDD = (struct SysDev far *)pDD->SDevNext;
+    }
+    return NULL;
+}
+
+#pragma optimize("",on)
+

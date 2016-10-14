@@ -13,7 +13,7 @@ ULONG autocheck_mask = 0;              /* global to be set by parse args for */
 ULONG force_mask = 0;                  /* global to be set by parse args for */
                                        /* drives to be autochecked regardless*/
                                        /* of dirty status                    */
-VOID InitMessage(PSZ pszMessage);
+VOID _cdecl InitMessage(PSZ pszMessage, ...);
 
 /*
  * NAME:        autocheck()

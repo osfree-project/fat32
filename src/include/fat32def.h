@@ -68,7 +68,7 @@ typedef unsigned short APIRET;
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.10a6"
+#define FAT32_VERSION "0.10a7"
 
 #ifndef __MSC__
 #define _enable()	_asm { sti }
@@ -87,7 +87,7 @@ typedef unsigned short APIRET;
 #define FAT_NOTUSED    0x00000000
 #define SECTOR_SIZE    512
 #define MAX_CLUSTER_SIZE 32768
-#define MAX_RASECTORS  64 // 128
+#define MAX_RASECTORS  128
 #define MAX_DRIVES     10
 #define DELETED_ENTRY  0xE5
 #define ERROR_VOLUME_NOT_MOUNTED 0xEE00
@@ -199,7 +199,7 @@ ULONG  ulTotalRA;
 USHORT usCacheUsed;
 USHORT usDirtySectors;
 USHORT usPendingFlush;
-USHORT usDirtyThreshold;
+USHORT usDirtyTreshold;
 USHORT volatile usCacheSize;
 USHORT usSegmentsAllocated;
 USHORT fTranslateNames;

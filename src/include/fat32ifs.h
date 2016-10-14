@@ -77,14 +77,19 @@ typedef VOID (*STRATFUNC)(VOID);
 
 #pragma pack(1)
 
-#define MAXRQENTRIES 16
-#define MAX_RQS     6
+#if 0
+#define MAXRQENTRIES 48
+#define MAX_RQS     20
+#endif
+#define MAXRQENTRIES 128
+#define MAX_RQS     8
 
 typedef struct _Request
 {
 PB pb;
 SG sg;
-USHORT rgCBIndex[ 8 ];
+USHORT usCBIndex;
+//USHORT rgCBIndex[ 8 ];
 } REQUEST, *PREQUEST;
 
 typedef struct _RQList
@@ -93,7 +98,7 @@ USHORT  usNr;
 BOOL    fBusy;
 SEL     Sel;
 ULONG   ulLin;
-ULONG   rgPhys[MAXRQENTRIES + 1];
+ULONG   rgPhys[MAXRQENTRIES / 8 + 1];
 RLH     rlh;
 REQUEST rgReq[MAXRQENTRIES];
 } RQLIST, *PRQLIST;
@@ -210,6 +215,7 @@ PVOID       pNext;
 BOOL        fSectorMode;
 BOOL        fCommitAttr;
 ULONG       ulCurCluster;
+BOOL        fLargeVolume;
 } OPENINFO, *POPENINFO;
 
 typedef struct _EASizeBuf
@@ -302,7 +308,9 @@ IMPORT VOID cdecl FatalMessage(PSZ pszMessage, ...);
 IMPORT VOID InternalError(PSZ pszMessage);
 IMPORT USHORT GetLogBuffer(PBYTE pData, USHORT cbData, ULONG ulTimeOut);
 IMPORT BOOL InitCache(ULONG ulSectors);
-IMPORT ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
+//IMPORT ULONG linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
+IMPORT APIRET linalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore, PULONG pulPhysAddr);
+IMPORT PVOID virtalloc(ULONG tSize, BOOL fHighMem, BOOL fIgnore);
 IMPORT void *gdtAlloc(ULONG tSize, BOOL fSwap);
 IMPORT void *ldtAlloc(ULONG tSize);
 IMPORT void freeseg(void *p);

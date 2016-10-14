@@ -13,6 +13,8 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#define SECTORS_OF_2GB  (( LONG )( 2UL * 1024 * 1024 * 1024 / SECTOR_SIZE ))
+
 PRIVATE volatile PSHOPENINFO pGlobSH = NULL;
 
 PRIVATE VOID ResetAllCurrents(POPENINFO pOI);
@@ -116,7 +118,7 @@ USHORT rc;
          rc = ERROR_TOO_MANY_OPEN_FILES;
          goto FS_OPENCREATEEXIT;
          }
-      pOpenInfo->pSHInfo->sOpenCount++;
+      //pOpenInfo->pSHInfo->sOpenCount++;
       if (pOpenInfo->pSHInfo->fLock)
          {
          rc = ERROR_ACCESS_DENIED;
@@ -409,7 +411,14 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors * SECTOR_SIZE;
+      psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors;
+      /* if a less volume than 2GB, do normal IO else sector IO */
+      //psffsi->sfi_size = pVolInfo->BootSect.bpb.BigTotalSectors * SECTOR_SIZE;
+      if( psffsi->sfi_size < SECTORS_OF_2GB )
+         psffsi->sfi_size *= SECTOR_SIZE;
+      else
+         pOpenInfo->fLargeVolume = TRUE;
+
       psffsi->sfi_ctime = 0;
       psffsi->sfi_cdate = 0;
       psffsi->sfi_atime = 0;
@@ -471,6 +480,8 @@ PSHOPENINFO pSH;
       pSH->pNext = (PVOID)pGlobSH;
       pGlobSH = pSH;
       }
+
+   pSH->sOpenCount++;
 
    pOI->pNext = pSH->pChild;
    pSH->pChild = pOI;
@@ -705,6 +716,14 @@ USHORT usBytesPerCluster;
       goto FS_READEXIT;
       }
 
+   if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
+       pOpenInfo->fLargeVolume && !pOpenInfo->fSectorMode )
+      {
+      /* User didn't enable sector IO on the larger volume than 2GB */
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_READEXIT;
+      }
+
    if (!usBytesToRead)
       {
       rc = NO_ERROR;
@@ -776,15 +795,15 @@ USHORT usBytesPerCluster;
 
             ulSector        = (ULONG)(psffsi->sfi_position / (ULONG)usBytesPerSector);
             usSectorOffset  = (USHORT)(psffsi->sfi_position % (ULONG)usBytesPerSector);
-            usRemaining     = (usSectorOffset + usBytesToRead) % usBytesPerSector;
+            usRemaining     = (usSectorOffset + usBytesToRead) > usBytesPerSector ? ((usSectorOffset + usBytesToRead) % usBytesPerSector) : 0;
             usNumSectors    = (usBytesToRead - usRemaining)/usBytesPerSector;
 
-            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
             {
-                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
+                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - ulSector);
                 usRemaining     = 0;
+                usBytesToRead   = usNumSectors*usBytesPerSector + ( usSectorOffset ? ( usBytesPerSector - usSectorOffset ) : 0 );
             }
-            usBytesToRead   = usNumSectors*usBytesPerSector;
         }
 
         if (ulSector >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -795,15 +814,19 @@ USHORT usBytesPerCluster;
 
         if (usSectorOffset)
         {
+            USHORT usCurBytesToRead = min(usBytesToRead, usBytesPerSector - usSectorOffset);
+
             rc = ReadSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_READEXIT;
             }
-            memcpy(pBufPosition,pbCluster + usSectorOffset,usBytesPerSector-usSectorOffset);
-            pBufPosition            += (usBytesPerSector - usSectorOffset);
-            psffsi->sfi_position    += (usBytesPerSector - usSectorOffset);
-            usBytesRead             += (usBytesPerSector - usSectorOffset);
+            memcpy(pBufPosition,pbCluster + usSectorOffset,usCurBytesToRead);
+            pBufPosition            += usCurBytesToRead;
+            psffsi->sfi_position    += usCurBytesToRead;
+            usBytesRead             += usCurBytesToRead;
+            usBytesToRead           -= usCurBytesToRead;
+            ulSector++;
         }
 
         if (usNumSectors)
@@ -814,8 +837,9 @@ USHORT usBytesPerCluster;
                 goto FS_READEXIT;
             }
             pBufPosition            += (ULONG)((ULONG)usNumSectors*(ULONG)usBytesPerSector);
-            psffsi->sfi_position    += usBytesToRead;
-            usBytesRead             += usBytesToRead;
+            psffsi->sfi_position    += usBytesToRead - usRemaining;
+            usBytesRead             += usBytesToRead - usRemaining;
+            ulSector                += usNumSectors;
         }
 
         if (usRemaining)
@@ -1109,6 +1133,14 @@ USHORT usBytesPerCluster;
       goto FS_WRITEEXIT;
       }
 
+   if ((psffsi->sfi_mode & OPEN_FLAGS_DASD ) &&
+       pOpenInfo->fLargeVolume && !pOpenInfo->fSectorMode )
+      {
+      /* User didn't enable sector IO on the larger volume than 2GB */
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_WRITEEXIT;
+      }
+
    if (!usBytesToWrite)
       {
       rc = NO_ERROR;
@@ -1147,7 +1179,7 @@ USHORT usBytesPerCluster;
 
             usTotNumBytes = usBytesToWrite * usBytesPerSector;
 
-            rc = MY_PROBEBUF(PB_OPWRITE, pBufPosition, usTotNumBytes);
+            rc = MY_PROBEBUF(PB_OPREAD, pBufPosition, usTotNumBytes);
             if (rc)
             {
                 Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
@@ -1171,7 +1203,7 @@ USHORT usBytesPerCluster;
         }
         else
         {
-            rc = MY_PROBEBUF(PB_OPWRITE, pData, usBytesToWrite);
+            rc = MY_PROBEBUF(PB_OPREAD, pData, usBytesToWrite);
             if (rc)
             {
                 Message("Protection VIOLATION in FS_WRITE! (SYS%d)", rc);
@@ -1180,15 +1212,15 @@ USHORT usBytesPerCluster;
 
             ulSector        = (ULONG)(psffsi->sfi_position / (ULONG)usBytesPerSector);
             usSectorOffset  = (USHORT)(psffsi->sfi_position % (ULONG)usBytesPerSector);
-            usRemaining     = (usSectorOffset + usBytesToWrite) % usBytesPerSector;
+            usRemaining     = (usSectorOffset + usBytesToWrite) > usBytesPerSector ? ((usSectorOffset + usBytesToWrite) % usBytesPerSector) : 0;
             usNumSectors    = (usBytesToWrite - usRemaining)/usBytesPerSector;
 
-            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
-            {
-                usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-                usRemaining     = 0;
-            }
-            usBytesToWrite   = usNumSectors*usBytesPerSector;
+            if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+               {
+               usNumSectors    = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - ulSector);
+               usRemaining     = 0;
+               usBytesToWrite  = usNumSectors*usBytesPerSector + ( usSectorOffset ? ( usBytesPerSector - usSectorOffset ) : 0 );
+               }
         }
 
         if (ulSector >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -1197,7 +1229,7 @@ USHORT usBytesPerCluster;
             goto FS_WRITEEXIT;
         }
 
-        if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
+        if (ulSector > (pVolInfo->BootSect.bpb.BigTotalSectors - (ULONG)(usSectorOffset ? 1 : 0) - (ULONG)usNumSectors - (ULONG)(usRemaining ? 1 : 0)))
         {
             rc = ERROR_SECTOR_NOT_FOUND;
             goto FS_WRITEEXIT;
@@ -1205,21 +1237,25 @@ USHORT usBytesPerCluster;
 
         if (usSectorOffset)
         {
+            USHORT usCurBytesToWrite = min(usBytesToWrite, usBytesPerSector - usSectorOffset);
+
             rc = ReadSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_WRITEEXIT;
             }
-            memcpy(pbCluster + usSectorOffset, pBufPosition, usBytesPerSector-usSectorOffset);
+            memcpy(pbCluster + usSectorOffset, pBufPosition, usCurBytesToWrite);
             rc = WriteSector(pVolInfo, ulSector, 1, pbCluster, usIOFlag);
             if (rc)
             {
                 goto FS_WRITEEXIT;
             }
 
-            pBufPosition            += (usBytesPerSector - usSectorOffset);
-            psffsi->sfi_position    += (usBytesPerSector - usSectorOffset);
-            usBytesWritten          += (usBytesPerSector - usSectorOffset);
+            pBufPosition            += usCurBytesToWrite;
+            psffsi->sfi_position    += usCurBytesToWrite;
+            usBytesWritten          += usCurBytesToWrite;
+            usBytesToWrite          -= usCurBytesToWrite;
+            ulSector++;
         }
 
         if (usNumSectors)
@@ -1230,8 +1266,9 @@ USHORT usBytesPerCluster;
                 goto FS_WRITEEXIT;
             }
             pBufPosition            += (ULONG)((ULONG)usNumSectors*(ULONG)usBytesPerSector);
-            psffsi->sfi_position    += usBytesToWrite;
-            usBytesWritten          += usBytesToWrite;
+            psffsi->sfi_position    += usBytesToWrite - usRemaining;
+            usBytesWritten          += usBytesToWrite - usRemaining;
+            ulSector                += usNumSectors;
         }
 
         if (usRemaining)
@@ -1420,8 +1457,7 @@ USHORT usBytesPerCluster;
                 if  (
                         (ulNextCluster != FAT_EOF) &&
                         (ulNextCluster == (ulCurrCluster+1)) &&
-                        (usClustersToProcess) &&
-                        (usBytesToWrite >= (usAdjacentClusters+1) * usBytesPerCluster )
+                        (usClustersToProcess)
                     )
                 {
                     usAdjacentClusters  += 1;
@@ -1682,6 +1718,7 @@ USHORT rc;
    switch (usType)
       {
       case FS_COMMIT_ONE:
+      case FS_COMMIT_ALL:
          {
          PVOLINFO pVolInfo;
          POPENINFO pOpenInfo;

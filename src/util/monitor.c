@@ -101,7 +101,10 @@ INT  iArg;
          }
       else if (rc != 0x8001)
          {
-         printf("SYS%4.4d\n", rc);
+         CHAR szMsg[256];
+         ULONG ulMsgLength=0;
+         rc = DosGetMessage(NULL,0UL,szMsg,sizeof(szMsg),rc,"OSO001.MSG",&ulMsgLength);
+         printf("%*s",ulMsgLength,szMsg);
          break;
          }
       }
