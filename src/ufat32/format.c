@@ -147,8 +147,8 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         //ret = WriteFile ( hDevice, pZeroSect, WriteSize*BytesPerSect, &dwWritten, NULL );   
         ret = write_file ( hDevice, pZeroSect, WriteSize * BytesPerSect, &dwWritten );
 
-        //if ( !ret )
-        //    die ( "Failed to write", ret );  
+        if ( !ret )
+            die ( "Failed to write", ret );  
 
         qBytesWritten += dwWritten;
 

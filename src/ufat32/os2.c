@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <conio.h>
+#include <assert.h>
 #include <string.h>
 
 #ifdef __WATCOMC__
@@ -301,8 +302,12 @@ BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritte
     BOOL  ret = TRUE;
     ULONG rc = 0;
 
-    if ( rc = DosWrite ( hDevice, pData, (ULONG)ulNumBytes, (PULONG)dwWritten ) )
+    assert(! (ulNumBytes % 512));
+
+    if ( rc = DosWrite ( hDevice, pData, (ULONG)ulNumBytes >> 9, (PULONG)dwWritten ) )
         ret = FALSE;
+
+    //printf("write_file: ulNumBytes=%lu, rc=%lu\n", ulNumBytes, rc);
 
     //printf("write_file: hDevice=%lu, pData=0x%lx, ulNumBytes=%lu, dwWritten=0x%lx\n", 
     //        hDevice, pData, ulNumBytes, dwWritten);
@@ -333,7 +338,7 @@ void open_drive (char *path, HANDLE *hDevice)
               OPEN_ACTION_OPEN_IF_EXISTS, // | OPEN_ACTION_REPLACE_IF_EXISTS,
               OPEN_FLAGS_FAIL_ON_ERROR |  // OPEN_FLAGS_WRITE_THROUGH | 
               OPEN_SHARE_DENYREADWRITE |  // OPEN_FLAGS_NO_CACHE  |
-              OPEN_ACCESS_READWRITE | OPEN_FLAGS_DASD,
+              OPEN_ACCESS_READWRITE    | OPEN_FLAGS_DASD,
               NULL);                 // peaop2
 
      //      OPEN_ACTION_OPEN_IF_EXISTS, OPEN_FLAGS_DASD |
@@ -353,8 +358,8 @@ void open_drive (char *path, HANDLE *hDevice)
   //printf("ulAction=%lx\n", ulAction);
 
   if ( rc != 0 || hDevice == 0 )
-      die( "Failed to open device - close any files before formatting,"
-           "and make sure you have Admin rights when using fat32format"
+      die( "Failed to open device - close any files before formatting,\n"
+           "and make sure you have Admin rights when using fat32format\n"
             "Are you SURE you're formatting the RIGHT DRIVE!!!", rc );
 
   hDev = *hDevice;
