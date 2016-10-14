@@ -1,10 +1,9 @@
+!include ..\makefile.mk
+
 CC=wcc
 AS=wasm
 LNK=wlink
 MAPCNV=..\mapsym.awk
-_VENDOR=Netlabs
-_VERSION=0.10a6
-FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
 CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
@@ -25,17 +24,17 @@ all: $(TARGETS)
 clean: .symbolic
  -@del $(CLEANUP)  >nul 2>&1
  @cd libc
- wmake -f makefile.wcc clean
+ wmake -h -f makefile.wcc clean
  @cd ..
 
 libc: .symbolic
  @cd libc
- wmake -f makefile.wcc
+ wmake -h -f makefile.wcc
  @cd ..
 
 OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj &
      ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj &
-     ifsea.obj ifslang.obj ifsachk.obj
+     ifsea.obj ifslang.obj ifsachk.obj helpers.obj
 
 # helpers.obj
 

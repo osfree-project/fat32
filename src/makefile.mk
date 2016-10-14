@@ -1,0 +1,3 @@
+_VENDOR=Netlabs
+_VERSION=0.10a7
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@

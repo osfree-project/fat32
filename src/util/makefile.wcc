@@ -1,10 +1,9 @@
+!include ..\makefile.mk
+
 CXX=wpp386
 CC=wcc386
 LNK=wlink
 MAPCNV=..\mapsym.awk
-_VENDOR=Netlabs
-_VERSION=0.10a6
-FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="Fat32 utilities, Henk Kelder & Netlabs"
 CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 

@@ -1,10 +1,9 @@
+!include ..\makefile.mk
+
 CC=wcc
 AS=wasm
 LNK=wlink op q
 MAPCNV=..\mapsym.awk
-_VENDOR=Netlabs
-_VERSION=0.10a4
-FILEVER=@$#$(_VENDOR):$(_VERSION)$#@
 DESC="General Partition filter, Deon van der Westhuysen"
 CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
