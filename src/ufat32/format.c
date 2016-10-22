@@ -155,7 +155,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         fPercentWritten = ( 100 * qBytesWritten ) / qBytesTotal;
         //sprintf(Str, "%.2f%%...", fPercentWritten);
 
-        if ( fPercentWritten - fPrevPercentWritten >= 10 )
+        if ( fPercentWritten - fPrevPercentWritten >= 1 )
         {
           // update progress indicator if it has grown by >= 5%
           fPrevPercentWritten = fPercentWritten;
@@ -177,7 +177,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     mem_free(pZeroSect, BytesPerSect * BurstSize);
 
     fBytesTotal = (double) qBytesTotal;
-    printf ( "Wrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 
+    printf ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 
              qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
@@ -222,6 +222,9 @@ int format_volume (char *path, format_params *params)
 
     static char volId[12] = {0};
     char *vol = volId;
+
+    if (params->reserved_sectors)
+        dp.ReservedSectCount = params->reserved_sectors;
 
     VolumeId = get_vol_id( );
 
@@ -477,6 +480,7 @@ void usage( char *s )
                  "    ... \n"
                  "  128 - use 128 sectors per cluster (64K clusters)\n"
                  "/V:<volume label>\n"
+                 "/R:<reserved sectors>\n"
                  "/? this help message\n\n", s );
 
         exit(1);
@@ -600,6 +604,15 @@ int format(int argc, char *argv[], char *envp[])
                 {
                     printf ( "Ignoring bad cluster size %d\n", p.sectors_per_cluster );
                     p.sectors_per_cluster = 0;
+                    usage( argv[0] );
+                }
+                continue;
+        case 'R':
+                p.reserved_sectors = atol(val);
+                if (! p.reserved_sectors)
+                {
+                    printf( "Ignoring bad reserved sectors %d\n", p.reserved_sectors );
+                    p.reserved_sectors = 32;
                     usage( argv[0] );
                 }
                 continue;

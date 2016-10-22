@@ -135,6 +135,7 @@ typedef struct
     {
     int sectors_per_cluster;        // can be zero for default or 1,2,4,8,16,32 or 64
     char volume_label[12];
+    int reserved_sectors;
     }
 format_params;
 
@@ -175,6 +176,8 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type);
 void begin_format (HANDLE hDevice);
 void remount_media (HANDLE hDevice);
 void sectorio(HANDLE hDevice);
+void startlw(HANDLE hDevice);
+void stoplw(HANDLE hDevice);
 void close_drive(HANDLE hDevice);
 void mem_alloc(void **p, ULONG cb);
 void mem_free(void *p, ULONG cb);
