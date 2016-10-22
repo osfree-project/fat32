@@ -142,6 +142,7 @@ void _System sysinstx_thread(ULONG args)
   fat32buf.FS[3] = 0;
 
   sectorio(hf);
+  //stoplw(hf);
 
   rc = WriteSect(hf, 0, sizeof(fat32buf) / 512, (char *)&fat32buf);
 
@@ -308,6 +309,8 @@ void _System sysinstx_thread(ULONG args)
     printf("%s\n", GetOS2Error(rc));
     return;
   }
+
+  //startlw(hf);
 
   DosClose(hf);
 

@@ -96,6 +96,9 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     rc = DosSetFilePtrL( hDevice, (LONGLONG)llOffset, FILE_BEGIN, &llActual );
     //printf("seek_to_sect: hDevice=%lx, Sector=%lu, BytesPerSect=%lu\n", hDevice, Sector, BytesPerSect);
     //printf("rc=%lu\n", rc);
+
+    if ( rc )
+        die("Seek error\n", rc);
 }
 
 ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
@@ -307,6 +310,9 @@ BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritte
     if ( rc = DosWrite ( hDevice, pData, (ULONG)ulNumBytes >> 9, (PULONG)dwWritten ) )
         ret = FALSE;
 
+    if (ret)
+        *dwWritten <<= 9;
+
     //printf("write_file: ulNumBytes=%lu, rc=%lu\n", ulNumBytes, rc);
 
     //printf("write_file: hDevice=%lu, pData=0x%lx, ulNumBytes=%lu, dwWritten=0x%lx\n", 
@@ -360,7 +366,7 @@ void open_drive (char *path, HANDLE *hDevice)
   if ( rc != 0 || hDevice == 0 )
       die( "Failed to open device - close any files before formatting,\n"
            "and make sure you have Admin rights when using fat32format\n"
-            "Are you SURE you're formatting the RIGHT DRIVE!!!", rc );
+           "Are you SURE you're formatting the RIGHT DRIVE!!!", rc );
 
   hDev = *hDevice;
 }
@@ -477,7 +483,7 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
     {
       // set type to FAT32
       mbr.pte[i].system_id = type;
-      WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
+      rc = WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
 
       if (rc)
           die("Error writing MBR\n", rc);
@@ -563,6 +569,10 @@ APIRET write_drive(HANDLE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize)
 {
     // Seek
     APIRET rc = DosSetFilePtrL(hDevice, off, FILE_BEGIN, &off);
+
+    if ( rc )
+        die ( "Seek error!", rc );
+
     // Write Device
     return DosWrite ( hDevice, pBuf, *cbSize, cbSize );
 }
@@ -578,12 +588,12 @@ void mem_alloc(void **p, ULONG cb)
     APIRET rc;
 
     if (!(rc = DosAllocMem ( (void **)p, cb, PAG_COMMIT | PAG_READ | PAG_WRITE )))
-    //{
+    {
             memset(*p, 0, cb);
             //printf("mem_alloc: rc=%lu\n", rc);
-    //}
-    //else
-    //        printf("mem_alloc failed, rc=%lu\n", rc);
+    }
+    else
+            printf("mem_alloc failed, rc=%lu\n", rc);
 }
 
 void mem_free(void *p, ULONG cb)
@@ -623,6 +633,8 @@ void check_vol_label(char *path, char **vol_label)
     if (rc == NO_ERROR)
         // Current disk volume label
         strcpy(cur_vol, fsiBuffer.vol.szVolLabel);
+    else
+        printf("DosQueryFSInfo error: %lu\n", rc);
 
     // The current file system type is FAT32
     iShowMessage(NULL, 1293, 1, TYPE_STRING, "FAT32");

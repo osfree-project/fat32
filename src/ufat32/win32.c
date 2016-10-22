@@ -268,6 +268,16 @@ void sectorio(HANDLE hDevice)
     // none
 }
 
+void startlw(HANDLE hDevice)
+{
+    // none
+}
+
+void stoplw(HANDLE hDevice)
+{
+    // none
+}
+
 void close_drive(HANDLE hDevice)
 {
     // Close Device

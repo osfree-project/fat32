@@ -36,6 +36,8 @@ MSG_1306, AvailableClusters
 #include "portable.h"
 #include "fat32def.h"
 
+#define STACKSIZE 0x20000
+
 PRIVATE ULONG ChkDskMain(PCDINFO pCD);
 PRIVATE ULONG MarkVolume(PCDINFO pCD, BOOL fClean);
 PRIVATE ULONG CheckFats(PCDINFO pCD);
@@ -138,7 +140,7 @@ int lastchar(const char *string)
 
 #endif /* by OAX */
 
-int chkdsk(int iArgc, char *rgArgv[], char *rgEnv[])
+int chkdsk_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 {
 INT iArg;
 HFILE hFile;
@@ -327,6 +329,48 @@ ULONG  cbDataLen;
 
    rgEnv = rgEnv;
 }
+
+int chkdsk(int argc, char *argv[], char *envp[])
+{
+  char *stack;
+  APIRET rc;
+
+  // Here we're switching stack, because the original
+  // recover.com stack is too small.
+
+  // allocate stack
+  rc = DosAllocMem((void **)&stack, 
+                   STACKSIZE, 
+                   PAG_READ | PAG_WRITE | 
+                   PAG_COMMIT | OBJ_TILE);
+
+  if (rc)
+    return rc;
+
+  // call chkdsk_thread on new stack
+  _asm {
+    mov eax, esp
+    mov edx, stack
+    mov ecx, envp
+    add edx, STACKSIZE - 4
+    mov esp, edx
+    push eax
+    push ecx
+    mov ecx, argv
+    push ecx
+    mov ecx, argc
+    push ecx
+    call chkdsk_thread
+    add esp, 12
+    pop esp
+  }
+
+  // deallocate new stack
+  DosFreeMem(stack);
+
+  return 0;
+}
+
 
 BOOL OutputToFile(VOID)
 {
