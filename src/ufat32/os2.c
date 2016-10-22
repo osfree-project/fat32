@@ -559,6 +559,44 @@ void sectorio(HANDLE hDevice)
   }
 }
 
+void startlw(HANDLE hDevice)
+{
+   ULONG ulDataSize = 0;
+   ULONG ulParmSize = 0;
+   APIRET rc;
+
+   rc = DosFSCtl(NULL, 0, &ulDataSize,
+                 NULL, 0, &ulParmSize,
+                 FAT32_STARTLW, "FAT32", -1,
+                 FSCTL_FSDNAME);
+
+   if (rc)
+   {
+     printf("Error %lu doing FAT32_STARTLW.\n", rc);
+     printf("%s\n", GetOS2Error(rc));
+     return;
+   }
+}
+
+void stoplw(HANDLE hDevice)
+{
+   ULONG ulDataSize = 0;
+   ULONG ulParmSize = 0;
+   APIRET rc;
+
+   rc = DosFSCtl(NULL, 0, &ulDataSize,
+                 NULL, 0, &ulParmSize,
+                 FAT32_STOPLW, "FAT32", -1,
+                 FSCTL_FSDNAME);
+
+   if (rc)
+   {
+     printf("Error %lu doing FAT32_STOPLW.\n", rc);
+     printf("%s\n", GetOS2Error(rc));
+     return;
+   }
+}
+
 APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize)
 {
     // Read Device
@@ -654,7 +692,9 @@ void check_vol_label(char *path, char **vol_label)
         }
     }
 
-    if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
+    // if the entered volume label is empty, or doesn't
+    // the same as a current volume label, write an error
+    if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
     {
         // Incorrect volume  label for
         // disk %c is entered!
