@@ -843,8 +843,8 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
-         f32Parms.fLW = TRUE;
-         Message("Lazy writing is ON");
+         // disable it temporary
+         //f32Parms.fLW = TRUE;
          rc = 0;
          break;
 

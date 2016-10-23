@@ -719,7 +719,7 @@ USHORT    usCBIndex,usCBIndexNew;
 
    while (usCBIndex != FREE_SLOT)
       {
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L); //// hang!
       pBase = pCacheBase + usCBIndex;
       if (pBase->ulSector == ulSector && pBase->bDrive == bDrive)
          {
@@ -1086,4 +1086,3 @@ USHORT VerifyOn(VOID)
    Message("VerifyOn Post-Invocation");
    return ret;
 }
-
