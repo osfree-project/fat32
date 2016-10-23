@@ -197,7 +197,7 @@ P_VolChars   pVolChars;
             for a first time mount it's an initializaton
             for the n-th remount it's a reinitialization of the old VPB
          */
-         pVolInfo->hVBP = hVBP;
+         //pVolInfo->hVBP = hVBP;
          memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
 
          pVolInfo->ulActiveFatStart = pSect->bpb.ReservedSectors;
@@ -213,8 +213,9 @@ P_VolChars   pVolChars;
          pVolInfo->usClusterSize = pSect->bpb.BytesPerSector * pSect->bpb.SectorsPerCluster;
          pVolInfo->ulTotalClusters = (pSect->bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
 
-//         pVolInfo->hVBP = hVBP;
-//         pVolInfo->hDupVBP = hDupVBP;
+         pVolInfo->hVBP    = hVBP;    //
+         pVolInfo->hDupVBP = hDupVBP; //
+
          pVolInfo->bDrive = pvpfsi->vpi_drive;
          pVolInfo->bUnit  = pvpfsi->vpi_unit;
          pVolInfo->pNextVolInfo = NULL;
@@ -472,10 +473,10 @@ P_VolChars   pVolChars;
             goto FS_MOUNT_EXIT;
             }
 
-         if (!pVolInfo->hDupVBP)
-            {
-            if (f32Parms.fMessageActive & LOG_FS)
-                Message("hDupVBP == 0\n");
+         //if (!pVolInfo->hDupVBP)
+         //   {
+         //   if (f32Parms.fMessageActive & LOG_FS)
+         //       Message("hDupVBP == 0\n");
 
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
 
@@ -483,7 +484,7 @@ P_VolChars   pVolChars;
                 UpdateFSInfo(pVolInfo);  //
 
             MarkDiskStatus(pVolInfo, TRUE);
-            }
+         //   }
 
          // delete pVolInfo from the list
 /*         if (pGlobVolInfo)
