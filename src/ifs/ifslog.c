@@ -99,9 +99,13 @@ USHORT usThreadID;
 
    va_end(va);
 
+   // output to FAT32 log buffer
    fWriteLogging(szMessage);
-   //serout(serial_hw_port, szMessage);
-   if (LogPrint) (*LogPrint)("%s\n", szMessage);
+
+   if (LogPrint) // if QSINIT/OS4LDR found
+      (*LogPrint)("%s\n", szMessage);
+   else // else output directly to com port
+      serout(serial_hw_port, szMessage);
 
    _asm pop es;
 }
