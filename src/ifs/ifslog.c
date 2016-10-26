@@ -25,6 +25,29 @@ static BOOL fData = FALSE;
 static BYTE szLost[]="(information lost)\r\n";
 static ULONG ulLogSem = 0UL;
 
+void __cdecl (far *LogPrint)(char far *fmt,...) = 0;
+
+// QSINIT/OS4LDR log support
+
+// make pointer to DOSHLP code (this is constant value for all OS/2 versions)
+ULONG FAR *doshlp = MAKEP (0x100,0);
+
+void LogPrintInit(void)
+{
+  // check OS/4 loader signature at DOSHLP:0 seg
+  if (*doshlp == 0x342F534F)
+     {
+     doshlp++;
+     // check OS/4 loader info struct size
+     if ((*doshlp & 0xFFFF) >= 0x30)
+        {
+        USHORT FAR *ptr = (USHORT FAR *) doshlp;
+        SELECTOROF (LogPrint) = 0x100;
+        OFFSETOF (LogPrint) = ptr[0x17];
+        }
+     }
+}
+
 #ifdef __WATCOM
 _WCRTLINK int vsprintf(char * pszBuffer, const char * pszFormat, va_list va);
 _WCRTLINK int sprintf(char * pszBuffer, const char * pszFormat, ...);
@@ -39,6 +62,7 @@ static BOOL fWriteLogging(PSZ pszMessage);
 
 VOID cdecl _loadds Message(PSZ pszMessage, ...)
 {
+static char LogPrintInitted = 0;
 static BYTE szMessage[512];
 va_list va;
 PROCINFO Proc;
@@ -46,6 +70,12 @@ ULONG ulmSecs = *pGITicks;
 USHORT usThreadID;
 
    _asm push es;
+
+   if (! LogPrintInitted)
+      {
+      LogPrintInit();
+      LogPrintInitted = 1;
+      }
 
    if (!f32Parms.fMessageActive)
       {
@@ -70,7 +100,8 @@ USHORT usThreadID;
    va_end(va);
 
    fWriteLogging(szMessage);
-   serout(serial_hw_port, szMessage);
+   //serout(serial_hw_port, szMessage);
+   if (LogPrint) (*LogPrint)("%s\n", szMessage);
 
    _asm pop es;
 }
@@ -158,6 +189,8 @@ APIRET rc;
    return rc;
 }
 
+#if 1
+
 /* Read a byte from a port.  */
 static _inline unsigned char
 inb (unsigned short port)
@@ -220,3 +253,5 @@ void serout(unsigned short port, char *s)
   comout(port, '\r');
   comout(port, '\n');
 }
+
+#endif
