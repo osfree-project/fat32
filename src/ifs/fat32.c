@@ -1721,30 +1721,31 @@ ULONG hDEV;
 
                   if (pcbParm) {
                     *pcbParm = cbParm;
-                }
-                cbData = sizeof(BIOSPARAMETERBLOCK);
-                if (pcbData)
-                {
-                    *pcbData = cbData;
-                }
-                hDEV = GetVolDevice(pVolInfo);
-                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               }
+               cbData = sizeof(BIOSPARAMETERBLOCK);
+               if (pcbData)
+               {
+                   *pcbData = cbData;
+               }
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                   usCat, usFunc, pParm, cbParm, pData, cbData);
 
-                if (rc == NO_ERROR)
-                {
-                    PBIOSPARAMETERBLOCK pBPB = (PBIOSPARAMETERBLOCK)pData;
+               if (rc == NO_ERROR)
+               {
+                   PBIOSPARAMETERBLOCK pBPB = (PBIOSPARAMETERBLOCK)pData;
 
-                    pBPB->bSectorsPerCluster    = pVolInfo->BootSect.bpb.SectorsPerCluster;
-                    pBPB->usReservedSectors     = pVolInfo->BootSect.bpb.ReservedSectors;
-                    pBPB->cFATs                 = pVolInfo->BootSect.bpb.NumberOfFATs;
-                    pBPB->cRootEntries          = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
-                    if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000UL)
-                        pBPB->usSectorsPerFAT   = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
-                    else
-                        pBPB->usSectorsPerFAT   = 0xFFFF;
-                }
-                break;
+                   pBPB->bSectorsPerCluster    = pVolInfo->BootSect.bpb.SectorsPerCluster;
+                   pBPB->usReservedSectors     = pVolInfo->BootSect.bpb.ReservedSectors;
+                   pBPB->cFATs                 = pVolInfo->BootSect.bpb.NumberOfFATs;
+                   pBPB->cRootEntries          = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
+                   if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000UL)
+                       pBPB->usSectorsPerFAT   = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
+                   else
+                       pBPB->usSectorsPerFAT   = 0xFFFF;
+               }
+               break;
 
 
             default  :
