@@ -1512,6 +1512,7 @@ int far pascal _loadds FS_IOCTL(
 USHORT rc;
 PVOLINFO pVolInfo;
 ULONG hDEV;
+PBIOSPARAMETERBLOCK pBPB;
 
    _asm push es;
 
@@ -1563,7 +1564,7 @@ ULONG hDEV;
       {
       if (cbParm > 0)
          {
-         rc = MY_PROBEBUF(PB_OPWRITE, pParm, cbParm);
+         rc = MY_PROBEBUF(PB_OPREAD, pParm, cbParm);
          if (rc)
             {
             Message("Protection VIOLATION in parm of FS_IOCTL, address %lX, len %u!",
@@ -1573,7 +1574,7 @@ ULONG hDEV;
          }
       if (pcbParm)
          {
-         rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pcbParm, sizeof (unsigned));
+         rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pcbParm, sizeof (unsigned));
          if (rc)
             pcbParm = NULL;
          }
@@ -1589,64 +1590,70 @@ ULONG hDEV;
    switch (usCat)
       {
       case IOCTL_DISK    :
+         Message("pVolInfo->fLocked=%u, pVolInfo->ulOpenFiles=%lx", pVolInfo->fLocked, pVolInfo->ulOpenFiles);
          switch (usFunc)
             {
             case DSK_LOCKDRIVE:
-                cbParm = sizeof(UCHAR);
-                if (pcbParm)
-                {
-                    *pcbParm = cbParm;
-                }
-                cbData = sizeof(UCHAR);
-                if (pcbData)
-                {
-                    *pcbData = cbData;
-                }
-                hDEV = GetVolDevice(pVolInfo);
-                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                    usCat, usFunc, pParm, cbParm, pData, cbData);
-                if (rc == NO_ERROR)
-                {
-                    pVolInfo->fLocked = TRUE;
-                    GetProcInfo(&pVolInfo->ProcLocked, sizeof (PROCINFO));
-                }
-                break;
+               if (pVolInfo->fLocked)
+                  {
+                  Message("Drive locked, pVolInfo->fLocked=%lu", pVolInfo->fLocked);
+                  rc = ERROR_DRIVE_LOCKED;
+                  goto FS_IOCTLEXIT;
+                  }
+               if (pVolInfo->ulOpenFiles > 1L)
+                  {
+                  Message("Cannot lock, %lu open files", pVolInfo->ulOpenFiles);
+                  rc = ERROR_DRIVE_LOCKED;
+                  goto FS_IOCTLEXIT;
+                  }
+
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
+
+               if (!rc) {
+                 pVolInfo->fLocked = TRUE;
+
+                 if (pcbData) {
+                   *pcbData = cbData;
+                 }
+
+                 if (pcbParm) {
+                   *pcbParm = cbParm;
+                 }
+               }
+
+               GetProcInfo(&pVolInfo->ProcLocked, sizeof (PROCINFO));
+               break;
 
             case DSK_UNLOCKDRIVE:
-                cbParm = sizeof(UCHAR);
-                if (pcbParm)
-                {
-                    *pcbParm = cbParm;
-                }
-                cbData = sizeof(UCHAR);
-                if (pcbData)
-                {
-                    *pcbData = cbData;
-                }
-                hDEV = GetVolDevice(pVolInfo);
-                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                    usCat, usFunc, pParm, cbParm, pData, cbData);
-                if (rc == NO_ERROR)
-                {
-                    pVolInfo->fLocked = FALSE;
-                }
-                break;
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
 
-            case DSK_BLOCKREMOVABLE:
-                cbParm = 2*sizeof(UCHAR);
-                if (pcbParm)
-                {
-                    *pcbParm = cbParm;
-                }
-                cbData = sizeof(UCHAR);
-                if (pcbData)
-                {
-                    *pcbData = cbData;
-                }
-                hDEV = GetVolDevice(pVolInfo);
-                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                    usCat, usFunc, pParm, cbParm, pData, cbData);
-                break;
+               if (!rc) {
+
+                 if (pcbData) {
+                   *pcbData = cbData;
+                 }
+
+                 if (pcbParm) {
+                   *pcbParm = cbParm;
+                 }
+
+                 if (pVolInfo->fLocked)
+                    {
+                    pVolInfo->fLocked = FALSE;
+                    //rc = 0;
+                    }
+                 //else
+                 //   rc = ERROR_INVALID_PARAMETER;
+               }
+               break;
+
+            case DSK_BLOCKREMOVABLE :
+               //if (pcbData)
+               //   *pcbData = sizeof (BYTE);
 
                hDEV = GetVolDevice(pVolInfo);
                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
@@ -1673,7 +1680,7 @@ ULONG hDEV;
                if (rc == ERROR_SECTOR_NOT_FOUND)
                   rc = ERROR_NOT_DOS_DISK;
                else if (rc)
-                  rc = 0;
+                  rc = 0;                                            
 
                   if (pData)
                      *pData = 0;
@@ -1704,6 +1711,7 @@ ULONG hDEV;
                else
                   *(PWORD)pData = 0x0006;
 
+               Message("DSK_GETLOCKSTATUS, rc=%u", rc);
                rc = 0;
                break;
 
@@ -1722,36 +1730,37 @@ ULONG hDEV;
                   if (pcbParm) {
                     *pcbParm = cbParm;
                   }
-               }
-               cbData = sizeof(BIOSPARAMETERBLOCK);
-               if (pcbData)
-               {
-                   *pcbData = cbData;
-               }
-               hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                   usCat, usFunc, pParm, cbParm, pData, cbData);
 
-               if (rc == NO_ERROR)
-               {
-                   PBIOSPARAMETERBLOCK pBPB = (PBIOSPARAMETERBLOCK)pData;
+                  pBPB = (PBIOSPARAMETERBLOCK)pData;
 
-                   pBPB->bSectorsPerCluster    = pVolInfo->BootSect.bpb.SectorsPerCluster;
-                   pBPB->usReservedSectors     = pVolInfo->BootSect.bpb.ReservedSectors;
-                   pBPB->cFATs                 = pVolInfo->BootSect.bpb.NumberOfFATs;
-                   pBPB->cRootEntries          = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
-                   if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000UL)
-                       pBPB->usSectorsPerFAT   = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
-                   else
-                       pBPB->usSectorsPerFAT   = 0xFFFF;
+                  pBPB->bSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+                  pBPB->usReservedSectors = pVolInfo->BootSect.bpb.ReservedSectors;
+                  pBPB->cFATs = pVolInfo->BootSect.bpb.NumberOfFATs;
+                  pBPB->cRootEntries = (USHORT)(GetChainSize(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus) * 128);
+                  if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 0x10000L)
+                     pBPB->usSectorsPerFAT = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
+                  else
+                     pBPB->usSectorsPerFAT = 0xFFFF; // ??? vs!
                }
+
                break;
-
 
             default  :
                hDEV = GetVolDevice(pVolInfo);
                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
                   usCat, usFunc, pParm, cbParm, pData, cbData);
+
+                if (!rc) {
+                 if (pcbData) {
+                   *pcbData = cbData;
+                 }
+  
+                 if (pcbParm) {
+                   *pcbParm = cbParm;
+                 }
+               }
+
+               //Message("usFunc=default, cat=%u, func=%u rc=%u", usCat, usFunc, rc);
                break;
             }
          break;
@@ -1989,6 +1998,17 @@ ULONG hDEV;
          hDEV = GetVolDevice(pVolInfo);
          rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
             usCat, usFunc, pParm, cbParm, pData, cbData);
+
+         if (!rc) {
+           if (pcbData) {
+             *pcbData = cbData;
+           }
+
+           if (pcbParm) {
+             *pcbParm = cbParm;
+           }
+         }
+
          break;
       }
 
