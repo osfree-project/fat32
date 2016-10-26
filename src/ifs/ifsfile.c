@@ -118,7 +118,7 @@ USHORT rc;
          rc = ERROR_TOO_MANY_OPEN_FILES;
          goto FS_OPENCREATEEXIT;
          }
-      //pOpenInfo->pSHInfo->sOpenCount++;
+      //pOpenInfo->pSHInfo->sOpenCount++; //
       if (pOpenInfo->pSHInfo->fLock)
          {
          rc = ERROR_ACCESS_DENIED;

@@ -54,7 +54,7 @@ void _cdecl autocheck(char *args)
   /* get the current environment to be passed in on execpgm */
   DosGetEnv(&env, &cmd);
 
-  for (i = 0; i <= 31; i++)  /* loop for max drives allowed */
+  for (i = 2; i <= 25; i++)  /* loop for max drives allowed */
   {
     if ((autocheck_mask & (1UL << i)) == 0) /* mask not on for this drive */
     {

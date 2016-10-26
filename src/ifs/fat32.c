@@ -167,7 +167,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_COPYEXIT;
       }
-   //pOpenInfo->pSHInfo->sOpenCount++;
+   //pOpenInfo->pSHInfo->sOpenCount++; //
    if (pOpenInfo->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -428,7 +428,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_DELETEEXIT;
       }
-   //pOpenInfo->pSHInfo->sOpenCount++;
+   //pOpenInfo->pSHInfo->sOpenCount++; //
    if (pOpenInfo->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -1419,27 +1419,30 @@ PSZ  cmd = NULL;
          if (p)
             {
             p += 4;
+            }
+         }
 
-            while (*p != '\0' && *p != ' ')
+      if (p)
+         {
+         while (*p != '\0' && *p != ' ')
+            {
+            char ch = tolower(*p);
+            int num;
+            if ('a' <= ch && ch <= 'z')
                {
-               char ch = tolower(*p);
-               int num;
-               if ('a' <= ch && ch <= 'z')
-                  {
-                  num = ch - 'a';
-                  autocheck_mask |= (1UL << num);
-                  }
-               else if (*p == '+')
-                  {
-                  force_mask |= (1UL << num);
-                  }
-               else if (*p == '*')
-                  {
-                  autocheck_mask = 0xffffffff;
-                  break;
-                  }
-               p++;
+               num = ch - 'a';
+               autocheck_mask |= (1UL << num);
                }
+            else if (*p == '+')
+               {
+               force_mask |= (1UL << num);
+               }
+            else if (*p == '*')
+               {
+               autocheck_mask = 0xffffffff;
+               break;
+               }
+            p++;
             }
          }
 
@@ -1465,7 +1468,7 @@ PSZ  cmd = NULL;
    //   InitCache(ulCacheSectors);
 
    // add bootdrive to autocheck mask
-   autocheck_mask |= (1UL << pGI->bootdrive);
+   autocheck_mask |= (1UL << (pGI->bootdrive - 1));
 
    /* disk autocheck */
    autocheck(cmd);
@@ -1645,10 +1648,78 @@ ULONG hDEV;
                     usCat, usFunc, pParm, cbParm, pData, cbData);
                 break;
 
-            case DSK_GETDEVICEPARAMS:
-                cbParm = 2*sizeof(UCHAR);
-                if (pcbParm)
-                {
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
+
+               if (!rc) {
+
+                 if (pcbData) {
+                   *pcbData = cbData;
+                 }
+
+                 if (pcbParm) {
+                   *pcbParm = cbParm;
+                 }
+               }
+
+               break;
+/*
+            case DSK_QUERYMEDIASENSE :
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
+
+               if (rc == ERROR_SECTOR_NOT_FOUND)
+                  rc = ERROR_NOT_DOS_DISK;
+               else if (rc)
+                  rc = 0;
+
+                  if (pData)
+                     *pData = 0;
+
+               if (!rc) {
+
+                  if (pcbData) {
+                     *pcbData = cbData;
+                  }
+
+                  if (pcbParm) {
+                     *pcbParm = cbParm;
+                  }
+               }
+
+               break;
+ */
+            case 0x66 : /* DSK_GETLOCKSTATUS */
+               if (pcbData)
+                  *pcbData = sizeof (USHORT);
+               if (cbData < 2)
+                  {
+                  rc = ERROR_BUFFER_OVERFLOW;
+                  goto FS_IOCTLEXIT;
+                  }
+               if (pVolInfo->fLocked)
+                  *(PWORD)pData = 0x0005;
+               else
+                  *(PWORD)pData = 0x0006;
+
+               rc = 0;
+               break;
+
+            case DSK_GETDEVICEPARAMS :
+               if (pcbData)
+                  *pcbData = sizeof (BIOSPARAMETERBLOCK);
+               hDEV = GetVolDevice(pVolInfo);
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (!rc) {
+
+                  if (pcbData) {
+                    *pcbData = sizeof (BIOSPARAMETERBLOCK);
+                  }
+
+                  if (pcbParm) {
                     *pcbParm = cbParm;
                 }
                 cbData = sizeof(BIOSPARAMETERBLOCK);
@@ -2158,7 +2229,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       rc = ERROR_TOO_MANY_OPEN_FILES;
       goto FS_MOVEEXIT;
       }
-   //pOISrc->pSHInfo->sOpenCount++;
+   //pOISrc->pSHInfo->sOpenCount++; //
    if (pOISrc->pSHInfo->sOpenCount > 1)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -2181,7 +2252,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
             rc = ERROR_TOO_MANY_OPEN_FILES;
             goto FS_MOVEEXIT;
         }
-        //pOIDst->pSHInfo->sOpenCount++;
+        //pOIDst->pSHInfo->sOpenCount++; //
         if (pOIDst->pSHInfo->sOpenCount > 1)
         {
             rc = ERROR_ACCESS_DENIED;
@@ -2285,7 +2356,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
         goto FS_MOVEEXIT;
       }
 
-      //pOISrc->pSHInfo->sOpenCount++;
+      //pOISrc->pSHInfo->sOpenCount++; //
       if (pOISrc->pSHInfo->sOpenCount > 1)
       {
         rc = ERROR_ACCESS_DENIED;
@@ -3442,7 +3513,6 @@ PVOLINFO pVolInfo;
       }
 
    pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
-   //pVolInfo = *(PVOLINFO *)pvpfsd;
 
    if (! pVolInfo)
       return NULL;
