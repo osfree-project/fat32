@@ -71,16 +71,16 @@ USHORT usThreadID;
 
    _asm push es;
 
-   if (! LogPrintInitted)
-      {
-      LogPrintInit();
-      LogPrintInitted = 1;
-      }
-
    if (!f32Parms.fMessageActive)
       {
       _asm pop es;
       return;
+      }
+
+   if (! LogPrintInitted)
+      {
+      LogPrintInit();
+      LogPrintInitted = 1;
       }
 
    va_start(va, pszMessage);
@@ -144,6 +144,7 @@ PSZ    p1, p2;
    strcat(szLogBuf + usSize, pszMessage);
    strcat(szLogBuf + usSize, "\r\n");
 
+   fData = TRUE;
    rc = FSH_SEMCLEAR(&ulLogSem);
 
    if (usSize)
@@ -166,10 +167,11 @@ APIRET rc;
       return rc;
       }
 
-   if (!f32Parms.fInShutDown)
+   while (!fData && !f32Parms.fInShutDown)
    {
        rc = FSH_SEMSETWAIT(&ulLogSem,ulTimeOut);
-       if (rc != NO_ERROR)
+
+       if (rc != NO_ERROR && rc != ERROR_SEM_TIMEOUT)
        {
            return rc;
        }
@@ -187,13 +189,12 @@ APIRET rc;
    else
       {
       *szLogBuf = 0;
+      fData = FALSE;
       rc = 0;
       }
 
    return rc;
 }
-
-#if 1
 
 /* Read a byte from a port.  */
 static _inline unsigned char
@@ -257,5 +258,3 @@ void serout(unsigned short port, char *s)
   comout(port, '\r');
   comout(port, '\n');
 }
-
-#endif
