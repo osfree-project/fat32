@@ -78,24 +78,24 @@ int far pascal _loadds FS_OPENPAGEFILE (
                       &dummyAction, Attr, NULL, &dummyFlag);
 
    if (rc == 0)
-   {
-       if (pVolInfo->pfnStrategy)
-       {
-           /*   Strat2 is supported.
-            *   set return information:
-            *   pageio requests require physical addresses;
-            *   maximum request is 16 pages;
-            */
-           *pFlags = PGIO_PADDR;
-           *pcMaxReq = MAXPGREQ;
-       }
-       else
-       {
-           // no Strat2
-           *pFlags = PGIO_VADDR;
-           *pcMaxReq = 0;
-       }
-   }
+      {
+      if (pVolInfo->pfnStrategy)
+         {
+            /*   Strat2 is supported.
+             *   set return information:
+             *   pageio requests require physical addresses;
+             *   maximum request is 16 pages;
+             */
+            *pFlags = PGIO_PADDR;
+            *pcMaxReq = MAXPGREQ;
+         }
+      else
+         {
+            // no Strat2
+            *pFlags = PGIO_VADDR;
+            *pcMaxReq = 0;
+         }
+      }
 
 FS_OPENPAGEFILE_EXIT:
    if (f32Parms.fMessageActive & LOG_FS)
