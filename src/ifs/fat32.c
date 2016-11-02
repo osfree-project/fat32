@@ -3520,12 +3520,6 @@ struct vpfsi far * pvpfsi;
 struct vpfsd far * pvpfsd;
 PVOLINFO pVolInfo;
 
-   // handling the removable volume change
-   rc = FSH_SETVOLUME(hVBP, 0);
-
-   if (rc == ERROR_VOLUME_CHANGED)
-      return NULL;
-
    rc = FSH_GETVOLPARM(hVBP, &pvpfsi, &pvpfsd);
    if (rc)
       {
@@ -3537,6 +3531,16 @@ PVOLINFO pVolInfo;
 
    if (! pVolInfo)
       return NULL;
+
+   // prevent blocking in FSH_SETVOLUME when remounting after format
+   if (! pVolInfo->fFormatInProgress)
+      {
+      // check if volume is present
+      rc = FSH_SETVOLUME(hVBP, 0);
+
+      if (rc == ERROR_VOLUME_CHANGED)
+         return NULL;
+      }
 
    rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pVolInfo, sizeof (VOLINFO));
    if (rc)
