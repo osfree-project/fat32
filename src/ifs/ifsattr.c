@@ -266,8 +266,8 @@ USHORT rc;
                {
                pfStatus->cbFile = DirEntry.ulFileSize;
                pfStatus->cbFileAlloc =
-                  (pfStatus->cbFile / pVolInfo->usClusterSize) * pVolInfo->usClusterSize +
-                  (pfStatus->cbFile % pVolInfo->usClusterSize ? pVolInfo->usClusterSize : 0);
+                  (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
                }
 
             pfStatus->attrFile = (USHORT)DirEntry.bAttr;
@@ -290,8 +290,8 @@ USHORT rc;
                {
                pfStatus->cbFile = DirEntry.ulFileSize;
                pfStatus->cbFileAlloc =
-                  (pfStatus->cbFile / pVolInfo->usClusterSize) * pVolInfo->usClusterSize +
-                  (pfStatus->cbFile % pVolInfo->usClusterSize ? pVolInfo->usClusterSize : 0);
+                  (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
                }
 
             pfStatus->attrFile = (USHORT)DirEntry.bAttr;

@@ -149,7 +149,7 @@ ULONG    ulStartOfData;
 ULONG    ulCurFatSector;
 PBYTE    pbFatSector;
 ULONG    ulTotalClusters;
-USHORT   usClusterSize;
+ULONG    ulClusterSize;
 USHORT   hVBP;
 PVOID    pFindInfo;
 BYTE     bDrive;

@@ -168,8 +168,8 @@ static BYTE szShortName[13];
             if (!(pDir->bAttr & FILE_DIRECTORY))
                {
 
-               ulClustersNeeded = pDir->ulFileSize / pDrive->usClusterSize +
-                  (pDir->ulFileSize % pDrive->usClusterSize ? 1:0);
+               ulClustersNeeded = pDir->ulFileSize / pDrive->ulClusterSize +
+                  (pDir->ulFileSize % pDrive->ulClusterSize ? 1:0);
                ulClustersUsed = GetClusterCount(pDrive,(ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster);
                ulTotalClusters += ulClustersUsed;
                if (ulClustersNeeded != ulClustersUsed)

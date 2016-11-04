@@ -231,7 +231,7 @@ PBYTE    pbCluster;
       goto FS_MKDIREXIT;
       }
 
-   pbCluster = malloc(pVolInfo->usClusterSize);
+   pbCluster = gdtAlloc(pVolInfo->ulClusterSize, FALSE);
    if (!pbCluster)
       {
       SetNextCluster( pVolInfo, ulCluster, 0L);
@@ -239,7 +239,8 @@ PBYTE    pbCluster;
       goto FS_MKDIREXIT;
       }
 
-   memset(pbCluster, 0, pVolInfo->usClusterSize);
+   memset(pbCluster, 0, pVolInfo->ulClusterSize - 1);
+   pbCluster[pVolInfo->ulClusterSize - 1] = 0;
 
    pDir = (PDIRENTRY)pbCluster;
 
@@ -250,7 +251,7 @@ PBYTE    pbCluster;
    rc = MakeDirEntry(pVolInfo, ulDirCluster, (PDIRENTRY)pbCluster, pszFile);
    if (rc)
       {
-      free(pbCluster);
+      freeseg(pbCluster);
       goto FS_MKDIREXIT;
       }
    memset(pDir->bFileName, 0x20, 11);
@@ -273,7 +274,7 @@ PBYTE    pbCluster;
    pDir->bAttr = FILE_DIRECTORY;
 
    rc = WriteCluster( pVolInfo, ulCluster, pbCluster, DVIO_OPWRTHRU);
-   free(pbCluster);
+   freeseg(pbCluster);
    if (rc)
       goto FS_MKDIREXIT;
 
@@ -386,7 +387,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_RMDIREXIT;
       }
 
-   pDir = malloc(pVolInfo->usClusterSize);
+   pDir = gdtAlloc(pVolInfo->ulClusterSize, FALSE);
    if (!pDir)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -401,13 +402,14 @@ BYTE     szLongName[ FAT32MAXPATH ];
       rc = ReadCluster( pVolInfo, ulNextCluster, pDir, 0);
       if (rc)
          {
-         free(pDir);
+         freeseg(pDir);
          goto FS_RMDIREXIT;
          }
 
       pWork = pDir;
-      pMax = (PDIRENTRY)((PBYTE)pDir + pVolInfo->usClusterSize);
-      while (pWork < pMax)
+      pMax = (PDIRENTRY)((PBYTE)pDir + pVolInfo->ulClusterSize - sizeof(DIRENTRY));
+      //while (pWork < pMax)
+      while (pWork <= pMax)
          {
          if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY &&
              pWork->bAttr != FILE_LONGNAME)
@@ -417,12 +419,15 @@ BYTE     szLongName[ FAT32MAXPATH ];
                usFileCount++;
             }
          pWork++;
+         if (pWork == pDir)
+            // pWork is wrapped from the end of 64k segment to the beginning
+            break;
          }
       ulNextCluster = GetNextCluster( pVolInfo, ulNextCluster);
       if (!ulNextCluster)
          ulNextCluster = FAT_EOF;
       }
-   free(pDir);
+   freeseg(pDir);
    if (usFileCount)
       {
       Message("Cannot RMDIR, contains %u files", usFileCount);
@@ -456,4 +461,3 @@ FS_RMDIREXIT:
 
    return rc;
 }
-

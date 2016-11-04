@@ -419,11 +419,11 @@ ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
 ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
 {
    ULONG dummy1 = 0, dummy2 = 0;
-   ULONG ulDataSize = pCD->usClusterSize;
+   ULONG ulDataSize = pCD->ulClusterSize;
    ULONG rc;
 
 //   return DosDevIOCtl2(
-//     (PVOID)pbCluster, pCD->usClusterSize,
+//     (PVOID)pbCluster, pCD->ulClusterSize,
 //      (PVOID)&ulCluster, sizeof(ulCluster),
 //      FAT32_READCLUSTER, IOCTL_FAT32, pCD->hDisk);
    rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_READCLUSTER,
@@ -515,7 +515,7 @@ ULONG  dummy = 0;
    pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
      pCD->BootSect.bpb.BigSectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
 
-   pCD->usClusterSize = pCD->BootSect.bpb.BytesPerSector * pCD->BootSect.bpb.SectorsPerCluster;
+   pCD->ulClusterSize = pCD->BootSect.bpb.BytesPerSector * pCD->BootSect.bpb.SectorsPerCluster;
    pCD->ulTotalClusters = (pCD->BootSect.bpb.BigTotalSectors - pCD->ulStartOfData) / pCD->BootSect.bpb.SectorsPerCluster;
 
    ulBytes = pCD->ulTotalClusters / 8 +
@@ -604,39 +604,39 @@ ULONG  dummy = 0;
       }
 
    iShowMessage(pCD, 1361, 1,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->usClusterSize);
+      TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
    if (pCD->ulBadClusters)
       iShowMessage(pCD, 1362, 1,
-         TYPE_DOUBLE, (DOUBLE)pCD->ulBadClusters * pCD->usClusterSize);
+         TYPE_DOUBLE, (DOUBLE)pCD->ulBadClusters * pCD->ulClusterSize);
    iShowMessage(pCD, 1363, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulHiddenClusters * pCD->usClusterSize,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulHiddenClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulHiddenFiles);
    iShowMessage(pCD, 1364, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->usClusterSize,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulTotalDirs);
    iShowMessage(pCD, 1819, 1,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->usClusterSize);
+      TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->ulClusterSize);
    iShowMessage(pCD, 1365, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->usClusterSize,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulUserFiles);
 
    if (pCD->ulRecoveredClusters)
       iShowMessage(pCD, 1365, 2,
-         TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->usClusterSize,
+         TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->ulClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
 
    if (pCD->ulLostClusters)
       iShowMessage(pCD, 1359, 1,
-         TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->usClusterSize);
+         TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->ulClusterSize);
 
    iShowMessage(pCD, 1368, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->usClusterSize,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize,
       TYPE_LONG, 0L);
 
    printf("\n");
 
    iShowMessage(pCD, 1304, 1,
-      TYPE_LONG, (ULONG)pCD->usClusterSize);
+      TYPE_LONG, (ULONG)pCD->ulClusterSize);
 
    iShowMessage(pCD, 1305, 1,
       TYPE_LONG, pCD->ulTotalClusters);
@@ -1196,8 +1196,8 @@ ULONG dummy = 0;
 
             if (!(pDir->bAttr & FILE_DIRECTORY))
                {
-               ulClustersNeeded = pDir->ulFileSize / pCD->usClusterSize +
-                  (pDir->ulFileSize % pCD->usClusterSize ? 1:0);
+               ulClustersNeeded = pDir->ulFileSize / pCD->ulClusterSize +
+                  (pDir->ulFileSize % pCD->ulClusterSize ? 1:0);
                ulClustersUsed = GetClusterCount(pCD,(ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster, pbPath);
                pEA = strstr(pbPath, EA_EXTENTION);
                if (f32Parms.fEAS && pEA && pDir->ulFileSize)
@@ -1305,7 +1305,7 @@ ULONG dummy = 0;
                      if (lastchar(fs.szFileName) != '\\')
                         strcat(fs.szFileName, "\\");
                      strcat(fs.szFileName, MakeName(pDir, szShortName, sizeof(szShortName)));
-                     fs.ulFileSize = ulClustersUsed * pCD->usClusterSize;
+                     fs.ulFileSize = ulClustersUsed * pCD->ulClusterSize;
                      //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETFILESIZE, 
                      //          (PVOID)&fs, sizeof(fs), &dummy,
                      //          NULL, 0, NULL);
@@ -1574,7 +1574,7 @@ BOOL     fFound;
 
    pDir = NULL;
 
-   pDirStart = malloc(pCD->usClusterSize);
+   pDirStart = malloc(pCD->ulClusterSize);
    if (!pDirStart)
       return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -1584,7 +1584,7 @@ BOOL     fFound;
       {
       ReadCluster(pCD, ulCluster, (PBYTE)pDirStart);
       pDir = pDirStart;
-      pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->usClusterSize);
+      pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->ulClusterSize);
       while (pDir < pDirEnd)
          {
          if ((pDir->bAttr & 0x0F) == FILE_VOLID && pDir->bFileName[0] != DELETED_ENTRY)

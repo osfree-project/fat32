@@ -68,7 +68,7 @@ typedef unsigned short APIRET;
 #define FP_OFF(fp) (*((unsigned _far *)&(fp)))
 #endif
 
-#define FAT32_VERSION "0.10a7"
+#define FAT32_VERSION "0.10a8"
 
 #ifndef __MSC__
 #define _enable()	_asm { sti }
@@ -86,7 +86,7 @@ typedef unsigned short APIRET;
 #define FAT_ASSIGN_NEW 0xFFFFFFFF
 #define FAT_NOTUSED    0x00000000
 #define SECTOR_SIZE    512
-#define MAX_CLUSTER_SIZE 32768
+#define MAX_CLUSTER_SIZE 65536
 #define MAX_RASECTORS  128
 #define MAX_DRIVES     10
 #define DELETED_ENTRY  0xE5
@@ -349,7 +349,7 @@ BOOTSECT    BootSect;
 BOOTFSINFO  FSInfo;
 ULONG       ulStartOfData;
 ULONG       ulActiveFatStart;
-USHORT      usClusterSize;
+ULONG       ulClusterSize;
 ULONG       ulTotalClusters;
 ULONG       ulCurFATSector;
 BYTE        pbFATSector[512];

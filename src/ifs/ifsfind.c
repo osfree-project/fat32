@@ -41,6 +41,8 @@ APIRET rc = 0;
 
    if (pFindInfo->pInfo)
       {
+      if (pFindInfo->pInfo->pDirEntries)
+         freeseg(pFindInfo->pInfo->pDirEntries);
       if (RemoveFindEntry(pVolInfo, pFindInfo->pInfo))
          free(pFindInfo->pInfo);
       pFindInfo->pInfo = NULL;
@@ -180,7 +182,7 @@ PROCINFO ProcInfo;
       }
 
    ulNeededSpace = sizeof (FINFO) + (usNumClusters - 1) * sizeof (ULONG);
-   ulNeededSpace += pVolInfo->usClusterSize;
+   //ulNeededSpace += pVolInfo->ulClusterSize;
 
    GetProcInfo(&ProcInfo, sizeof ProcInfo);
 
@@ -193,6 +195,15 @@ PROCINFO ProcInfo;
       }
 
    memset(pFindInfo->pInfo, 0, (size_t)ulNeededSpace);
+   //memset(pFindInfo->pInfo->pDirEntries, 0, (size_t)pVolInfo->ulClusterSize);
+   pFindInfo->pInfo->pDirEntries = (PDIRENTRY)gdtAlloc(pVolInfo->ulClusterSize, FALSE);
+
+   if (!pFindInfo->pInfo->pDirEntries)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto FS_FINDFIRSTEXIT;
+      }
+
    if (!pVolInfo->pFindInfo)
       pVolInfo->pFindInfo = pFindInfo->pInfo;
    else
@@ -204,12 +215,12 @@ PROCINFO ProcInfo;
       }
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
-   pFindInfo->usEntriesPerCluster = pVolInfo->usClusterSize / sizeof (DIRENTRY);
+   pFindInfo->usEntriesPerCluster = pVolInfo->ulClusterSize / sizeof (DIRENTRY);
    pFindInfo->usClusterIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
    pFindInfo->usTotalClusters = usNumClusters;
-   pFindInfo->pInfo->pDirEntries =
-      (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
+   //pFindInfo->pInfo->pDirEntries =
+   //   (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
 
    if (f32Parms.fMessageActive & LOG_FIND)
       Message("pInfo at %lX, pDirEntries at %lX",
@@ -221,7 +232,7 @@ PROCINFO ProcInfo;
    strcpy(pFindInfo->pInfo->szSearch, pSearch);
    FSH_UPPERCASE(pFindInfo->pInfo->szSearch, sizeof pFindInfo->pInfo->szSearch, pFindInfo->pInfo->szSearch);
 
-   pFindInfo->ulMaxEntry   = ((ULONG)pVolInfo->usClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+   pFindInfo->ulMaxEntry   = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
    if (!GetCluster(pVolInfo, pFindInfo, 0))
       {
       rc = ERROR_SYS_INTERNAL;
@@ -602,8 +613,8 @@ USHORT usClusterIndex;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
-                     (pfFind->cbFile / pVolInfo->usClusterSize) * pVolInfo->usClusterSize +
-                     (pfFind->cbFile % pVolInfo->usClusterSize ? pVolInfo->usClusterSize : 0);
+                     (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 
                   pfFind->attrFile = (USHORT)pDir->bAttr;
                   pfFind->cchName = (BYTE)strlen(szLongName);
@@ -627,8 +638,8 @@ USHORT usClusterIndex;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
-                     (pfFind->cbFile / pVolInfo->usClusterSize)  +
-                     (pfFind->cbFile % pVolInfo->usClusterSize ? 1 : 0);
+                     (pfFind->cbFile / pVolInfo->ulClusterSize)  +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? 1 : 0);
                   if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
@@ -662,8 +673,8 @@ USHORT usClusterIndex;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
-                     (pfFind->cbFile / pVolInfo->usClusterSize) * pVolInfo->usClusterSize +
-                     (pfFind->cbFile % pVolInfo->usClusterSize ? pVolInfo->usClusterSize : 0);
+                     (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
                   pfFind->attrFile = (USHORT)pDir->bAttr;
                   *ppData = (PBYTE)(pfFind + 1);
                   (*pcbData) -= *ppData - pStart;

@@ -123,13 +123,13 @@ ULONG GetFreeSpace(PCDINFO pCD);
 BOOL  MarkDiskStatus(PCDINFO pCD, BOOL fClean);
 ULONG FindDirCluster(PCDINFO pCD, PSZ pDir, USHORT usCurDirEnd, USHORT usAttrWanted, PSZ *pDirEnd);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
-USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
-USHORT MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS);
+APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
+APIRET MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS);
 USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark);
 BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
 USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
 BYTE GetVFATCheckSum(PDIRENTRY pDir);
-USHORT MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
+APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
 USHORT DBCSStrlen( const PSZ pszStr );
 BOOL IsDBCSLead( UCHAR uch );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
@@ -143,7 +143,7 @@ USHORT GetFreeEntries(PDIRENTRY pDirBlock, USHORT usSize);
 PDIRENTRY CompactDir(PDIRENTRY pStart, USHORT usSize, USHORT usEntriesNeeded);
 VOID MarkFreeEntries(PDIRENTRY pDirBlock, USHORT usSize);
 ULONG GetFreeCluster(PCDINFO pCD);
-USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
+APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName);
 BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster);
@@ -181,7 +181,7 @@ BOOL GetDiskStatus(PCDINFO pCD)
 ******************************************************************/
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector)
 {
-   ULONG rc;
+   APIRET rc;
 
    if (pCD->ulCurFATSector == ulSector)
       return 0;
@@ -205,7 +205,7 @@ ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector)
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
 {
    USHORT usFat;
-   ULONG rc;
+   APIRET rc;
 
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("WriteFatSector");
@@ -483,7 +483,7 @@ BYTE   bCheck;
          pszPath += 2;
       }
 
-   pDirStart = malloc(pCD->usClusterSize);
+   pDirStart = malloc(pCD->ulClusterSize);
    if (!pDirStart)
       //{
       //Message("FAT32: Not enough memory for cluster in FindPathCluster");
@@ -539,7 +539,7 @@ BYTE   bCheck;
          {
          ReadCluster(pCD, ulCluster, pDirStart);
          pDir    = pDirStart;
-         pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->usClusterSize);
+         pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->ulClusterSize);
 
 #ifdef CALL_YIELD
          //Yield();
@@ -674,11 +674,11 @@ USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark)
 /************************************************************************
 *
 ************************************************************************/
-USHORT MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
+APIRET MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
 {
    ULONG ulCluster;
    DIRENTRY OldEntry, NewEntry;
-   USHORT rc;
+   APIRET rc;
 
    ulCluster = FindPathCluster(pCD, ulDirCluster, pszFileName, &OldEntry, NULL);
    if (ulCluster == FAT_EOF)
@@ -703,7 +703,7 @@ USHORT MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
 /************************************************************************
 *
 ************************************************************************/
-USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName) //, USHORT usIOMode)
+APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName) //, USHORT usIOMode)
 {
    PDIRENTRY pDirectory;
    PDIRENTRY pDir2;
@@ -716,7 +716,7 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
    ULONG     ulPrevCluster;
    ULONG     ulNextCluster;
    PDIRENTRY pLNStart;
-   USHORT    rc;
+   APIRET    rc;
    USHORT    usClusterCount;
    BOOL      fNewCluster;
 
@@ -762,14 +762,14 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
          return ERROR_INVALID_PARAMETER;
       }
 
-   pDirectory = (PDIRENTRY)malloc(2 * pCD->usClusterSize);
+   pDirectory = (PDIRENTRY)malloc(2 * pCD->ulClusterSize);
    if (!pDirectory)
       return ERROR_NOT_ENOUGH_MEMORY;
 
-   memset(pDirectory, 0, pCD->usClusterSize);
-   pDir2 =(PDIRENTRY)((PBYTE)pDirectory + pCD->usClusterSize);
-   memset(pDir2, 0, pCD->usClusterSize);
-   pMax = (PDIRENTRY)((PBYTE)pDirectory + pCD->usClusterSize * 2);
+   memset(pDirectory, 0, pCD->ulClusterSize);
+   pDir2 =(PDIRENTRY)((PBYTE)pDirectory + pCD->ulClusterSize);
+   memset(pDir2, 0, pCD->ulClusterSize);
+   pMax = (PDIRENTRY)((PBYTE)pDirectory + pCD->ulClusterSize * 2);
 
    ulCluster = ulDirCluster;
    pLNStart = NULL;
@@ -794,7 +794,7 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
          }
       else
          {
-         memset(pDir2, 0, pCD->usClusterSize);
+         memset(pDir2, 0, pCD->ulClusterSize);
          fNewCluster = FALSE;
          }
 
@@ -911,14 +911,14 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
             break;
 
          case MODIFY_DIR_INSERT:
-            if (ulPrevCluster != FAT_EOF && GetFreeEntries(pDirectory, pCD->usClusterSize * 2) >= usEntriesNeeded)
+            if (ulPrevCluster != FAT_EOF && GetFreeEntries(pDirectory, pCD->ulClusterSize * 2) >= usEntriesNeeded)
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                //if (f32Parms.fMessageActive & LOG_FUNCS)
                //   Message(" Inserting entry into 2 clusters");
 
-               pWork = (PDIRENTRY)CompactDir(pDirectory, pCD->usClusterSize * 2, usEntriesNeeded);
+               pWork = (PDIRENTRY)CompactDir(pDirectory, pCD->ulClusterSize * 2, usEntriesNeeded);
                pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
 
@@ -939,7 +939,7 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                break;
                }
 
-            usFreeEntries = GetFreeEntries(pDir2, pCD->usClusterSize);
+            usFreeEntries = GetFreeEntries(pDir2, pCD->ulClusterSize);
             if (usFreeEntries >= usEntriesNeeded)
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
@@ -947,7 +947,7 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                //if (f32Parms.fMessageActive & LOG_FUNCS)
                //   Message(" Inserting entry into 1 cluster");
 
-               pWork = (PDIRENTRY)CompactDir(pDir2, pCD->usClusterSize, usEntriesNeeded);
+               pWork = (PDIRENTRY)CompactDir(pDir2, pCD->ulClusterSize, usEntriesNeeded);
                pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
@@ -961,7 +961,7 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                }
             else if (usFreeEntries > 0)
                {
-               MarkFreeEntries(pDir2, pCD->usClusterSize);
+               MarkFreeEntries(pDir2, pCD->ulClusterSize);
                rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
                if (rc)
                   {
@@ -976,9 +976,9 @@ USHORT ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
       if (ulCluster != FAT_EOF)
          {
          ulPrevCluster = ulCluster;
-         memmove(pDirectory, pDir2, pCD->usClusterSize);
+         memmove(pDirectory, pDir2, pCD->ulClusterSize);
          if (pLNStart)
-            pLNStart = (PDIRENTRY)((PBYTE)pLNStart - pCD->usClusterSize);
+            pLNStart = (PDIRENTRY)((PBYTE)pLNStart - pCD->ulClusterSize);
 
 
          ulNextCluster = GetNextCluster(pCD, ulCluster);
@@ -1138,7 +1138,7 @@ BYTE GetVFATCheckSum(PDIRENTRY pDir)
 /******************************************************************
 *
 ******************************************************************/
-USHORT MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName)
+APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName)
 {
    USHORT usLongName;
    PSZ pLastDot;
@@ -1147,7 +1147,7 @@ USHORT MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    USHORT usIndex;
    BYTE szShortName[12];
    PSZ  pszUpper;
-   USHORT rc;
+   APIRET rc;
 
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("MakeShortName for %s, dircluster %lu",
@@ -1560,12 +1560,12 @@ ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 /******************************************************************
 *
 ******************************************************************/
-ULONG SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
+APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 {
    PULONG pulCluster;
    BOOL fUpdateFSInfo;
    ULONG ulReturn;
-   USHORT rc;
+   APIRET rc;
 
    ulReturn = ulNext;
    if (ulCluster == FAT_ASSIGN_NEW)
@@ -1810,7 +1810,7 @@ ULONG GetFreeCluster(PCDINFO pCD)
 /******************************************************************
 *
 ******************************************************************/
-USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
+APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 {
    ULONG ulDirCluster;
    PSZ   pszFile;
@@ -1819,7 +1819,7 @@ USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    DIRENTRY DirNew;
    ULONG ulClustersNeeded;
    ULONG ulClustersUsed;
-   USHORT rc;
+   APIRET rc;
 
    ulDirCluster = FindDirCluster(pCD,
       //NULL,
@@ -1838,8 +1838,8 @@ USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    if (!ulCluster)
       pFileSize->ulFileSize = 0L;
 
-   ulClustersNeeded = pFileSize->ulFileSize / pCD->usClusterSize;
-   if (pFileSize->ulFileSize % pCD->usClusterSize)
+   ulClustersNeeded = pFileSize->ulFileSize / pCD->ulClusterSize;
+   if (pFileSize->ulFileSize % pCD->ulClusterSize)
       ulClustersNeeded++;
 
    if (pFileSize->ulFileSize > 0 )
@@ -1856,7 +1856,7 @@ USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
          ulClustersUsed++;
          }
       if (ulCluster == FAT_EOF)
-         pFileSize->ulFileSize = ulClustersUsed * pCD->usClusterSize;
+         pFileSize->ulFileSize = ulClustersUsed * pCD->ulClusterSize;
       else
          SetNextCluster(pCD, ulCluster, FAT_EOF);
       }
@@ -1916,7 +1916,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    while (ulCluster != FAT_EOF)
       {
       ULONG ulNextCluster;
-      DirEntry.ulFileSize += pCD->usClusterSize;
+      DirEntry.ulFileSize += pCD->ulClusterSize;
       ulNextCluster = GetNextCluster(pCD, ulCluster);
       if (!ulNextCluster)
          {
@@ -1978,7 +1978,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
    ULONG ulSector;
    PULONG pulCluster;
    ULONG ulClustersFreed;
-   ULONG rc;
+   APIRET rc;
 
    if (!ulCluster)
       return TRUE;

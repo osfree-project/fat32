@@ -24,7 +24,7 @@ PBYTE  pbFATSector[SECTOR_SIZE];
 ULONG  ulCurFATSector;
 PBYTE  pbCluster;
 ULONG  ulCurCluster;
-USHORT usClusterSize;
+ULONG  ulClusterSize;
 ULONG  ulStartOfData;
 ULONG  ulTotalClusters;
 PBYTE  pFatBits;

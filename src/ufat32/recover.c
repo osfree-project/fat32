@@ -134,7 +134,7 @@ int recover_thread(int argc, char *argv[])
    pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
      pCD->BootSect.bpb.BigSectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
 
-   pCD->usClusterSize = pCD->BootSect.bpb.BytesPerSector * pCD->BootSect.bpb.SectorsPerCluster;
+   pCD->ulClusterSize = pCD->BootSect.bpb.BytesPerSector * pCD->BootSect.bpb.SectorsPerCluster;
    pCD->ulTotalClusters = (pCD->BootSect.bpb.BigTotalSectors - pCD->ulStartOfData) / pCD->BootSect.bpb.SectorsPerCluster;
 
    ulBytes = pCD->ulTotalClusters / 8 +

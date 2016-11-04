@@ -580,8 +580,8 @@ USHORT usClustersUsed;
       return ERROR_EAS_DIDNT_FIT;
       }
 
-   usClustersUsed = (USHORT)(pFEAL->cbList / pVolInfo->usClusterSize);
-   if (pFEAL->cbList % pVolInfo->usClusterSize)
+   usClustersUsed = (USHORT)(pFEAL->cbList / pVolInfo->ulClusterSize);
+   if (pFEAL->cbList % pVolInfo->ulClusterSize)
       usClustersUsed++;
 
    /*
@@ -592,7 +592,7 @@ USHORT usClustersUsed;
       Message("usReadEAS: %u clusters used", usClustersUsed);
 
    usClustersUsed--;
-   pRead += pVolInfo->usClusterSize;
+   pRead += pVolInfo->ulClusterSize;
 
    while (usClustersUsed)
       {
@@ -618,7 +618,7 @@ USHORT usClustersUsed;
          return rc;
          }
       usClustersUsed--;
-      pRead += pVolInfo->usClusterSize;
+      pRead += pVolInfo->ulClusterSize;
       }
    *ppFEAL = pFEAL;
 
@@ -686,8 +686,8 @@ PFEA     pFea, pFeaEnd;
    if (rc)
       return rc;
 
-   usClustersNeeded = (USHORT)pFEAL->cbList / pVolInfo->usClusterSize;
-   if (pFEAL->cbList % pVolInfo->usClusterSize)
+   usClustersNeeded = (USHORT)pFEAL->cbList / pVolInfo->ulClusterSize;
+   if (pFEAL->cbList % pVolInfo->ulClusterSize)
       usClustersNeeded++;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
@@ -754,7 +754,7 @@ PFEA     pFea, pFeaEnd;
       if (rc)
          return rc;
       usClustersNeeded --;
-      pWrite += pVolInfo->usClusterSize;
+      pWrite += pVolInfo->ulClusterSize;
 
       if (usClustersNeeded)
          {

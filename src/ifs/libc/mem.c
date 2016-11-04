@@ -2,6 +2,8 @@
 //#include <string.h>
 //#include <ctype.h>
 
+#include <stdlib.h> // for size_t
+
 //#include "setbits.h"
 
 //#pragma data_seg ( DATA );
@@ -12,7 +14,7 @@ unsigned char _HShift = 3;
 
 //#pragma data_seg ( );
 
-void _far *memset(void _far *dst, char c, int len)
+void _far *memset(void _far *dst, char c, size_t len)
 {
     char _far *p;
 
@@ -22,7 +24,7 @@ void _far *memset(void _far *dst, char c, int len)
     return( dst );
 }
 
-void _far *memmove (void _far *_to, const void _far *_from, int _len)
+void _far *memmove (void _far *_to, const void _far *_from, size_t _len)
 {
 
     char _far *from = (char _far *)_from;
@@ -32,6 +34,7 @@ void _far *memmove (void _far *_to, const void _far *_from, int _len)
     {
         return( to );
     }
+
     if ( from < to  &&  from + _len > to )
     {
         to += _len;
@@ -54,7 +57,7 @@ void _far *memmove (void _far *_to, const void _far *_from, int _len)
     return( to );
 }
 
-void _far *memcpy(void _far *in_dst, void _far *in_src, int len)
+void _far *memcpy(void _far *in_dst, void _far *in_src, size_t len)
 {
     char _far *dst = in_dst;
     const char _far *src = in_src;
@@ -66,7 +69,7 @@ void _far *memcpy(void _far *in_dst, void _far *in_src, int len)
 }
 
 
-int memcmp(void _far *in_s1, void _far *in_s2, int len)
+int memcmp(void _far *in_s1, void _far *in_s2, size_t len)
 {
     const char _far *s1 = in_s1;
     const char _far *s2 = in_s2;
@@ -82,7 +85,7 @@ int memcmp(void _far *in_s1, void _far *in_s2, int len)
 }
 
 
-int memicmp( const void _far *in_s1, const void _far *in_s2, int len )
+int memicmp( const void _far *in_s1, const void _far *in_s2, size_t len )
 {
     const unsigned char _far *s1 = (const unsigned char _far *)in_s1;
     const unsigned char _far *s2 = (const unsigned char _far *)in_s2;
@@ -111,7 +114,7 @@ char _far *strcpy(char _far *s, const char _far *t )
     return( s );
 }
 
-int strlen(char _far *s)
+size_t strlen(char _far *s)
 {
     const char _far *p;
 
@@ -121,7 +124,7 @@ int strlen(char _far *s)
     return( p - s );
 }
 
-int strnicmp(const char _far *s, const char _far *t, int n)
+int strnicmp(const char _far *s, const char _far *t, size_t n)
 {
     unsigned char c1;
     unsigned char c2;
@@ -147,7 +150,7 @@ int strnicmp(const char _far *s, const char _far *t, int n)
     }
 }
 
-char _far *strncpy(char _far *dst, char _far *src, int len)
+char _far *strncpy(char _far *dst, char _far *src, size_t len)
 {
     char _far *ret;
 
@@ -164,7 +167,7 @@ char _far *strncpy(char _far *dst, char _far *src, int len)
     return( ret );
 }
 
-void _far *memchr( const void _far *s, char c, int n )
+void _far *memchr( const void _far *s, char c, size_t n )
 {
     const char _far *cs = s;
 

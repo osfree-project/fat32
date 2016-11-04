@@ -278,7 +278,7 @@ int far pascal _loadds FS_SETSWAP(
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo)
 {
    ULONG ulCluster;
-   //ULONG ulClusterSize = pVolInfo->usClusterSize;
+   //ULONG ulClusterSize = pVolInfo->ulClusterSize;
    //int i;
 
    // get cluster at the ulOffset offset

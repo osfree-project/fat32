@@ -558,7 +558,7 @@ USHORT    usBlocks;
 
    pDrive->ulCurFATSector = -1L;
    pDrive->ulCurCluster = FAT_EOF;
-   pDrive->usClusterSize = pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector;
+   pDrive->ulClusterSize = pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector;
    pDrive->ulStartOfData = pDrive->bpb.ReservedSectors +
                pDrive->bpb.BigSectorsPerFat * pDrive->bpb.NumberOfFATs;
    pDrive->ulTotalClusters = (pDrive->bpb.BigTotalSectors - pDrive->ulStartOfData) / pDrive->bpb.SectorsPerCluster;
