@@ -1298,11 +1298,14 @@ ULONG  ulBytesPerCluster;
         char far *pBufPosition = pData;
 
         /*
-            No writes if file is larger than 7FFFFFFF (= 2Gb)
+            No writes if file is larger than 7FFFFFFF (= 2Gb, or = 4 Gb with /largefiles)
         */
-        if (psffsi->sfi_position >= LONG_MAX)
+        if ( (! f32Parms.fLargeFiles && (pos + usBytesToWrite >= (LONGLONG)LONG_MAX   ||
+                                        size + usBytesToWrite >= (LONGLONG)LONG_MAX)) ||
+            (f32Parms.fLargeFiles && (pos + usBytesToWrite >= (LONGLONG)ULONG_MAX     ||
+                                      size + usBytesToWrite >= (LONGLONG)ULONG_MAX)) )
         {
-            rc = NO_ERROR;
+            rc = ERROR_CANNOT_COPY;
             goto FS_WRITEEXIT;
         }
 
