@@ -64,8 +64,10 @@ fat32.ols: $(OBJS)
     FS_ATTACH, &
 #      Not yet implemented
     FS_CANCELLOCKREQUEST, &
+    FS_CANCELLOCKREQUESTL, &
     FS_CHDIR, &
     FS_CHGFILEPTR, &
+    FS_CHGFILEPTRL, &
     FS_CLOSE, &
     FS_COMMIT, &
     FS_COPY, &
@@ -78,6 +80,7 @@ fat32.ols: $(OBJS)
     FS_FILEIO, &
 #      Not yet implemented
     FS_FILELOCKS, &
+    FS_FILELOCKSL, &
     FS_FINDCLOSE, &
     FS_FINDFIRST, &
     FS_FINDFROMNAME, &
@@ -97,6 +100,7 @@ fat32.ols: $(OBJS)
     FS_MOUNT, &
     FS_MOVE, &
     FS_NEWSIZE, &
+    FS_NEWSIZEL, &
     FS_NMPIPE, &
     FS_OPENCREATE, &
     FS_OPENPAGEFILE, &

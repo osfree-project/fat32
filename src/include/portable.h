@@ -175,6 +175,11 @@ typedef FLAGS *         PFLAGS ;    /* pf */
 typedef void _far *     PFVOID ;    /* p Far Pointer to near void */
 
 
+#ifdef __16BITS__
+typedef long long          LONGLONG;
+typedef unsigned long long ULONGLONG;
+#endif
+
 #endif
 
 

@@ -9,6 +9,7 @@
 #define INCL_DOSDEVIOCTL
 #define INCL_DOSDEVICES
 #define INCL_DOSERRORS
+#define INCL_LONGLONG
 
 #include "os2.h"
 #include "portable.h"
@@ -811,7 +812,12 @@ POPENINFO pOpenInfo;
 
          /* if a less volume than 2GB, converts a size from in bytes to in sectors. */
          if(!pOpenInfo->fLargeVolume)
+            {
             pArgDat->sf.psffsi->sfi_size /= SECTOR_SIZE;
+
+            if (f32Parms.fLargeFiles)
+               pArgDat->sf.psffsi->sfi_sizel /= SECTOR_SIZE;
+            }
 
          pOpenInfo->fSectorMode = TRUE;
          rc = 0;
@@ -1449,6 +1455,13 @@ PSZ  cmd = NULL;
             }
          }
 
+      p = strstr(szArguments, "/largefiles");
+      if (!p)
+         p = strstr(szArguments, "-largefiles");
+      if (p)
+         {
+         f32Parms.fLargeFiles = TRUE;
+         }
 #if 1
    if (!DosGetInfoSeg(&sGlob, &sLoc))
 #else
@@ -1475,6 +1488,12 @@ PSZ  cmd = NULL;
 
    /* disk autocheck */
    autocheck(cmd);
+
+   if (f32Parms.fLargeFiles)
+      {
+      // Support for files > 2 GB
+      FS_ATTRIBUTE |= FSA_LARGEFILE;
+      }
 
    _asm pop es;
 
@@ -3522,6 +3541,7 @@ INT rc;
 struct vpfsi far * pvpfsi;
 struct vpfsd far * pvpfsd;
 PVOLINFO pVolInfo;
+PULONG p;
 
    rc = FSH_GETVOLPARM(hVBP, &pvpfsi, &pvpfsd);
    if (rc)
@@ -4178,6 +4198,8 @@ int cdecl vsprintf(char * pszBuffer, const char * pszFormat, va_list va)
 {
 PSZ p;
 BOOL fLong = FALSE;
+BOOL fLongLong = FALSE;
+ULONGLONG ullValue;
 ULONG ulValue;
 USHORT usValue;
 PSZ   pszValue;
@@ -4195,10 +4217,19 @@ BYTE  bToken;
       pszFormat = p;
       p++;
       fLong = FALSE;
+      fLongLong = FALSE;
       if (*p == 'l')
          {
-         fLong = TRUE;
-         p++;
+         if (p[1] == 'l')
+            {
+            fLongLong = TRUE;
+            p += 2;
+            }
+            else
+            {
+            fLong = TRUE;
+            p++;
+            }
          }
       bToken = *p;
       if (*p)
@@ -4211,28 +4242,38 @@ BYTE  bToken;
             break;
          case 'd':
          case 'u':
-            if (fLong)
+            if (fLongLong)
+               ullValue = va_arg(va, unsigned long long);
+            else if (fLong)
+               {
                ulValue = va_arg(va, unsigned long);
+               ullValue = ulValue;
+               }
             else
                {
                usValue = va_arg(va, unsigned short);
-               ulValue = usValue;
+               ullValue = usValue;
                }
             if (bToken == 'u')
-               ultoa(ulValue, pszBuffer, 10);
+               ulltoa(ullValue, pszBuffer, 10);
             else
-               ltoa(ulValue, pszBuffer, 10);
+               lltoa(ullValue, pszBuffer, 10);
             break;
          case 'x':
          case 'X':
+            if (fLongLong)
+               ullValue = va_arg(va, unsigned long long);
             if (fLong)
+               {
                ulValue = va_arg(va, unsigned long);
+               ullValue = ulValue;
+               }
             else
                {
                usValue = va_arg(va, unsigned short);
-               ulValue = usValue;
+               ullValue = usValue;
                }
-            ultoa(ulValue, pszBuffer, 16);
+            ulltoa(ullValue, pszBuffer, 16);
             if (bToken == 'X')
                strupr(pszBuffer);
             break;
@@ -4728,7 +4769,7 @@ USHORT rc;
    return TRUE;
 }
 
-ULONG SeekToCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulPosition)
+ULONG SeekToCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONGLONG ullPosition)
 {
 ULONG  ulSector;
 PULONG pulCluster;
@@ -4739,7 +4780,7 @@ PULONG pulCluster;
    if (GetFatAccess(pVolInfo, "SeekToCluster"))
       return FAT_EOF;
 
-   while (ulCluster != FAT_EOF && ulPosition >= (ULONG)pVolInfo->ulClusterSize)
+   while (ulCluster != FAT_EOF && ullPosition >= (ULONGLONG)pVolInfo->ulClusterSize)
       {
       ulSector = ulCluster / 128;
 
@@ -4752,7 +4793,7 @@ PULONG pulCluster;
       if (ulCluster >= FAT_EOF2 && ulCluster <= FAT_EOF)
          ulCluster = FAT_EOF;
 
-      ulPosition -= pVolInfo->ulClusterSize;
+      ullPosition -= pVolInfo->ulClusterSize;
       }
    ReleaseFat(pVolInfo);
 
@@ -4960,7 +5001,6 @@ BOOL      fNewCluster;
          }
       }
 
-   //pDirectory = (PDIRENTRY)malloc(2 * pVolInfo->ulClusterSize);
    pDirectory = (PDIRENTRY)gdtAlloc(pVolInfo->ulClusterSize, FALSE);
    if (!pDirectory)
       {
@@ -4970,7 +5010,6 @@ BOOL      fNewCluster;
 
    memset(pDirectory, 0, pVolInfo->ulClusterSize - 1);
    *((char *)pDirectory + pVolInfo->ulClusterSize - 1) = 0;
-   //pDir2 =(PDIRENTRY)((PBYTE)pDirectory + pVolInfo->ulClusterSize);
    pDir2 = (PDIRENTRY)gdtAlloc(pVolInfo->ulClusterSize, FALSE);
    if (!pDir2)
       {
@@ -4979,7 +5018,6 @@ BOOL      fNewCluster;
       }
    memset(pDir2, 0, pVolInfo->ulClusterSize - 1);
    *((char *)pDir2 + pVolInfo->ulClusterSize - 1) = 0;
-   //pMax = (PDIRENTRY)((PBYTE)pDirectory + pVolInfo->ulClusterSize * 2);
    pMax = (PDIRENTRY)((PBYTE)pDir2 + pVolInfo->ulClusterSize - sizeof(DIRENTRY));
 
    ulCluster = ulDirCluster;
@@ -5057,7 +5095,6 @@ BOOL      fNewCluster;
                   }
                }
 
-            //if (pWork < pMax)
             if (pWork && pWork <= pMax)
                {
                switch (usMode)
@@ -5143,7 +5180,6 @@ BOOL      fNewCluster;
                if (f32Parms.fMessageActive & LOG_FUNCS)
                   Message(" Inserting entry into 2 clusters");
 
-               //pWork = CompactDir(pDirectory, pVolInfo->ulClusterSize * 2, usEntriesNeeded);
                pWork = CompactDir(pDirectory, pVolInfo->ulClusterSize, usEntriesNeeded);
                pWork = fSetLongName(pWork, pszLongName, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
@@ -5209,7 +5245,6 @@ BOOL      fNewCluster;
          memmove(pDirectory, pDir2, pVolInfo->ulClusterSize - 1);
          *((char *)pDirectory + pVolInfo->ulClusterSize - 1) = *((char *)pDir2 + pVolInfo->ulClusterSize - 1);
          if (pLNStart)
-            //pLNStart = (PDIRENTRY)((PBYTE)pLNStart - pVolInfo->ulClusterSize);
             pLNStart = pDirectory;
 
 
@@ -5271,7 +5306,6 @@ BOOL bLoop;
 
    pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize - sizeof(DIRENTRY));
    usCount = 0;
-   //bLoop = pMax == pDirBlock;
    bLoop = pMax == pDirBlock - 1;
    while (( pDirBlock <= pMax ) || bLoop )
       {
@@ -5295,14 +5329,11 @@ BOOL bLoop;
 
 
    pMax = (PDIRENTRY)((PBYTE)pStart + usSize - sizeof(DIRENTRY));
-   //bLoop = pMax == pStart;
    bLoop = pMax == pStart - 1;
    pFirstFree = pMax;
    usFreeEntries = 0;
-   //while (( pFirstFree != pStart ) || bLoop )
    while (( pFirstFree != pStart - 1 ) || bLoop )
       {
-      //if (!(pFirstFree-1)->bFileName[0])
       if (!pFirstFree->bFileName[0])
          usFreeEntries++;
       else
@@ -5311,7 +5342,6 @@ BOOL bLoop;
       pFirstFree--;
       }
 
-   //if ((( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bAttr != FILE_LONGNAME)
    if ((( pFirstFree == pStart - 1 ) && !bLoop ) || pFirstFree->bAttr != FILE_LONGNAME)
       if (usFreeEntries >= usEntriesNeeded)
          //return pFirstFree;
@@ -5320,7 +5350,6 @@ BOOL bLoop;
    /*
       Leaving longname entries at the end
    */
-   //while ((( pFirstFree != pStart ) || bLoop ) && (pFirstFree - 1)->bAttr == FILE_LONGNAME)
    while ((( pFirstFree + 1 != pStart ) || bLoop ) && pFirstFree->bAttr == FILE_LONGNAME)
    {
       bLoop = FALSE;

@@ -35,6 +35,35 @@ typedef struct _FILESTATUS2 {  /* fsts2 */
     ULONG   cbList;
 } FILESTATUS2;
 typedef FILESTATUS2 FAR *PFILESTATUS2;
+
+typedef struct _FILESTATUS3L     /* fsts3L */
+{
+   FDATE    fdateCreation;
+   FTIME    ftimeCreation;
+   FDATE    fdateLastAccess;
+   FTIME    ftimeLastAccess;
+   FDATE    fdateLastWrite;
+   FTIME    ftimeLastWrite;
+   LONGLONG cbFile;
+   LONGLONG cbFileAlloc;
+   ULONG    attrFile;
+} FILESTATUS3L;
+typedef FILESTATUS3L FAR *PFILESTATUS3L;
+
+typedef struct _FILESTATUS4L      /* fsts4L */
+{
+   FDATE    fdateCreation;
+   FTIME    ftimeCreation;
+   FDATE    fdateLastAccess;
+   FTIME    ftimeLastAccess;
+   FDATE    fdateLastWrite;
+   FTIME    ftimeLastWrite;
+   LONGLONG cbFile;
+   LONGLONG cbFileAlloc;
+   ULONG    attrFile;
+   ULONG    cbList;
+} FILESTATUS4L;
+typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #pragma pack()
 
 #define ERROR_EA_FILE_CORRUPT   276     /* MSG%ERROR_EAS_CORRUPT */
@@ -207,6 +236,7 @@ ULONG  ulCurCP;
 USHORT fHighMem;
 USHORT fForceLoad;
 USHORT fCalcFree;
+CHAR   fLargeFiles;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options

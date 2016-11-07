@@ -15,7 +15,7 @@
 #include "fat32ifs.h"
 
 VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ);
-ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset);
+ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONGLONG ullOffset);
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo);
 
 #define PSIZE           4096
@@ -113,21 +113,26 @@ FS_OPENPAGEFILE_EXIT:
 int far pascal _loadds FS_ALLOCATEPAGESPACE(
     struct sffsi far *psffsi,       /* ptr to fs independent SFT */
     struct sffsd far *psffsd,       /* ptr to fs dependent SFT   */
-    unsigned long     lSize,        /* new size          */
+    unsigned long     ulSize,       /* new size          */
     unsigned long     lWantContig   /* contiguous chunk size     */
 )
 {
    int rc;
 
    if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", lSize, lWantContig);
+      Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, lWantContig);
 
    _asm push es;
 
-   rc = FS_NEWSIZE (psffsi, psffsd, lSize, 0x10);
+   rc = FS_NEWSIZEL(psffsi, psffsd, ulSize, 0x10);
 
    if (rc == 0)
-       psffsi->sfi_size = lSize;
+      {
+      psffsi->sfi_size = ulSize;
+
+      if (f32Parms.fLargeFiles)
+         psffsi->sfi_sizel = (ULONGLONG)ulSize;
+      }
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_ALLOCATEPAGESPACE returned %u\n", rc);

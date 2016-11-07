@@ -10,6 +10,7 @@
      /* DosQueryPathInfo requests - These are requests for the case-  */
      /* perserved "path" of the input file/path name.		      */
 #define FSA_PSVR    0x00000010	/* Set if FSD manages Remote NmPipes  */
+#define FSA_LARGEFILE 0x00000020 /* Support of files > 2 GB           */
 
 #define CDDWORKAREASIZE 8
 #define SFDWORKAREASIZE 30
@@ -96,6 +97,8 @@ struct	sffsi {
     unsigned short  sfi_type;	    /* use with STYPE_ */
     unsigned long   sfi_pPVDBFil;   /* performance counter data block pointer */
     unsigned char   sfi_DOSattr;    /* DOS file attributes  D/S/A/H/R  */
+    long long       sfi_sizel;      /* size of file */
+    long long       sfi_positionl;  /* read/write pointer */
 };  /* sffsi */
 
 /* sfi_tstamps flags */
@@ -381,6 +384,16 @@ FS_CHDIR(
 #define CD_EXPLICIT		0x00
 #define CD_VERIFY		0x01
 #define CD_FREE			0x02
+
+/* XLATOFF */
+int far pascal _loadds
+FS_CHGFILEPTRL(
+    struct sffsi far *,		/* psffsi	*/
+    struct sffsd far *,		/* psffsd	*/
+    long long,			/* offset	*/
+    unsigned short,		/* type		*/
+    unsigned short		/* IOflag	*/
+);
 
 /* XLATOFF */
 int far pascal _loadds
@@ -709,6 +722,14 @@ FS_MOVE(
     char far *,			/* pDst		*/
     unsigned short,		/* iDstCurDirEnd*/
     unsigned short		/* flags	*/
+);
+
+int far pascal _loadds
+FS_NEWSIZEL(
+    struct sffsi far *,		/* psffsi	*/
+    struct sffsd far *,		/* psffsd	*/
+    unsigned long long,		/* len		*/
+    unsigned short		/* IOflag	*/
 );
 
 int far pascal _loadds

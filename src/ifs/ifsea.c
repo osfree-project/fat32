@@ -249,7 +249,7 @@ USHORT   usMaxSize;
    if (rc)
       return rc;
 
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       pGeaList = pEAOP->fpGEAList;
       rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pGeaList, sizeof (ULONG));

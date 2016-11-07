@@ -23,6 +23,7 @@ int far pascal _loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
 {
 PVOLINFO pVolInfo;
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
+PDIRENTRY pDirEntries;
 APIRET rc = 0;
 
    _asm push es;
@@ -41,10 +42,14 @@ APIRET rc = 0;
 
    if (pFindInfo->pInfo)
       {
-      if (pFindInfo->pInfo->pDirEntries)
-         freeseg(pFindInfo->pInfo->pDirEntries);
+      pDirEntries = pFindInfo->pInfo->pDirEntries;
+
       if (RemoveFindEntry(pVolInfo, pFindInfo->pInfo))
          free(pFindInfo->pInfo);
+
+      if (pDirEntries)
+         freeseg(pDirEntries);
+
       pFindInfo->pInfo = NULL;
       }
 
@@ -120,14 +125,23 @@ PROCINFO ProcInfo;
       case FIL_STANDARD         :
          usNeededLen = sizeof (FILEFNDBUF) - CCHMAXPATHCOMP;
          break;
+      case FIL_STANDARDL        :
+         usNeededLen = sizeof (FILEFNDBUF3L) - CCHMAXPATHCOMP;
+         break;
       case FIL_QUERYEASIZE      :
          usNeededLen = sizeof (FILEFNDBUF2) - CCHMAXPATHCOMP;
+         break;
+      case FIL_QUERYEASIZEL     :
+         usNeededLen = sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP;
          break;
       case FIL_QUERYEASFROMLIST :
          usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + sizeof (ULONG);
          break;
+      case FIL_QUERYEASFROMLISTL :
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + sizeof (ULONG);
+         break;
       default                   :
-         rc = ERROR_NOT_SUPPORTED;
+         rc = ERROR_INVALID_FUNCTION;
          goto FS_FINDFIRSTEXIT;
       }
 
@@ -147,7 +161,7 @@ PROCINFO ProcInfo;
       goto FS_FINDFIRSTEXIT;
       }
 
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       memcpy(&EAOP, pData, sizeof (EAOP));
       rc = MY_PROBEBUF(PB_OPREAD,
@@ -255,7 +269,7 @@ PROCINFO ProcInfo;
    usAttr &= (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_DIRECTORY | FILE_ARCHIVED);
    pFindInfo->bAttr = (BYTE)~usAttr;
 
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       memcpy(pData, &pFindInfo->pInfo->EAOP, sizeof (EAOP));
       pData += sizeof (EAOP);
@@ -393,14 +407,23 @@ USHORT usEntriesWanted;
       case FIL_STANDARD         :
          usNeededLen = sizeof (FILEFNDBUF) - CCHMAXPATHCOMP;
          break;
+      case FIL_STANDARDL        :
+         usNeededLen = sizeof (FILEFNDBUF3L) - CCHMAXPATHCOMP;
+         break;
       case FIL_QUERYEASIZE      :
          usNeededLen = sizeof (FILEFNDBUF2) - CCHMAXPATHCOMP;
+         break;
+      case FIL_QUERYEASIZEL     :
+         usNeededLen = sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP;
          break;
       case FIL_QUERYEASFROMLIST :
          usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + sizeof (ULONG);
          break;
+      case FIL_QUERYEASFROMLISTL :
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + sizeof (ULONG);
+         break;
       default                   :
-         rc = ERROR_NOT_SUPPORTED;
+         rc = ERROR_INVALID_FUNCTION;
          goto FS_FINDNEXTEXIT;
       }
 
@@ -420,7 +443,7 @@ USHORT usEntriesWanted;
       goto FS_FINDNEXTEXIT;
       }
 
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       memcpy(&pFindInfo->pInfo->EAOP, pData, sizeof (EAOP));
       rc = MY_PROBEBUF(PB_OPREAD,
@@ -432,7 +455,7 @@ USHORT usEntriesWanted;
 
    memset(pData, 0, cbData);
 
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       memcpy(pData, &pFindInfo->pInfo->EAOP, sizeof (EAOP));
       pData += sizeof (EAOP);
@@ -624,11 +647,70 @@ USHORT usClusterIndex;
                   pFindInfo->ulCurEntry++;
                   return 0;
                   }
+               else if (!rc && usLevel == FIL_STANDARDL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF3L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->fdateCreation = pDir->wCreateDate;
+                  pfFind->ftimeCreation = pDir->wCreateTime;
+                  pfFind->fdateLastAccess = pDir->wAccessDate;
+                  pfFind->fdateLastWrite = pDir->wLastWriteDate;
+                  pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+                  pfFind->cbFile = pDir->ulFileSize;
+                  pfFind->cbFileAlloc =
+                     (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+
+                  pfFind->attrFile = (USHORT)pDir->bAttr;
+                  pfFind->cchName = (BYTE)strlen(szLongName);
+                  strcpy(pfFind->achName, szLongName);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
                else if (!rc && usLevel == FIL_QUERYEASIZE)
                   {
                   PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
 
                   if (*pcbData < sizeof (FILEFNDBUF2) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->fdateCreation = pDir->wCreateDate;
+                  pfFind->ftimeCreation = pDir->wCreateTime;
+                  pfFind->fdateLastAccess = pDir->wAccessDate;
+                  pfFind->fdateLastWrite = pDir->wLastWriteDate;
+                  pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+                  pfFind->cbFile = pDir->ulFileSize;
+                  pfFind->cbFileAlloc =
+                     (pfFind->cbFile / pVolInfo->ulClusterSize)  +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? 1 : 0);
+                  if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
+                     pfFind->cbList = sizeof pfFind->cbList;
+                  else
+                     {
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pfFind->cbList);
+                     if (rc)
+                        pfFind->cbList = 4;
+                     rc = 0;
+                     }
+                  pfFind->attrFile = (USHORT)pDir->bAttr;
+                  pfFind->cchName = (BYTE)strlen(szLongName);
+                  strcpy(pfFind->achName, szLongName);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASIZEL)
+                  {
+                  PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
                      return ERROR_BUFFER_OVERFLOW;
 
                   pfFind->fdateCreation = pDir->wCreateDate;
@@ -664,6 +746,78 @@ USHORT usClusterIndex;
                   ULONG ulFeaSize;
 
                   if (*pcbData < sizeof (FILEFNDBUF3) + sizeof (ULONG) + strlen(szLongName) + 2)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->fdateCreation = pDir->wCreateDate;
+                  pfFind->ftimeCreation = pDir->wCreateTime;
+                  pfFind->fdateLastAccess = pDir->wAccessDate;
+                  pfFind->fdateLastWrite = pDir->wLastWriteDate;
+                  pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+                  pfFind->cbFile = pDir->ulFileSize;
+                  pfFind->cbFileAlloc =
+                     (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  pfFind->attrFile = (USHORT)pDir->bAttr;
+                  *ppData = (PBYTE)(pfFind + 1);
+                  (*pcbData) -= *ppData - pStart;
+
+                  if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
+                        pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pFindInfo->pInfo->EAOP);
+                     if (rc && rc != ERROR_BUFFER_OVERFLOW)
+                        return rc;
+                     if (rc)
+                        {
+                        rc = ERROR_EAS_DIDNT_FIT;
+                        ulFeaSize = sizeof (ULONG);
+                        }
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  else
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);
+
+                     if (rc && (rc != ERROR_EAS_DIDNT_FIT))
+                        return rc;
+                     else if (rc == ERROR_EAS_DIDNT_FIT)
+                        ulFeaSize = sizeof(pFindInfo->pInfo->EAOP.fpFEAList->cbList);
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  (*ppData) += ulFeaSize;
+                  (*pcbData) -= ulFeaSize;
+
+                  /*
+                     Length and longname
+                  */
+
+                  *(*ppData)++ = (BYTE)strlen(szLongName);
+                  (*pcbData)--;
+                  strcpy(*ppData, szLongName);
+
+                  (*ppData) += strlen(szLongName) + 1;
+                  (*pcbData) -= (strlen(szLongName) + 1);
+
+                  pFindInfo->ulCurEntry++;
+                  return rc;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+                  ULONG ulFeaSize;
+
+                  if (*pcbData < sizeof (FILEFNDBUF3L) + sizeof (ULONG) + strlen(szLongName) + 2)
                      return ERROR_BUFFER_OVERFLOW;
 
                   pfFind->fdateCreation = pDir->wCreateDate;

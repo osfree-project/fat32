@@ -270,6 +270,39 @@ typedef struct _FILEFNDBUF2 {   /* findbuf2 */
 
 
 typedef FILEFNDBUF2 FAR *PFILEFNDBUF2;
+
+typedef struct _FILEFNDBUF3L {
+    FDATE    fdateCreation;
+    FTIME    ftimeCreation;
+    FDATE    fdateLastAccess;
+    FTIME    ftimeLastAccess;
+    FDATE    fdateLastWrite;
+    FTIME    ftimeLastWrite;
+    LONGLONG cbFile;
+    LONGLONG cbFileAlloc;
+    ULONG    attrFile;
+    UCHAR    cchName;
+    CHAR     achName[CCHMAXPATHCOMP];
+} FILEFNDBUF3L;
+
+typedef FILEFNDBUF3L FAR *PFILEFNDBUF3L;
+
+typedef struct _FILEFNDBUF4L {
+    FDATE    fdateCreation;
+    FTIME    ftimeCreation;
+    FDATE    fdateLastAccess;
+    FTIME    ftimeLastAccess;
+    FDATE    fdateLastWrite;
+    FTIME    ftimeLastWrite;
+    LONGLONG cbFile;
+    LONGLONG cbFileAlloc;
+    ULONG    attrFile;
+    ULONG    cbList;
+    UCHAR    cchName;
+    CHAR     achName[CCHMAXPATHCOMP];
+} FILEFNDBUF4L;
+
+typedef  FILEFNDBUF4L FAR *PFILEFNDBUF4L;
 #pragma pack()
 
 IMPORT PVOLINFO   pGlobVolInfo;
@@ -327,7 +360,7 @@ IMPORT ULONG GetFreeSpace(PVOLINFO pVolInfo);
 IMPORT BOOL UpdateFSInfo(PVOLINFO pVolInfo);
 IMPORT BOOL IsDriveLocked(PVOLINFO pVolInfo);
 IMPORT ULONG GetLastCluster(PVOLINFO pVolInfo, ULONG ulCluster);
-IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulPosition);
+IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONGLONG ullPosition);
 IMPORT USHORT usFlushAll(VOID);
 IMPORT USHORT usFlushVolume(PVOLINFO, USHORT, BOOL, BYTE);
 IMPORT BOOL MarkDiskStatus(PVOLINFO pVolInfo, BOOL fClean);

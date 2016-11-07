@@ -218,8 +218,14 @@ USHORT rc;
          case FIL_STANDARD         :
             usNeededSize = sizeof (FILESTATUS);
             break;
+         case FIL_STANDARDL        :
+            usNeededSize = sizeof (FILESTATUS3L);
+            break;
          case FIL_QUERYEASIZE      :
             usNeededSize = sizeof (FILESTATUS2);
+            break;
+         case FIL_QUERYEASIZEL     :
+            usNeededSize = sizeof (FILESTATUS4L);
             break;
          case FIL_QUERYEASFROMLIST :
          case 4:
@@ -275,11 +281,67 @@ USHORT rc;
             break;
             }
 
+         case FIL_STANDARDL        :
+            {
+            PFILESTATUS3L pfStatus = (PFILESTATUS3L)pData;
+
+            memset(pfStatus, 0, sizeof (FILESTATUS3L));
+            pfStatus->fdateCreation = DirEntry.wCreateDate;
+            pfStatus->ftimeCreation = DirEntry.wCreateTime;
+            pfStatus->fdateLastAccess = DirEntry.wAccessDate;
+            pfStatus->fdateLastWrite = DirEntry.wLastWriteDate;
+            pfStatus->ftimeLastWrite = DirEntry.wLastWriteTime;
+
+            if (!(DirEntry.bAttr & FILE_DIRECTORY))
+               {
+               pfStatus->cbFile = DirEntry.ulFileSize;
+               pfStatus->cbFileAlloc =
+                  (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+               }
+
+            pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+            rc = 0;
+            break;
+            }
+
          case FIL_QUERYEASIZE      :
             {
             PFILESTATUS2 pfStatus = (PFILESTATUS2)pData;
 
             memset(pfStatus, 0, sizeof (FILESTATUS2));
+
+            pfStatus->fdateCreation = DirEntry.wCreateDate;
+            pfStatus->ftimeCreation = DirEntry.wCreateTime;
+            pfStatus->fdateLastAccess = DirEntry.wAccessDate;
+            pfStatus->fdateLastWrite = DirEntry.wLastWriteDate;
+            pfStatus->ftimeLastWrite = DirEntry.wLastWriteTime;
+            if (!(DirEntry.bAttr & FILE_DIRECTORY))
+               {
+               pfStatus->cbFile = DirEntry.ulFileSize;
+               pfStatus->cbFileAlloc =
+                  (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+               }
+
+            pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+            if (!f32Parms.fEAS)
+               {
+               pfStatus->cbList = sizeof pfStatus->cbList;
+               rc = 0;
+               }
+            else
+               {
+               rc = usGetEASize(pVolInfo, ulDirCluster, pszFile, &pfStatus->cbList);
+               }
+            break;
+            }
+
+         case FIL_QUERYEASIZEL     :
+            {
+            PFILESTATUS4L pfStatus = (PFILESTATUS4L)pData;
+
+            memset(pfStatus, 0, sizeof (FILESTATUS4L));
 
             pfStatus->fdateCreation = DirEntry.wCreateDate;
             pfStatus->ftimeCreation = DirEntry.wCreateTime;
@@ -402,7 +464,8 @@ USHORT rc;
          goto FS_PATHINFOEXIT;
          }
 
-      if (usLevel == FIL_STANDARD || usLevel == FIL_QUERYEASIZE)
+      if (usLevel == FIL_STANDARD  || usLevel == FIL_QUERYEASIZE ||
+          usLevel == FIL_STANDARDL || usLevel == FIL_QUERYEASIZEL)
          {
          ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
          if (ulCluster == FAT_EOF)
@@ -471,7 +534,65 @@ USHORT rc;
             break;
             }
 
+         case FIL_STANDARDL:
+            {
+            PFILESTATUS3L pfStatus = (PFILESTATUS3L)pData;
+            USHORT usMask;
+            DIRENTRY DirNew;
+
+            if (cbData < sizeof (FILESTATUS3L))
+               {
+               rc = ERROR_INSUFFICIENT_BUFFER;
+               goto FS_PATHINFOEXIT;
+               }
+
+            usMask = FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED;
+            if (DirEntry.bAttr & FILE_DIRECTORY)
+               usMask |= FILE_DIRECTORY;
+            usMask = ~usMask;
+
+            if (pfStatus->attrFile & usMask)
+               {
+               if (f32Parms.fMessageActive & LOG_FS)
+                  Message("Trying to set invalid attr bits: %X", pfStatus->attrFile);
+               rc = ERROR_ACCESS_DENIED;
+               goto FS_PATHINFOEXIT;
+               }
+
+            memcpy(&DirNew, &DirEntry, sizeof (DIRENTRY));
+
+            usMask = 0;
+            if (memcmp(&pfStatus->fdateCreation, &usMask, sizeof usMask) ||
+                memcmp(&pfStatus->ftimeCreation, &usMask, sizeof usMask))
+               {
+               DirNew.wCreateDate = pfStatus->fdateCreation;
+               DirNew.wCreateTime = pfStatus->ftimeCreation;
+               }
+
+            if (memcmp(&pfStatus->fdateLastWrite, &usMask, sizeof usMask) ||
+                memcmp(&pfStatus->ftimeLastWrite, &usMask, sizeof usMask))
+               {
+               DirNew.wLastWriteDate = pfStatus->fdateLastWrite;
+               DirNew.wLastWriteTime = pfStatus->ftimeLastWrite;
+               }
+
+            if (memcmp(&pfStatus->fdateLastAccess, &usMask, sizeof usMask))
+               {
+               DirNew.wAccessDate = pfStatus->fdateLastAccess;
+               }
+
+            if (DirNew.bAttr & FILE_DIRECTORY)
+               DirNew.bAttr = (BYTE)(pfStatus->attrFile | FILE_DIRECTORY);
+            else
+               DirNew.bAttr = (BYTE)pfStatus->attrFile;
+
+            rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_UPDATE,
+               &DirEntry, &DirNew, NULL, 0);
+            break;
+            }
+
          case FIL_QUERYEASIZE      :
+         case FIL_QUERYEASIZEL     :
             if (!f32Parms.fEAS)
                rc = 0;
             else

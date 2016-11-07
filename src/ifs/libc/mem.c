@@ -332,6 +332,41 @@ char _far *ltoa( long value, char _far *buffer, int radix )
     return( buffer );
 }
 
+char _far *ulltoa( unsigned long long value, char _far *buffer, int radix )
+{
+    char  _far  *p = buffer;
+    char        *q;
+    unsigned    rem;
+    char        buf[34];        // only holds ASCII so 'char' is OK
+
+    buf[0] = '\0';
+    q = &buf[1];
+    do {
+        rem = value % radix;
+        value = value / radix;
+
+        *q = __Alphabet[rem];
+        ++q;
+    } while( value != 0 );
+    while( (*p++ = (char)*--q) )
+        ;
+    return( buffer );
+}
+
+char _far *lltoa( long long value, char _far *buffer, int radix )
+{
+    char _far *p = buffer;
+
+    if( radix == 10 ) {
+        if( value < 0 ) {
+            *p++ = '-';
+            value = - value;
+        }
+    }
+    ultoa( value, p, radix );
+    return( buffer );
+}
+
 int isspace( int c )
 {
   switch (c)
