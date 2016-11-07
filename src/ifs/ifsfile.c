@@ -1367,7 +1367,7 @@ ULONGLONG size;
             (f32Parms.fLargeFiles && (pos + usBytesToWrite >= (LONGLONG)ULONG_MAX     ||
                                       size + usBytesToWrite >= (LONGLONG)ULONG_MAX)) )
         {
-            rc = ERROR_CANNOT_COPY;
+            rc = ERROR_INVALID_PARAMETER;
             goto FS_WRITEEXIT;
         }
 
