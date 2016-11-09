@@ -142,7 +142,7 @@ format_params;
 struct extbpb
 {
   WORD BytesPerSect;
-  BYTE SectorsPerCluster;
+  UCHAR SectorsPerCluster;
   WORD ReservedSectCount;
   BYTE NumFATs;
   WORD RootDirEnt;

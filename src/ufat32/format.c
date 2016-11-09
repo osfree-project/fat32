@@ -272,7 +272,7 @@ int format_volume (char *path, format_params *params)
     pFAT32BootSect->sJmpBoot[2]=0x90;
     strcpy( pFAT32BootSect->sOEMName, "MSWIN4.1" );
     pFAT32BootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
-    
+
     if ( params->sectors_per_cluster )
         dp.SectorsPerCluster = params->sectors_per_cluster;
     else

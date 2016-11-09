@@ -597,7 +597,7 @@ P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
                pop es
                pop ds
                }
-               return pRH->pDCS;
+            return pRH->pDCS;
             }
 
             break;

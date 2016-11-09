@@ -205,10 +205,13 @@ USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbDa
 APIRET rc,rc2;
 USHORT usSectors;
 USHORT usIndex;
-PBYTE  pbSectors;
+static PBYTE pbSect = NULL;
+PBYTE pbSectors;
 BOOL fFromCache;
 BOOL fSectorInCache;
 USHORT usCBIndex;
+ULONG ulSize;
+BYTE fFlag = FALSE;
 char far *p;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -246,16 +249,24 @@ char far *p;
             (ulSector - pVolInfo->ulStartOfData) / pVolInfo->BootSect.bpb.SectorsPerCluster + 2);
       }
 #endif
-   pbSectors = NULL;
+   //pbSectors = NULL;
    if (( ulSector >= pVolInfo->ulStartOfData ) &&
        !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      pbSectors = malloc(usSectors * 512);
+      if (!pbSect)
+         {
+         // allocate static buffer
+         // @todo where we need to do freeseg() ?
+         pbSect = gdtAlloc(65536UL, FALSE);
+         }
+      pbSectors = pbSect;
+      fFlag = TRUE; // use pbSectors buffer
       }
-   if (!pbSectors)
+   //if (!pbSectors)
+   if (!fFlag)
       {
       pbSectors = pbData;
       usSectors = nSectors;
@@ -332,14 +343,19 @@ char far *p;
           }
        }
 
-    if (!rc && pbSectors != pbData)
+    //if (!rc && pbSectors != pbData)
+    if (!rc && fFlag)
        {
+       ULONG n;
        f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
-       memcpy(pbData, pbSectors, min( usSectors, nSectors ) * 512);
+       //memcpy(pbData, pbSectors, min( usSectors, nSectors ) * 512);
+       n = min( usSectors, nSectors ) * 512 - 1;
+       memcpy(pbData, pbSectors, n);
+       pbData[n] = pbSectors[n];
        }
 
-   if (pbSectors != pbData)
-      free(pbSectors);
+   //if (pbSectors != pbData)
+   //   freeseg(pbSectors);
 
    return rc;
 }

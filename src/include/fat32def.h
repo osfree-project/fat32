@@ -189,7 +189,7 @@ typedef unsigned short APIRET;
 typedef struct _BPB
 {
 USHORT BytesPerSector;
-BYTE   SectorsPerCluster;
+UCHAR  SectorsPerCluster;
 USHORT ReservedSectors;
 BYTE   NumberOfFATs;
 USHORT RootDirEntries;
