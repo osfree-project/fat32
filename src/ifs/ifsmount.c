@@ -496,6 +496,12 @@ static BOOL IsFAT32(PBOOTSECT pSect)
       return FALSE;
       }
 
+   if (! pbpb->SectorsPerCluster)
+      {
+      // this could be the case with a JFS partition, for example
+      return FALSE;
+      }
+
    if(( ULONG )pbpb->BytesPerSector * pbpb->SectorsPerCluster > MAX_CLUSTER_SIZE )
       {
       return FALSE;
