@@ -25,5 +25,6 @@ SET NLSPATH=%NLSPATHTEMP%;%NLSPATH%
 SET NLSPATHTEMP=
 rem call %IBMC%\bin\setenv.cmd
 rem call %MSC%\binp\setenv.cmd
+call svnrev.cmd
 nmake -f makefile.icc
 endlocal

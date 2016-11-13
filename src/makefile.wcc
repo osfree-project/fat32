@@ -1,6 +1,10 @@
+!include makefile.mk
+
 DIRS = ufat32 util ifs fat32chk partfilt ifsinf
 
 all: .SYMBOLIC
+ @%create ver.h
+ @%append ver.h $#define FAT32_VERSION "$(_VERSION)"
  @for %d in ($(DIRS)) do @if exist %d @cd %d && wmake -h -f makefile.wcc
 
 clean: .symbolic

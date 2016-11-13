@@ -17,5 +17,6 @@ SET LIB=..\lib;%ddk%\base\lib;%LIB%
 SET PATH=%MASM%\BINP;%PATH%
 rem call %IBMC%\bin\csetenv.cmd
 call %MSC%\binp\setenv.cmd
+call svnrev.cmd
 nmake -f makefile.msc
 endlocal
