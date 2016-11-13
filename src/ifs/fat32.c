@@ -1322,6 +1322,10 @@ int far pascal _loadds FS_INIT(
 BOOL fSilent = FALSE;
 PSZ  p;
 PSZ  cmd = NULL;
+char szObjname[256];
+HMODULE hmod;
+PFN pfn;
+APIRET rc = 0;
 
    _asm push es;
 
@@ -1489,15 +1493,35 @@ PSZ  cmd = NULL;
    /* disk autocheck */
    autocheck(cmd);
 
+   /* Here we check for a 64-bit file API presence in kernel,
+      and if it is missing, we just disable the large file support */
+   rc = DosLoadModule(szObjname, sizeof(szObjname), "DOSCALLS", &hmod);
+
+   if (rc)
+      {
+      rc = 0;
+      goto FS_INITEXIT;
+      }
+
+   rc = DosGetProcAddr(hmod, "DosOpenL", &pfn);
+
+   if (rc || ! pfn)
+      {
+      rc = 0;
+      f32Parms.fLargeFiles = FALSE;
+      goto FS_INITEXIT;
+      }
+
    if (f32Parms.fLargeFiles)
       {
       // Support for files > 2 GB
       FS_ATTRIBUTE |= FSA_LARGEFILE;
       }
 
+FS_INITEXIT:
    _asm pop es;
 
-   return 0;
+   return rc;
 }
 
 VOID _cdecl InitMessage(PSZ pszMessage,...)
