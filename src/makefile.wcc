@@ -9,3 +9,4 @@ all: .SYMBOLIC
 
 clean: .symbolic
  @for %d in ($(DIRS)) do @if exist %d @cd %d && wmake -h -f makefile.wcc clean
+ -@del ver.h >nul 2>&1
