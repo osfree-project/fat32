@@ -1,6 +1,6 @@
 !define _32BITS
 ROOT=..
-PROJ=util
+PROJ=ufat32
 PATH=..\..\$(PROJ)
 
 !include ..\makefile.mk

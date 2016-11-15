@@ -1,5 +1,5 @@
 ROOT=..
-PROJ=util
+PROJ=fat32chk
 PATH=..\..\$(PROJ)
 DIRS=
 
