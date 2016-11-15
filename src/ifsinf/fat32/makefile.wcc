@@ -1,4 +1,9 @@
-TARGETS = fat32.inf
+ROOT=..\..
+PROJ=ifsinf
+PATH=..\..\$(PROJ)
+TARGETS = $(BINROOT)\os2\book\fat32.inf
+DIRS=
 
-all: .SYMBOLIC
-!include ..\makefile.mk
+!include ..\..\makefile.mk
+
+$(BINROOT)\os2\book\fat32.inf:

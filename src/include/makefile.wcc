@@ -1,0 +1,11 @@
+ROOT=..
+PROJ=.
+PATH=..\..\$(PROJ)
+DIRS=
+!include ..\makefile.mk
+
+TARGETS = ver.h
+
+ver.h:
+ @%create $^@
+ @%append $^@ $#define FAT32_VERSION "$(_VERSION)"

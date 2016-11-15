@@ -1,30 +1,25 @@
-LIB=wlib
-AS=wasm
-CC=wcc
+ROOT=..\..
+PROJ=ifs\libc
+PATH=..\..\..\$(PROJ)
+DIRS=
+TARGETS=$(LIBROOT)\libc.lib
+
+!include ..\..\makefile.mk
 
 COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=. -i=.. -i=..\include
 AOPT=-q -d__LARGE__ -i=. -i=.. -i=..\include
-OBJS=mem.obj i4d.obj i4m.obj i8d086.obj i8m086.obj pia.obj pts.obj ptc.obj alphabet.obj
-TARGETS=libc.lib
-CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.sym *.dll *.exe
+OBJS=$(PROJ_BLD)\mem.obj &
+     $(PROJ_BLD)\i4d.obj &
+     $(PROJ_BLD)\i4m.obj &
+     $(PROJ_BLD)\i8d086.obj &
+     $(PROJ_BLD)\i8m086.obj &
+     $(PROJ_BLD)\pia.obj &
+     $(PROJ_BLD)\pts.obj &
+     $(PROJ_BLD)\ptc.obj &
+     $(PROJ_BLD)\alphabet.obj
 
-.SUFFIXES:
-.SUFFIXES: .lib .ols .obj .c .h .asm
+$(LIBROOT)\libc.lib:
 
-all: $(TARGETS)
-
-libc.ols: $(OBJS)
+$(PROJ_BLD)\libc.ols: $(OBJS)
  @%create $^@
  @for %e in ($<) do @%append $^@ +%e
-
-.c.obj:
- $(CC) $(COPT) $[@
-
-.asm.obj:
- $(AS) $(AOPT) $[@
-
-.ols.lib:
- $(LIB) $^@ @$<
-
-clean: .symbolic
- -@del $(CLEANUP)  >nul 2>&1

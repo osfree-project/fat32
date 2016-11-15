@@ -1,65 +1,60 @@
+ROOT=..
+PROJ=ifs
+PATH=..\..\$(PROJ)
+DIRS=..\include libc
+TARGETS=$(BINROOT)\os2\boot\fat32.ifs $(BINROOT)\os2\boot\fat32.sym
+
 !include ..\makefile.mk
 
-CC=wcc
-AS=wasm
-LNK=wlink
-MAPCNV=..\mapsym.awk
 DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
-CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 # COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 # -zt=24576
 # *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 AOPT=-q -i=. -i=.. -i=..\include
-TARGETS=libc fat32.ifs fat32.sym
 
 SYS=os2 dll initglobal
 
-.SUFFIXES:
-.SUFFIXES: .ifs .dll .exe .lnk .ols .obh .obj .c .h .asm .sym .map .wmp
+OBJS=$(PROJ_BLD)\fat32.obj &
+     $(PROJ_BLD)\ifsmount.obj &
+     $(PROJ_BLD)\ifsfind.obj &
+     $(PROJ_BLD)\ifsdir.obj &
+     $(PROJ_BLD)\ifsattr.obj &
+     $(PROJ_BLD)\ifsfile.obj &
+     $(PROJ_BLD)\ifslog.obj &
+     $(PROJ_BLD)\ifscache.obj &
+     $(PROJ_BLD)\ifsswap.obj &
+     $(PROJ_BLD)\ifsmem.obj &
+     $(PROJ_BLD)\ifsea.obj &
+     $(PROJ_BLD)\ifslang.obj &
+     $(PROJ_BLD)\ifsachk.obj &
+     $(PROJ_BLD)\helpers.obj
 
-all: $(TARGETS)
+$(BINROOT)\os2\boot\fat32.ifs:
 
-clean: .symbolic
- -@del $(CLEANUP)  >nul 2>&1
- @cd libc
- wmake -h -f makefile.wcc clean
- @cd ..
+$(BINROOT)\os2\boot\fat32.sym:
 
-libc: .symbolic
- @cd libc
- wmake -h -f makefile.wcc
- @cd ..
-
-OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj &
-     ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj &
-     ifsea.obj ifslang.obj ifsachk.obj helpers.obj
-
-# helpers.obj
-
-fat32.ols: $(OBJS)
+$(PROJ_BLD)\fat32.ols: $(OBJS)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
 .ols.lnk:
- @%create $^@
- @%append $^@ SYSTEM $(SYS)
- @%append $^@ NAME $^*.ifs
- @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- #@%append $^@ DEBUG ALL
- @%append $^@ option protmode
- @%append $^@ option quiet
- @%append $^@ option stack=0
- @%append $^@ segment type CODE PRELOAD EXECUTEREAD SHARED
- @%append $^@ segment type DATA PRELOAD SHARED
- @%append $^@ OPTION MAP=$^*.wmp
- @%append $^@ OPTION MANYAUTODATA
- @%append $^@ OPTION NODEFAULTLIBS
- #@%append $^@ LIBPATH $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2
- #@%append $^@ LIB clibdll
- @%append $^@ LIB libc\libc.lib
- @%append $^@ EXPORT &
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\os2\boot\$^&.ifs
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ #@%append $[*.lnk DEBUG ALL
+ @%append $[*.lnk option protmode
+ @%append $[*.lnk option quiet
+ @%append $[*.lnk option stack=0
+ @%append $[*.lnk segment type CODE PRELOAD EXECUTEREAD SHARED
+ @%append $[*.lnk segment type DATA PRELOAD SHARED
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk OPTION MANYAUTODATA
+ @%append $[*.lnk OPTION NODEFAULTLIBS
+ @%append $[*.lnk LIB $(LIBROOT)\libc.lib
+ @%append $[*.lnk EXPORT &
     FS_ALLOCATEPAGESPACE, &
     FS_ATTACH, &
 #      Not yet implemented
@@ -117,7 +112,7 @@ fat32.ols: $(OBJS)
     FS_ATTRIBUTE, &
     FS_NAME
 #    FS_MPSAFEFLAGS2
- @%append $^@ IMPORT &
+ @%append $[*.lnk IMPORT &
     FSH_SEGALLOC FSHELPER.1, &
     FSH_SEGFREE FSHELPER.2, &
     FSH_SEGREALLOC FSHELPER.3, &
@@ -174,19 +169,4 @@ fat32.ols: $(OBJS)
     FSH_QUERYOPLOCK FSHELPER.54, &
     FSH_EXTENDTIMESLICE FSHELPER.55
 #    MFSH_SYSCTL FSHELPER.56
- @%append $^@ @$[@
-
-.lnk.ifs:
- $(LNK) @$[@
-
-.c.obj:
- $(CC) $(COPT) $[@
-
-.asm.obj:
- $(AS) $(AOPT) $[@
-
-.wmp.map:
- awk -f $(MAPCNV) $< >$^@
-
-.map.sym:
- @mapsym $[@ >nul 2>&1
+ @%append $[*.lnk @$[@

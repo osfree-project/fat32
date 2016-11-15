@@ -1,84 +1,79 @@
+!define _32BITS
+ROOT=..
+PROJ=util
+PATH=..\..\$(PROJ)
+
 !include ..\makefile.mk
 
-CC=wcc386
-LNK=wlink op q
-MAPCNV=..\mapsym.awk
 DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
 DESC2="Fat32Format, standalone version"
 # T=win32
-CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
 !ifneq T win32
 # create OS/2 binaries
-OBJS1=ufat32.obj sys.obj recover.obj format.obj os2.obj msg.obj chkdsk.obj fatfunc.obj
-OBJS2=format.obh os2.obh msg.obh
+OBJS1=$(PROJ_BLD)\ufat32.obj $(PROJ_BLD)\sys.obj $(PROJ_BLD)\recover.obj &
+      $(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj &
+      $(PROJ_BLD)\chkdsk.obj $(PROJ_BLD)\fatfunc.obj
+OBJS2=$(PROJ_BLD)\format.obh $(PROJ_BLD)\os2.obh $(PROJ_BLD)\msg.obh
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-TARGETS=ufat32.dll fat32fmt.exe ufat32.sym fat32fmt.sym
+TARGETS=$(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\fat32fmt.exe &
+        $(BINROOT)\os2\dll\ufat32.sym $(BINROOT)\os2\fat32fmt.sym
 SYS=os2v2
 !else
 # create win32 binaries
 OBJS1=
-OBJS2=format.obh win32.obh
+OBJS2=$(PROJ_BLD)\format.obh $(PROJ_BLD)\win32.obh
 COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
-TARGETS=fat32fmt.exe
+TARGETS=$(BINROOT)\os2\fat32fmt.exe
 SYS=nt
 !endif
+DIRS=..\include
 
-.SUFFIXES:
-.SUFFIXES: .dll .exe .lnk .obh .obj .c .sym .map .wmp
+$(BINROOT)\os2\dll\ufat32.dll:
 
-all: $(TARGETS)
+$(BINROOT)\os2\fat32fmt.exe:
 
-ufat32.lnk: $(OBJS1)
+$(BINROOT)\os2\dll\ufat32.sym:
+
+$(BINROOT)\os2\fat32fmt.sym:
+
+$(PROJ_BLD)\ufat32.ols: $(OBJS1)
  @%create $^@
- @%append $^@ SYSTEM $(SYS) dll initinstance terminstance
- @%append $^@ NAME $^*.dll
- @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $^@ OPTION MIXED1632
- #@%append $^@ OPTION NODEFAULTLIBS
- @%append $^@ OPTION ST=81920
- @%append $^@ DEBUG ALL
- @%append $^@ segment type DATA LOADONCALL NONSHARED
- @%append $^@ segment type CODE PRELOAD 
- @%append $^@ OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
- @%append $^@ OPTION MAP=$^*.wmp
- @%append $^@ EXPORT CHKDSK,FORMAT,RECOVER,SYS
- @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;
- @%append $^@ LIB os2386,clib3s
- @for %e in ($(OBJS1)) do @%append $^@ FILE %e
+ @for %e in ($<) do @%append $^@ FILE %e
 
-fat32fmt.lnk: $(OBJS2)
+$(PROJ_BLD)\fat32fmt.ols: $(OBJS2)
  @%create $^@
- @%append $^@ SYSTEM $(SYS)
- @%append $^@ NAME $^*.exe
- @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
- @%append $^@ OPTION MAP=$^*.wmp
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS) dll initinstance terminstance
+ @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $[*.lnk OPTION MIXED1632
+ #@%append $[*.lnk OPTION NODEFAULTLIBS
+ @%append $[*.lnk OPTION ST=81920
+ @%append $[*.lnk DEBUG ALL
+ @%append $[*.lnk segment type DATA LOADONCALL NONSHARED
+ @%append $[*.lnk segment type CODE PRELOAD 
+ @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk EXPORT CHKDSK,FORMAT,RECOVER,SYS
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;
+ @%append $[*.lnk LIB os2386,clib3s
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
+ @%append $[*.lnk OPTION MAP=$[*.wmp
 !ifneq T win32
- @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
 !else
- @%append $^@ RUNTIME CONSOLE
- @%append $^@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
+ @%append $[*.lnk RUNTIME CONSOLE
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
 !endif
- #@%append $^@ LIB os2,clibdll,os2386,clib3s
- @for %e in ($(OBJS2)) do @%append $^@ FILE %e
-
-clean: .symbolic
- -@del $(CLEANUP)  >nul 2>&1
-
-.lnk.exe:
- $(LNK) @$<
-
-.lnk.dll:
- $(LNK) @$<
-
-.c.obh: .AUTODEPEND
- $(CC) $(COPT) -fo=$@ $<
-
-.c.obj: .AUTODEPEND
- $(CC) -d__DLL__ -bd $(COPT) $<
-
-.wmp.map:
- @awk -f $(MAPCNV) $< >$@
-
-.map.sym:
- @mapsym $< >nul 2>&1
+ #@%append $[*.lnk LIB os2,clibdll,os2386,clib3s
+ @%append $[*.lnk @$[@

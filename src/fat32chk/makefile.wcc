@@ -1,51 +1,39 @@
-AS=wasm
-CC=wcc
+ROOT=..
+PROJ=util
+PATH=..\..\$(PROJ)
+DIRS=
+
 !include ..\makefile.mk
 
-LNK=wlink op q
-MAPCNV=..\mapsym.awk
 DESC="CHKDSK autocheck helper"
-CLEANUP=*.obj *.obh *.lnk *.wmp *.map *.lib *.ols *.err
 
-OBJS=fat32chk.obj
+OBJS=$(PROJ_BLD)\fat32chk.obj
 COPT=-2 -sg -hw -mm -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-ASMOPT=-dDEBUG -zcm=masm -mm
-TARGETS=fat32chk.exe fat32chk.sym
+TARGETS=$(BINROOT)\os2\fat32chk.exe $(BINROOT)\os2\fat32chk.sym
+DIRS=..\include
 SYS=os2
 
-.SUFFIXES:
-.SUFFIXES: .exe .lnk .obj .c .asm .sym .map .wmp
+$(BINROOT)\os2\fat32chk.sym:
 
-all: $(TARGETS)
+$(BINROOT)\os2\fat32chk.exe:
 
-fat32chk.lnk: $(OBJS)
+$(PROJ_BLD)\fat32chk.ols: $(OBJS)
  @%create $^@
- @%append $^@ SYSTEM $(SYS)
- @%append $^@ NAME $^*.exe
- @%append $^@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $^@ OPTION ST=24576
- @%append $^@ DEBUG ALL
- @%append $^@ OPTION MAP=$^*.wmp
- @%append $^@ ALIAS &
+ @for %e in ($<) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $[*.lnk OPTION ST=24576
+ @%append $[*.lnk DEBUG ALL
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk ALIAS &
    DosPutMessage=DOSPUTMESSAGE, &
    DosExit=DOSEXIT, &
    DosGetProcAddr=DOSGETPROCADDR, &
    DosLoadModule=DOSLOADMODULE, &
    DosFreeModule=DOSFREEMODULE, &
    DosGetEnv=DOSGETENV
- @for %e in ($(OBJS)) do @%append $^@ FILE %e
-
-.lnk.exe:
- $(LNK) @$<
-
-.c.obj: .AUTODEPEND
- $(CC) $(COPT) $<
-
-.wmp.map:
- @awk -f $(MAPCNV) $< >$@
-
-.map.sym:
- @mapsym $< >nul 2>&1
-
-clean: .symbolic
- -@del $(CLEANUP)  >nul 2>&1
+ @%append $[*.lnk @$[@
