@@ -11,10 +11,10 @@ DESC2="Fat32Format, standalone version"
 
 !ifneq T win32
 # create OS/2 binaries
-OBJS1=$(PROJ_BLD)\ufat32.obj $(PROJ_BLD)\sys.obj $(PROJ_BLD)\recover.obj &
-      $(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj &
-      $(PROJ_BLD)\chkdsk.obj $(PROJ_BLD)\fatfunc.obj
-OBJS2=$(PROJ_BLD)\format.obh $(PROJ_BLD)\os2.obh $(PROJ_BLD)\msg.obh
+OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
+      $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd &
+      $(PROJ_BLD)\chkdsk.obd $(PROJ_BLD)\fatfunc.obd
+OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 TARGETS=$(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\fat32fmt.exe &
         $(BINROOT)\os2\dll\ufat32.sym $(BINROOT)\os2\fat32fmt.sym
@@ -22,7 +22,7 @@ SYS=os2v2
 !else
 # create win32 binaries
 OBJS1=
-OBJS2=$(PROJ_BLD)\format.obh $(PROJ_BLD)\win32.obh
+OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\win32.obj
 COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
 TARGETS=$(BINROOT)\os2\fat32fmt.exe
 SYS=nt

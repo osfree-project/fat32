@@ -12,7 +12,7 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BINROOT)\os2\book $(BINROOT)\os2\docs $(BINROOT)\os2\docs\fat32 &
            $(BLDROOT)\util $(BLDROOT)\ifs $(BLDROOT)\ifs\libc $(BLDROOT)\partfilt $(BLDROOT)\ifsinf
 
-CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obh $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
+CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
            $(PROJ_BLD)\*.map $(PROJ_BLD)\*.ols $(PROJ_BLD)\*.err $(BLDROOT)\..\include\ver.h &
            $(BLDROOT)\lib\*.lib 
 
@@ -84,7 +84,7 @@ CC=wcc
 !endif
 
 .SUFFIXES:
-.SUFFIXES: .flt .ifs .dll .exe .lib .lnk .ols .obh .obj .cpp .c .h .asm .sym .map .wmp .inf .ipf .bmp
+.SUFFIXES: .flt .ifs .dll .exe .lib .lnk .ols .obd .obj .cpp .c .h .asm .sym .map .wmp .inf .ipf .bmp
 
 all: $(BLDROOT)\bld.flg $(PROJ_BLD)\makefile.wcc dirs copy targets &
      $(BINROOT)\zip.flg $(BINROOT)\wpi.flg .symbolic
@@ -192,6 +192,8 @@ $(BINROOT)\os2\docs\fat32\partfilt.txt: $(ROOT)\doc\partfilt.txt
 
 .obj: $(PROJ_BLD)
 
+.obd: $(PROJ_BLD)
+
 .lnk: $(PROJ_BLD)
 
 .ols: $(PROJ_BLD)
@@ -236,9 +238,9 @@ $(BINROOT)\os2\docs\fat32\partfilt.txt: $(ROOT)\doc\partfilt.txt
  @echo CC       $^.
  @$(CC) $(COPT) -fr=$^*.err -fo=$^@ $<
 
-.c.obh: .autodepend
+.c.obd: .autodepend
  @echo CC       $^.
- @$(CC) $(COPT) -d__DLL__ -bd -fr=$^*.err -fo=$^@ $<
+ @$(CC) $(COPT)  -d__DLL__ -bd -fr=$^*.err -fo=$^@ $<
 
 .cpp.obj: .autodepend
  @echo CXX      $^.
