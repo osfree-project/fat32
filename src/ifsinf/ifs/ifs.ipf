@@ -3,10 +3,10 @@
 :title.OS/2 Installable File Systems
 
 :h1 id=0.Cover page
-:link reftype=hd refid=1.:link reftype=hd refid=2.  
-:h1 id=1 hide.os2logo
+.*:link reftype=hd refid=1.:link reftype=hd refid=2.  
+.*:h1 id=1 hide.os2logo
 :artwork name='img0.bmp' align=center. :artwork name='img1.bmp' align=center.   
-:h1 id=2 hide.titlep
+.*:h1 id=2 hide.titlep
 :font facename='Helv' size=24x24.
 :lines align=center.
 :hp2.Installable File Systems :ehp2.
@@ -6271,6 +6271,10 @@ image immediately after this call&per.
  :link reftype=hd refid=152.MFSH_UNPHYSTOVIRT:elink.    Mark completion of use of virtual address
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
  :link reftype=hd refid=153.MFSH_VIRT2PHYS:elink.       Convert virtual to physical address
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+ :color fc=darkcyan.
+ :link reftype=hd refid=154.MFSH_SYSCTL:elink.          Do additional system controls
+ :color fc=default.
 
 
 :ecgraphic.
@@ -6648,4 +6652,37 @@ detected, the following error is returned&colon.
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
 :p.This helper is for use by a mini-FSD with an imbedded device driver&per. It 
-is the same as the standard device driver helper VIRTTOPHYS&per.   :euserdoc.
+is the same as the standard device driver helper VIRTTOPHYS&per.   
+
+:h2 id=154.MFSH_SYSCTL - Do additional system controls
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.
+:p.:color fc=darkcyan.Perform some actions, like getting the DevHelp entry point&per.
+:p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:color fc=darkcyan.:font facename='Courier' size=12x12.int far pascal MFSH_SYSCTL(ulType, void far *ptr)
+
+unsigned long ulType;
+void far * ptr;
+
+:ecgraphic.
+:font facename=default.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+:color fc=darkcyan.
+:p.ulType specifies the control type&per.   
+:p.ptr is a pointer to a structure the system control returns&per. 
+.br 
+
+:p.ulType == 1 means getting the DevHelp pointer&per. It is called like this&colon.
+.br
+.br
+:font facename='Courier' size=12x12.MFSH_SYSCTL(1, &amp.DevHelp);
+
+:p.:font facename='Helv' size=18x18.:hp2.Returns :ehp2.:font facename=default.
+:color fc=darkcyan.
+:p.If no error is detected, a zero error code is returned&per. Currently, if ulType <> 1,
+the following error is returned&colon.   
+:p.oERROR_INVALID_PARAMETER 
+:p.the supplied control type is invalid&per. 
+.br
+:euserdoc.
