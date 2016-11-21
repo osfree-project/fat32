@@ -2600,31 +2600,19 @@ USHORT rc = 0;
 
    if (usType == SD_BEGIN)
       {
-      pVolInfo = pGlobVolInfo;
-      while (pVolInfo)
+      for (pVolInfo = pGlobVolInfo; pVolInfo;
+           pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo)
          {
-         if (!pVolInfo->fWriteProtected)
-            {
-            rc = usFlushVolume(pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT);
-            if (rc)
-               goto FS_SHUTDOWNEXIT;
+            if (pVolInfo->fWriteProtected)
+               continue;
 
-            if (!f32Parms.usDirtySectors)
-               goto FS_SHUTDOWNEXIT;
+            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
 
-            if (!UpdateFSInfo(pVolInfo))
-               {
-               rc = ERROR_SECTOR_NOT_FOUND;
-               goto FS_SHUTDOWNEXIT;
-               }
-            if (!MarkDiskStatus(pVolInfo, TRUE))
-               {
-               rc = ERROR_SECTOR_NOT_FOUND;
-               goto FS_SHUTDOWNEXIT;
-               }
-            }
+            //if (!f32Parms.usDirtySectors)
+            //   continue;
 
-         pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
+            UpdateFSInfo(pVolInfo);
+            MarkDiskStatus(pVolInfo, TRUE);
          }
       }
    else /* usType == SD_COMPLETE */
