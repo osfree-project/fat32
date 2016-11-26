@@ -1,0 +1,9 @@
+ROOT=..\..
+PROJ=ifsinf
+PATH=..\..\$(PROJ)
+TARGETS = $(BINROOT)\os2\book\fat32.inf
+DIRS=
+
+!include ..\..\makefile.mk
+
+$(BINROOT)\os2\book\fat32.inf:

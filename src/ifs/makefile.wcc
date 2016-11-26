@@ -1,0 +1,172 @@
+ROOT=..
+PROJ=ifs
+PATH=..\..\$(PROJ)
+DIRS=..\include libc
+TARGETS=$(BINROOT)\os2\boot\fat32.ifs $(BINROOT)\os2\boot\fat32.sym
+
+!include ..\makefile.mk
+
+DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
+
+# COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
+COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
+# -zt=24576
+# *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
+AOPT=-q -i=. -i=.. -i=..\include
+
+SYS=os2 dll initglobal
+
+OBJS=$(PROJ_BLD)\fat32.obj &
+     $(PROJ_BLD)\ifsmount.obj &
+     $(PROJ_BLD)\ifsfind.obj &
+     $(PROJ_BLD)\ifsdir.obj &
+     $(PROJ_BLD)\ifsattr.obj &
+     $(PROJ_BLD)\ifsfile.obj &
+     $(PROJ_BLD)\ifslog.obj &
+     $(PROJ_BLD)\ifscache.obj &
+     $(PROJ_BLD)\ifsswap.obj &
+     $(PROJ_BLD)\ifsmem.obj &
+     $(PROJ_BLD)\ifsea.obj &
+     $(PROJ_BLD)\ifslang.obj &
+     $(PROJ_BLD)\ifsachk.obj &
+     $(PROJ_BLD)\helpers.obj
+
+$(BINROOT)\os2\boot\fat32.ifs:
+
+$(BINROOT)\os2\boot\fat32.sym:
+
+$(PROJ_BLD)\fat32.ols: $(OBJS)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\os2\boot\$^&.ifs
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ #@%append $[*.lnk DEBUG ALL
+ @%append $[*.lnk option protmode
+ @%append $[*.lnk option quiet
+ @%append $[*.lnk option stack=0
+ @%append $[*.lnk segment type CODE PRELOAD EXECUTEREAD SHARED
+ @%append $[*.lnk segment type DATA PRELOAD SHARED
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk OPTION MANYAUTODATA
+ @%append $[*.lnk OPTION NODEFAULTLIBS
+ @%append $[*.lnk LIB $(LIBROOT)\libc.lib
+ @%append $[*.lnk EXPORT &
+    FS_ALLOCATEPAGESPACE, &
+    FS_ATTACH, &
+#      Not yet implemented
+    FS_CANCELLOCKREQUEST, &
+    FS_CANCELLOCKREQUESTL, &
+    FS_CHDIR, &
+    FS_CHGFILEPTR, &
+    FS_CHGFILEPTRL, &
+    FS_CLOSE, &
+    FS_COMMIT, &
+    FS_COPY, &
+    FS_DELETE, &
+    FS_DOPAGEIO, &
+    FS_EXIT, &
+    FS_FILEATTRIBUTE, &
+    FS_FILEINFO, &
+#      Not yet implemented
+    FS_FILEIO, &
+#      Not yet implemented
+    FS_FILELOCKS, &
+    FS_FILELOCKSL, &
+    FS_FINDCLOSE, &
+    FS_FINDFIRST, &
+    FS_FINDFROMNAME, &
+    FS_FINDNEXT, &
+#      Obsolete in OS/2 WARP
+    FS_FINDNOTIFYCLOSE, &
+#      Obsolete in OS/2 WARP
+    FS_FINDNOTIFYFIRST, &
+#      Obsolete in OS/2 WARP
+    FS_FINDNOTIFYNEXT, &
+    FS_FLUSHBUF, &
+    FS_FSCTL, &
+    FS_FSINFO, &
+    FS_INIT, &
+    FS_IOCTL, &
+    FS_MKDIR, &
+    FS_MOUNT, &
+    FS_MOVE, &
+    FS_NEWSIZE, &
+    FS_NEWSIZEL, &
+    FS_NMPIPE, &
+    FS_OPENCREATE, &
+    FS_OPENPAGEFILE, &
+    FS_PATHINFO, &
+    FS_PROCESSNAME, &
+    FS_READ, &
+    FS_RMDIR, &
+    FS_SETSWAP, &
+    FS_SHUTDOWN, &
+#      N/A : local FSD
+#   FS_VERIFYUNCNAME, &
+    FS_WRITE, &
+#
+    FS_ATTRIBUTE, &
+    FS_NAME
+#    FS_MPSAFEFLAGS2
+ @%append $[*.lnk IMPORT &
+    FSH_SEGALLOC FSHELPER.1, &
+    FSH_SEGFREE FSHELPER.2, &
+    FSH_SEGREALLOC FSHELPER.3, &
+    FSH_FORCENOSWAP FSHELPER.4, &
+    FSH_INTERR FSHELPER.5, &
+    FSH_SEMREQUEST FSHELPER.6, &
+    FSH_SEMCLEAR FSHELPER.7, &
+    FSH_PROBEBUF FSHELPER.8, &
+    FSH_GETPRIORITY FSHELPER.9, &
+    FSH_IOSEMCLEAR FSHELPER.10, &
+    FSH_FLUSHBUF FSHELPER.11, &
+    FSH_CRITERROR FSHELPER.12, &
+    FSH_DEVIOCTL FSHELPER.13, &
+    FSH_GETVOLPARM FSHELPER.14, &
+    FSH_FINDDUPHVPB FSHELPER.15, &
+    FSH_DOVOLIO FSHELPER.16, &
+    FSH_ADDSHARE FSHELPER.17, &
+    FSH_REMOVESHARE FSHELPER.18, &
+    FSH_GETOVERLAPBUF FSHELPER.19, &
+    FSH_ISCURDIRPREFIX FSHELPER.20, &
+    FSH_LOADCHAR FSHELPER.21, &
+    FSH_PREVCHAR FSHELPER.22, &
+    FSH_STORECHAR FSHELPER.23, &
+    FSH_SEMSET FSHELPER.24, &
+    FSH_SEMSETWAIT FSHELPER.25, &
+    FSH_SEMWAIT FSHELPER.26, &
+    FSH_WILDMATCH FSHELPER.27, &
+    FSH_YIELD FSHELPER.28, &
+    FSH_DOVOLIO2 FSHELPER.29, &
+    FSH_FINDCHAR FSHELPER.30, &
+#    MFSH_SETBOOTDRIVE FSHELPER.31
+    FSH_CANONICALIZE FSHELPER.32, &
+#    MFSH_DOVOLIO FSHELPER.33
+#    MFSH_INTERR  FSHELPER.34
+#    MFSH_SEGALLOC FSHELPER.35
+#    MFSH_SEGFREE FSHELPER.36
+#    MFSH_SEGREALLOC FSHELPER.37
+#    MFSH_CALLRM FSHELPER.38
+#    MFSH_LOCK FSHELPER.39
+#    MFSH_PHYSTOVIRT FSHELPER.40
+#    MFSH_UNLOCK FSHELPER.41
+#    MFSH_UNPHYSTOVIRT FSHELPER.42
+#    MFSH_VIRT2PHYS FSHELPER.43
+    FSH_QSYSINFO FSHELPER.44, &
+    FSH_NAMEFROMSFN FSHELPER.45, &
+    FSH_UPPERCASE FSHELPER.46, &
+    FSH_CHECKEANAME FSHELPER.47, &
+    FSH_CALLDRIVER FSHELPER.48, &
+    FSH_SETVOLUME FSHELPER.49, &
+    FSH_STACKSPACE FSHELPER.50, &
+    FSH_REGISTERPERFCTRS FSHELPER.51, &
+    FSH_IOBOOST FSHELPER.52, &
+    FSH_QUERYSERVERTHREAD FSHELPER.53, &
+    FSH_QUERYOPLOCK FSHELPER.54, &
+    FSH_EXTENDTIMESLICE FSHELPER.55
+#    MFSH_SYSCTL FSHELPER.56
+ @%append $[*.lnk @$[@

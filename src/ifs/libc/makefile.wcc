@@ -1,0 +1,25 @@
+ROOT=..\..
+PROJ=ifs\libc
+PATH=..\..\..\$(PROJ)
+DIRS=
+TARGETS=$(LIBROOT)\libc.lib
+
+!include ..\..\makefile.mk
+
+COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=. -i=.. -i=..\include
+AOPT=-q -d__LARGE__ -i=. -i=.. -i=..\include
+OBJS=$(PROJ_BLD)\mem.obj &
+     $(PROJ_BLD)\i4d.obj &
+     $(PROJ_BLD)\i4m.obj &
+     $(PROJ_BLD)\i8d086.obj &
+     $(PROJ_BLD)\i8m086.obj &
+     $(PROJ_BLD)\pia.obj &
+     $(PROJ_BLD)\pts.obj &
+     $(PROJ_BLD)\ptc.obj &
+     $(PROJ_BLD)\alphabet.obj
+
+$(LIBROOT)\libc.lib:
+
+$(PROJ_BLD)\libc.ols: $(OBJS)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ +%e

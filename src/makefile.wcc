@@ -1,0 +1,7 @@
+ROOT = .
+PROJ = .
+PATH = ..
+
+!include makefile.mk
+
+DIRS = include ufat32 util ifs\libc ifs fat32chk partfilt ifsinf\ifs ifsinf\fat32

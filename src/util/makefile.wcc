@@ -1,0 +1,82 @@
+!define _32BITS
+ROOT=..
+PROJ=util
+PATH=..\..\$(PROJ)
+
+!include ..\makefile.mk
+
+DESC="Fat32 utilities, Henk Kelder & Netlabs"
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+
+OBJS1=$(PROJ_BLD)\f32stat.obj
+OBJS2=$(PROJ_BLD)\cachef32.obj
+OBJS3=$(PROJ_BLD)\monitor.obj
+OBJS4=$(PROJ_BLD)\diskinf0.obj $(PROJ_BLD)\diskinf1.obj $(PROJ_BLD)\diskinf2.obj
+OBJS5=$(PROJ_BLD)\diskdump.obj
+
+TARGETS=$(BINROOT)\os2\f32stat.exe $(BINROOT)\os2\f32mon.exe $(BINROOT)\os2\diskinfo.exe  &
+        $(BINROOT)\os2\cachef32.exe $(BINROOT)\os2\diskdump.exe $(BINROOT)\os2\diskdump.sym $(BINROOT)\os2\cachef32.sym &
+        $(BINROOT)\os2\diskinfo.sym $(BINROOT)\os2\f32mon.sym $(BINROOT)\os2\f32stat.sym
+DIRS=..\include
+
+SYS=os2v2
+
+#diskinf0.c: fat32def.h fat32.h
+#diskinf1.c: fat32def.h fat32.h
+#diskinf2.c: fat32def.h fat32.h
+#monitor.c:  fat32def.h
+#cachef32.c: fat32def.h
+#f32stat.c:  fat32def.h
+
+$(BINROOT)\os2\f32stat.exe:
+
+$(BINROOT)\os2\f32mon.exe:
+
+$(BINROOT)\os2\diskinfo.exe:
+
+$(BINROOT)\os2\cachef32.exe:
+
+$(BINROOT)\os2\diskdump.exe:
+
+$(BINROOT)\os2\diskdump.sym:
+
+$(BINROOT)\os2\cachef32.sym:
+
+$(BINROOT)\os2\diskinfo.sym:
+
+$(BINROOT)\os2\f32mon.sym:
+
+$(BINROOT)\os2\f32stat.sym:
+
+$(PROJ_BLD)\f32stat.ols: $(OBJS1)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\cachef32.ols: $(OBJS2)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\f32mon.ols: $(OBJS3)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\diskinfo.ols: $(OBJS4)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\diskdump.ols: $(OBJS5)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $[*.lnk OPTION ST=81920
+ @%append $[*.lnk OPTION QUIET
+ @%append $[*.lnk DEBUG ALL
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;
+ @%append $[*.lnk LIB os2386,clib3s
+ @%append $[*.lnk @$[@

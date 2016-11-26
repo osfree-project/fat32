@@ -1,0 +1,75 @@
+ROOT=..
+PROJ=partfilt
+PATH=..\..\$(PROJ)
+
+!include ..\makefile.mk
+
+DESC="General Partition filter, Deon van der Westhuysen"
+
+# create OS/2 binaries
+OBJ_1 = $(PROJ_BLD)\e2header.obj $(PROJ_BLD)\e2wrap.obj $(PROJ_BLD)\e2data.obj
+OBJ_2 = $(PROJ_BLD)\e2router.obj $(PROJ_BLD)\e2filt.obj $(PROJ_BLD)\e2part.obj
+OBJ_3 = $(PROJ_BLD)\e2iocmd.obj $(PROJ_BLD)\e2virtio.obj
+OBJ_4 = $(PROJ_BLD)\i4d.obj $(PROJ_BLD)\i4m.obj 
+# These segs are discarded after driver init
+OBJ_5 = $(PROJ_BLD)\e2init.obj $(PROJ_BLD)\e2inutil.obj
+OBJS= $(OBJ_1) $(OBJ_2) $(OBJ_3) $(OBJ_4) $(OBJ_5)
+# COPT=-3s -s -sg -hw -mf -od -ze -zq -q -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+# COPT=-2 -ml -ecc -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__MSC__  -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+COPT=-2 -ms -ecc -s -q -zq -zdp -zgf -zls -zp=1 -zu -ze -zl -od -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+# COPT=-q -ml -ecc -za99 -bd -ei -zp=1 -d0 -ox -oi -s -wx -zl -zm -zls -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+AOPT=-q -ms -zcm=masm -d__MASM__ -d__FUNCS__ -i=. -i=.. -i=..\include
+TARGETS = $(BINROOT)\os2\boot\partfilt.flt $(BINROOT)\os2\boot\partfilt.sym
+DIRS=..\include
+
+.asm: libc
+
+$(BINROOT)\os2\boot\partfilt.flt:
+
+$(BINROOT)\os2\boot\partfilt.sym:
+
+$(PROJ_BLD)\partfilt.ols: $(OBJS)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $[*.lnk
+ @%append $[*.lnk format os2 lx phys
+ @%append $[*.lnk name $(BINROOT)\os2\boot\$^&.flt
+ @%append $[*.lnk option description '$(FILEVER)  $(DESC)'
+ #@%append $[*.lnk option mixed1632
+ @%append $[*.lnk option quiet
+ @%append $[*.lnk option nostub
+ @%append $[*.lnk option align=4
+ @%append $[*.lnk option nocase
+ @%append $[*.lnk option stack=0
+ @%append $[*.lnk option manyautodata
+ @%append $[*.lnk option map=$[*.wmp
+ @%append $[*.lnk alias E2Init=_E2Init
+ @%append $[*.lnk alias DevHelp=_DevHelp
+ @%append $[*.lnk alias memcpy=_memcpy
+ @%append $[*.lnk alias memset=_memset
+ #@%append $[*.lnk debug all
+ @%append $[*.lnk segment type DATA SHARED
+ @%append $[*.lnk segment type CODE IOPL
+ @%append $[*.lnk order
+ @%append $[*.lnk clname 'DATA' 
+ @%append $[*.lnk segment 'DDHeader' 
+ @%append $[*.lnk segment _DATA 
+ @%append $[*.lnk clname 'CONST'
+ @%append $[*.lnk clname 'BSS'
+ @%append $[*.lnk clname 'CODE'
+ @%append $[*.lnk segment 'StratCode' 
+ @%append $[*.lnk segment _TEXT 
+ @%append $[*.lnk segment 'InitCode'
+ #@%append $[*.lnk libpath $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;
+ #@%append $[*.lnk lib clibc
+ @%append $[*.lnk @$[@
+
+# 'DDHeader'	CLASS 'DATA'
+# _DATA		CLASS 'DATA'
+# CONST		CLASS 'CONST'
+# _BSS		CLASS 'BSS'
+# 'StratCode'	CLASS 'CODE' IOPL
+# _TEXT		CLASS 'CODE' IOPL
+# 'InitCode'	CLASS 'CODE' IOPL

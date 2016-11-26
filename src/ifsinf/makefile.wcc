@@ -1,0 +1,7 @@
+ROOT=..
+PROJ=ifsinf
+PATH=..\$(PROJ)
+
+!include ..\makefile.mk
+
+DIRS=fat32 ifs
