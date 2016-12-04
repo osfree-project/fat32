@@ -175,9 +175,9 @@ return object
 <PCK INDEX=6
    PACKAGEID="NetLabs\FAT32.IFS\Korean support\0\10\1"
    TITLE="Korean doc and corrected COUNTRY.SYS"
-   TARGET="?:\OS2\SYSTEM"
+   TARGET="?:\OS2"
    FIXED
-   CREATEOBJECT="WPShadow|FAT32.KOR|=("FindObject <ESE_BOOKS> <WP_REFCMDFOLDER>")|SHADOWID=$(6)\FAT32.KOR;OBJECTID=<FAT32_KOR_SHADOW>;"
+   CREATEOBJECT="WPShadow|FAT32.KOR|=("FindObject <ESE_BOOKS> <WP_REFCMDFOLDER>")|SHADOWID=$(6)\DOCS\FAT32\FAT32.KOR;OBJECTID=<FAT32_KOR_SHADOW>;"
 >Korean support for non-Korean systems.
 </PCK>
 
