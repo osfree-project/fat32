@@ -188,6 +188,13 @@ return object
    FIXED
 ></PCK>
 
+<PCK INDEX=8
+   PACKAGEID="NetLabs\FAT32.IFS\Debug symbols\0\10\1"
+   TITLE="Debug symbols for all binaries"
+   TARGET="?:\OS2"
+   FIXED
+></PCK>
+
 </HEAD>
 
 <BODY>
