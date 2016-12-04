@@ -42,7 +42,7 @@ docs     = &
  partfilt.txt
 
 korean   = &
- country.kor fat32.kor
+ boot\country.kor docs\fat32\fat32.kor
 
 adddrv   = &
  os2dasd.f32 partfilt.flt
@@ -136,8 +136,8 @@ $(BINROOT)\wpi.flg: $(distfiles)
  @for %file in ($(inf)) do @if exist os2\book\%file @%append $(distname).pkg %file
  @%append $(distname).pkg 5 -c.\os2\docs\fat32
  @for %file in ($(docs)) do @if exist os2\docs\fat32\%file @%append $(distname).pkg %file
- @%append $(distname).pkg 6 -c.\os2\boot
- @for %file in ($(korean)) do @if exist os2\boot\%file @%append $(distname).pkg %file
+ @%append $(distname).pkg 6 -c.\os2
+ @for %file in ($(korean)) do @if exist os2\%file @%append $(distname).pkg %file
  @%append $(distname).pkg 7 -c.\os2\boot
  @for %file in ($(adddrv)) do @if exist os2\boot\%file @%append $(distname).pkg %file
  @%append $(distname).pkg 8 -c.\os2
