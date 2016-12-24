@@ -1,7 +1,7 @@
 _VENDOR=Netlabs
-_VER=0.10a8
-_VERSION=$(_VER):r$(%SVNREV)
-FILEVER=@$#$(_VENDOR):$(_VERSION)$#$#built $(%DATE) on $(%HOSTNAME);0.1$#@
+_VER=0.10.a8
+_VERSION=$(_VER).r$(%SVNREV)
+FILEVER=@$#$(_VENDOR):$(_VERSION)$#@$#$#1$#$# $(%PROJSTR)::::0::@@
 
 BINROOT  = $(ROOT)\bin
 BLDROOT  = $(ROOT)\bld

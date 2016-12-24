@@ -7,7 +7,7 @@ DO WHILE queued() <> 0
     DO
         PARSE VALUE queueLine WITH "Revision: " rev
         call value 'SVNREV', rev,  'OS2ENVIRONMENT'
-        call value 'DATE', date(), 'OS2ENVIRONMENT'
+        call value 'PROJSTR', left(date() time(),25)left(value('HOSTNAME',,'OS2ENVIRONMENT'),10), 'OS2ENVIRONMENT'
         if outfile <> '' THEN
         DO
             '@del ' || outfile || ' >nul 2>&1'
