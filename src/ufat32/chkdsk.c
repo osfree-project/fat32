@@ -874,6 +874,7 @@ ULONG dummy = 0;
          iShowMessage(pCD, 1356, 2,
             TYPE_LONG2, pCD->ulLostClusters,
             TYPE_LONG2, (ULONG)pCD->usLostChains);
+      fflush(stdout);
 
       for (;;)
          {
