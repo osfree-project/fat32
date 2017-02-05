@@ -566,7 +566,7 @@ ULONG  dummy = 0;
    if (rc)
       {
       printf("The copies of the FATs do not match.\n");
-      printf("Please run SCANDISK to correct this problem.\n");
+      printf("Please run CHKDISK under Windows to correct this problem.\n");
       return rc;
       }
    rc = CheckFiles(pCD);
@@ -654,7 +654,7 @@ ULONG  dummy = 0;
       if (!pCD->fFix)
          iShowMessage(pCD, 1339, 0);
       else
-         printf("Still errors found on disk. Please run Windows 95 ScanDisk!\n");
+         printf("Errors may still exist on this volume. Recommended action: Run CHKDSK under Windows.\n");
       }
    else if (pCD->fFix)
       {
