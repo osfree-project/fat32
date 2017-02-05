@@ -1466,6 +1466,15 @@ APIRET rc = 0;
          {
          f32Parms.fLargeFiles = TRUE;
          }
+
+      p = strstr(szArguments, "/readonly");
+      if (!p)
+         p = strstr(szArguments, "-readonly");
+      if (p)
+         {
+         // mount dirty disk readonly
+         f32Parms.fReadonly = TRUE;
+         }
 #if 1
    if (!DosGetInfoSeg(&sGlob, &sLoc))
 #else

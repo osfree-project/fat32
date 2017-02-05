@@ -6,7 +6,7 @@
 #include <ctype.h>
 #endif
 
-#if defined(__OS2__) && !defined(OS2_INCLUDED)
+#if defined(__OS2__) //&& !defined(OS2_INCLUDED)
 #define INCL_DOSPROCESS
 #define INCL_DOSPROFILE
 #define INCL_DOSSEMAPHORES

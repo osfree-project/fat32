@@ -120,6 +120,12 @@ PROCINFO ProcInfo;
       goto FS_FINDFIRSTEXIT;
       }
 
+   if (!pVolInfo->fDiskCleanOnMount && !f32Parms.fReadonly)
+      {
+      rc = ERROR_VOLUME_DIRTY;
+      goto FS_FINDFIRSTEXIT;
+      }
+
    switch (usLevel)
       {
       case FIL_STANDARD         :

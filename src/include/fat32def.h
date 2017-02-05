@@ -237,6 +237,7 @@ USHORT fHighMem;
 USHORT fForceLoad;
 USHORT fCalcFree;
 CHAR   fLargeFiles;
+CHAR   fReadonly;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options

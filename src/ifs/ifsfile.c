@@ -224,6 +224,12 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
+      if (!pVolInfo->fDiskCleanOnMount && !f32Parms.fReadonly)
+         {
+         rc = ERROR_VOLUME_DIRTY;
+         goto FS_OPENCREATEEXIT;
+         }
+
       if (ulCluster == FAT_EOF)
          {
          memset(&DirEntry, 0, sizeof (DIRENTRY));
