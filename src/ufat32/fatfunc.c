@@ -1882,6 +1882,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 ******************************************************************/
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 {
+   DATETIME datetime;
    DIRENTRY DirEntry;
    BYTE     szFileName[14];
    USHORT   usNr;
@@ -1910,6 +1911,17 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    memcpy(DirEntry.bFileName, szFileName, 8);
    if (pData)
       strncpy(pData, szFileName, cbData);
+
+   DosGetDateTime(&datetime);
+   DirEntry.wCreateTime.hours = datetime.hours;
+   DirEntry.wCreateTime.minutes = datetime.minutes;
+   DirEntry.wCreateTime.twosecs = datetime.seconds / 2;
+   DirEntry.wCreateDate.day = datetime.day;
+   DirEntry.wCreateDate.month = datetime.month;
+   DirEntry.wCreateDate.year = datetime.year;
+   DirEntry.wAccessDate.day = datetime.day;
+   DirEntry.wAccessDate.month = datetime.month;
+   DirEntry.wAccessDate.year = datetime.year;
 
    DirEntry.wCluster = LOUSHORT(ulCluster);
    DirEntry.wClusterHigh = HIUSHORT(ulCluster);
