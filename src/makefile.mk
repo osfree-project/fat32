@@ -1,5 +1,5 @@
 _VENDOR=Netlabs
-_VER=0.10.a8
+_VER=0.10
 _VERSION=$(_VER).r$(%SVNREV)
 FILEVER=@$#$(_VENDOR):$(_VERSION)$#@$#$#1$#$# $(%PROJSTR)::::0::@@
 
@@ -39,7 +39,7 @@ docs     = &
  partfilt.doc build.txt &
  deamon.txt fat32.txt lesser.txt &
  license.txt os2fat32.txt problems.txt &
- partfilt.txt
+ partfilt.txt message.txt
 
 korean   = &
  boot\country.kor docs\fat32\fat32.kor
@@ -69,7 +69,7 @@ distlist = &
  $(p)os2\docs\fat32\partfilt.doc $(p)os2\docs\fat32\build.txt &
  $(p)os2\docs\fat32\deamon.txt $(p)os2\docs\fat32\fat32.txt $(p)os2\docs\fat32\lesser.txt &
  $(p)os2\docs\fat32\license.txt $(p)os2\docs\fat32\os2fat32.txt $(p)os2\docs\fat32\problems.txt &
- $(p)os2\docs\fat32\partfilt.txt &
+ $(p)os2\docs\fat32\partfilt.txt $(p)os2\docs\fat32\message.txt &
  $(p)os2\boot\country.kor $(p)os2\docs\fat32\fat32.kor &
  $(p)os2\boot\os2dasd.f32
 p = $(BINROOT)\
@@ -155,7 +155,7 @@ copy: $(BINROOT)\os2\boot\os2dasd.f32 $(BINROOT)\os2\boot\country.kor &
  $(BINROOT)\os2\docs\fat32\partfilt.doc $(BINROOT)\os2\docs\fat32\fat32.kor $(BINROOT)\os2\docs\fat32\build.txt &
  $(BINROOT)\os2\docs\fat32\deamon.txt $(BINROOT)\os2\docs\fat32\fat32.txt $(BINROOT)\os2\docs\fat32\lesser.txt &
  $(BINROOT)\os2\docs\fat32\license.txt $(BINROOT)\os2\docs\fat32\os2fat32.txt $(BINROOT)\os2\docs\fat32\problems.txt &
- $(BINROOT)\os2\docs\fat32\partfilt.txt .symbolic 
+ $(BINROOT)\os2\docs\fat32\partfilt.txt $(BINROOT)\os2\docs\fat32\message.txt .symbolic 
 
 $(BINROOT)\os2\boot\os2dasd.f32: $(ROOT)\lib\os2dasd.f32
  @copy $< $^@ >nul 2>&1
@@ -191,6 +191,9 @@ $(BINROOT)\os2\docs\fat32\problems.txt: $(ROOT)\doc\problems.txt
  @copy $< $^@ >nul 2>&1
 
 $(BINROOT)\os2\docs\fat32\partfilt.txt: $(ROOT)\doc\partfilt.txt
+ @copy $< $^@ >nul 2>&1
+
+$(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
  @copy $< $^@ >nul 2>&1
 
 .inf: $(BINROOT)

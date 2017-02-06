@@ -1,0 +1,304 @@
+// MESSAGE.TXT v1.2
+LOG00000|0   /|invalid badblock LSN 0x%x, count %d |{}
+LOG00001|1   /|error reading badblock LSN 0x%x |{}
+LOG00002|2   /|badblock cross linked LSN 0x%x |{}
+LOG00003|3   /|sector in badblock cross linked LSN 0x%x |{}
+LOG00004|4   /|# bad sectors found %d != super.culNumBadSects %d |{}
+LOG00005|5   /|sector 0x%x already in bad block list |{}
+LOG00006|6   /|update super block's bad block count, %d to %d |{}
+LOG00007|7   /|update super block's bad block LSN, 0x%x to 0x%x |{}
+LOG00008|8   /|sector 0x%x added to bad block list |{}
+LOG00009|9   /|error writing badblock LSN 0x%x |{}
+LOG00100|100 /|error reading code page info sect LSN 0x%x |{}
+LOG00101|101 /|code page info sect cross linked, LSN 0x%x |{}
+LOG00102|102 /|code page info sect invalid signature, LSN 0x%x |{}
+LOG00103|103 /|cp info sect (LSN 0x%x) invalid code page count %d |or index %d |{}
+LOG00104|104 /|cp info sect (LSN 0x%x) invalid code page count %d, |need %d |{}
+LOG00105|105 /|cp info sect (LSN 0x%x) invalid, no next info sect |{}
+LOG00106|106 /|cp info sect (LSN 0x%x) invalid, info entries are not |in sequential order |{}
+LOG00107|107 /|cp info sect (LSN 0x%x) invalid, info entry %d has bad |LSN for data sector |{}
+LOG00108|108 /|cp info sect (LSN 0x%x) CHANGED, info entry %d LSN |for data sector was 0x%x, now 0x%x |{}
+LOG00109|109 /|error reading data sector LSN 0x%x |{}
+LOG00110|110 /|FIXED the signature of data sector, LSN=0x%x |{}
+LOG00111|111 /|invalid data sector, bad signature, LSN=0x%x |{}
+LOG00112|112 /|data sector (iFirstCP %d) wrong for info entry |(iCPVol %d) |{}
+LOG00113|113 /|data sector iFirstCP %d CHANGED to %d |{}
+LOG00114|114 /|data sect cksCP[%d] CHANGED from 0x%x to 0x%x |{}
+LOG00115|115 /|data entry code page ID CHANGED from %d to %d |{}
+LOG00116|116 /|data entry country code CHANGED from %d to %d |{}
+LOG00117|117 /|data sector (iFirstCP %d) had invalid checksum |for data entry %d |{}
+LOG00118|118 /|info ent (iCPVol %d) checksum CHANGED from 0x%x to 0x%x |{}
+LOG00119|119 /|info ent (iCPVol %d) codepgID CHANGED from %d to %d |{}
+LOG00120|120 /|info ent(iCPVol %d) cntry code CHANGED from %d to %d |{}
+LOG00121|121 /|error reading sector 0x%x during code page scan |{}
+LOG00122|122 /|CHANGE spare block lsnCPInfo from 0x%x to 0x%x |{}
+LOG00123|123 /|CHANGE spare block culCP from %d to %d |{}
+LOG00124|124 /|NO code page data sectors were found by the scan |{}
+LOG00125|125 /|1st info ent has iCPVol %d (should be 0) and |CodePageID %d (should be non-zero) |{}
+LOG00126|126 /|info sector has iFirstCP %d (should be 0) and |cCodePage %d (should be > 0) |{}
+LOG00127|127 /|CREATED data entry, CodePageID %d & CountryCode %d |{}
+LOG00128|128 /|info sector missing for code page %d |{}
+LOG00129|129 /|write data sect (iFirstCP %d) out to disk at LSN 0x%x |{}
+LOG00130|130 /|data sector missing for code page %d |{}
+LOG00131|131 /|info sec (iFirstCP %d) cCodePg CHANGED from %d to %d |{}
+LOG00132|132 /|info ent (iCPVol %d) lsnCPData CHANGED from 0x%x to 0x%x |{}
+LOG00133|133 /|info ent iCPVol CHANGED from %d to %d |{}
+LOG00134|134 /|info ent (iCPVol %d) DBCSrange CHANGED from %d to %d |{}
+LOG00135|135 /|write info sect (iFirstCP %d) out to disk at LSN 0x%x |{}
+LOG00136|136 /|error writing info sect (iFirstCP %d) at LSN 0x%x |{}
+LOG00137|137 /|DosMapCase failed, rc = %d |{}
+LOG00138|138 /|DosQueryDBCSEnv failed, rc = %d |{}
+LOG00139|139 /|DosQueryCp failed, rc = %d |{}
+LOG00140|140 /|DosQueryCtryInfo failed, rc = %d |{}
+LOG00141|141 /|info sec (iFirst %d) lsnNext CHANGED from 0x%x to 0x%x |{}
+LOG00142|142 /|error writing data sect (iFirstCP %d) at LSN 0x%x |{}
+LOG00143|143 /|info ent (iFirst %d) lsnCPData CHANGED from 0x%x to 0x%x |{}
+LOG00200|200 /|CHANGE spare block MaxHotFixes from %d to default %d |{}
+LOG00201|201 /|CHANGE spare block HotFixes from %d to %d (max) |{}
+LOG00202|202 /|CHANGE spare block MaxHotFixes from %d to %d |{}
+LOG00203|203 /|Allocated new replacement sectors for hot fix table |{}
+LOG00204|204 /|write hot fix table to disk at LSN 0x%x |{}
+LOG00205|205 /|error writing hot fix table to disk at LSN 0x%x |{}
+LOG00206|206 /|CHANGE spare block lsnHotFix from 0x%x to 0x%x |{}
+LOG00300|300 /|root fnode not found, rebuild the drive. |{}
+LOG00301|301 /|INFORMATION: bad_super = 0x%x, bad_spare = 0x%x (0 is good) |{}
+LOG00302|302 /|TreeWalk failed rc = %d, rebuild the drive |{}
+LOG00303|303 /|CHANGE super block lsnRootFnode from 0x%x to 0x%x |{}
+LOG00304|304 /|INFORMATION: CHANGE super block datLastChkdsk to %d |{}
+LOG00305|305 /|INFORMATION: write super block to disk at LSN 0x%x |{}
+LOG00306|306 /|INFORMATION: CHANGE spare block SPB_SUPERBSUM to 0x%x |{}
+LOG00307|307 /|INFORMATION: CHANGE spare block SPB_SPAREBSUM to 0x%x |{}
+LOG00308|308 /|INFORMATION: write spare block to disk at LSN 0x%x |{}
+LOG00400|400 /|CREATE NEW spare dirblk on disk at LSN 0x%x |{}
+LOG00401|401 /|error writing spare dirblk at LSN 0x%x |{}
+LOG00402|402 /|CHANGE spare block cdbSpares from %d to %d |{}
+LOG00403|403 /|CHANGE spare block bFlag 0x%x, turned off SPF_SPARE |{}
+LOG00404|404 /|CREATE NEW spare dirblk at LSN 0x%x (replace bad one) |{}
+LOG00405|405 /|CREATE NEW spare dirblk at LSN 0x%x (replace used one) |{}
+LOG00406|406 /|write new SidTab to disk at LSN 0x%x |{}
+LOG00407|407 /|CHANGE super block lsnSidTab from 0x%x to 0x%x |{}
+LOG00408|408 /|error writing SidTab to LSN 0x%x |{}
+LOG00409|409 /|Allocate NEW bitmap at LSN 0x%x |{}
+LOG00410|410 /|write bitmap indirect block to LSN 0x%x |{}
+LOG00411|411 /|error writing bitmap indirect block to LSN 0x%x |{}
+LOG00412|412 /|CHANGE super block BitMapIndBlk.Main from 0x%x to 0x%x |{}
+LOG00413|413 /|CHANGE super block lsnDirBlkMap from 0x%x to 0x%x |{}
+LOG00414|414 /|CHANGE root fnode lsnContDir from 0x%x to 0x%x |{}
+LOG00415|415 /|write root fnode to LSN 0x%x |{}
+LOG00416|416 /|error writing root fnode to LSN 0x%x |{}
+LOG00417|417 /|CHANGE all entries in the root to point to LSN 0x%x |{}
+LOG00418|418 /|CHANGE super block lsnRootFNode from 0x%x to 0x%x |{}
+LOG00419|419 /|REPLACED entire boot block (0-15), rc=%d |{}
+LOG00500|500 /|could not find the dirband |{}
+LOG00501|501 /|could not read the root fnode, LSN 0x%x |{}
+LOG00502|502 /|CREATE a new root fnode |{}
+LOG00503|503 /|found corrupted root fnode at LSN 0x%x |{}
+LOG00504|504 /|write rebuilt root fnode at LSN 0x%x |{}
+LOG00505|505 /|found root fnode at LSN 0x%x |{}
+LOG00506|506 /|CHANGE root fnode's root dir from 0x%x to 0x%x |{}
+LOG00507|507 /|write modified root fnode at LSN 0x%x |{}
+LOG00508|508 /|CHANGE super block lsnRootFnode from 0x%x to 0x%x |{}
+LOG00509|509 /|dirband found at LSN 0x%x to 0x%x |{}
+LOG00510|510 /|root dirblk found at LSN 0x%x |{}
+LOG00600|600 /|error reading the super block. |{}
+LOG00601|601 /|error reading the spare block. |{}
+LOG00602|602 /|error reading the boot block. |{}
+LOG00603|603 /|super block has bad signature, sig1=0x%x, sig2=0x%x |{}
+LOG00604|604 /|spare block has bad signature, sig1=0x%x, sig2=0x%x |{}
+LOG00605|605 /|boot block has bad signature. |{}
+LOG00606|606 /|CHANGE the super block FuncVersion, was %d |{}
+LOG00607|607 /|bad super block FuncVersion %d |{}
+LOG00608|608 /|CHANGE the super block Version, was %d |{}
+LOG00609|609 /|bad super block Version %d |{}
+LOG00610|610 /|hot fix table bad, LSN 0x%x, read returned %d |{}
+LOG00611|611 /|CHANGE hot fix table MaxHotFixes from %d to %d |{}
+LOG00612|612 /|hot fix table bad, replacement sec 0x%x cross linked |{}
+LOG00613|613 /|not using hot fix table, spare block lsnHotFix=0x%x |{}
+LOG00614|614 /|bad code page info, lsnCPInfo=0x%x, culCP=%d |{}
+LOG00615|615 /|bad spare dirblk info, cdbSpares=%d, cdbMaxSpare=%d |{}
+LOG00616|616 /|bad dirband info, lsnFirst=0x%x, lsnLast=0x%x, count=%d |{}
+LOG00617|617 /|bad dirband bitmap, lsnDirBlkMap=0x%x |{}
+LOG00618|618 /|dirband bitmap lsnDirBlkMap=0x%x cross linked |{}
+LOG00619|619 /|CHANGE super block culSectsOnVol from %d to %d |{}
+LOG00620|620 /|NO ROOT FNODE |{}
+LOG00621|621 /|CHANGE spare block cdbMaxSpare from %d to %d |{}
+LOG00622|622 /|CHANGE spare block cdbSpares from %d to %d |{}
+LOG00623|623 /|CHANGE spare block bFlag, turn off SPF_SPARE |{}
+LOG00624|624 /|CHANGE spare block bFlag, turn off SPF_SPARE |{}
+LOG00625|625 /|bad free spare dirblk (#%d), LSN = 0x%x |{}
+LOG00626|626 /|cross linked free spare dirblk (#%d), LSN = 0x%x |{}
+LOG00627|627 /|unreadable used spare dirblk (#%d), LSN = 0x%x |{}
+LOG00628|628 /|invalid used spare dirblk (#%d), LSN = 0x%x |{}
+LOG00629|629 /|invalid super block rspBitMapIndBlk.lsnMain 0x%x |{}
+LOG00630|630 /|unreadable super block rspBitMapIndBlk.lsnMain 0x%x |{}
+LOG00631|631 /|cross linked super block rspBitMapIndBlk.lsnMain 0x%x |{}
+LOG00632|632 /|bitmap (#%d), LSN 0x%x cross linked |{}
+LOG00633|633 /|wrong bitmap count: calculated %d, found %d |{}
+LOG00634|634 /|invalid super block lsnRootFNode 0x%x |{}
+LOG00635|635 /|unreadable super block lsnRootFNode 0x%x |{}
+LOG00636|636 /|INVALID ROOT FNODE, OLD SIGNATURE. |{}
+LOG00637|637 /|invalid signature (0x%x) in root fnode (LSN 0x%x) |{}
+LOG00638|638 /|invalid root fnode, lsnContDir = 0x%x, should be 0x%x |{}
+LOG00639|639 /|root fnode contains invalid root dirblk 0x%x |{}
+LOG00640|640 /|root fnode contains unreadable root dirblk 0x%x |{}
+LOG00641|641 /|bad root dirblk, LSN 0x%x: sig 0x%x Parent 0x%x ThisDir 0x%x |{}
+LOG00642|642 /|super block SidTab LSN 0x%x cross linked |{}
+LOG00643|643 /|invalid super block lsnSidTab 0x%x |{}
+LOG00700|700 /|hotfixed bitmap #%d relocated to lsn %x |{}
+LOG00701|701 /|hotfixed badblock block relocated from %x to %x |{}
+LOG00702|702 /|hotfixed spare dirblk #%d relocated to lsn %x |{}
+LOG00703|703 /|hotfixed bitmap indirect block relocated to %x |{}
+LOG00704|704 /|hotfixed dirband bitmap relocated to lsn %x |{}
+LOG00705|705 /|hotfixed sidtab relocated to lsn %x |{}
+LOG00706|706 /|hotfixed code page info sector relocated to lsn %x |{}
+LOG00707|707 /|hotfixed code page data sector relocated to lsn %x |{}
+LOG01000|1000  /|EA larger than space in Fnode; Fnode = 0x%x, Len = 0x%x EA truncated |{}
+LOG01001|1001  /|EA Read error on alsec LSN = 0x%x rc = 0x%x; EA deleted |{}
+LOG01002|1002  /|EA Claim extents failed for fnode = 0x%x on LSN=0x%x; EA deleted |{}
+LOG01003|1003  /|EA Run not equal to allocation, Fnode = 0x%x, Len = 0x%x allocation = 0x%x EA Truncated |{}
+LOG01004|1004  /|EA Crosslink on ea fnode = 0x%x; 1st LSN in run =0x%x |{}
+LOG01005|1005  /|EA stream len wrong fnode = 0x%x cbRun = 0x%x, calc = 0x%x |{}
+LOG01006|1006  /|EAs in and out of fnode fnode=0x%x EAs in Fnode deleted |{}
+LOG01007|1007  /|EA NEEDEA count wrong for fnode = 0x%x, old count = 0x%x, new count = 0x%x |{}
+LOG01008|1008  /|ACL 2 ACL streams for fnode = 0x%x, in line stream deleted. |{}
+LOG01009|1009  /|ACL too big in fnode = 0x%x, size = 0x%x, ACL truncated |{}
+LOG01010|1010  /|ACL read alsec failed, fnode = 0x%x, alsec = 0x%x |{}
+LOG01011|1011  /|ACL crosslinked on acl for fnode 0x%x, 1st sector in run 0x%x |{}
+LOG01012|1012  /|ACL crosslinked on alsec fnode 0x%x, alsec 0x%x |{}
+LOG01100|1100  /|Bad Fnode Sig, deleting fnode = 0x%x |{}
+LOG01101|1101  /|Deleting duplicate DIRENT for fnode =  0x%x |{}
+LOG01102|1102  /|Changed name in Fnode to match DIRENT oldname = %s fnode = 0x%x |{}
+LOG01103|1103  /|Changed parent pointer in Fnode to match DIRENT, Name was correct |name = %s, new parent ptr = 0x%x, old parent ptr = 0x%x, for fnode = 0x%x |{}
+LOG01104|1104  /|Neither parent nor name in fnode matched dirent, orphaning |fnode name = %s LSN = 0x%x |{}
+LOG01105|1105  /|Dirent say file for a directory fnode = 0x%x, dirent will be changed |{}
+LOG01106|1106  /|Fnode has dir flag on for file, turn it off; fnode = 0x%x |{}
+LOG01107|1107  /|Fnode has does not have dir flag on for dir, turn it on; fnode = 0x%x |{}
+LOG01108|1108  /|Dirent says dir for file fnode, fnode = 0x%x  dirent will be changed |{}
+LOG01109|1109  /|Dir Fnode 0x%x points to invalid dirblk 0x%x; delete fnode |{}
+LOG01110|1110  /|Dir Fnode 0x%x points to already claimed dirblk 0x%x; delete fnode |{}
+LOG01111|1111  /|Fnode 0x%x is xlinked, delete dirent |{}
+LOG01112|1112  /|ACL flag was not set in dirent for fnode 0x%x |{}
+LOG01113|1113  /|ACL flag was set in dirent but shouldn't have been for fnode 0x%x |{}
+LOG01114|1114  /|EA size was wrong in dirent for fnode 0x%x oldsize = 0x%x, newsize = 0x%x |{}
+LOG01115|1115  /|File size in dirent was not 0 for directory for fnode 0x%x |{}
+LOG01116|1116  /|NEEDEA flag was not set in dirent for fnode 0x%x |{}
+LOG01117|1117  /|NEEDEA flag was set in dirent for fnode 0x%x but no NEED EAs |{}
+LOG01118|1118  /|LEAF count in fnode invalid, delete fnode 0x%x |{}
+LOG01119|1119  /|Offset to free byte in fnode incorrect for fnode 0x%x, fixing |{}
+LOG01120|1120  /|FNode-Allocation longer than file size fnode = 0x%x |filesize = 0x%x, valid size = 0x%x, allocated sectors = 0x%x |{}
+LOG01121|1121  /|XLINK on data fnode = 0x%x, run start 0x%x, run length 0x%x; delete fnode |{}
+LOG01122|1122  /|Logical offset wrong in fnode 0x%x old = 0x%x, new = 0x%x, entry# = 0x%x |{}
+LOG01123|1123  /|NODE count in fnode invalid, delete fnode 0x%x |{}
+LOG01124|1124  /|Read error on alsec, delete fnode 0x%x, bad alsec = 0x%x |{}
+LOG01125|1125  /|XLINK on data in alnode for fnode 0x%x alnode = 0x%x see previous |log entries for exact xlink info; fnode deleted |{}
+LOG01126|1126  /|File valid size larger than allocation for fnode 0x%x valid size 0x%x, sector count 0x%x |{}
+LOG01127|1127  /|Valid size larger than file size for fnode 0x%x filesize 0x%x, valid 0x%x |file size increased to valid size |{}
+LOG01128|1128  /|Valid size larger than file size for fnode 0x%x filesize 0x%x, valid 0x%x |{}
+LOG01129|1126  /|File size larger than allocation for fnode 0x%x file size 0x%x, sector count 0x%x |{}
+LOG01200|1200  /|Orphaned data found, but no disk space available to build the found directory |{}
+LOG01201|1201  /|Recovered files will be placed in: %s |{}
+LOG01202|1202  /|Recovered dir as: %s |{}
+LOG01203|1203  /|Recovered file as: %s |{}
+LOG01204|1204  /|Recovered data as file: %s |{}
+LOG01205|1205  /|INFORMATION: Starting the Orphan Check, messages past this point may be attempts to recover data |{}
+LOG01300|1300  /|Invalid sig on alsec = 0x%x, for fnode 0x%x |{}
+LOG01301|1301  /|Bad parent ptr in alsec = 0x%x,for fnode 0x%x, should be 0x%x, was 0x%x |{}
+LOG01302|1302  /|Bad self ptr in alsec = 0x%x,for fnode 0x%x, should be 0x%x, was 0x%x |{}
+LOG01303|1303  /|ALSEC xlinked alsec = 0x%x, for fnode 0x%x |{}
+LOG01304|1304  /|Data  xlinked for alsec = 0x%x, for fnode 0x%x, run start 0x%x, run len 0x%x |{}
+LOG01305|1305  /|Log offset wrong in alsec = 0x%x, for fnode 0x%x, entry 0x%x, was 0x%x, should be 0x%x |{}
+LOG01306|1306  /|read error on  alsec = 0x%x, for fnode 0x%x |{}
+LOG01307|1307  /|Log offset wrong in alnode = 0x%x, for fnode 0x%x, entry 0x%x, was 0x%x, should be 0x%x |{}
+LOG01308|1308  /|Bad Leaf count in Alsec = 0x%x, fnode 0x%x, used = 0x%x, free 0x%x; file will be deleted |{}
+LOG01309|1309  /|Bad offset to free in Alsec = 0x%x,fnode 0x%x, was = 0x%x, should be 0x%x |{}
+LOG01310|1310  /|Allocation longer than file size Alsec = 0x%x, fnode 0x%x, truncated at 0x%x sectors |{}
+LOG01311|1311  /|Bad Node count in Alsec = 0x%x,fnode 0x%x, used = 0x%x, free 0x%x; file will be deleted |{}
+LOG01312|1312  /|Bad offset to free in Alsec = 0x%x,fnode 0x%x, was = 0x%x, should be 0x%x, fixed |{}
+LOG01400|1400  /|1 or more hotfixes sectors were unable to be relocated |{}
+LOG01401|1401  /|Can't read fnode to hotfix fnode = 0x%x |{}
+LOG01402|1402  /|Can't read parent of fnode to hotfix fnode = 0x%x, parent = 0x%x |{}
+LOG01403|1403  /|No disk space to relocate hotfix |{}
+LOG01404|1404  /|Write Alsec failed, on hotfix of fnode 0x%x, alsec 0x%x |{}
+LOG01405|1405  /|Can't read fnode 0x%x to hotfix data |{}
+LOG02000|2000  /|The LSN of the topmost dirblk of the directory: %s is not valid. |Parent Fnode LSN = 0x%x. |The DirBlk LSN = 0x%x. |{}
+LOG02001|2001  /|The topmost dirblk of the directory: %s is not be readable. |Parent Fnode LSN = 0x%x. |The DirBlk LSN = 0x%x. |{}
+LOG02002|2002  /|The topmost dirblk of a directory: %s has a bad signature. |Parent Fnode LSN = 0x%x. |The DirBlk LSN = 0x%x. |{}
+LOG02003|2003  /|The topmost dirblk of a directory: %s is not marked as the topmost dirblk. |Parent Fnode LSN = 0x%x. |The DirBlk LSN = 0x%x. |{}
+LOG02004|2004  /|A Directory FNode claims a directory as its child, but that directory |claims a different FNode as its parent. |The Directory Name is: %s. |The FNode LSN of the Directory FNode claiming this directory = 0x%x. |The DirBlk LSN of the topmost DirBlk for this directory = 0x%x. |The LSN of the FNode that the directory claims is its parent = 0x%x. |{}
+LOG02005|2005  /|The directory: %s does not contain a ".." directory entry! |The Parent FNode of the directory is 0x%x. |The DirBlk LSN of the topmost DirBlk is 0x%x. |{}
+LOG02006|2006  /|A DirBlk which is part of this directory has an invalid signature |or self-pointer. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |{}
+LOG02007|2007  /|A DirBlk which is part of this directory has an invalid parent pointer. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |{}
+LOG02008|2008  /|A DirBlk which is part of this directory is cross-linked. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |{}
+LOG02009|2009  /|A DirBlk which is part of this directory contains a directory entry whose |size or starting position is invalid. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |The size of the bad directory entry. |{}
+LOG02010|2010  /|A DirBlk which is part of this directory contains a directory entry whose FAT |Attributes are invalid. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |The FAT Attributes of the bad directory entry are 0x%x. |The FAT Attributes were changed to 0x%x. |{}
+LOG02011|2011  /|A DirBlk which is part of this directory contains a directory entry whose Code Page |Index is invalid. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |The Code Page Index for the bad directory entry is 0x%x. |The Code Page Index was changed to 0x%x. |{}
+LOG02012|2012  /|A DirBlk which is part of this directory contains a directory entry whose Name Length |is invalid. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |The Name Length for the bad directory entry is 0x%x. |{}
+LOG02013|2013  /|A DirBlk which is part of this directory contains a directory entry whose Name |is invalid. |The directory name is: %s. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the Parent of the bad DirBlk is 0x%x.  (May be an FNode or DirBlk) |The LSN of the bad DirBlk is 0x%x. |The LSN of FNode claimed by this directory entry is 0x%x. |{}
+LOG02014|2014  /|The directory entry for the file/directory %s has the FAT Compatible flag |set incorrectly. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fAttr field of the directory entry is 0x%x. |The new value of the fAttr field of the directory entry is 0x%x. |{}
+LOG02015|2015  /|The directory entry for the file/directory %s has corrupt ACLs! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlex field of the directory entry is 0x%x. |The new value of the fFlex field of the directory entry is 0x%x. |{}
+LOG02016|2016  /|The directory entry for the: %s directory does not have the "special" flag set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlags field of the directory entry is 0x%x. |The new value of the fFlags field of the directory entry is 0x%x. |{}
+LOG02017|2017  /|The directory entry for the: %s directory does not have the Directory Attribute set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fAttr field of the directory entry is 0x%x. |The new value of the fAttr field of the directory entry is 0x%x. |{}
+LOG02018|2018  /|The directory: %s contains more than one ".." directory entry! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |{}
+LOG02019|2019  /|The directory entry for the file: %s has the "special" flag set when it should not! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlags field of the directory entry is 0x%x. |The new value of the fFlags field of the directory entry is 0x%x. |{}
+LOG02020|2020  /|The directory entry for the file: %s claims an invalid FNode! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The LSN of the FNode claimed by the directory entry is 0x%x. |{}
+LOG02021|2021  /|The directory entry for the file: %s has an invalid B-Tree Downlink. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The value of the bad B-Tree Downlink is 0x%x. |{}
+LOG02022|2022  /|The directory entry for the file: %s has a B-Tree Downlink which is not readable! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The value of the B-Tree Downlink is 0x%x. |{}
+LOG02023|2023  /|The directory entry for the file: %s has a bad B-Tree Downlink!  The bad downlink |was discovered on a recursive call to check the DirBlk pointed to by the B-Tree |Downlink. |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The value of the B-Tree Downlink is 0x%x. |{}
+LOG02024|2024  /|The directory entries in the file: %s directory are out of order! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |{}
+LOG02025|2025  /|The directory: %s contains duplicate entries! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |{}
+LOG02026|2026  /|The directory: %s contains a DirBlk whose offulFirstFree field is incorrect! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error 0x%x. |{}
+LOG02027|2027  /|The directory: %s contains a DirBlk which is empty! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error 0x%x. |{}
+LOG02028|2028  /|The directory entry for the: %s directory has too many flags set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlags field of the directory entry is 0x%x. |The new value of the fFlags field of the directory entry is 0x%x. |{}
+LOG02029|2029  /|The END record for the DirBlk has too many flags set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlags field of the directory entry is 0x%x. |The new value of the fFlags field of the directory entry is 0x%x. |{}
+LOG02030|2030  /|A Directory Entry has the "END" flag set when it should not! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original value of the fFlags field of the directory entry is 0x%x. |The new value of the fFlags field of the directory entry is 0x%x. |{}
+LOG02031|2031  /|The ".." directory entry for the: %s directory claims the wrong parent! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The parent pointer of the ".." entry is 0x%x. |{}
+LOG02032|2032  /|The directory entry for the %s directory is the wrong size! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |The original directory entry size was 0x%x. |The new directory entry size is 0x%x. |{}
+LOG02033|2033  /|The directory entry for the %s directory has the DF_ATTR flag set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |{}
+LOG02034|2034  /|The directory entry for the %s directory has the DF_PERM flag set! |The LSN of the Directory FNode for this Directory is 0x%x. |The DirBlk LSN of the topmost DirBlk for this Directory is 0x%x. |The LSN of the DirBlk containing the error is 0x%x. |{}
+LOG02100|2100  /|The directory entry for the corrupted subdirectory: %s was deleted. |The LSN of the Directory FNode for the directory containing the directory |entry being deleted is 0x%x. |The LSN of the topmost DirBlk for the directory containing the directory |entry being deleted is 0x%x. |{}
+LOG02101|2101  /|The directory entry for the corrupted subdirectory/file: %s was deleted. |The LSN of the Directory FNode for the directory containing the directory |entry being deleted is 0x%x. |The LSN of the topmost DirBlk for the directory containing the directory |entry being deleted is 0x%x. |The LSN of the FNode of the corrupted subdirectory |{}
+LOG02102|2102  /|The directory entry for: %s was modified. |The LSN of the Directory FNode for the directory containing the directory |entry being modified is 0x%x. |The LSN of the topmost DirBlk for the directory containing the directory |entry being modified is 0x%x. |The original cchFSize field was 0x%x. |The new cchFSize field is 0x%x. |The original ulEALen field was 0x%x. |The new ulEALen field is 0x%x. |The original fAttr field was 0x%x. |The new fAttr field is 0x%x. |The old fFlags field was 0x%x. |The new fFlags field is 0x%x. |{}
+LOG02201|2201  /|INFORMATION: The largest contiguous block of free memory below the 16MB lines is %d. |{}
+LOG02202|2202  /|INFORMATION: Unable to allocate memory above 16MB.  Unable to communicate with the |CHKDSK.SYS device driver.  DOSOPEN returns error code %d. |{}
+LOG02203|2203  /|INFORMATION: Unable to allocate memory above 16MB.  The device driver has returned |error %d.  The DosDevIOCtl return code was %d. |{}
+LOG02204|2204  /|INFORMATION: Using %d bytes of memory above the 16MB line.  The memory is located |at address 0x%x. |{}
+LOG02205|2205  /|INFORMATION: Returning at least %d bytes of memory to the OS for its own use. |{}
+LOG02206|2206  /|INFORMATION: DosAllocMem failed to allocate a small block after we freed a large |one!  Attempting to proceed anyway. |{}
+LOG02400|2400  /|The media descriptor byte is incorrect. |{}
+LOG02401|2401  /|The copies of the FATs do not match. |{}
+LOG02402|2402  /|Total clusters mismatch! |{}
+LOG02403|2403  /|The stored free disk space is incorrect. %lu free allocation units are reported, while %lu free units are detected. |{}
+LOG02404|2404  /|The correct free space is set to %lu allocation units. |{}
+LOG02405|2405  /|There is only one active FAT. |{}
+LOG02406|2406  /|FAT Entry for cluster %lu contains an invalid value. |{}
+LOG02407|2407  /|File Allocation Table (FAT) is bad on drive %s. |{}
+LOG02408|2408  /|File Allocation Table (FAT) is ok. |{}
+LOG02409|2409  /|CHKDSK was unable to delete a lost chain. |{}
+LOG02410|2410  /|An invalid cluster number %8.8lX was found. |{}
+LOG02411|2411  /|ERROR: Cluster for %s is 0! |{}
+LOG02412|2412  /|ERROR:Directory %s is too large ! (Not enough memory!). |{}
+LOG02413|2413  /|A lost long filename was found: %s. |{}
+LOG02414|2414  /|The longname does not belong to %s. |{}
+LOG02415|2415  /|%s has old EA mark byte(0x%0X). |{}
+LOG02416|2416  /|SYS%4.4u: Unable to correct problem. |{}
+LOG02417|2417  /|%s has unknown EA mark byte(0x%0X). |{}
+LOG02418|2418  /|%s has EA byte(0x%0X). |{}
+LOG02419|2419  /|File marked having EAs, but the EA file (%s) is not found. (SYS%4.4u). |{}
+LOG02420|2420  /|File marked having EAs, but the EA file (%s) is empty. |{}
+LOG02421|2421  /|A lost Extended attribute was found (for %s). |{}
+LOG02422|2422  /|This attribute has been converted to a file |(%s). |{}
+LOG02423|2423  /|Cannot convert %s. SYS%4.4u.|{}
+LOG02424|2424  /|Retrieving EA flag for %s. SYS%4.4u occured. |{}
+LOG02425|2425  /|EAs detected for %s, but it is not marked having EAs. |{}
+LOG02426|2426  /|File allocation error detected for %s. |{}
+LOG02428|2428  /|CHKDSK was unable to correct the filesize. SYS%4.4u. |{}
+LOG02429|2429  /|Non matching longname for %-11.11s. |{}
+LOG02430|2430  /|. entry in %s is incorrect! |{}
+LOG02431|2431  /|.. entry in %s is incorrect! (%lX %lX) |{}
+LOG02432|2432  /|%s: Invalid start of clusterchain %lX found. |{}
+LOG02433|2433  /|CHKDSK found an improperly terminated cluster chain for %s  |{}
+LOG02434|2434  /| and corrected the problem. |{}
+LOG02435|2435  /|A bad terminated cluster chain was found for %s |{}
+LOG02436|2436  /|%s is fragmented |{}
+LOG02437|2437  /|CHKDSK was unable to recover a lost chain. SYS%4.4u |{}
+
