@@ -5200,8 +5200,9 @@ BOOL      fNewCluster;
 
          case MODIFY_DIR_INSERT:
             if (ulPrevCluster != FAT_EOF && 
-                GetFreeEntries(pDirectory, pVolInfo->ulClusterSize) +
-                GetFreeEntries(pDir2, pVolInfo->ulClusterSize) >= usEntriesNeeded)
+                GetFreeEntries(pDirectory, pVolInfo->ulClusterSize)
+                // + GetFreeEntries(pDir2, pVolInfo->ulClusterSize) 
+                >= usEntriesNeeded)
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
