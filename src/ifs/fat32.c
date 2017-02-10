@@ -1503,23 +1503,30 @@ APIRET rc = 0;
    autocheck(cmd);
 
    /* Here we check for a 64-bit file API presence in kernel,
-      and if it is missing, we just disable the large file support */
-   rc = DosLoadModule(szObjname, sizeof(szObjname), "DOSCALLS", &hmod);
+    * and if it is missing, we just disable the large file support 
+    * (considering that KEE module is always loaded in Aurora and
+    * it is missing in older versions).
+    */
+   //rc = DosLoadModule(szObjname, sizeof(szObjname), "DOSCALLS", &hmod);
+   rc = DosLoadModule(szObjname, sizeof(szObjname), "KEE", &hmod);
 
-   if (rc)
+   if (rc && f32Parms.fLargeFiles)
       {
       rc = 0;
-      goto FS_INITEXIT;
-      }
-
-   rc = DosGetProcAddr(hmod, "DosOpenL", &pfn);
-
-   if (rc || ! pfn)
-      {
-      rc = 0;
+      InitMessage("WARNING: Large files support will be disabled.");
       f32Parms.fLargeFiles = FALSE;
-      goto FS_INITEXIT;
       }
+
+   // DOSCALLS.981 == DosOpenL
+   //rc = DosGetProcAddr(hmod, MAKEP(0, 981), &pfn);
+
+   //if (rc || ! pfn)
+   //   {
+   //   InitMessage("WARNING: No long files support!");
+   //   rc = 0;
+   //   f32Parms.fLargeFiles = FALSE;
+   //   goto FS_INITEXIT;
+   //   }
 
    if (f32Parms.fLargeFiles)
       {
@@ -1527,7 +1534,7 @@ APIRET rc = 0;
       FS_ATTRIBUTE |= FSA_LARGEFILE;
       }
 
-FS_INITEXIT:
+//FS_INITEXIT:
    _asm pop es;
 
    return rc;
@@ -2627,7 +2634,7 @@ USHORT rc = 0;
    else /* usType == SD_COMPLETE */
       TranslateFreeBuffer();
 
-FS_SHUTDOWNEXIT:
+//FS_SHUTDOWNEXIT:
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SHUTDOWN returned %d", rc);
