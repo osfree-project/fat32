@@ -79,12 +79,13 @@ BOOL LoadTranslateTable(VOID);
 VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID GetCaseConversion( PUCHAR pCase );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 
 INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 
-#define LOGBUF_SIZE 0x10000
-char logbuf[LOGBUF_SIZE];
+int logbufsize = 0;
+char *logbuf = NULL;
 int  logbufpos = 0;
 
 F32PARMS  f32Parms = {0};
@@ -285,13 +286,13 @@ ULONG  cbDataLen;
          }
       }
 
-   rc = DosQueryFSInfo(pCD->szDrive[0] - '@', FSIL_ALLOC,
-      (PBYTE)&pCD->DiskInfo, sizeof (DISKINFO));
-   if (rc)
-      {
-      fprintf(stderr, "DosQueryFSInfo failed, %s\n", GetOS2Error(rc));
-      DosExit(EXIT_PROCESS, 1);
-      }
+   //rc = DosQueryFSInfo(pCD->szDrive[0] - '@', FSIL_ALLOC,
+   //   (PBYTE)&pCD->DiskInfo, sizeof (DISKINFO));
+   //if (rc)
+   //   {
+   //   fprintf(stderr, "DosQueryFSInfo failed, %s\n", GetOS2Error(rc));
+   //   DosExit(EXIT_PROCESS, 1);
+   //   }
    pCD->hDisk = hFile;
 
    rc = ReadSector(pCD, 0, 1, bSector);
@@ -326,7 +327,7 @@ ULONG  cbDataLen;
    DosClose(hFile);
    free(pCD);
 
-   DosExit(EXIT_PROCESS, rc);
+   //DosExit(EXIT_PROCESS, rc);
    return rc;
 
    rgEnv = rgEnv;
@@ -511,26 +512,41 @@ void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
    int i, len;
 
    header.usRecordSize = sizeof(header) + ulParmNo * sizeof(ULONG);
+   header.cbStrLen = 0;
 
    if (psz)
       {
       len = strlen(psz) + 1;
+      header.cbStrLen = len;
       header.usRecordSize += len;
       }
 
    header.usMsgNo = (USHORT)ulMsgNo;
    header.ulParmNo = ulParmNo;
 
-   if (logbufpos + header.usRecordSize > LOGBUF_SIZE)
-      return;
+   if (logbufpos + header.usRecordSize > logbufsize)
+      {
+      if (! logbufsize)
+         logbufsize = 0x10000;
+      if (! logbuf)
+         logbuf = malloc(logbufsize);
+      else
+         {
+         logbufsize += 0x10000;
+         logbuf = realloc(logbuf, logbufsize);
+         }
+      if (! logbuf)
+         {
+         printf("realloc/malloc failed!\n");
+         return;
+         }
+      }
 
    memcpy(&logbuf[logbufpos], &header, sizeof(header));
    logbufpos += sizeof(header);
 
    if (psz)
       {
-      len = strlen(psz) + 1;
-      header.cbStrLen = len;
       memcpy(&logbuf[logbufpos], psz, len);
       logbufpos += len;
       }
@@ -562,15 +578,18 @@ PSZ    p;
 ULONG  dummy = 0;
 HFILE  hf;
 ULONG  cbActual, ulAction;
-char szLogFile[16];
 
+   if (pCD->fFix)
+      {
+      if (! pCD->fAutoCheck)
+         // issue BEGINFORMAT ioctl to prepare disk for checking
+         begin_format(pCD->hDisk);
+      }
    /*
       Some preparations
    */
-   memset(logbuf, 0, LOGBUF_SIZE);
+   memset(logbuf, 0, logbufsize);
    logbufpos = 0;
-   strcpy(szLogFile, pCD->szDrive);
-   strcat(szLogFile, "\\chkdsk.log");
 
    pCD->ulCurFATSector = 0xFFFFFFFF;
    pCD->ulActiveFatStart =  pCD->BootSect.bpb.ReservedSectors;
@@ -643,19 +662,21 @@ char szLogFile[16];
       }
    rc = CheckFiles(pCD);
    rc = CheckFreeSpace(pCD);
+   pCD->FSInfo.ulFreeClusters = pCD->ulFreeClusters;
 
-   if (pCD->DiskInfo.total_clusters != pCD->ulTotalClusters)
-      {
-      printf("Total clusters mismatch!\n");
-      LogOutMessage(2402, NULL, 0);
-      }
+   //if (! pCD->fAutoCheck)
+   //if (pCD->DiskInfo.total_clusters != pCD->ulTotalClusters)
+   //   {
+   //   printf("Total clusters mismatch!\n");
+   //   LogOutMessage(2402, NULL, 0);
+   //   }
 
-   if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
-      {
-      printf("The stored free disk space is incorrect.\n");
-      printf("(%lu free allocation units are reported,\nwhile %lu free units are detected.)\n",
-         pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
-      LogOutMessage(2403, NULL, 2, pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
+   //if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
+   //   {
+   //   printf("The stored free disk space is incorrect.\n");
+   //   printf("(%lu free allocation units are reported,\nwhile %lu free units are detected.)\n",
+   //      pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
+   //   LogOutMessage(2403, NULL, 2, pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
       if (pCD->fFix)
          {
          ULONG ulFreeBlocks;
@@ -676,9 +697,9 @@ char szLogFile[16];
             //pCD->ulErrorCount++;
             //}
          }
-      else
-         pCD->ulErrorCount++;
-      }
+      //else
+      //   pCD->ulErrorCount++;
+      //}
 
    iShowMessage(pCD, 1361, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
@@ -725,6 +746,7 @@ char szLogFile[16];
       printf("\n%u%% of the files and directories are fragmented.\n",
          (USHORT)(pCD->ulFragmentedChains * 100 / pCD->ulTotalChains));
 
+ChkDskMainExit:
    if (pCD->ulErrorCount)
       {
       printf("\n");
@@ -740,22 +762,19 @@ char szLogFile[16];
       //            NULL, 0, NULL, NULL, 0, NULL);
       // set disk clean
       MarkDiskStatus(pCD, TRUE);
-      // remount disk for changes to take effect
-      remount_media(pCD->hDisk);
       }
 
-ChkDskMainExit:
-   // write chkdsk log
-   DosOpen(szLogFile,
-           &hf,
-           &ulAction,
-           0,
-           0,
-           OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS,
-           OPEN_SHARE_DENYWRITE | OPEN_ACCESS_READWRITE,
-           NULL);
-   DosWrite(hf, logbuf, logbufpos, &cbActual);
-   DosClose(hf);
+   if (pCD->fFix)
+      {
+      // write chkdsk log
+      if (! pCD->fCleanOnBoot || ! pCD->fAutoCheck )
+         MakeFile(pCD, pCD->BootSect.bpb.RootDirStrtClus, "chkdsk.log", logbuf, logbufpos);
+
+      // remount disk for changes to take effect
+      if (! pCD->fAutoCheck)
+         remount_media(pCD->hDisk);
+      }
+
    return rc;
 }
 
@@ -1056,6 +1075,7 @@ int iIndex;
 //DIRENTRY _huge * pEnd;
 DIRENTRY * pDir;
 DIRENTRY * pEnd;
+DIRENTRY * pPrevDir;
 PBYTE pbCluster;
 PBYTE pbPath;
 ULONG ulCluster;
@@ -1070,6 +1090,7 @@ ULONG ulEntries;
 PBYTE pEA;
 ULONG rc;
 ULONG dummy = 0;
+UCHAR fModified = FALSE;
 
    if (!ulDirCluster)
       {
@@ -1079,6 +1100,7 @@ ULONG dummy = 0;
       }
 
    pCD->ulTotalDirs++;
+   pCD->ulUserFiles--;
 
    pbPath = malloc(512);
    strcpy(pbPath, "Directory ");
@@ -1129,7 +1151,21 @@ ULONG dummy = 0;
                printf("A lost long filename was found: %s\n",
                   szLongName);
                LogOutMessage(2413, szLongName, 0);
-               pCD->ulErrorCount++;
+               if (pCD->fFix)
+                  {
+                  // mark it as deleted
+                  pPrevDir = pDir - 1;
+                  while (pPrevDir->bAttr == FILE_LONGNAME &&
+                         pPrevDir->bFileName[0] &&
+                         pPrevDir->bFileName[0] != 0xE5)
+                     {
+                     pPrevDir->bFileName[0] = 0xE5;
+                     pPrevDir--;
+                     }
+                  fModified = TRUE;
+                  }
+               else
+                  pCD->ulErrorCount++;
                memset(szLongName, 0, sizeof(szLongName));
                }
             bCheck = pDir->bReserved;
@@ -1151,10 +1187,24 @@ ULONG dummy = 0;
                }
             if (strlen(szLongName) && bCheck != bCheckSum)
                {
-               pCD->ulErrorCount++;
                printf("The longname %s does not belong to %s\\%s\n",
                   szLongName, pszPath, MakeName(pDir, szShortName, sizeof(szShortName)));
                LogOutMessage(2414, MakeName(pDir, szShortName, sizeof(szShortName)), 0);
+               if (pCD->fFix)
+                  {
+                  // mark it as deleted
+                  pPrevDir = pDir - 1;
+                  while (pPrevDir->bAttr == FILE_LONGNAME &&
+                         pPrevDir->bFileName[0] &&
+                         pPrevDir->bFileName[0] != 0xE5)
+                     {
+                     pPrevDir->bFileName[0] = 0xE5;
+                     pPrevDir--;
+                     }
+                  fModified = TRUE;
+                  }
+               else
+                  pCD->ulErrorCount++;
                memset(szLongName, 0, sizeof(szLongName));
                }
 
@@ -1575,6 +1625,21 @@ ULONG dummy = 0;
             }
          }
       pDir++;
+      }
+
+   if (pCD->fFix && fModified)
+      {
+      // write directory back
+      ulCluster = ulDirCluster;
+      p = pbCluster;
+      while (ulCluster != FAT_EOF)
+         {
+         WriteCluster(pCD, ulCluster, p);
+         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         if (!ulCluster)
+            ulCluster = FAT_EOF;
+         p += pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector;
+         }
       }
 
    free(pbCluster);

@@ -154,6 +154,9 @@ VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
 BOOL LoadTranslateTable(VOID);
 VOID GetCaseConversion( PUCHAR pCase );
 BOOL UpdateFSInfo(PCDINFO pCD);
+ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
+USHORT MakeChain(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulSize);
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 
 /******************************************************************
 *
@@ -289,11 +292,11 @@ ULONG GetFreeSpace(PCDINFO pCD)
          ulTotalFree++;
       }
 
-   if (pCD->FSInfo.ulFreeClusters != ulTotalFree)
-      {
+   //if (pCD->FSInfo.ulFreeClusters != ulTotalFree)
+   //   {
       pCD->FSInfo.ulFreeClusters = ulTotalFree;
-      UpdateFSInfo(pCD); ////
-      }
+      UpdateFSInfo(pCD);
+   //   }
 
    return ulTotalFree;
 }
@@ -1614,7 +1617,7 @@ APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
    if (rc)
       return FAT_EOF;
 
-   if (fUpdateFSInfo) ////
+   if (fUpdateFSInfo)
       UpdateFSInfo(pCD);
 
    return ulReturn;
@@ -1918,7 +1921,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    DirEntry.wCreateTime.twosecs = datetime.seconds / 2;
    DirEntry.wCreateDate.day = datetime.day;
    DirEntry.wCreateDate.month = datetime.month;
-   DirEntry.wCreateDate.year = datetime.year;
+   DirEntry.wCreateDate.year = datetime.year - 1980;
    DirEntry.wAccessDate.day = datetime.day;
    DirEntry.wAccessDate.month = datetime.month;
    DirEntry.wAccessDate.year = datetime.year;
@@ -1965,7 +1968,7 @@ USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName
       //pNew->wLastWriteTime.minutes = pGI->minutes;
       //pNew->wLastWriteTime.twosecs = pGI->seconds / 2;
 
-      pNew->wLastWriteDate.year = pdt.year;
+      pNew->wLastWriteDate.year = pdt.year - 1980;
       pNew->wLastWriteDate.month = pdt.month;
       pNew->wLastWriteDate.day = pdt.day;
       pNew->wLastWriteTime.hours = pdt.hours;
@@ -2050,7 +2053,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
       //}
 
    pCD->FSInfo.ulFreeClusters += ulClustersFreed;
-   UpdateFSInfo(pCD); ////
+   UpdateFSInfo(pCD);
 
    //ReleaseFat(pVolInfo);
 
@@ -2463,4 +2466,334 @@ BOOL UpdateFSInfo(PCDINFO pCD)
    //Message("ERROR: UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
 
    return FALSE;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast)
+{
+ULONG  ulCluster;
+ULONG  ulFirstCluster;
+ULONG  ulStartCluster;
+ULONG  ulLargestChain;
+ULONG  ulLargestSize;
+ULONG  ulReturn;
+ULONG  ulSector;
+PULONG pulCluster;
+BOOL   fStartAt2;
+BOOL   fContiguous;
+
+   //if (f32Parms.fMessageActive & LOG_FUNCS)
+   //   Message("MakeFatChain, %lu clusters", ulClustersRequested);
+
+   if (!ulClustersRequested)
+      return FAT_EOF;
+
+   //if (GetFatAccess(pVolInfo, "MakeFatChain"))
+   //   return FAT_EOF;
+
+   if (pCD->FSInfo.ulFreeClusters < ulClustersRequested)
+      {
+      //ReleaseFat(pVolInfo);
+      return FAT_EOF;
+      }
+
+   ulReturn = FAT_EOF;
+   fContiguous = TRUE;
+   for (;;)
+      {
+      ulLargestChain = FAT_EOF;
+      ulLargestSize = 0;
+
+      ulFirstCluster = pCD->FSInfo.ulNextFreeCluster + 1;
+      if (ulFirstCluster < 2 || ulFirstCluster >= pCD->ulTotalClusters + 2)
+         {
+         fStartAt2 = TRUE;
+         ulFirstCluster = 2;
+         ulStartCluster = pCD->ulTotalClusters + 3;
+         }
+      else
+         {
+         ulStartCluster = ulFirstCluster;
+         fStartAt2 = FALSE;
+         }
+
+      for (;;)
+         {
+#ifdef CALL_YIELD
+         //Yield();
+#endif
+         /*
+            Find first free cluster
+         */
+         while (ulFirstCluster < pCD->ulTotalClusters + 2)
+            {
+            ulSector = ulFirstCluster / 128;
+            pulCluster = (PULONG)pCD->pbFATSector + (ulFirstCluster % 128);
+            if (ulSector != pCD->ulCurFATSector)
+               ReadFatSector(pCD, ulSector);
+            if (!(*pulCluster))
+               break;
+            ulFirstCluster++;
+            }
+
+         if (fStartAt2 && ulFirstCluster >= ulStartCluster)
+            break;
+
+         if (ulFirstCluster >= pCD->ulTotalClusters + 2)
+            {
+            if (fStartAt2)
+               break;
+            //if (f32Parms.fMessageActive & LOG_FUNCS)
+            //   Message("No contiguous block found, restarting at cluster 2");
+            ulFirstCluster = 2;
+            fStartAt2 = TRUE;
+            continue;
+            }
+
+
+         /*
+            Check if chain is long enough
+         */
+
+         for (ulCluster = ulFirstCluster ;
+                  ulCluster < ulFirstCluster + ulClustersRequested &&
+                  ulCluster < pCD->ulTotalClusters + 2;
+                        ulCluster++)
+            {
+            ulSector = ulCluster / 128;
+            pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
+            if (ulSector != pCD->ulCurFATSector)
+               ReadFatSector(pCD, ulSector);
+            if (*pulCluster)
+               break;
+            }
+
+         if (ulCluster != ulFirstCluster + ulClustersRequested)
+            {
+            /*
+               Keep the largests chain found
+            */
+            if (ulCluster - ulFirstCluster > ulLargestSize)
+               {
+               ulLargestChain = ulFirstCluster;
+               ulLargestSize  = ulCluster - ulFirstCluster;
+               }
+            ulFirstCluster = ulCluster;
+            continue;
+            }
+
+         /*
+            Chain found long enough
+         */
+         if (ulReturn == FAT_EOF)
+            ulReturn = ulFirstCluster;
+
+         if (MakeChain(pCD, ulFirstCluster, ulClustersRequested))
+            goto MakeFatChain_Error;
+
+         if (ulPrevCluster != FAT_EOF)
+            {
+            if (SetNextCluster2(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
+               goto MakeFatChain_Error;
+            }
+
+         //ReleaseFat(pVolInfo);
+         //if (f32Parms.fMessageActive & LOG_FUNCS)
+         //   {
+         //   if (fContiguous)
+         //      Message("Contiguous chain returned, first = %lu", ulReturn);
+         //   else
+         //      Message("NON Contiguous chain returned, first = %lu", ulReturn);
+         //   }
+         if (pulLast)
+            *pulLast = ulFirstCluster + ulClustersRequested - 1;
+         return ulReturn;
+         }
+
+      /*
+         We get here only if no free chain long enough was found!
+      */
+      //if (f32Parms.fMessageActive & LOG_FUNCS)
+      //   Message("No contiguous block found, largest found is %lu clusters", ulLargestSize);
+      fContiguous = FALSE;
+
+      if (ulLargestChain != FAT_EOF)
+         {
+         ulFirstCluster = ulLargestChain;
+         if (ulReturn == FAT_EOF)
+            ulReturn = ulFirstCluster;
+
+         if (MakeChain(pCD, ulFirstCluster, ulLargestSize))
+            goto MakeFatChain_Error;
+
+         if (ulPrevCluster != FAT_EOF)
+            {
+            if (SetNextCluster2(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
+               goto MakeFatChain_Error;
+            }
+
+         ulPrevCluster        = ulFirstCluster + ulLargestSize - 1;
+         ulClustersRequested -= ulLargestSize;
+         }
+      else
+         break;
+      }
+
+MakeFatChain_Error:
+
+   //ReleaseFat(pVolInfo);
+   if (ulReturn != FAT_EOF)
+      DeleteFatChain(pCD, ulReturn);
+
+   return FAT_EOF;
+}
+
+/******************************************************************
+*
+******************************************************************/
+USHORT MakeChain(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulSize)
+{
+ULONG ulSector;
+ULONG ulLastCluster;
+PULONG pulCluster;
+ULONG  ulCluster;
+USHORT rc;
+
+   //if (f32Parms.fMessageActive & LOG_FUNCS)
+   //   Message("MakeChain");
+
+   ulLastCluster = ulFirstCluster + ulSize - 1;
+
+   ulSector = ulFirstCluster / 128;
+   if (ulSector != pCD->ulCurFATSector)
+      ReadFatSector(pCD, ulSector);
+
+   for (ulCluster = ulFirstCluster; ulCluster < ulLastCluster; ulCluster++)
+      {
+      ulSector = ulCluster / 128;
+      if (ulSector != pCD->ulCurFATSector)
+         {
+         rc = WriteFatSector(pCD, pCD->ulCurFATSector);
+         if (rc)
+            return rc;
+         ReadFatSector(pCD, ulSector);
+         }
+      pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
+      if (*pulCluster)
+         {
+         //CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
+         //Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
+         return ERROR_SECTOR_NOT_FOUND;
+         }
+      *pulCluster = ulCluster + 1;
+      }
+
+   ulSector = ulCluster / 128;
+   if (ulSector != pCD->ulCurFATSector)
+      {
+      rc = WriteFatSector(pCD, pCD->ulCurFATSector);
+      if (rc)
+         return rc;
+      ReadFatSector(pCD, ulSector);
+      }
+   pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
+   if (*pulCluster)
+      {
+      //CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
+      //Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
+      return ERROR_SECTOR_NOT_FOUND;
+      }
+
+   *pulCluster = FAT_EOF;
+   rc = WriteFatSector(pCD, pCD->ulCurFATSector);
+   if (rc)
+      return rc;
+
+   pCD->FSInfo.ulNextFreeCluster = ulCluster;
+   pCD->FSInfo.ulFreeClusters   -= ulSize;
+
+   return 0;
+}
+
+/******************************************************************
+*
+******************************************************************/
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf)
+{
+   ULONG ulClustersNeeded;
+   ULONG ulCluster;
+   DIRENTRY OldEntry, NewEntry;
+   APIRET rc;
+   char file_exists = 0;
+   int i;
+
+   if (cbBuf)
+      {
+      ulClustersNeeded = cbBuf / pCD->ulClusterSize +
+         (cbBuf % pCD->ulClusterSize ? 1 : 0);
+
+      ulCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &OldEntry, NULL);
+
+      if (ulCluster != FAT_EOF)
+         {
+         file_exists = 1;
+         memcpy(&NewEntry, &OldEntry, sizeof(DIRENTRY));
+         DeleteFatChain(pCD, ulCluster);
+         }
+      else
+         memset(&NewEntry, 0, sizeof(DIRENTRY));
+
+      ulCluster = MakeFatChain(pCD, FAT_EOF, ulClustersNeeded, NULL);
+
+      if (ulCluster != FAT_EOF)
+         {
+            DATETIME datetime;
+
+            NewEntry.wCluster = LOUSHORT(ulCluster);
+            NewEntry.wClusterHigh = HIUSHORT(ulCluster);
+            NewEntry.ulFileSize = cbBuf;
+            
+            DosGetDateTime(&datetime);
+            NewEntry.wCreateTime.hours = datetime.hours;
+            NewEntry.wCreateTime.minutes = datetime.minutes;
+            NewEntry.wCreateTime.twosecs = datetime.seconds / 2;
+            NewEntry.wCreateDate.day = datetime.day;
+            NewEntry.wCreateDate.month = datetime.month;
+            NewEntry.wCreateDate.year = datetime.year - 1980;
+            NewEntry.wAccessDate.day = datetime.day;
+            NewEntry.wAccessDate.month = datetime.month;
+            NewEntry.wAccessDate.year = datetime.year;
+         }
+      else
+         {
+            rc = ERROR_DISK_FULL;
+            goto MakeFileEnd;
+         }
+      }
+
+   if (! file_exists)
+      rc = MakeDirEntry(pCD, ulDirCluster, &NewEntry, pszFile);
+   else
+      rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, pszFile);
+
+   if (rc)
+      goto MakeFileEnd;
+
+   for (i = 0; i < ulClustersNeeded; i++)
+      {
+      rc = WriteCluster(pCD, ulCluster, pBuf);
+
+      if (rc)
+         goto MakeFileEnd;
+
+      pBuf += pCD->ulClusterSize;
+      ulCluster = GetNextCluster(pCD, ulCluster);
+      }
+
+      UpdateFSInfo(pCD);
+
+MakeFileEnd:
+   return rc;
 }
