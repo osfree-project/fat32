@@ -224,7 +224,8 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      if (!pVolInfo->fDiskCleanOnMount && !f32Parms.fReadonly)
+      if ( !pVolInfo->fDiskCleanOnMount && !f32Parms.fReadonly &&
+           !(ulOpenMode & OPEN_FLAGS_DASD) )
          {
          rc = ERROR_VOLUME_DIRTY;
          goto FS_OPENCREATEEXIT;
