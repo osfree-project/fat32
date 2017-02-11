@@ -759,7 +759,7 @@ ULONGLONG size;
       goto FS_READEXIT;
       }
 
-   if (pVolInfo->fFormatInProgress)
+   if (pVolInfo->fFormatInProgress && !(psffsi->sfi_mode & OPEN_FLAGS_DASD))
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_READEXIT;
@@ -1194,7 +1194,7 @@ ULONGLONG size;
       goto FS_WRITEEXIT;
       }
 
-   if (pVolInfo->fFormatInProgress)
+   if (pVolInfo->fFormatInProgress && !(psffsi->sfi_mode & OPEN_FLAGS_DASD))
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_WRITEEXIT;
@@ -1783,7 +1783,7 @@ USHORT rc;
       goto FS_CHGFILEPTRLEXIT;
       }
 
-   if (pVolInfo->fFormatInProgress)
+   if (pVolInfo->fFormatInProgress && !(psffsi->sfi_mode & OPEN_FLAGS_DASD))
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_CHGFILEPTRLEXIT;
