@@ -39,6 +39,11 @@ APIRET rc = 0;
       goto FS_FINDCLOSEEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_FINDCLOSEEXIT;
+      }
 
    if (pFindInfo->pInfo)
       {
@@ -111,6 +116,12 @@ PROCINFO ProcInfo;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_FINDFIRSTEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_FINDFIRSTEXIT;
       }
 
@@ -215,7 +226,6 @@ PROCINFO ProcInfo;
       }
 
    memset(pFindInfo->pInfo, 0, (size_t)ulNeededSpace);
-   //memset(pFindInfo->pInfo->pDirEntries, 0, (size_t)pVolInfo->ulClusterSize);
    pFindInfo->pInfo->pDirEntries = (PDIRENTRY)gdtAlloc(pVolInfo->ulClusterSize, FALSE);
 
    if (!pFindInfo->pInfo->pDirEntries)
@@ -223,6 +233,8 @@ PROCINFO ProcInfo;
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FS_FINDFIRSTEXIT;
       }
+
+   memset(pFindInfo->pInfo->pDirEntries, 0, (size_t)pVolInfo->ulClusterSize);
 
    if (!pVolInfo->pFindInfo)
       pVolInfo->pFindInfo = pFindInfo->pInfo;
@@ -399,6 +411,12 @@ USHORT usEntriesWanted;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_FINDNEXTEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_FINDNEXTEXIT;
       }
 

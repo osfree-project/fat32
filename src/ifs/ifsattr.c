@@ -45,6 +45,12 @@ USHORT rc;
       goto FS_FILEATTRIBUTEEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_FILEATTRIBUTEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -165,6 +171,12 @@ USHORT rc;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_PATHINFOEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_PATHINFOEXIT;
       }
 

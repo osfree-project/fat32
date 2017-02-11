@@ -55,6 +55,12 @@ BYTE     szDirLongName[ FAT32MAXPATH ];
             goto FS_CHDIREXIT;
             }
 
+         if (pVolInfo->fFormatInProgress)
+            {
+            rc = ERROR_ACCESS_DENIED;
+            goto FS_CHDIREXIT;
+            }
+
          if (IsDriveLocked(pVolInfo))
             {
             rc = ERROR_DRIVE_LOCKED;
@@ -179,6 +185,12 @@ PBYTE    pbCluster;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_MKDIREXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_MKDIREXIT;
       }
 
@@ -319,6 +331,11 @@ BYTE     szLongName[ FAT32MAXPATH ];
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_RMDIREXIT;
+      }
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_RMDIREXIT;
       }
    if (IsDriveLocked(pVolInfo))

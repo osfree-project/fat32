@@ -83,6 +83,12 @@ USHORT rc;
       goto FS_OPENCREATEEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress && !(ulOpenMode & OPEN_FLAGS_DASD))
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_OPENCREATEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -753,6 +759,12 @@ ULONGLONG size;
       goto FS_READEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_READEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
    {
       rc = ERROR_DRIVE_LOCKED;
@@ -1179,6 +1191,12 @@ ULONGLONG size;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_WRITEEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_WRITEEXIT;
       }
 
@@ -1765,6 +1783,12 @@ USHORT rc;
       goto FS_CHGFILEPTRLEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_CHGFILEPTRLEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -1889,6 +1913,12 @@ USHORT rc;
          if (! pVolInfo)
             {
             rc = ERROR_INVALID_DRIVE;
+            goto FS_COMMITEXIT;
+            }
+
+         if (pVolInfo->fFormatInProgress)
+            {
+            rc = ERROR_ACCESS_DENIED;
             goto FS_COMMITEXIT;
             }
 
@@ -2056,7 +2086,11 @@ USHORT rc;
       rc = ERROR_INVALID_DRIVE;
       goto FS_NEWSIZELEXIT;
       }
-
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_NEWSIZELEXIT;
+      }
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -2270,6 +2304,12 @@ ULONGLONG size;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_FILEINFOEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_FILEINFOEXIT;
       }
 

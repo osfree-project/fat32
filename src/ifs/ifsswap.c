@@ -60,6 +60,12 @@ int far pascal _loadds FS_OPENPAGEFILE (
       goto FS_OPENPAGEFILE_EXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_OPENPAGEFILE_EXIT;
+      }
+
    /* Keep track of volume with swap-space.  We can't allow this volume
     * to be quiesced.
     */
@@ -173,6 +179,12 @@ int far pascal _loadds FS_DOPAGEIO(
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_DOPAGEIO_EXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_DOPAGEIO_EXIT;
       }
 

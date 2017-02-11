@@ -131,6 +131,12 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       goto FS_COPYEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_COPYEXIT;
+      }
+
    pVolInfo->ulOpenFiles++;
 
    pOpenInfo = malloc(sizeof (OPENINFO));
@@ -397,6 +403,12 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_DELETEEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_DELETEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -603,6 +615,12 @@ USHORT rc;
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
+      goto FS_FLUSHEXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
       goto FS_FLUSHEXIT;
       }
 
@@ -961,6 +979,11 @@ POPENINFO pOpenInfo;
                break;
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
+         if (pVolInfo->fFormatInProgress)
+            {
+            rc = ERROR_ACCESS_DENIED;
+            goto FS_FSCTLEXIT;
+            }
          if (pVolInfo)
          {
             TranslateName(pVolInfo, 0L, (PSZ)pParm, szShortPath, TRANSLATE_LONG_TO_SHORT);
@@ -1042,15 +1065,15 @@ USHORT rc;
       goto FS_FSINFOEXIT;
       }
 
-   if (IsDriveLocked(pVolInfo))
+   if (pVolInfo->fFormatInProgress)
       {
-      rc = ERROR_DRIVE_LOCKED;
+      rc = ERROR_ACCESS_DENIED;
       goto FS_FSINFOEXIT;
       }
 
-   if (pVolInfo->fFormatInProgress)
+   if (IsDriveLocked(pVolInfo))
       {
-      rc = ERROR_BUSY_DRIVE;
+      rc = ERROR_DRIVE_LOCKED;
       goto FS_FSINFOEXIT;
       }
 
@@ -2277,6 +2300,12 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       goto FS_MOVEEXIT;
       }
 
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_MOVEEXIT;
+      }
+
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
@@ -2620,6 +2649,9 @@ USHORT rc = 0;
            pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo)
          {
             if (pVolInfo->fWriteProtected)
+               continue;
+
+            if (pVolInfo->fFormatInProgress)
                continue;
 
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
