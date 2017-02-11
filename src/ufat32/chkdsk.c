@@ -38,6 +38,11 @@ MSG_1306, AvailableClusters
 
 #define STACKSIZE 0x20000
 
+#define MODIFY_DIR_INSERT 0
+#define MODIFY_DIR_DELETE 1
+#define MODIFY_DIR_UPDATE 2
+#define MODIFY_DIR_RENAME 3
+
 PRIVATE ULONG ChkDskMain(PCDINFO pCD);
 PRIVATE ULONG MarkVolume(PCDINFO pCD, BOOL fClean);
 PRIVATE ULONG CheckFats(PCDINFO pCD);
@@ -46,7 +51,6 @@ PRIVATE ULONG CheckFreeSpace(PCDINFO pCD);
 PRIVATE ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCluster);
 PRIVATE BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
 PRIVATE ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
-PRIVATE ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNextCluster);
 PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE PSZ    MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
@@ -79,6 +83,9 @@ BOOL LoadTranslateTable(VOID);
 VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID GetCaseConversion( PUCHAR pCase );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
+ULONG FindDirCluster(PCDINFO pCD, PSZ pDir, USHORT usCurDirEnd, USHORT usAttrWanted, PSZ *pDirEnd);
+ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
+APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 
 INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
@@ -87,6 +94,7 @@ PSZ       GetOS2Error(USHORT rc);
 int logbufsize = 0;
 char *logbuf = NULL;
 int  logbufpos = 0;
+static HFILE hDisk = NULLHANDLE;
 
 F32PARMS  f32Parms = {0};
 static BOOL fToFile;
@@ -143,6 +151,15 @@ int lastchar(const char *string)
 
 #endif /* by OAX */
 
+VOID Handler(INT iSignal)
+{
+   printf("Signal %d was received\n", iSignal);
+
+   // remount disk for changes to take effect
+   if (hDisk)
+      remount_media(hDisk);
+}
+
 int chkdsk_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 {
 INT iArg;
@@ -156,7 +173,8 @@ ULONG  ulParmSize;
 ULONG  ulDataSize;
 ULONG  cbDataLen;
 
-   DosError(1); /* Enable hard errors */
+   /* Enable hard errors     */
+   DosError(1);
 
    f32Parms.fEAS = TRUE;
 
@@ -249,7 +267,8 @@ ULONG  cbDataLen;
          iShowMessage(pCD, rc, 0);
       else
          printf("%s\n", GetOS2Error(rc));
-      DosExit(EXIT_PROCESS, 1);
+      //DosExit(EXIT_PROCESS, 1);
+      return 1;
       }
    ulParmSize = sizeof(ulDeadFace);
    //rc = DosFSCtl(NULL, 0, 0,
@@ -282,7 +301,8 @@ ULONG  cbDataLen;
             iShowMessage(pCD, rc, 0);
          else
             printf("%s\n", GetOS2Error(rc));
-         DosExit(EXIT_PROCESS, 1);
+         //DosExit(EXIT_PROCESS, 1);
+         return 1;
          }
       }
 
@@ -294,6 +314,7 @@ ULONG  cbDataLen;
    //   DosExit(EXIT_PROCESS, 1);
    //   }
    pCD->hDisk = hFile;
+   hDisk = hFile;
 
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
@@ -321,7 +342,8 @@ ULONG  cbDataLen;
       if (rc)
          {
          printf("The drive cannot be unlocked. SYS%4.4u\n", rc);
-         DosExit(EXIT_PROCESS, 1);
+         //DosExit(EXIT_PROCESS, 1);
+         return 1;
          }
       }
    DosClose(hFile);
@@ -582,6 +604,14 @@ ULONG  cbActual, ulAction;
    if (pCD->fFix)
       {
       if (! pCD->fAutoCheck)
+         /* Install signal handler */
+         signal(SIGABRT, Handler);
+         signal(SIGBREAK, Handler);
+         signal(SIGTERM, Handler);
+         signal(SIGINT, Handler);
+         signal(SIGFPE, Handler);
+         signal(SIGSEGV, Handler);
+         signal(SIGILL, Handler);
          // issue BEGINFORMAT ioctl to prepare disk for checking
          begin_format(pCD->hDisk);
       }
@@ -1302,10 +1332,25 @@ UCHAR fModified = FALSE;
             if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
                {
                FILESTATUS fStat;
+               ULONG ulDirCluster, ulFileCluster;
+               DIRENTRY DirEntry;
+               PSZ pszFile;
 
                strcpy(Mark.szFileName, pbPath);
                strcat(Mark.szFileName, EA_EXTENTION);
-               rc = DosQueryPathInfo(Mark.szFileName, FIL_STANDARD, (PBYTE)&fStat, sizeof(fStat));
+               //rc = DosQueryPathInfo(Mark.szFileName, FIL_STANDARD, (PBYTE)&fStat, sizeof(fStat));
+               rc = NO_ERROR;
+               ulDirCluster = FindDirCluster(pCD, Mark.szFileName, -1, 0xffff, &pszFile);
+
+               if (ulDirCluster == FAT_EOF)
+                  rc = ERROR_PATH_NOT_FOUND;
+               else
+                  {
+                  ulFileCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &DirEntry, NULL);
+
+                  if (ulFileCluster == FAT_EOF)
+                     rc = ERROR_FILE_NOT_FOUND;
+                  }
                //rc = DosQPathInfo(Mark.szFileName, FIL_STANDARD, (PBYTE)&fStat, sizeof(fStat), 0L);
                if (rc)
                   {
@@ -1323,7 +1368,9 @@ UCHAR fModified = FALSE;
                      //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
+                        {
                         printf("This has been corrected.\n");
+                        }
                      else
                         {
                         printf("SYS%4.4u: Unable to correct problem.\n", rc);
@@ -1331,7 +1378,8 @@ UCHAR fModified = FALSE;
                         }
                      }
                   }
-               else if (!fStat.cbFile)
+               else if (!DirEntry.ulFileSize)
+               //else if (!fStat.cbFile)
                   {
                   printf("%s is marked having EAs, but the EA file (%s) is empty.\n", pbPath, Mark.szFileName);
                   LogOutMessage(2420, NULL, 1, Mark.szFileName);
@@ -1388,18 +1436,53 @@ UCHAR fModified = FALSE;
                      LogOutMessage(2421, Mark.szFileName, 0);
                      if (pCD->fFix)
                         {
+                        DIRENTRY DirEntry, DirNew, DstDirEntry;
+                        ULONG ulDirCluster, ulFileCluster;
+                        ULONG ulDstFileCluster;
+                        PSZ pszFile;
+
                         strcat(Mark.szFileName, ".EA");
                         rc = MarkVolume(pCD, TRUE);
                         if (!rc)
-                        {
-                           DosQueryPathInfo(pbPath, FIL_STANDARD, &fs ,sizeof(fs));
-			   fs.attrFile = FILE_NORMAL;
-                           rc = DosSetPathInfo(pbPath, FIL_STANDARD, &fs, sizeof(fs), 0);
+                           {
+                           //DosQueryPathInfo(pbPath, FIL_STANDARD, &fs, sizeof(fs));
+                           ulDirCluster = FindDirCluster(pCD, pbPath, -1, 0xffff, &pszFile);
+
+                           rc = NO_ERROR;
+                           if (ulDirCluster == FAT_EOF)
+                              rc = ERROR_PATH_NOT_FOUND;
+                           else
+                              {
+                              ulFileCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &DirEntry, NULL);
+
+                              if (ulFileCluster == FAT_EOF)
+                                 rc = ERROR_FILE_NOT_FOUND;
+                              }
+                           
+			   //fs.attrFile = FILE_NORMAL;
+                           memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY));
+                           DirNew.bAttr = FILE_NORMAL;
+                           //rc = DosSetPathInfo(pbPath, FIL_STANDARD, &fs, sizeof(fs), 0);
                            //rc = DosSetFileMode(pbPath, FILE_NORMAL, 0L);
-                        }
+                           rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_UPDATE,
+                                                &DirEntry, &DirNew, NULL);
+                           }
                         if (!rc)
+                           {
                            //rc = DosMove(pbPath, Mark.szFileName, 0L);
-                           rc = DosMove(pbPath, Mark.szFileName);
+                           //rc = DosMove(pbPath, Mark.szFileName);
+                           ulDstFileCluster = FindPathCluster(pCD, ulDirCluster, Mark.szFileName, &DstDirEntry, NULL);
+
+                           rc = NO_ERROR;
+                           if (ulDstFileCluster == FAT_EOF)
+                              rc = ERROR_FILE_NOT_FOUND;
+
+                           if (ulDstFileCluster == ulFileCluster)
+                              rc = ERROR_ACCESS_DENIED;
+
+                           rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_RENAME,
+                                                &DirEntry, &DirNew, Mark.szFileName);
+                           }
                         if (!rc)
                            {
                            printf("This attribute has been converted to a file \n(%s).\n", Mark.szFileName);
@@ -1681,12 +1764,12 @@ BOOL  fShown = FALSE;
             {
             printf("CHKDSK found an improperly terminated cluster chain for %s ", pszFile);
             LogOutMessage(2433, pszFile, 0);
-            if (SetNextCluster(pCD, ulCluster, FAT_EOF))
-               //{
-               //printf(", but was unable to fix it.\n");
-               //pCD->ulErrorCount++;
-               //}
-            //else
+            if (SetNextCluster(pCD, ulCluster, FAT_EOF) != FAT_EOF)
+               {
+               printf(", but was unable to fix it.\n");
+               pCD->ulErrorCount++;
+               }
+            else
                {
                printf(" and corrected the problem.\n");
                LogOutMessage(2434, NULL, 0);
@@ -1903,41 +1986,6 @@ ULONG  ulRet;
       }
 
    return ulRet;
-}
-
-ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNextCluster)
-{
-SETCLUSTERDATA SetCluster;
-ULONG rc;
-PULONG pulCluster;
-ULONG  ulSector;
-ULONG  dummy = 0;
-
-   SetCluster.ulCluster = ulCluster;
-   SetCluster.ulNextCluster = ulNextCluster;
-
-   //rc = DosDevIOCtl(pCD->hDisk, IOCTL_FAT32, FAT32_SETCLUSTER, 
-   //       (PVOID)&SetCluster, sizeof(SetCluster), &dummy,
-   //       NULL, 0, NULL);
-   //rc = DosDevIOCtl2(NULL, 0,
-   //   (PVOID)&SetCluster, sizeof(SetCluster),
-   //   FAT32_SETCLUSTER, IOCTL_FAT32, pCD->hDisk);
-   if (SetNextCluster(pCD, SetCluster.ulCluster,
-                      SetCluster.ulNextCluster) != SetCluster.ulNextCluster)
-       rc = ERROR_SECTOR_NOT_FOUND;
-   else
-       rc = 0;
-
-   if (rc)
-      return rc;
-
-   ulSector = ulCluster / 128;
-   if (!ReadFATSector(pCD, ulSector))
-      return ERROR_SECTOR_NOT_FOUND;
-
-   pulCluster = (PULONG)pCD->pbFATSector + ulCluster % 128;
-   *pulCluster = ulNextCluster;
-   return 0;
 }
 
 BOOL ReadFATSector(PCDINFO pCD, ULONG ulSector)
