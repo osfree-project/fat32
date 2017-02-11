@@ -604,6 +604,7 @@ ULONG  cbActual, ulAction;
    if (pCD->fFix)
       {
       if (! pCD->fAutoCheck)
+         {
          /* Install signal handler */
          signal(SIGABRT, Handler);
          signal(SIGBREAK, Handler);
@@ -614,6 +615,7 @@ ULONG  cbActual, ulAction;
          signal(SIGILL, Handler);
          // issue BEGINFORMAT ioctl to prepare disk for checking
          begin_format(pCD->hDisk);
+         }
       }
    /*
       Some preparations
