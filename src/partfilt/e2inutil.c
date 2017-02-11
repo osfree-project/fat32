@@ -261,7 +261,7 @@ USHORT InitReadSector (PADDEntryPoint pAddEP, USHORT UnitHandle,
  pIOXIO->iorbh.CommandModifier= IOCM_READ;
  pIOXIO->cSGList= 1;
  pIOXIO->pSGList= pScatGat;
- pIOXIO->ppSGList= ppDataSeg+OFFSETOF((void FAR*)pScatGat);
+ pIOXIO->ppSGList= ppDataSeg+OFFSETOF(pScatGat);
  pIOXIO->RBA= SectorRBA;
  pIOXIO->BlockCount= 1;
  pIOXIO->BlocksXferred= 0;

@@ -188,7 +188,7 @@ USHORT CopyToSGList (void FAR *Buffer, ULONG Count, PSCATGATENTRY pSGList,
   memcpy (VirtAddr,Buffer,XferLength);
   ENABLE
   ppXferBuf+= XferLength;
-  ((char far *)Buffer)+= XferLength;
+  Buffer = (char far *)Buffer + XferLength;
   Count-= XferLength;
   XferBufLen-= XferLength;
  }
