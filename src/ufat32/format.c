@@ -485,6 +485,7 @@ void usage( char *s )
                  "    8 ( max size 1TB.  )\n"
                  "    ... \n"
                  "  128 - use 128 sectors per cluster (64K clusters)\n"
+                 "/P is specified by PM fromtends\n"
                  "/V:<volume label>\n"
                  "/R:<reserved sectors>\n"
                  "/? this help message\n\n", s );

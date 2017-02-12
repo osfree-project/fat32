@@ -17,7 +17,7 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 PSZ       GetOS2Error(USHORT rc);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
-BOOL LoadTranslateTable(VOID);
+BOOL LoadTranslateTable(BOOL fSilent);
 
 BOOL DoRecover(PCDINFO pCD, char *pszFilename);
 int recover_thread(int argc, char *argv[]);
@@ -37,7 +37,7 @@ int recover_thread(int argc, char *argv[])
    APIRET  rc;
    int i;
 
-   LoadTranslateTable();
+   LoadTranslateTable(0);
 
    pCD = (PCDINFO)malloc(sizeof(CDINFO));
 

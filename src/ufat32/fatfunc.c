@@ -151,7 +151,7 @@ VOID TranslateAllocBuffer( VOID );
 BOOL TranslateInit(PVOID16 rgTrans[], USHORT usSize);
 VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
-BOOL LoadTranslateTable(VOID);
+BOOL LoadTranslateTable(BOOL fSilent);
 VOID GetCaseConversion( PUCHAR pCase );
 BOOL UpdateFSInfo(PCDINFO pCD);
 ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
@@ -2128,7 +2128,7 @@ VOID TranslateAllocBuffer( VOID )
 /******************************************************************
 *
 ******************************************************************/
-BOOL LoadTranslateTable(VOID)
+BOOL LoadTranslateTable(BOOL fSilent)
 {
     APIRET rc;
     ULONG ulParmSize;
@@ -2403,7 +2403,7 @@ BOOL LoadTranslateTable(VOID)
       }
 
    f32Parms.ulCurCP = rgCP[0];
-   //if( !fSilent )
+   if( ! fSilent )
        printf("FAT32: Unicode translate table for CP %lu loaded.\n", rgCP[0]);
    rc = TRUE;
 free_exit:

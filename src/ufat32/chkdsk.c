@@ -79,7 +79,7 @@ USHORT SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName);
 BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster);
-BOOL LoadTranslateTable(VOID);
+BOOL LoadTranslateTable(BOOL fSilent);
 VOID GetFirstInfo( PBOOL pFirstInfo );
 VOID GetCaseConversion( PUCHAR pCase );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
@@ -179,20 +179,10 @@ ULONG  cbDataLen;
 
    f32Parms.fEAS = TRUE;
 
-   LoadTranslateTable();
-
-   TranslateInitDBCSEnv();
-
-   CaseConversionInit();
-
-   fToFile = OutputToFile();
-
    pCD = (PCDINFO)malloc(sizeof(CDINFO));
    if (!pCD)
       return ERROR_NOT_ENOUGH_MEMORY;
    memset(pCD, 0, sizeof (CDINFO));
-
-   printf("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", FAT32_VERSION);
 
    for (iArg = 1; iArg < iArgc; iArg++)
       {
@@ -230,6 +220,14 @@ ULONG  cbDataLen;
       else if (!strlen(pCD->szDrive))
          strncpy(pCD->szDrive, rgArgv[iArg], 2);
       }
+
+   LoadTranslateTable(pCD->fAutoCheck);
+
+   TranslateInitDBCSEnv();
+
+   CaseConversionInit();
+
+   fToFile = OutputToFile();
 
    ulDataSize = sizeof(f32Parms);
    //rc = DosFSCtl(
@@ -660,12 +658,7 @@ ULONG  cbActual, ulAction;
    while (p > szString && *(p-1) == ' ')
       p--;
    *p = 0;
-   if( p > szString )
-      show_message("The volume label is %s.", 1375, 1, TYPE_STRING, szString);
 
-   sprintf(szString, "%4.4X-%4.4X",
-      HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
-   show_message("The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
    if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
       {
       show_message("The media descriptor is incorrect\n", 0, 0);
@@ -674,6 +667,18 @@ ULONG  cbActual, ulAction;
       }
 
    pCD->fCleanOnBoot = GetDiskStatus(pCD);
+
+   if (! pCD->fAutoCheck || ! pCD->fCleanOnBoot)
+      {
+      printf("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", FAT32_VERSION);
+
+      if( p > szString )
+         show_message("The volume label is %s.", 1375, 1, TYPE_STRING, szString);
+
+      sprintf(szString, "%4.4X-%4.4X",
+         HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
+      show_message("The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
+      }
 
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
       pCD->fAutoRecover = FALSE;
