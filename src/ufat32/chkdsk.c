@@ -529,7 +529,7 @@ void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
       USHORT ulParmNo;
       USHORT cbStrLen;
    } header;
-#pragma pach()
+#pragma pack()
    ULONG ulParm;
    int i, len;
 
@@ -688,7 +688,7 @@ ULONG  cbActual, ulAction;
    if (rc)
       {
       printf("The copies of the FATs do not match.\n");
-      printf("Please run CHKDISK under Windows to correct this problem.\n");
+      printf("Please run CHKDSK under Windows to correct this problem.\n");
       LogOutMessage(2401, NULL, 0);
       goto ChkDskMainExit;
       }

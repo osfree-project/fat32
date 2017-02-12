@@ -43,9 +43,9 @@ static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 static PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
 static ULONG GetNextCluster2(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG SetNextCluster2(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
-static PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG usSize, USHORT usNeededEntries);
-static USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG usSize);
-static VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG usSize);
+static PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usNeededEntries);
+static USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
+static VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 static USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
 static VOID   ReleaseFat(PVOLINFO pVolInfo);
 static USHORT RecoverChain(PVOLINFO pVolInfo, ULONG ulCluster, PBYTE pData, USHORT cbData);
@@ -5343,11 +5343,11 @@ BOOL      fNewCluster;
    return 0;
 }
 
-VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG usSize)
+VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize)
 {
 PDIRENTRY pMax, pDirBlock2 = pDirBlock;
 
-   pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize - sizeof(DIRENTRY));
+   pMax = (PDIRENTRY)((PBYTE)pDirBlock + ulSize - sizeof(DIRENTRY));
    while (pDirBlock <= pMax)
       {
       if (!pDirBlock->bFileName[0])
@@ -5359,13 +5359,13 @@ PDIRENTRY pMax, pDirBlock2 = pDirBlock;
       }
 }
 
-USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG usSize)
+USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize)
 {
 USHORT usCount;
 PDIRENTRY pMax, pDirBlock2 = pDirBlock;
 BOOL bLoop;
 
-   pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize - sizeof(DIRENTRY));
+   pMax = (PDIRENTRY)((PBYTE)pDirBlock + ulSize - sizeof(DIRENTRY));
    usCount = 0;
    bLoop = pMax == pDirBlock - 1;
    while (( pDirBlock <= pMax ) || bLoop )
@@ -5382,14 +5382,14 @@ BOOL bLoop;
    return usCount;
 }
 
-PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG usSize, USHORT usEntriesNeeded)
+PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usEntriesNeeded)
 {
 PDIRENTRY pTar, pMax, pFirstFree;
 USHORT usFreeEntries;
 BOOL bLoop;
 
 
-   pMax = (PDIRENTRY)((PBYTE)pStart + usSize - sizeof(DIRENTRY));
+   pMax = (PDIRENTRY)((PBYTE)pStart + ulSize - sizeof(DIRENTRY));
    bLoop = pMax == pStart - 1;
    pFirstFree = pMax;
    usFreeEntries = 0;

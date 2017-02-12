@@ -139,9 +139,9 @@ USHORT QueryNLS2Uni( USHORT usCode );
 ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 ULONG SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
-USHORT GetFreeEntries(PDIRENTRY pDirBlock, USHORT usSize);
-PDIRENTRY CompactDir(PDIRENTRY pStart, USHORT usSize, USHORT usEntriesNeeded);
-VOID MarkFreeEntries(PDIRENTRY pDirBlock, USHORT usSize);
+USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
+PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usEntriesNeeded);
+VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 ULONG GetFreeCluster(PCDINFO pCD);
 APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
@@ -1654,13 +1654,13 @@ VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax)
 /******************************************************************
 *
 ******************************************************************/
-USHORT GetFreeEntries(PDIRENTRY pDirBlock, USHORT usSize)
+USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize)
 {
    USHORT usCount;
    PDIRENTRY pMax;
    BOOL bLoop;
 
-   pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize);
+   pMax = (PDIRENTRY)((PBYTE)pDirBlock + ulSize);
    usCount = 0;
    bLoop = pMax == pDirBlock;
    while (( pDirBlock != pMax ) || bLoop )
@@ -1677,13 +1677,13 @@ USHORT GetFreeEntries(PDIRENTRY pDirBlock, USHORT usSize)
 /******************************************************************
 *
 ******************************************************************/
-PDIRENTRY CompactDir(PDIRENTRY pStart, USHORT usSize, USHORT usEntriesNeeded)
+PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usEntriesNeeded)
 {
    PDIRENTRY pTar, pMax, pFirstFree;
    USHORT usFreeEntries;
    BOOL bLoop;
 
-   pMax = (PDIRENTRY)((PBYTE)pStart + usSize);
+   pMax = (PDIRENTRY)((PBYTE)pStart + ulSize);
    bLoop = pMax == pStart;
    pFirstFree = pMax;
    usFreeEntries = 0;
@@ -1751,11 +1751,11 @@ PDIRENTRY CompactDir(PDIRENTRY pStart, USHORT usSize, USHORT usEntriesNeeded)
 /******************************************************************
 *
 ******************************************************************/
-VOID MarkFreeEntries(PDIRENTRY pDirBlock, USHORT usSize)
+VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize)
 {
    PDIRENTRY pMax;
 
-   pMax = (PDIRENTRY)((PBYTE)pDirBlock + usSize);
+   pMax = (PDIRENTRY)((PBYTE)pDirBlock + ulSize);
    while (pDirBlock != pMax)
       {
       if (!pDirBlock->bFileName[0])
