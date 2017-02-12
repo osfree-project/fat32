@@ -47,7 +47,7 @@ ULONG ulReplySize;
    return szErrorBuf;
 }
 
-INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...)
+INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va)
 {
 static BYTE szErrNo[12] = "";
 static BYTE szMessage[MAX_MESSAGE];
@@ -56,11 +56,8 @@ static BYTE rgNum[9][50];
 ULONG ulReplySize;
 ULONG rc;
 PSZ    rgPSZ[9];
-va_list va;
 USHORT usIndex;
 PSZ    pszMess;
-
-   va_start(va, usNumFields);
 
    memset(szMessage, 0, sizeof(szMessage));
    rc = DosGetMessage(NULL, 0, szMessage, sizeof(szMessage),
@@ -132,8 +129,6 @@ PSZ    pszMess;
          }
       }
 
-   va_end( va );
-
    if (pCD && pCD->fPM)
       {
       strcat(szOut, "\n");
@@ -151,6 +146,17 @@ PSZ    pszMess;
       sizeof(szOut) - strlen(szOut),
       &ulReplySize);
    printf("%s", szOut);
+
+   return usNumFields;
+}
+
+INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...)
+{
+va_list va;
+
+   va_start(va, usNumFields);
+   iShowMessage2(pCD, usNr, usNumFields, va);
+   va_end( va );
 
    return usNumFields;
 }

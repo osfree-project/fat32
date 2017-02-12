@@ -49,6 +49,7 @@ This is the Microsoft calculation from FATGEN
 
 // disk file open handle
 HANDLE hDev = 0;
+extern char msg;
 
 DWORD get_fat_size_sectors ( DWORD DskSize, DWORD ReservedSecCnt, DWORD SecPerClus, DWORD NumFATs, DWORD BytesPerSect )
 {
@@ -177,7 +178,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     mem_free(pZeroSect, BytesPerSect * BurstSize);
 
     fBytesTotal = (double) qBytesTotal;
-    printf ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 
+    show_message ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 3,
              qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
@@ -191,6 +192,7 @@ int format_volume (char *path, format_params *params)
 
     int      cbRet;
     BOOL     bRet;
+    BYTE     szString[12];
 
     // extended BPB
     struct extbpb dp = {0, 0, 32, 2, 0, 0, 0xf8, 0, 0, 0, 0, 0, {0}};
@@ -393,22 +395,26 @@ int format_volume (char *path, format_params *params)
         }
 
     // Now we're commited - print some info first
-    printf ( "Size: %g MB %u sectors\n", (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
-    printf ( "%d Bytes Per Sector, Cluster size %d bytes\n", dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
-    printf ( "Volume Serial No. is %x:%x\n", VolumeId >> 16, VolumeId & 0xffff );
-    printf ( "Volume label is %s\n",  vol );
-    printf ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
+    show_message ( "Size: %g MB %u sectors\n", 0, 0, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
+    show_message ( "%d Bytes Per Sector, Cluster size %d bytes\n", 0, 0, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
 
-    printf ( "%d Total clusters\n", ClusterCount );
+    //show_message ( "Volume Serial No. is %x:%x", 1243, 1, TYPE_LONG, VolumeId );
+    sprintf(szString, "%4.4X-%4.4X", HIUSHORT(VolumeId), LOUSHORT(VolumeId));
+    show_message ( "The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
+    show_message ( "Volume label is %s", 1375, 1, TYPE_STRING, vol );
+
+    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
+
+    show_message ( "%d Total clusters\n", 0, 0, ClusterCount );
     
     // fix up the FSInfo sector
     pFAT32FsInfo->dFree_Count = (UserAreaSize/dp.SectorsPerCluster)-1;
     pFAT32FsInfo->dNxt_Free = 3; // clusters 0-1 resered, we used cluster 2 for the root dir
 
-    printf ( "%d Free Clusters\n", pFAT32FsInfo->dFree_Count );
+    show_message ( "%d Free Clusters\n", 0, 0, pFAT32FsInfo->dFree_Count );
     // Work out the Cluster count
 
-    printf ( "Formatting drive %s\n",path  );
+    show_message( "Formatting drive %s\n", 534, 0, path );
 
     // Once zero_sectors has run, any data on the drive is basically lost....
 
@@ -416,8 +422,8 @@ int format_volume (char *path, format_params *params)
     SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
     zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize); // &dgDrive);
 
-    printf ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster...\n", SystemAreaSize );
-    printf ( "Initialising reserved sectors and FATs...\n" );
+    show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster...\n", 0, 0, SystemAreaSize );
+    show_message ( "Initialising reserved sectors and FATs...\n", 0, 0 );
     // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot sect position
     for ( i=0; i<2; i++ )
         {
@@ -621,6 +627,9 @@ int format(int argc, char *argv[], char *envp[])
                 usage( argv[0] );
         case 'V':
 	        memcpy(p.volume_label, val, 12);
+                continue;
+        case 'P':
+                msg = TRUE;
                 continue;
         default:
                 // printf ( "Ignoring bad flag '-%c'\n", argv[i][1] ); 

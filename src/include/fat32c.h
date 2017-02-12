@@ -27,6 +27,11 @@ typedef unsigned int DWORD;
 
 #include "fat32def.h"
 
+#include <stdarg.h>
+
+INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
+INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va);
+
 #else
 
 #include <windows.h>

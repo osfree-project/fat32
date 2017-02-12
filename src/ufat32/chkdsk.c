@@ -88,7 +88,6 @@ ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirE
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 
-INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 
 int logbufsize = 0;
@@ -98,6 +97,8 @@ static HFILE hDisk = NULLHANDLE;
 
 F32PARMS  f32Parms = {0};
 static BOOL fToFile;
+
+extern char msg;
 
 #if 1  /* by OAX */
 static UCHAR rgFirstInfo[ 256 ] = { 0, };
@@ -209,6 +210,7 @@ ULONG  cbDataLen;
                break;
             case 'P':
                pCD->fPM = TRUE;
+               msg = TRUE;
                break;
             case 'F':
                pCD->fFix = TRUE;
@@ -220,7 +222,8 @@ ULONG  cbDataLen;
                pCD->fAutoCheck = TRUE;
                break;
             default :
-               iShowMessage(pCD, 543, 1, TYPE_STRING, rgArgv[iArg]);
+               show_message( "%s is not a valid parameter with the CHKDSK"
+                             "command when checking a hard disk.", 543, 1, TYPE_STRING, rgArgv[iArg] );
                exit(543);
             }
          }
@@ -264,10 +267,9 @@ ULONG  cbDataLen;
    if (rc)
       {
       if (rc == ERROR_DRIVE_LOCKED)
-         iShowMessage(pCD, rc, 0);
+         show_message(NULL, rc, 0);
       else
          printf("%s\n", GetOS2Error(rc));
-      //DosExit(EXIT_PROCESS, 1);
       return 1;
       }
    ulParmSize = sizeof(ulDeadFace);
@@ -298,10 +300,9 @@ ULONG  cbDataLen;
       if (rc)
          {
          if (rc == ERROR_DRIVE_LOCKED)
-            iShowMessage(pCD, rc, 0);
+            show_message(NULL, rc, 0);
          else
             printf("%s\n", GetOS2Error(rc));
-         //DosExit(EXIT_PROCESS, 1);
          return 1;
          }
       }
@@ -660,14 +661,14 @@ ULONG  cbActual, ulAction;
       p--;
    *p = 0;
    if( p > szString )
-      iShowMessage(pCD, 1375, 1, TYPE_STRING, szString);
+      show_message("The volume label is %s.", 1375, 1, TYPE_STRING, szString);
 
    sprintf(szString, "%4.4X-%4.4X",
       HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
-   iShowMessage(pCD, 1243, 1, TYPE_STRING, szString);
+   show_message("The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
    if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
       {
-      printf("The media descriptor is incorrect\n");
+      show_message("The media descriptor is incorrect\n", 0, 0);
       LogOutMessage(2400, NULL, 0);
       pCD->ulErrorCount++;
       }
@@ -733,49 +734,49 @@ ULONG  cbActual, ulAction;
       //   pCD->ulErrorCount++;
       //}
 
-   iShowMessage(pCD, 1361, 1,
+   show_message("\n%lf bytes total disk space.", 1361, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
    if (pCD->ulBadClusters)
-      iShowMessage(pCD, 1362, 1,
+      show_message("%lf bytes in bad sectors.", 1362, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulBadClusters * pCD->ulClusterSize);
-   iShowMessage(pCD, 1363, 2,
+   show_message("%lf bytes in %lu hidden files.", 1363, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulHiddenClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulHiddenFiles);
-   iShowMessage(pCD, 1364, 2,
+   show_message("%lf bytes in %lu directories.", 1364, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulTotalDirs);
-   iShowMessage(pCD, 1819, 1,
+   show_message("%lf bytes in extended attributes.", 1819, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->ulClusterSize);
-   iShowMessage(pCD, 1365, 2,
+   show_message("%lf bytes in %lu user files.", 1365, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulUserFiles);
 
    if (pCD->ulRecoveredClusters)
-      iShowMessage(pCD, 1365, 2,
+      show_message("%lf bytes in %lu user files.", 1365, 2,
          TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->ulClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
 
    if (pCD->ulLostClusters)
-      iShowMessage(pCD, 1359, 1,
+      show_message("%lf bytes disk space would be freed.", 1359, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->ulClusterSize);
 
-   iShowMessage(pCD, 1368, 2,
+   show_message("%lf bytes available on disk.", 1368, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize,
       TYPE_LONG, 0L);
 
    printf("\n");
 
-   iShowMessage(pCD, 1304, 1,
+   show_message("%lu bytes in each allocation unit.", 1304, 1,
       TYPE_LONG, (ULONG)pCD->ulClusterSize);
 
-   iShowMessage(pCD, 1305, 1,
+   show_message("%lu total allocation units.", 1305, 1,
       TYPE_LONG, pCD->ulTotalClusters);
 
-   iShowMessage(pCD, 1306, 1,
+   show_message("%lu available allocation units on disk.", 1306, 1,
       TYPE_LONG, pCD->ulFreeClusters);
 
    if (pCD->ulTotalChains > 0)
-      printf("\n%u%% of the files and directories are fragmented.\n",
+      show_message("\n%u%% of the files and directories are fragmented.\n", 0, 0,
          (USHORT)(pCD->ulFragmentedChains * 100 / pCD->ulTotalChains));
 
 ChkDskMainExit:
@@ -783,9 +784,9 @@ ChkDskMainExit:
       {
       printf("\n");
       if (!pCD->fFix)
-         iShowMessage(pCD, 1339, 0);
+         show_message(NULL, 1339, 0);
       else
-         printf("Errors may still exist on this volume. \nRecommended action: Run CHKDSK under Windows.\n");
+         show_message("Errors may still exist on this volume. \nRecommended action: Run CHKDSK under Windows.\n", 0, 0);
       }
    else if (pCD->fFix)
       {
@@ -848,11 +849,13 @@ USHORT fRetco;
 //   printf("Each fat contains %lu sectors\n",
 //      pCD->BootSect.bpb.BigSectorsPerFat);
 */
-   printf("CHKDSK is checking fats :    ");
+   //printf("CHKDSK is checking fats :    ");
+   show_message("CHKDSK is checking fats :    ", 0, 0);
 
    if (pCD->BootSect.bpb.ExtFlags & 0x0080)
       {
-      printf("There is only one active FAT.\n");
+      //printf("There is only one active FAT.\n");
+      show_message("There is only one active FAT.\n", 0, 0);
       LogOutMessage(2405, NULL, 0);
       return 0;
       }
@@ -911,7 +914,9 @@ USHORT fRetco;
             ULONG ulVal = *pulCluster & FAT_EOF;
             if (!(ulVal >= FAT_BAD_CLUSTER && ulVal <= FAT_EOF))
                {
-               printf("FAT Entry for cluster %lu contains an invalid value.\n",
+               //printf("FAT Entry for cluster %lu contains an invalid value.\n",
+               //   ulCluster);
+               show_message("FAT Entry for cluster %lu contains an invalid value.\n", 0, 0,
                   ulCluster);
                LogOutMessage(2406, NULL, 1, ulCluster);
                fRetco = 1;
@@ -927,7 +932,7 @@ USHORT fRetco;
    if (fDiff)
       {
       printf("\n");
-      iShowMessage(pCD, 1374, 1, TYPE_STRING, pCD->szDrive);
+      show_message("File Allocation Table (FAT) is bad on drive %s.", 1374, 1, TYPE_STRING, pCD->szDrive);
       LogOutMessage(2407, pCD->szDrive, 0);
       pCD->ulErrorCount++;
       pCD->fFatOk = FALSE;
@@ -935,7 +940,8 @@ USHORT fRetco;
       }
    else
       {
-      printf("Ok.   \n");
+      //printf("Ok.   \n");
+      show_message("Ok.   \n", 0, 0);
       LogOutMessage(2408, NULL, 0);
       pCD->fFatOk = TRUE;
       }
@@ -948,7 +954,8 @@ USHORT fRetco;
 ULONG CheckFiles(PCDINFO pCD)
 {
 
-   printf("CHKDSK is checking files and directories...\n");
+   //printf("CHKDSK is checking files and directories...\n");
+   show_message("CHKDSK is checking files and directories...\n", 0, 0);
    return CheckDir(pCD, pCD->BootSect.bpb.RootDirStrtClus, pCD->szDrive, 0L);
 }
 
@@ -959,7 +966,7 @@ USHORT usPerc = 100;
 BOOL fMsg = FALSE;
 ULONG dummy = 0;
 
-   iShowMessage(pCD, 564, 0);
+   show_message("CHKDSK is searching for lost data.", 564, 0);
 
    pCD->ulFreeClusters = 0;
    for (ulCluster = 0; ulCluster < pCD->ulTotalClusters; ulCluster++)
@@ -969,7 +976,7 @@ ULONG dummy = 0;
 
       if (!pCD->fPM && !fToFile && usNew != usPerc)
          {
-         iShowMessage(pCD, 563, 1, TYPE_PERC, usNew);
+         show_message("CHKDSK has searched %u%% of the disk.", 563, 1, TYPE_PERC, usNew);
          printf("\r");
          usPerc = usNew;
          }
@@ -991,8 +998,8 @@ ULONG dummy = 0;
             if (!fMsg)
                {
                printf("\n");
-               iShowMessage(pCD, 562, 1, TYPE_STRING, pCD->szDrive);
-               iShowMessage(pCD, 563, 1, TYPE_PERC, usNew);
+               show_message("The system detected lost data on disk %s.", 562, 1, TYPE_STRING, pCD->szDrive);
+               show_message("CHKDSK has searched %s%% of the disk.", 563, 1, TYPE_STRING, pCD->szDrive);
                printf("\r");
                fMsg = TRUE;
                }
@@ -1002,7 +1009,7 @@ ULONG dummy = 0;
       }
 
    if (!pCD->fPM && !fToFile)
-      iShowMessage(pCD, 563, 1, TYPE_PERC, 100);
+      show_message("CHKDSK has searched %s%% of the disk.", 563, 1, TYPE_PERC, 100);
    printf("\n");
 
    if (pCD->usLostChains)
@@ -1012,10 +1019,13 @@ ULONG dummy = 0;
       ULONG rc;
 
       if (pCD->usLostChains >= MAX_LOST_CHAINS)
-         iShowMessage(pCD, 548, 0);
+         show_message("Warning!  Not enough memory is available for CHKDSK"
+                      "to recover all lost data.", 548, 0);
 
       if (!pCD->fAutoRecover)
-         iShowMessage(pCD, 1356, 2,
+         show_message("%lu lost clusters found in %lu chains."
+                      "These clusters and chains will be erased unless you convert"
+                      "them to files.  Do you want to convert them to files(Y/N)? ", 1356, 2,
             TYPE_LONG2, pCD->ulLostClusters,
             TYPE_LONG2, (ULONG)pCD->usLostChains);
       fflush(stdout);
@@ -1584,7 +1594,7 @@ UCHAR fModified = FALSE;
                         pCD->ulErrorCount++;
                         }
                      else
-                        iShowMessage(pCD, 560, 1,
+                        show_message("CHKDSK corrected an allocation error for the file %s.", 560, 1,
                            TYPE_STRING, fs.szFileName);
                      }
 
@@ -1602,7 +1612,8 @@ UCHAR fModified = FALSE;
 
       }
    if (pCD->fDetailed == 2)
-      printf("%ld files\n", ulEntries);
+      //printf("%ld files\n", ulEntries);
+      show_message("%ld files\n", 0, 0, ulEntries);
 
    bCheck = 0;
    pDir = (PDIRENTRY)pbCluster;
@@ -1815,7 +1826,7 @@ BYTE bMask;
 
    if (ClusterInUse(pCD, ulCluster))
       {
-      iShowMessage(pCD, 1343, 2,
+      show_message("%s is cross-linked on cluster %lu", 1343, 2,
          TYPE_STRING, pszFile,
          TYPE_LONG, ulCluster);
       pCD->ulErrorCount++;
@@ -2083,6 +2094,6 @@ ULONG  rc, dummy1 = 0, dummy2 = 0;
    pCD->ulRecoveredClusters += ulSize;
    pCD->ulRecoveredFiles++;
 
-   iShowMessage(pCD, 574, 1, TYPE_STRING, szRecovered);
+   show_message("CHKDSK placed recovered data in file %s.", 574, 1, TYPE_STRING, szRecovered);
    return TRUE;
 }

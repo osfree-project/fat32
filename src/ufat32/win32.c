@@ -329,23 +329,17 @@ void check_vol_label(char *path, char **vol_label)
            &volSerNum, &maxFileNameLen, 
            &fsFlags, fsName, sizeof(fsName));
 
-    // The current file system type is FAT32
     printf("The current file system type is %s.\n", fsName);
 
-    //iShowMessage(NULL, 1293, 1, TYPE_STRING, "FAT32");
-    printf("The new file system type is: FAT32\n");
+    show_message( "The specified disk did not finish formatting.\n", 1293, 1, TYPE_STRING, "FAT32" );
 
     if (!cur_vol || !*cur_vol)
-        // The disk has no volume label
-        // iShowMessage(NULL, 125, 0);
-        printf("The disk has no volume label.\n");
+        show_message( "The disk has no volume label\n", 125, 0 );
     else
     {
         if (!vol_label || !*vol_label || !**vol_label)
         {
-            // Enter the current volume label
-            // ShowMessage(NULL, 1318, 1, TYPE_STRING, path);
-            printf("Enter no more than 11 characters of the current volume label: ");
+            show_message( "Enter the current volume label for drive %s\n", 1318, 1, TYPE_STRING, path );
 
             // Read the volume label
             gets(testvol);
@@ -354,18 +348,12 @@ void check_vol_label(char *path, char **vol_label)
 
     if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
     {
-        // Incorrect volume  label for
-        // disk %c is entered!
-        // iShowMessage(NULL, 636, 0);
-        printf("Incorrect volume label for disk %c: is entered!\n", *path);
+        show_message( "An incorrect volume label was entered for this drive.\n", 636, 0 );
         quit (1);
     }
 
-    // Warning! All data on the specified hard disk
-    // will be destroyed! Proceed with format (Yes(1)/No(0))?
-    // iShowMessage(NULL, 1271, 1, TYPE_STRING, path);
-    printf("Warning! All data on the specified hard disk\n"
-           "will be destroyed! Proceed with format (Yes(1)/Mo(0))? ");
+    show_message( "Warning! All data on hard disk %s will be lost!"
+                  "Proceed with FORMAT (Y/N)?\n", 1271, 1, TYPE_STRING, path );
 
     c = getchar();
 
@@ -391,7 +379,10 @@ void show_progress (float fPercentWritten)
     
     if (! f)
     {
-        printf("Percent written: ");
+        //printf("Percent written: ");
+        show_message( "%s percent of disk formatted %s\n", 1312, 2,
+                      TYPE_STRING, str, 
+                      TYPE_STRING, "..." );
         f = 1;
     }
 }
@@ -402,8 +393,10 @@ void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumField
     UCHAR szBuf[1024];
 
     va_start(va, usNumFields);
-    vsprintf ( szBuf, pszMsg, va );
-    va_end( va );
+
+    if (pszMsg)
+        vsprintf ( szBuf, pszMsg, va );
 
     puts(szBuf);
+    va_end( va );
 }

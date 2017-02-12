@@ -20,8 +20,10 @@
 typedef HFILE HANDLE;
 
 extern HANDLE hDev;
+extern char msg;
 
-INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
+char msg = FALSE;
+
 PSZ       GetOS2Error(USHORT rc);
 
 ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector);
@@ -78,7 +80,7 @@ void die ( char * error, DWORD rc )
    
     // Format failed
     printf("ERROR: %s\n", error);
-    iShowMessage(NULL, 528, 0);
+    show_message( "The specified disk did not finish formatting.\n", 528, 0 );
     printf("%s\n", GetOS2Error(rc));
 
     if ( rc )
@@ -660,51 +662,46 @@ void check_vol_label(char *path, char **vol_label)
     char   c;
     ULONG  rc;
 
-    memset(cur_vol, 0, sizeof(cur_vol));
-    memset(testvol, 0, sizeof(testvol));
-
-    // Query the filesystem info, 
-    // including the current volume label
-    rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
-                       (PVOID)&fsiBuffer, sizeof(fsiBuffer));
-        
-    if (rc == NO_ERROR)
-        // Current disk volume label
-        strcpy(cur_vol, fsiBuffer.vol.szVolLabel);
-    else
-        printf("DosQueryFSInfo error: %lu\n", rc);
-
-    // The current file system type is FAT32
-    iShowMessage(NULL, 1293, 1, TYPE_STRING, "FAT32");
-
-    if (!cur_vol || !*cur_vol)
-        // The disk has no a volume label
-        iShowMessage(NULL, 125, 0);
-    else
+    if (! msg)
     {
-        if (!vol_label || !*vol_label || !**vol_label)
-        {
-            // Enter the current volume label
-            iShowMessage(NULL, 1318, 1, TYPE_STRING, path);
+        memset(cur_vol, 0, sizeof(cur_vol));
+        memset(testvol, 0, sizeof(testvol));
 
-            // Read the volume label
-            gets(testvol);
+        // Query the filesystem info, 
+        // including the current volume label
+        rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
+                            (PVOID)&fsiBuffer, sizeof(fsiBuffer));
+
+        if (rc == NO_ERROR)
+            // Current disk volume label
+            strcpy(cur_vol, fsiBuffer.vol.szVolLabel);
+
+        show_message( "The new type of file system is %1.", 1293, 1, TYPE_STRING, "FAT32" );
+
+        if (!cur_vol || !*cur_vol)
+            show_message( "The disk has no volume label\n", 125, 0 );
+        else
+        {
+            if (!vol_label || !*vol_label || !**vol_label)
+            {
+                show_message( "Enter the current volume label for drive %s\n", 1318, 1, TYPE_STRING, path );
+
+                // Read the volume label
+                gets(testvol);
+            }
+        }
+
+        // if the entered volume label is empty, or doesn't
+        // the same as a current volume label, write an error
+        if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
+        {
+            show_message( "An incorrect volume label was entered for this drive.\n", 636, 0 );
+            quit (1);
         }
     }
 
-    // if the entered volume label is empty, or doesn't
-    // the same as a current volume label, write an error
-    if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
-    {
-        // Incorrect volume  label for
-        // disk %c is entered!
-        iShowMessage(NULL, 636, 0);
-        quit (1);
-    }
-
-    // Warning! All data on the specified hard disk
-    // will be destroyed! Proceed with format (Yes(1)/No(0))?
-    iShowMessage(NULL, 1271, 1, TYPE_STRING, path);
+    show_message( "Warning! All data on hard disk %s will be lost!"
+                  "Proceed with FORMAT (Y/N)?\n", 1271, 1, TYPE_STRING, path );
 
     c = getchar();
 
@@ -723,8 +720,8 @@ char *get_vol_label(char *path, char *vol)
     if (!vol || !*vol)
     {
         fflush(stdin);
-        // Enter up to 11 characters for the volume label
-        iShowMessage(NULL, 1288, 0);
+        show_message( "Enter up to 11 characters for the volume label"
+                      "or press Enter for no volume label.\n", 1288, 0 );
 
         label = v;
     }
@@ -737,8 +734,9 @@ char *get_vol_label(char *path, char *vol)
 
     if (strlen(label) > 11)
     {
-       // volume label entered exceeds 11 chars
-       iShowMessage(NULL, 154, 0);
+       show_message( "The volume label you entered exceeds the 11-character limit."
+                     "The first 11 characters were written to disk.  Any characters that"
+                     "exceeded the 11-character limit were automatically deleted.\n", 154, 0 );
        // truncate it
        label[11] = '\0';
     }
@@ -795,9 +793,9 @@ void show_progress (float fPercentWritten)
 
   // construct message
   sprintf(str, "%3.f%%", fPercentWritten);
-  iShowMessage(NULL, 1312, 2, TYPE_STRING, str, 
-                              TYPE_STRING, "...");
-  //DosSleep(5);
+  show_message( "%s percent of disk formatted %s\n", 1312, 2,
+                              TYPE_STRING, str, 
+                              TYPE_STRING, "..." );
   // restore cursor position
   printf("[u");
   fflush(stdout); 
@@ -807,11 +805,50 @@ void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumField
 {
     va_list va;
     UCHAR szBuf[1024];
+    int i;
 
     va_start(va, usNumFields);
-    vsprintf ( szBuf, pszMsg, va );
+
+    if (usMsg)
+       iShowMessage2(NULL, usMsg, usNumFields, va);
+    else if (pszMsg)
+       {
+       vsprintf ( szBuf, pszMsg, va );
+       printf ( "%s", szBuf );
+       }
+
     va_end( va );
 
-    //iShowMessage(NULL, usMsg, usNumFields, va);
-    puts (szBuf);
+    if (usMsg && msg)
+       {
+       va_start(va, usNumFields);
+       printf("\nMSG_%u", usMsg);
+
+       for (i = 0; i < usNumFields; i++)
+          {
+          USHORT usType = va_arg(va, USHORT);
+          if (usType == TYPE_PERC)
+             {
+             USHORT arg = va_arg(va, USHORT);
+             printf(",%u", arg);
+             }
+          else if (usType == TYPE_LONG || usType == TYPE_LONG2)
+             {
+             ULONG arg = va_arg(va, ULONG);
+             printf(",%lu", arg);
+             }
+          else if (usType == TYPE_DOUBLE || usType == TYPE_DOUBLE2)
+             {
+             double arg = va_arg(va, double);
+             printf(",%lf", arg);
+             }
+          else if (usType == TYPE_STRING)
+             {
+             PSZ arg = va_arg(va, PSZ);
+             printf(",%s", arg);
+             }
+          }
+       printf("\n");
+       va_end( va );
+       }
 }

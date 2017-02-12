@@ -26,7 +26,6 @@ void remount_media (HFILE hDevice);
 ULONG ReadSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 
-INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ GetOS2Error(USHORT rc);
 
 #pragma pack(1)
@@ -315,7 +314,7 @@ void _System sysinstx_thread(ULONG args)
   DosClose(hf);
 
   // The system files have been transferred.
-  iShowMessage(NULL, 1272, 0);
+  show_message(NULL, 1272, 0);
 
   return;
 }

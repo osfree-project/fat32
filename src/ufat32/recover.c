@@ -10,10 +10,10 @@
 
 #include "portable.h"
 #include "fat32def.h"
+#include "fat32c.h"
 
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-INT cdecl iShowMessage(PCDINFO pCD, USHORT usNr, USHORT usNumFields, ...);
 PSZ       GetOS2Error(USHORT rc);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
@@ -72,7 +72,7 @@ int recover_thread(int argc, char *argv[])
    if (rc)
       {
       if (rc == ERROR_DRIVE_LOCKED)
-         iShowMessage(pCD, rc, 0);
+         show_message(NULL, rc, 0);
       else
          printf("%s\n", GetOS2Error(rc));
       DosExit(EXIT_PROCESS, 1);
@@ -91,7 +91,7 @@ int recover_thread(int argc, char *argv[])
       if (rc)
          {
          if (rc == ERROR_DRIVE_LOCKED)
-            iShowMessage(pCD, rc, 0);
+            show_message(NULL, rc, 0);
          else
             printf("%s\n", GetOS2Error(rc));
          DosExit(EXIT_PROCESS, 1);
