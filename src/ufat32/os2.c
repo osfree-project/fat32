@@ -80,8 +80,8 @@ void die ( char * error, DWORD rc )
    
     // Format failed
     show_message("ERROR: %s\n", 0, 0, 1, error);
-    show_message( "The specified disk did not finish formatting.\n", 0, 528, 0 );
-    printf("%s\n", GetOS2Error(rc));
+    show_message("The specified disk did not finish formatting.\n", 0, 528, 0);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
 
     if ( rc )
         show_message("Error code: %lu\n", 0, 0, 1, rc);
@@ -100,7 +100,7 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     //printf("rc=%lu\n", rc);
 
     if ( rc )
-        die("Seek error\n", rc);
+        die("Seek error", rc);
 }
 
 ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
@@ -700,7 +700,7 @@ void check_vol_label(char *path, char **vol_label)
         }
     }
 
-    show_message( "Warning! All data on hard disk %s will be lost!"
+    show_message( "Warning! All data on hard disk %s will be lost!\n"
                   "Proceed with FORMAT (Y/N)?\n", 0, 1271, 1, TYPE_STRING, path );
 
     c = getchar();
@@ -720,7 +720,7 @@ char *get_vol_label(char *path, char *vol)
     if (!vol || !*vol)
     {
         fflush(stdin);
-        show_message( "Enter up to 11 characters for the volume label"
+        show_message( "Enter up to 11 characters for the volume label\n"
                       "or press Enter for no volume label.\n", 0, 1288, 0 );
 
         label = v;
@@ -734,8 +734,8 @@ char *get_vol_label(char *path, char *vol)
 
     if (strlen(label) > 11)
     {
-       show_message( "The volume label you entered exceeds the 11-character limit."
-                     "The first 11 characters were written to disk.  Any characters that"
+       show_message( "The volume label you entered exceeds the 11-character limit.\n"
+                     "The first 11 characters were written to disk.  Any characters that\n"
                      "exceeded the 11-character limit were automatically deleted.\n", 0, 154, 0 );
        // truncate it
        label[11] = '\0';
@@ -780,6 +780,7 @@ void show_progress (float fPercentWritten)
 
   // construct message
   sprintf(str, "%3.f%%", fPercentWritten);
+  // 538  %1%% of the disk has been formatted. ??? or 1312 ?
   len = show_message( "%s percent of disk formatted %s\n", 0, 1312, 2,
                       TYPE_STRING, str, 
                       TYPE_STRING, "..." );

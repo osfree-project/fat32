@@ -179,7 +179,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 
     fBytesTotal = (double) qBytesTotal;
     show_message ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 0, 3,
-             qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
+                   qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
 int format_volume (char *path, format_params *params)
@@ -404,14 +404,20 @@ int format_volume (char *path, format_params *params)
 
     show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
 
-    show_message ( "%d Total clusters\n", 0, 0, 1, ClusterCount );
+    // Work out the Cluster count
+
+    sprintf(szString, "%lu", (dp.TotalSectors / 1024) * dp.BytesPerSect);
+    show_message ( "%s kilobytes total disk space\n", 0, 568, 1, TYPE_STRING, szString);
     
     // fix up the FSInfo sector
     pFAT32FsInfo->dFree_Count = (UserAreaSize/dp.SectorsPerCluster)-1;
     pFAT32FsInfo->dNxt_Free = 3; // clusters 0-1 resered, we used cluster 2 for the root dir
 
-    show_message ( "%d Free Clusters\n", 0, 0, 1, pFAT32FsInfo->dFree_Count );
-    // Work out the Cluster count
+    sprintf(szString, "%lu", (pFAT32FsInfo->dFree_Count / 1024) * (dp.SectorsPerCluster * dp.BytesPerSect));
+    show_message ( "%s kilobytes are available\n", 0, 537, 1, TYPE_STRING, szString);
+
+    sprintf(szString, "%d", 0);
+    show_message ( "%s kilobytes are in bad blocks\n", 0, 536, 1, TYPE_STRING, szString);
 
     show_message( "Formatting drive %s\n", 0, 534, 1, TYPE_STRING, path );
 
@@ -484,7 +490,7 @@ void usage( char *s )
                  "    8 ( max size 1TB.  )\n"
                  "    ... \n"
                  "  128 - use 128 sectors per cluster (64K clusters)\n"
-                 "/P is specified by PM fromtends\n"
+                 "/P is specified by PM frontends\n"
                  "/V:<volume label>\n"
                  "/R:<reserved sectors>\n"
                  "/? this help message\n\n", s );
@@ -639,7 +645,7 @@ int format(int argc, char *argv[], char *envp[])
     }
 
     if ( format_volume( path, &p ) )
-       show_message( "Done.", 0, 1294, 0 );
+       show_message( "Format completed successfully.", 0, 635, 0 );
 
     return 0;
 }
