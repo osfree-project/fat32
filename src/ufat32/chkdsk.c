@@ -90,9 +90,10 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
 
 PSZ       GetOS2Error(USHORT rc);
 
-int logbufsize = 0;
-char *logbuf = NULL;
-int  logbufpos = 0;
+extern int logbufsize;
+extern char *logbuf;
+extern int  logbufpos;
+
 static HFILE hDisk = NULLHANDLE;
 
 F32PARMS  f32Parms = {0};
@@ -154,7 +155,7 @@ int lastchar(const char *string)
 
 VOID Handler(INT iSignal)
 {
-   printf("Signal %d was received\n", iSignal);
+   show_message("Signal %d was received\n", 0, 0, 1, iSignal);
 
    // remount disk for changes to take effect
    if (hDisk)
@@ -213,7 +214,7 @@ ULONG  cbDataLen;
                break;
             default :
                show_message( "%s is not a valid parameter with the CHKDSK"
-                             "command when checking a hard disk.", 543, 1, TYPE_STRING, rgArgv[iArg] );
+                             "command when checking a hard disk.", 0, 543, 1, TYPE_STRING, rgArgv[iArg] );
                exit(543);
             }
          }
@@ -265,9 +266,9 @@ ULONG  cbDataLen;
    if (rc)
       {
       if (rc == ERROR_DRIVE_LOCKED)
-         show_message(NULL, rc, 0);
+         show_message(NULL, 0, rc, 0);
       else
-         printf("%s\n", GetOS2Error(rc));
+         show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
       return 1;
       }
    ulParmSize = sizeof(ulDeadFace);
@@ -298,9 +299,9 @@ ULONG  cbDataLen;
       if (rc)
          {
          if (rc == ERROR_DRIVE_LOCKED)
-            show_message(NULL, rc, 0);
+            show_message(NULL, 0, rc, 0);
          else
-            printf("%s\n", GetOS2Error(rc));
+            show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
          return 1;
          }
       }
@@ -318,7 +319,7 @@ ULONG  cbDataLen;
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
       {
-      printf("Error: Cannot read boot sector: %s\n", GetOS2Error(rc));
+      show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, GetOS2Error(rc));
       return rc;
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
@@ -326,7 +327,7 @@ ULONG  cbDataLen;
    rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
    if (rc)
       {
-      printf("Error: Cannot read FSInfo sector\n%s\n", GetOS2Error(rc));
+      show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, GetOS2Error(rc));
       return rc;
       }
 
@@ -340,15 +341,13 @@ ULONG  cbDataLen;
       //rc = DosDevIOCtl(NULL, NULL, DSK_UNLOCKDRIVE, IOCTL_DISK, hFile);
       if (rc)
          {
-         printf("The drive cannot be unlocked. SYS%4.4u\n", rc);
-         //DosExit(EXIT_PROCESS, 1);
+         show_message("The drive cannot be unlocked. SYS%4.4u\n", 0, 0, 1, rc);
          return 1;
          }
       }
    DosClose(hFile);
    free(pCD);
 
-   //DosExit(EXIT_PROCESS, rc);
    return rc;
 
    rgEnv = rgEnv;
@@ -360,7 +359,7 @@ int chkdsk(int argc, char *argv[], char *envp[])
   APIRET rc;
 
   // Here we're switching stack, because the original
-  // recover.com stack is too small.
+  // chkdsk.com stack is too small.
 
   // allocate stack
   rc = DosAllocMem((void **)&stack, 
@@ -518,77 +517,6 @@ ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster)
    return 0;
 }
 
-void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
-{
-#pragma pack (2)
-   struct
-   {
-      USHORT usRecordSize;
-      USHORT usMsgNo;
-      USHORT ulParmNo;
-      USHORT cbStrLen;
-   } header;
-#pragma pack()
-   ULONG ulParm;
-   int i, len;
-
-   header.usRecordSize = sizeof(header) + ulParmNo * sizeof(ULONG);
-   header.cbStrLen = 0;
-
-   if (psz)
-      {
-      len = strlen(psz) + 1;
-      header.cbStrLen = len;
-      header.usRecordSize += len;
-      }
-
-   header.usMsgNo = (USHORT)ulMsgNo;
-   header.ulParmNo = ulParmNo;
-
-   if (logbufpos + header.usRecordSize > logbufsize)
-      {
-      if (! logbufsize)
-         logbufsize = 0x10000;
-      if (! logbuf)
-         logbuf = malloc(logbufsize);
-      else
-         {
-         logbufsize += 0x10000;
-         logbuf = realloc(logbuf, logbufsize);
-         }
-      if (! logbuf)
-         {
-         printf("realloc/malloc failed!\n");
-         return;
-         }
-      }
-
-   memcpy(&logbuf[logbufpos], &header, sizeof(header));
-   logbufpos += sizeof(header);
-
-   if (psz)
-      {
-      memcpy(&logbuf[logbufpos], psz, len);
-      logbufpos += len;
-      }
-
-   for (i = 0; i < ulParmNo; i++)
-      {
-      ulParm = va_arg(va, ULONG);
-      memcpy(&logbuf[logbufpos], &ulParm, sizeof(ULONG));
-      logbufpos += sizeof(ULONG);
-      }
-}
-
-void LogOutMessage(ULONG ulMsgNo, char *psz, ULONG ulParmNo, ...)
-{
-   va_list va;
-
-   va_start(va, ulParmNo);
-   LogOutMessagePrintf(ulMsgNo, psz, ulParmNo, va);
-   va_end(va);
-}
-
 ULONG ChkDskMain(PCDINFO pCD)
 {
 ULONG  rc;
@@ -643,7 +571,7 @@ ULONG  cbActual, ulAction;
    pCD->pFatBits = calloc(usBlocks,4096);
    if (!pCD->pFatBits)
       {
-      printf("Not enough memory for FATBITS\n");
+      show_message("Not enough memory for FATBITS\n", 0, 0, 0);
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto ChkDskMainExit;
       }
@@ -661,8 +589,7 @@ ULONG  cbActual, ulAction;
 
    if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
       {
-      show_message("The media descriptor is incorrect\n", 0, 0);
-      LogOutMessage(2400, NULL, 0);
+      show_message("The media descriptor is incorrect\n", 0, 2400, 0, 0);
       pCD->ulErrorCount++;
       }
 
@@ -670,14 +597,14 @@ ULONG  cbActual, ulAction;
 
    if (! pCD->fAutoCheck || ! pCD->fCleanOnBoot)
       {
-      printf("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", FAT32_VERSION);
+      show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
 
       if( p > szString )
-         show_message("The volume label is %s.", 1375, 1, TYPE_STRING, szString);
+         show_message("The volume label is %s.", 0, 1375, 1, TYPE_STRING, szString);
 
       sprintf(szString, "%4.4X-%4.4X",
          HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
-      show_message("The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
+      show_message("The Volume Serial Number is %s.", 0, 1243, 1, TYPE_STRING, szString);
       }
 
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
@@ -693,9 +620,8 @@ ULONG  cbActual, ulAction;
    rc = CheckFats(pCD);
    if (rc)
       {
-      printf("The copies of the FATs do not match.\n");
-      printf("Please run CHKDSK under Windows to correct this problem.\n");
-      LogOutMessage(2401, NULL, 0);
+      show_message("The copies of the FATs do not match.\n"
+                   "Please run CHKDSK under Windows to correct this problem.\n", 2401, 0, 0);
       goto ChkDskMainExit;
       }
    rc = CheckFiles(pCD);
@@ -705,16 +631,14 @@ ULONG  cbActual, ulAction;
    //if (! pCD->fAutoCheck)
    //if (pCD->DiskInfo.total_clusters != pCD->ulTotalClusters)
    //   {
-   //   printf("Total clusters mismatch!\n");
-   //   LogOutMessage(2402, NULL, 0);
+   //   show_message("Total clusters mismatch!\n", 2402, 0, 0);
    //   }
 
    //if (pCD->DiskInfo.avail_clusters != pCD->ulFreeClusters)
    //   {
-   //   printf("The stored free disk space is incorrect.\n");
-   //   printf("(%lu free allocation units are reported,\nwhile %lu free units are detected.)\n",
-   //      pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
-   //   LogOutMessage(2403, NULL, 2, pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
+   //   show_message("The stored free disk space is incorrect.\n", 0, 0, 0);
+   //   show_message("(%lu free allocation units are reported,\nwhile %lu free units are detected.)\n",
+   //      2403, 0, 2, pCD->DiskInfo.avail_clusters, pCD->ulFreeClusters);
       if (pCD->fFix)
          {
          ULONG ulFreeBlocks;
@@ -726,9 +650,8 @@ ULONG  cbActual, ulAction;
          //   FAT32_GETFREESPACE, IOCTL_FAT32, pCD->hDisk);
          ulFreeBlocks = GetFreeSpace(pCD);
          //if (!rc)
-            printf("The correct free space is set to %lu allocation units.\n",
+            show_message("The correct free space is set to %lu allocation units.\n", 2404, 0, 1,
                ulFreeBlocks);
-            LogOutMessage(2404, NULL, 1, ulFreeBlocks);
          //else
             //{
             //printf("Setting correct free space failed, rc = %u.\n", rc);
@@ -739,59 +662,59 @@ ULONG  cbActual, ulAction;
       //   pCD->ulErrorCount++;
       //}
 
-   show_message("\n%lf bytes total disk space.", 1361, 1,
+   show_message("\n%lf bytes total disk space.", 0, 1361, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
    if (pCD->ulBadClusters)
-      show_message("%lf bytes in bad sectors.", 1362, 1,
+      show_message("%lf bytes in bad sectors.", 0, 1362, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulBadClusters * pCD->ulClusterSize);
-   show_message("%lf bytes in %lu hidden files.", 1363, 2,
+   show_message("%lf bytes in %lu hidden files.", 0, 1363, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulHiddenClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulHiddenFiles);
-   show_message("%lf bytes in %lu directories.", 1364, 2,
+   show_message("%lf bytes in %lu directories.", 0, 1364, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulTotalDirs);
-   show_message("%lf bytes in extended attributes.", 1819, 1,
+   show_message("%lf bytes in extended attributes.", 0, 1819, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->ulClusterSize);
-   show_message("%lf bytes in %lu user files.", 1365, 2,
+   show_message("%lf bytes in %lu user files.", 0, 1365, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulUserFiles);
 
    if (pCD->ulRecoveredClusters)
-      show_message("%lf bytes in %lu user files.", 1365, 2,
+      show_message("%lf bytes in %lu user files.", 0, 1365, 2,
          TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->ulClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
 
    if (pCD->ulLostClusters)
-      show_message("%lf bytes disk space would be freed.", 1359, 1,
+      show_message("%lf bytes disk space would be freed.", 0, 1359, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->ulClusterSize);
 
-   show_message("%lf bytes available on disk.", 1368, 2,
+   show_message("%lf bytes available on disk.", 0, 1368, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize,
       TYPE_LONG, 0L);
 
-   printf("\n");
+   show_message("\n", 0, 0, 0);
 
-   show_message("%lu bytes in each allocation unit.", 1304, 1,
+   show_message("%lu bytes in each allocation unit.", 0, 1304, 1,
       TYPE_LONG, (ULONG)pCD->ulClusterSize);
 
-   show_message("%lu total allocation units.", 1305, 1,
+   show_message("%lu total allocation units.", 0, 1305, 1,
       TYPE_LONG, pCD->ulTotalClusters);
 
-   show_message("%lu available allocation units on disk.", 1306, 1,
+   show_message("%lu available allocation units on disk.", 0, 1306, 1,
       TYPE_LONG, pCD->ulFreeClusters);
 
    if (pCD->ulTotalChains > 0)
-      show_message("\n%u%% of the files and directories are fragmented.\n", 0, 0,
+      show_message("\n%u%% of the files and directories are fragmented.\n", 0, 0, 1,
          (USHORT)(pCD->ulFragmentedChains * 100 / pCD->ulTotalChains));
 
 ChkDskMainExit:
    if (pCD->ulErrorCount)
       {
-      printf("\n");
+      show_message("\n", 0, 0, 0);
       if (!pCD->fFix)
-         show_message(NULL, 1339, 0);
+         show_message(NULL, 0, 1339, 0);
       else
-         show_message("Errors may still exist on this volume. \nRecommended action: Run CHKDSK under Windows.\n", 0, 0);
+         show_message("Errors may still exist on this volume. \nRecommended action: Run CHKDSK under Windows.\n", 0, 0, 0);
       }
    else if (pCD->fFix)
       {
@@ -854,14 +777,11 @@ USHORT fRetco;
 //   printf("Each fat contains %lu sectors\n",
 //      pCD->BootSect.bpb.BigSectorsPerFat);
 */
-   //printf("CHKDSK is checking fats :    ");
-   show_message("CHKDSK is checking fats :    ", 0, 0);
+   show_message("CHKDSK is checking fats :    ", 0, 0, 0);
 
    if (pCD->BootSect.bpb.ExtFlags & 0x0080)
       {
-      //printf("There is only one active FAT.\n");
-      show_message("There is only one active FAT.\n", 0, 0);
-      LogOutMessage(2405, NULL, 0);
+      show_message("There is only one active FAT.\n", 2405, 0, 0);
       return 0;
       }
 
@@ -919,11 +839,8 @@ USHORT fRetco;
             ULONG ulVal = *pulCluster & FAT_EOF;
             if (!(ulVal >= FAT_BAD_CLUSTER && ulVal <= FAT_EOF))
                {
-               //printf("FAT Entry for cluster %lu contains an invalid value.\n",
-               //   ulCluster);
-               show_message("FAT Entry for cluster %lu contains an invalid value.\n", 0, 0,
+               show_message("FAT Entry for cluster %lu contains an invalid value.\n", 2406, 0, 1,
                   ulCluster);
-               LogOutMessage(2406, NULL, 1, ulCluster);
                fRetco = 1;
                }
             }
@@ -936,18 +853,15 @@ USHORT fRetco;
       printf("\b\b\b\b");
    if (fDiff)
       {
-      printf("\n");
-      show_message("File Allocation Table (FAT) is bad on drive %s.", 1374, 1, TYPE_STRING, pCD->szDrive);
-      LogOutMessage(2407, pCD->szDrive, 0);
+      show_message("\n", 0, 0, 0);
+      show_message("File Allocation Table (FAT) is bad on drive %s.", 2407, 1374, 1, TYPE_STRING, pCD->szDrive);
       pCD->ulErrorCount++;
       pCD->fFatOk = FALSE;
       fRetco = 1;
       }
    else
       {
-      //printf("Ok.   \n");
-      show_message("Ok.   \n", 0, 0);
-      LogOutMessage(2408, NULL, 0);
+      show_message("Ok.   \n", 2408, 0, 0);
       pCD->fFatOk = TRUE;
       }
 
@@ -958,9 +872,7 @@ USHORT fRetco;
 
 ULONG CheckFiles(PCDINFO pCD)
 {
-
-   //printf("CHKDSK is checking files and directories...\n");
-   show_message("CHKDSK is checking files and directories...\n", 0, 0);
+   show_message("CHKDSK is checking files and directories...\n", 0, 0, 0);
    return CheckDir(pCD, pCD->BootSect.bpb.RootDirStrtClus, pCD->szDrive, 0L);
 }
 
@@ -971,7 +883,7 @@ USHORT usPerc = 100;
 BOOL fMsg = FALSE;
 ULONG dummy = 0;
 
-   show_message("CHKDSK is searching for lost data.", 564, 0);
+   show_message("CHKDSK is searching for lost data.", 0, 564, 0);
 
    pCD->ulFreeClusters = 0;
    for (ulCluster = 0; ulCluster < pCD->ulTotalClusters; ulCluster++)
@@ -981,8 +893,8 @@ ULONG dummy = 0;
 
       if (!pCD->fPM && !fToFile && usNew != usPerc)
          {
-         show_message("CHKDSK has searched %u%% of the disk.", 563, 1, TYPE_PERC, usNew);
-         printf("\r");
+         show_message("CHKDSK has searched %u%% of the disk.", 0, 563, 1, TYPE_PERC, usNew);
+         show_message("\r", 0, 0, 0);
          usPerc = usNew;
          }
       /* bad cluster ? */
@@ -1002,10 +914,10 @@ ULONG dummy = 0;
             {
             if (!fMsg)
                {
-               printf("\n");
-               show_message("The system detected lost data on disk %s.", 562, 1, TYPE_STRING, pCD->szDrive);
-               show_message("CHKDSK has searched %s%% of the disk.", 563, 1, TYPE_STRING, pCD->szDrive);
-               printf("\r");
+               show_message("\n", 0, 0, 0);
+               show_message("The system detected lost data on disk %s.", 0, 562, 1, TYPE_STRING, pCD->szDrive);
+               show_message("CHKDSK has searched %s%% of the disk.", 0, 563, 1, TYPE_STRING, pCD->szDrive);
+               show_message("\r", 0, 0, 0);
                fMsg = TRUE;
                }
             RecoverChain(pCD, ulCluster+2);
@@ -1014,8 +926,8 @@ ULONG dummy = 0;
       }
 
    if (!pCD->fPM && !fToFile)
-      show_message("CHKDSK has searched %s%% of the disk.", 563, 1, TYPE_PERC, 100);
-   printf("\n");
+      show_message("CHKDSK has searched %s%% of the disk.", 0, 563, 1, TYPE_PERC, 100);
+   show_message("\n", 0, 0, 0);
 
    if (pCD->usLostChains)
       {
@@ -1025,12 +937,12 @@ ULONG dummy = 0;
 
       if (pCD->usLostChains >= MAX_LOST_CHAINS)
          show_message("Warning!  Not enough memory is available for CHKDSK"
-                      "to recover all lost data.", 548, 0);
+                      "to recover all lost data.", 0, 548, 0);
 
       if (!pCD->fAutoRecover)
          show_message("%lu lost clusters found in %lu chains."
                       "These clusters and chains will be erased unless you convert"
-                      "them to files.  Do you want to convert them to files(Y/N)? ", 1356, 2,
+                      "them to files.  Do you want to convert them to files(Y/N)? ", 0, 1356, 2,
             TYPE_LONG2, pCD->ulLostClusters,
             TYPE_LONG2, (ULONG)pCD->usLostChains);
       fflush(stdout);
@@ -1052,7 +964,7 @@ ULONG dummy = 0;
             break;
             }
          }
-      printf("\n");
+      show_message("\n", 0, 0, 0);
 
 
       if (pCD->fFix)
@@ -1074,10 +986,10 @@ ULONG dummy = 0;
                rc = DeleteFatChain(pCD, pCD->rgulLost[usIndex]);
                if (rc == FALSE)
                   {
-                  printf("CHKDSK was unable to delete a lost chain.\n");
-                  LogOutMessage(2409, NULL, 0);
+                  show_message("CHKDSK was unable to delete a lost chain.\n", 2409, 0, 0);
                   pCD->ulErrorCount++;
                   }
+
                else
                   pCD->ulFreeClusters += pCD->rgulSize[usIndex];
                }
@@ -1095,8 +1007,7 @@ BYTE bMask;
 
    if (ulCluster >= pCD->ulTotalClusters + 2)
       {
-      printf("An invalid cluster number %8.8lX was found.\n", ulCluster);
-      LogOutMessage(2410, NULL, 1, ulCluster);
+      show_message("An invalid cluster number %8.8lX was found.\n", 2410, 0, 1, ulCluster);
       return TRUE;
       }
 
@@ -1141,13 +1052,11 @@ UCHAR fModified = FALSE;
 
    if (!ulDirCluster)
       {
-      printf("ERROR: Cluster for %s is 0!\n", pszPath);
-      LogOutMessage(2411, pszPath, 0);
+      show_message("ERROR: Cluster for %s is 0!\n", 2411, 0, 1, pszPath);
       return TRUE;
       }
 
    pCD->ulTotalDirs++;
-   pCD->ulUserFiles--;
 
    pbPath = malloc(512);
    strcpy(pbPath, "Directory ");
@@ -1157,15 +1066,14 @@ UCHAR fModified = FALSE;
    pCD->ulDirClusters += ulClusters;
 
    if (pCD->fDetailed == 2)
-      printf("\n\nDirectory of %s (%lu clusters)\n\n", pszPath, ulClusters);
+      show_message("\n\nDirectory of %s (%lu clusters)\n\n", 0, 0, 0, pszPath, ulClusters);
 
    ulBytesNeeded = (ULONG)pCD->BootSect.bpb.SectorsPerCluster * (ULONG)pCD->BootSect.bpb.BytesPerSector * ulClusters;
    //pbCluster = halloc(ulClusters, pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector);
    pbCluster = calloc(ulClusters, pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector);
    if (!pbCluster)
       {
-      printf("ERROR:Directory %s is too large ! (Not enough memory!)\n", pszPath);
-      LogOutMessage(2412, pszPath, 0);
+      show_message("ERROR:Directory %s is too large ! (Not enough memory!)\n", 2412, 0, 1, pszPath);
       return ERROR_NOT_ENOUGH_MEMORY;
       }
 
@@ -1195,9 +1103,8 @@ UCHAR fModified = FALSE;
             {
             if (strlen(szLongName) && bCheck != pDir->bReserved)
                {
-               printf("A lost long filename was found: %s\n",
+               show_message("A lost long filename was found: %s\n", 2413, 0, 1,
                   szLongName);
-               LogOutMessage(2413, szLongName, 0);
                if (pCD->fFix)
                   {
                   // mark it as deleted
@@ -1234,9 +1141,10 @@ UCHAR fModified = FALSE;
                }
             if (strlen(szLongName) && bCheck != bCheckSum)
                {
-               printf("The longname %s does not belong to %s\\%s\n",
+               show_message("The longname %s does not belong to %s\\%s\n", 0, 0, 3,
                   szLongName, pszPath, MakeName(pDir, szShortName, sizeof(szShortName)));
-               LogOutMessage(2414, MakeName(pDir, szShortName, sizeof(szShortName)), 0);
+               show_message("The longname does not belong to %s.\n", 2414, 0, 1,
+                  MakeName(pDir, szShortName, sizeof(szShortName)));
                if (pCD->fFix)
                   {
                   // mark it as deleted
@@ -1280,15 +1188,15 @@ UCHAR fModified = FALSE;
 
             if (pCD->fDetailed == 2)
                {
-               printf("%-13.13s", MakeName(pDir, szShortName, sizeof(szShortName)));
+               show_message("%-13.13s", 0, 0, 1, MakeName(pDir, szShortName, sizeof(szShortName)));
                if (pDir->bAttr & FILE_DIRECTORY)
-                  printf("<DIR>      ");
+                  show_message("<DIR>      ", 0, 0, 0);
                else
-                  printf("%10lu ", pDir->ulFileSize);
+                  show_message("%10lu ", 0, 0, 1, pDir->ulFileSize);
 
 /*               printf("%8.8lX ", MAKEP(pDir->wClusterHigh, pDir->wCluster));*/
 
-               printf("%s ", szLongName);
+               show_message("%s ", 0, 0, 1, szLongName);
                }
 
             /*
@@ -1307,8 +1215,7 @@ UCHAR fModified = FALSE;
 
             if( f32Parms.fEAS && HAS_OLD_EAS( pDir->fEAS ))
             {
-                printf("%s has old EA mark byte(0x%0X).\n", pbPath, pDir->fEAS );
-                LogOutMessage(2415, pbPath, 1, pDir->fEAS);
+                show_message("%s has old EA mark byte(0x%0X).\n", 2415, 0, 2, pbPath, pDir->fEAS );
                 if (pCD->fFix)
                 {
                      strcpy(Mark.szFileName, pbPath);
@@ -1321,29 +1228,20 @@ UCHAR fModified = FALSE;
                      //                  FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        printf("This has been corrected.\n");
+                        show_message("This has been corrected.\n", 0, 0, 0);
                      else
-                        {
-                        printf("SYS%4.4u: Unable to correct problem.\n", rc);
-                        LogOutMessage(2416, NULL, 1, rc);
-                        }
+                        show_message("SYS%4.4u: Unable to correct problem.\n", 2416, 0, 1, rc);
                 }
             }
 
 #if 1
             if( f32Parms.fEAS && pDir->fEAS && !HAS_WINNT_EXT( pDir->fEAS ) && !HAS_EAS( pDir->fEAS ))
-            {
-                printf("%s has unknown EA mark byte(0x%0X).\n", pbPath, pDir->fEAS );
-                LogOutMessage(2417, pbPath, 1, pDir->fEAS);
-            }
+                show_message("%s has unknown EA mark byte(0x%0X).\n", 2417, 0, 2, pbPath, pDir->fEAS );
 #endif
 
 #if 0
             if( f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
-            {
-                printf("%s has EA byte(0x%0X).\n", pbPath, pDir->fEAS );
-                LogOutMessage(2418, pbPath, 1, pDir->fEAS);
-            }
+                show_message("%s has EA byte(0x%0X).\n", 2418, 0, 2, pbPath, pDir->fEAS );
 #endif
 
             if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
@@ -1371,8 +1269,10 @@ UCHAR fModified = FALSE;
                //rc = DosQPathInfo(Mark.szFileName, FIL_STANDARD, (PBYTE)&fStat, sizeof(fStat), 0L);
                if (rc)
                   {
-                  printf("%s is marked having EAs, but the EA file (%s) is not found. (SYS%4.4u)\n", pbPath, Mark.szFileName, rc);
-                  LogOutMessage(2419, Mark.szFileName, 1, rc);
+                  show_message("%s is marked having EAs, but the EA file (%s) is not found. (SYS%4.4u)\n",
+                     0, 0, 3, pbPath, Mark.szFileName, rc);
+                  show_message("File marked having EAs, but the EA file (%s) is not found. (SYS%4.4u)\n",
+                     2419, 0, 2, Mark.szFileName, rc);
                   if (pCD->fFix)
                      {
                      strcpy(Mark.szFileName, pbPath);
@@ -1385,21 +1285,16 @@ UCHAR fModified = FALSE;
                      //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        {
-                        printf("This has been corrected.\n");
-                        }
+                        show_message("This has been corrected.\n", 0, 0, 0);
                      else
-                        {
-                        printf("SYS%4.4u: Unable to correct problem.\n", rc);
-                        LogOutMessage(2416, NULL, 1, rc);
-                        }
+                        show_message("SYS%4.4u: Unable to correct problem.\n", 2416, 0, 1, rc);
                      }
                   }
                else if (!DirEntry.ulFileSize)
                //else if (!fStat.cbFile)
                   {
-                  printf("%s is marked having EAs, but the EA file (%s) is empty.\n", pbPath, Mark.szFileName);
-                  LogOutMessage(2420, NULL, 1, Mark.szFileName);
+                  show_message("%s is marked having EAs, but the EA file (%s) is empty.\n", 0, 0, 2, pbPath, Mark.szFileName);
+                  show_message("File marked having EAs, but the EA file (%s) is empty.\n", 2420, 0, 1, Mark.szFileName);
                   if (pCD->fFix)
                      {
                      unlink(Mark.szFileName);
@@ -1413,12 +1308,9 @@ UCHAR fModified = FALSE;
                      //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        printf("This has been corrected.\n");
+                        show_message("This has been corrected.\n", 0, 0, 0);
                      else
-                        {
-                        printf("SYS%4.4u: Unable to correct problem.\n", rc);
-                        LogOutMessage(2416, NULL, 1, rc);
-                        }
+                        show_message("SYS%4.4u: Unable to correct problem.\n", 2416, 0, 1, rc);
                      }
                   }
                }
@@ -1448,9 +1340,8 @@ UCHAR fModified = FALSE;
                   rc = GetSetFileEAS(pCD, FAT32_QUERYEAS, (PMARKFILEEASBUF)&Mark);
                   if (rc == 2 || rc == 3)
                      {
-                     printf("A lost Extended attribute was found (for %s)\n",
+                     show_message("A lost Extended attribute was found (for %s)\n", 2421, 0, 1,
                         Mark.szFileName);
-                     LogOutMessage(2421, Mark.szFileName, 0);
                      if (pCD->fFix)
                         {
                         DIRENTRY DirEntry, DirNew, DstDirEntry;
@@ -1501,31 +1392,23 @@ UCHAR fModified = FALSE;
                                                 &DirEntry, &DirNew, Mark.szFileName);
                            }
                         if (!rc)
-                           {
-                           printf("This attribute has been converted to a file \n(%s).\n", Mark.szFileName);
-                           LogOutMessage(2422, Mark.szFileName, 0);
-                           }
+                           show_message("This attribute has been converted to a file \n(%s).\n", 2422, 0, 1, Mark.szFileName);
                         else
                            {
-                           printf("SYS%4.4u: Cannot convert %s\n",
-                              rc, pbPath);
-                           LogOutMessage(2423, pbPath, 1, rc);
+                           show_message("Cannot convert %s. SYS%4.4u.\n", 2423, 0, 2,
+                              pbPath, rc);
                            pCD->ulErrorCount++;
                            }
                         MarkVolume(pCD, pCD->fCleanOnBoot);
                         }
                      }
                   else if (rc)
-                     {
-                     printf("SYS%4.4u occured while retrieving EA flag for %s.\n", rc, Mark.szFileName);
-                     LogOutMessage(2424, Mark.szFileName, 1, rc);
-                     }
+                     show_message("Retrieving EA flag for %s. SYS%4.4u occured.\n", 2424, 0, 2, Mark.szFileName, rc);
                   else
                      {
                      if ( !HAS_EAS( Mark.fEAS ))
                         {
-                        printf("EAs detected for %s, but it is not marked having EAs.\n", Mark.szFileName);
-                        LogOutMessage(2425, Mark.szFileName, 0);
+                        show_message("EAs detected for %s, but it is not marked having EAs.\n", 2425, 0, 1, Mark.szFileName);
                         if (pCD->fFix)
                            {
                            Mark.fEAS = FILE_HAS_EAS;
@@ -1537,12 +1420,9 @@ UCHAR fModified = FALSE;
                            //   FAT32_SETEAS, IOCTL_FAT32, pCD->hDisk);
                            rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                            if (!rc)
-                              printf("This has been corrected.\n");
+                              show_message("This has been corrected.\n", 0, 0, 0);
                            else
-                              {
-                              printf("SYS%4.4u: Unable to correct problem.\n", rc);
-                              LogOutMessage(2416, NULL, 1, rc);
-                              }
+                              show_message("SYS%4.4u: Unable to correct problem.\n", 2416, 0, 1, rc);
                            }
                         }
                      }
@@ -1561,13 +1441,14 @@ UCHAR fModified = FALSE;
                   {
                   if (!pCD->fFix)
                      {
-                     printf("File allocation error detected for %s\\%s\n",
+                     show_message("File allocation error detected for %s\\%s\n", 0, 0, 2,
 #if 0
                         pszPath, MakeName(pDir, szShortName, sizeof(szShortName)));
 #else
                         pszPath, szLongName);
 #endif
-                     LogOutMessage(2426, szLongName, 0);
+                     show_message("File allocation error detected for %s.\n", 2426, 0, 1,
+                        szLongName);
                      pCD->ulErrorCount++;
                      }
                   else
@@ -1591,23 +1472,20 @@ UCHAR fModified = FALSE;
                      strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
                      if (rc)
                         {
-                        printf("File allocation error detected for %s.\n",
+                        show_message("File allocation error detected for %s.\n", 2426, 0, 1,
                            fs.szFileName);
-                        printf("CHKDSK was unable to correct the filesize. SYS%4.4u.\n", rc);
-                        LogOutMessage(2426, fs.szFileName, 0);
-                        LogOutMessage(2428, NULL, 1, rc);
+                        show_message("CHKDSK was unable to correct the filesize. SYS%4.4u.\n", 2428, 0, 1, rc);
                         pCD->ulErrorCount++;
                         }
                      else
-                        show_message("CHKDSK corrected an allocation error for the file %s.", 560, 1,
+                        show_message("CHKDSK corrected an allocation error for the file %s.", 0, 560, 1,
                            TYPE_STRING, fs.szFileName);
                      }
 
                   }
                }
             if (pCD->fDetailed == 2)
-               printf("\n");
-
+               show_message("\n", 0, 0, 0);
 
            memset(szLongName, 0, sizeof(szLongName));
             }
@@ -1617,8 +1495,7 @@ UCHAR fModified = FALSE;
 
       }
    if (pCD->fDetailed == 2)
-      //printf("%ld files\n", ulEntries);
-      show_message("%ld files\n", 0, 0, ulEntries);
+      show_message("%ld files\n", 0, 0, 1, ulEntries);
 
    bCheck = 0;
    pDir = (PDIRENTRY)pbCluster;
@@ -1654,9 +1531,10 @@ UCHAR fModified = FALSE;
                   }
                if (strlen(szLongName) && bCheck != bCheckSum)
                   {
-                  printf("Non matching longname %s for %-11.11s\n",
+                  show_message("Non matching longname %s for %-11.11s\n", 0, 0, 2,
                      szLongName, pDir->bFileName);
-                  LogOutMessage(2429, pDir->bFileName, 0);
+                  show_message("Non matching longname for %s.\n", 2429, 0, 1,
+                     pDir->bFileName);
                   memset(szLongName, 0, sizeof(szLongName));
                   }
 
@@ -1686,19 +1564,13 @@ UCHAR fModified = FALSE;
                if (!memicmp(pDir->bFileName,      ".          ", 11))
                   {
                   if (ulCluster != ulDirCluster)
-                     {
-                     printf(". entry in %s is incorrect!\n", pszPath);
-                     LogOutMessage(2430, pszPath, 0);
-                     }
+                     show_message(". entry in %s is incorrect!\n", 2430, 0, 1, pszPath);
                   }
                else if (!memicmp(pDir->bFileName, "..         ", 11))
                   {
                   if (ulCluster != ulParentDirCluster)
-                     {
-                     printf(".. entry in %s is incorrect! (%lX %lX)\n",
+                     show_message(".. entry in %s is incorrect! (%lX %lX)\n", 2431, 0, 3,
                         pszPath, ulCluster, ulParentDirCluster);
-                     LogOutMessage(2431, pszPath, 2, ulCluster, ulParentDirCluster);
-                     }
                   }
                else
                   {
@@ -1763,9 +1635,8 @@ BOOL  fShown = FALSE;
 
    if (ulCluster  > pCD->ulTotalClusters + 2)
       {
-      printf("Invalid start of clusterchain %lX found for %s\n",
-         ulCluster, pszFile);
-      LogOutMessage(2432, pszFile, 1, ulCluster);
+      show_message("%s: Invalid start of cluster chain %lX found\n", 2432, 0, 2,
+         pszFile, ulCluster);
       return 0;
       }
 
@@ -1780,23 +1651,18 @@ BOOL  fShown = FALSE;
          {
          if (pCD->fFix)
             {
-            printf("CHKDSK found an improperly terminated cluster chain for %s ", pszFile);
-            LogOutMessage(2433, pszFile, 0);
+            show_message("CHKDSK found an improperly terminated cluster chain for %s ", 2433, 0, 1, pszFile);
             if (SetNextCluster(pCD, ulCluster, FAT_EOF) != FAT_EOF)
                {
-               printf(", but was unable to fix it.\n");
+               show_message(", but was unable to fix it.\n", 0, 0, 0);
                pCD->ulErrorCount++;
                }
             else
-               {
-               printf(" and corrected the problem.\n");
-               LogOutMessage(2434, NULL, 0);
-               }
+               show_message(" and corrected the problem.\n", 2434, 0, 0);
             }
          else
             {
-            printf("A bad terminated cluster chain was found for %s\n", pszFile);
-            LogOutMessage(2435, pszFile, 0);
+            show_message("A bad terminated cluster chain was found for %s\n", 2435, 0, 1, pszFile);
             pCD->ulErrorCount++;
             }
          ulNextCluster = FAT_EOF;
@@ -1808,8 +1674,7 @@ BOOL  fShown = FALSE;
             {
             if (!fShown)
                {
-               printf("%s is fragmented\n", pszFile);
-               LogOutMessage(2436, pszFile, 0);
+               show_message("%s is fragmented\n", 2436, 0, 1, pszFile);
                fShown = TRUE;
                }
             }
@@ -1831,7 +1696,7 @@ BYTE bMask;
 
    if (ClusterInUse(pCD, ulCluster))
       {
-      show_message("%s is cross-linked on cluster %lu", 1343, 2,
+      show_message("%s is cross-linked on cluster %lu", 0, 1343, 2,
          TYPE_STRING, pszFile,
          TYPE_LONG, ulCluster);
       pCD->ulErrorCount++;
@@ -1998,7 +1863,7 @@ ULONG  ulRet;
 
    if (ulRet >= pCD->ulTotalClusters  + 2)
       {
-      printf("Error: Next cluster for %lu = %8.8lX\n",
+      show_message("Error: Next cluster for %lu = %8.8lX\n", 0, 0, 2,
          ulCluster, *pulCluster);
       return FAT_EOF;
       }
@@ -2092,13 +1957,12 @@ ULONG  rc, dummy1 = 0, dummy2 = 0;
    if (rc)
       {
       pCD->ulErrorCount++;
-      printf("CHKDSK was unable to recover a lost chain. SYS%4.4u\n", rc);
-      LogOutMessage(2437, NULL, 1, rc);
+      show_message("CHKDSK was unable to recover a lost chain. SYS%4.4u\n", 2437, 0, 1, rc);
       return FALSE;
       }
    pCD->ulRecoveredClusters += ulSize;
    pCD->ulRecoveredFiles++;
 
-   show_message("CHKDSK placed recovered data in file %s.", 574, 1, TYPE_STRING, szRecovered);
+   show_message("CHKDSK placed recovered data in file %s.", 0, 574, 1, TYPE_STRING, szRecovered);
    return TRUE;
 }

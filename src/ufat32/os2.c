@@ -20,10 +20,10 @@
 typedef HFILE HANDLE;
 
 extern HANDLE hDev;
-extern char msg;
 
 char msg = FALSE;
 
+void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
 PSZ       GetOS2Error(USHORT rc);
 
 ULONG ReadSect(HFILE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector);
@@ -79,12 +79,12 @@ void die ( char * error, DWORD rc )
     APIRET ret;
    
     // Format failed
-    printf("ERROR: %s\n", error);
-    show_message( "The specified disk did not finish formatting.\n", 528, 0 );
+    show_message("ERROR: %s\n", 0, 0, 1, error);
+    show_message( "The specified disk did not finish formatting.\n", 0, 528, 0 );
     printf("%s\n", GetOS2Error(rc));
 
     if ( rc )
-        printf("Error code: %lu\n", rc);
+        show_message("Error code: %lu\n", 0, 0, 1, rc);
 
     quit ( rc );
 }
@@ -408,8 +408,8 @@ void unlock_drive(HANDLE hDevice)
 
   if ( rc ) 
   {
-      printf( "WARNING: Failed to unlock device, rc = %lu!\n" , rc );
-      printf( "WARNING: probably, you need to reboot for changes to take in effect.\n" );
+      show_message( "WARNING: Failed to unlock device, rc = %lu!\n" , 0, 0, 1, rc );
+      show_message( "WARNING: probably, you need to reboot for changes to take in effect.\n", 0, 0, 0);
   }
 }
 
@@ -532,8 +532,8 @@ void remount_media (HANDLE hDevice)
 
   if ( rc ) 
   {
-      printf( "WARNING: Failed to do final remount, rc = %lu!\n" , rc );
-      printf( "WARNING: probably, you need to reboot for changes to take in effect.\n" );
+      show_message( "WARNING: Failed to do final remount, rc = %lu!\n" , 0, 0, 1, rc );
+      show_message( "WARNING: probably, you need to reboot for changes to take in effect.\n", 0, 0, 0 );
   }
 
   //if ( rc )
@@ -555,8 +555,8 @@ void sectorio(HANDLE hDevice)
 
   if (rc)
   {
-    printf("Error %lu doing FAT32_SECTORIO.\n", rc);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Error %lu doing FAT32_SECTORIO.\n", 0, 0, 1, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 }
@@ -574,8 +574,8 @@ void startlw(HANDLE hDevice)
 
    if (rc)
    {
-     printf("Error %lu doing FAT32_STARTLW.\n", rc);
-     printf("%s\n", GetOS2Error(rc));
+     show_message("Error %lu doing FAT32_STARTLW.\n", 0, 0, 1, rc);
+     show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
      return;
    }
 }
@@ -593,8 +593,8 @@ void stoplw(HANDLE hDevice)
 
    if (rc)
    {
-     printf("Error %lu doing FAT32_STOPLW.\n", rc);
-     printf("%s\n", GetOS2Error(rc));
+     show_message("Error %lu doing FAT32_STOPLW.\n", 0, 0, 1, rc);
+     show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
      return;
    }
 }
@@ -633,7 +633,7 @@ void mem_alloc(void **p, ULONG cb)
             //printf("mem_alloc: rc=%lu\n", rc);
     }
     else
-            printf("mem_alloc failed, rc=%lu\n", rc);
+            show_message("mem_alloc failed, rc=%lu\n", 0, 0, 1, rc);
 }
 
 void mem_free(void *p, ULONG cb)
@@ -676,15 +676,15 @@ void check_vol_label(char *path, char **vol_label)
             // Current disk volume label
             strcpy(cur_vol, fsiBuffer.vol.szVolLabel);
 
-        show_message( "The new type of file system is %1.", 1293, 1, TYPE_STRING, "FAT32" );
+        show_message( "The new type of file system is %1.", 0, 1293, 1, TYPE_STRING, "FAT32" );
 
         if (!cur_vol || !*cur_vol)
-            show_message( "The disk has no volume label\n", 125, 0 );
+            show_message( "The disk has no volume label\n", 0, 125, 0 );
         else
         {
             if (!vol_label || !*vol_label || !**vol_label)
             {
-                show_message( "Enter the current volume label for drive %s\n", 1318, 1, TYPE_STRING, path );
+                show_message( "Enter the current volume label for drive %s\n", 0, 1318, 1, TYPE_STRING, path );
 
                 // Read the volume label
                 gets(testvol);
@@ -695,13 +695,13 @@ void check_vol_label(char *path, char **vol_label)
         // the same as a current volume label, write an error
         if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
         {
-            show_message( "An incorrect volume label was entered for this drive.\n", 636, 0 );
+            show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
             quit (1);
         }
     }
 
     show_message( "Warning! All data on hard disk %s will be lost!"
-                  "Proceed with FORMAT (Y/N)?\n", 1271, 1, TYPE_STRING, path );
+                  "Proceed with FORMAT (Y/N)?\n", 0, 1271, 1, TYPE_STRING, path );
 
     c = getchar();
 
@@ -721,7 +721,7 @@ char *get_vol_label(char *path, char *vol)
     {
         fflush(stdin);
         show_message( "Enter up to 11 characters for the volume label"
-                      "or press Enter for no volume label.\n", 1288, 0 );
+                      "or press Enter for no volume label.\n", 0, 1288, 0 );
 
         label = v;
     }
@@ -736,7 +736,7 @@ char *get_vol_label(char *path, char *vol)
     {
        show_message( "The volume label you entered exceeds the 11-character limit."
                      "The first 11 characters were written to disk.  Any characters that"
-                     "exceeded the 11-character limit were automatically deleted.\n", 154, 0 );
+                     "exceeded the 11-character limit were automatically deleted.\n", 0, 154, 0 );
        // truncate it
        label[11] = '\0';
     }
@@ -769,56 +769,75 @@ void set_vol_label (char *path, char *vol)
                     (PVOID)&vl, sizeof(VOLUMELABEL));
 
   if ( rc )
-    printf ("WARNING: failed to set the volume label, rc=%lu\n", rc);
+    show_message ("WARNING: failed to set the volume label, rc=%lu\n", 0, 0, 1, rc);
 }
 
 
 void show_progress (float fPercentWritten)
 {
   char str[128];
-  static int pos = 0;
-  //USHORT row, col;
-  //char   chr = ' ';
-
-  if (! pos)
-  {
-    pos = 1;
-    // save cursor position
-    printf("[s");
-  }
-
-  //VioGetCurPos(&row, &col, 0);
-  //VioWrtNChar(&chr, 8, row, col, 0);
-  //VioWrtCharStr(str, strlen(str), row, col, 0);
+  int len, i;
 
   // construct message
   sprintf(str, "%3.f%%", fPercentWritten);
-  show_message( "%s percent of disk formatted %s\n", 1312, 2,
-                              TYPE_STRING, str, 
-                              TYPE_STRING, "..." );
+  len = show_message( "%s percent of disk formatted %s\n", 0, 1312, 2,
+                      TYPE_STRING, str, 
+                      TYPE_STRING, "..." );
+
   // restore cursor position
-  printf("[u");
+  for (i = 0; i < len; i++)
+     printf("\b");
+
   fflush(stdout); 
 }
 
-void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumFields, ...)
+
+int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...)
 {
     va_list va;
     UCHAR szBuf[1024];
-    int i;
+    int len, i;
+    char *dummy;
 
     va_start(va, usNumFields);
 
     if (usMsg)
-       iShowMessage2(NULL, usMsg, usNumFields, va);
+       {
+       // output message from oso001.msg to screen
+       len = iShowMessage2(NULL, usMsg, usNumFields, va);
+       }
     else if (pszMsg)
        {
+       // output message which is not in oso001.msg
        vsprintf ( szBuf, pszMsg, va );
        printf ( "%s", szBuf );
+       len = strlen(szBuf);
+       }
+
+    // output message to CHKDSK log
+    if (usLogMsg)
+       {
+       PSZ pszString = NULL;
+       ULONG arg = va_arg(va, ULONG);
+       ULONG ulParmNo = usNumFields;
+
+       if (strstr(pszMsg, "%s"))
+          {
+          if (usMsg && arg == TYPE_STRING)
+             pszString = va_arg(va, PSZ);
+          else
+             pszString = (PSZ)arg;
+          }
+
+       if (pszString)
+          ulParmNo--;
+
+       LogOutMessagePrintf(usLogMsg, pszString, ulParmNo, va);
        }
 
     va_end( va );
 
+    // output additional messages for /P switch specified
     if (usMsg && msg)
        {
        va_start(va, usNumFields);
@@ -851,4 +870,6 @@ void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumField
        printf("\n");
        va_end( va );
        }
+
+    return len;
 }

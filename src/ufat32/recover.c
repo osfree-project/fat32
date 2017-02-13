@@ -72,9 +72,9 @@ int recover_thread(int argc, char *argv[])
    if (rc)
       {
       if (rc == ERROR_DRIVE_LOCKED)
-         show_message(NULL, rc, 0);
+         show_message(NULL, 0, rc, 0);
       else
-         printf("%s\n", GetOS2Error(rc));
+         show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
       DosExit(EXIT_PROCESS, 1);
       }
 
@@ -91,9 +91,9 @@ int recover_thread(int argc, char *argv[])
       if (rc)
          {
          if (rc == ERROR_DRIVE_LOCKED)
-            show_message(NULL, rc, 0);
+            show_message(NULL, 0, rc, 0);
          else
-            printf("%s\n", GetOS2Error(rc));
+            show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
          DosExit(EXIT_PROCESS, 1);
          }
       //}
@@ -110,7 +110,7 @@ int recover_thread(int argc, char *argv[])
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
       {
-      printf("Error: Cannot read boot sector: %s\n", GetOS2Error(rc));
+      show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, GetOS2Error(rc));
       return rc;
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
@@ -118,7 +118,7 @@ int recover_thread(int argc, char *argv[])
    rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
    if (rc)
       {
-      printf("Error: Cannot read FSInfo sector\n%s\n", GetOS2Error(rc));
+      show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, GetOS2Error(rc));
       return rc;
       }
 
@@ -146,7 +146,7 @@ int recover_thread(int argc, char *argv[])
    pCD->pFatBits = calloc(usBlocks,4096);
    if (!pCD->pFatBits)
       {
-      printf("Not enough memory for FATBITS\n");
+      show_message("Not enough memory for FATBITS\n", 0, 0, 0);
       return ERROR_NOT_ENOUGH_MEMORY;
       }
 
@@ -156,7 +156,7 @@ int recover_thread(int argc, char *argv[])
       {
       //printf("%s\n", argv[i]);
       DosEditName(1, argv[i], "*", szTarget, sizeof(szTarget));
-      printf("%s\n", szTarget);
+      show_message("%s\n", 0, 0, 1, szTarget);
       DoRecover(pCD, argv[i]);
       }   
 
@@ -168,7 +168,7 @@ int recover_thread(int argc, char *argv[])
                        NULL, 0, NULL);
       if (rc)
          {
-         printf("The drive cannot be unlocked. SYS%4.4u\n", rc);
+         show_message("The drive cannot be unlocked. SYS%4.4u\n", 0, 0, 1, rc);
          DosExit(EXIT_PROCESS, 1);
          }
       //}
@@ -239,7 +239,7 @@ BOOL DoRecover(PCDINFO pCD, char *pszFilename)
    if (rc)
       {
       pCD->ulErrorCount++;
-      printf("RECOVER was unable to recover a lost chain. SYS%4.4u\n", rc);
+      show_message("RECOVER was unable to recover a lost chain. SYS%4.4u\n", 0, 0, 1, rc);
       return FALSE;
       }
 

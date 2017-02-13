@@ -96,8 +96,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu opening %s disk.\n", rc, drive);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot open %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -107,8 +107,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu reading %s disk.\n", rc, drive);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -147,8 +147,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s disk.\n", rc, drive);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -180,8 +180,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu creating %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -189,8 +189,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot writing to %s file, rc=%lu.\n", 0, 0, 1, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -200,8 +200,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu reading from %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot read from %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -215,8 +215,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -235,8 +235,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu creating %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -244,8 +244,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -266,8 +266,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu creating %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -275,8 +275,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -295,8 +295,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu creating %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -304,8 +304,8 @@ void _System sysinstx_thread(ULONG args)
 
   if (rc)
   {
-    printf("Error %lu writing to %s file.\n", rc, file);
-    printf("%s\n", GetOS2Error(rc));
+    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
+    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
     return;
   }
 
@@ -314,7 +314,7 @@ void _System sysinstx_thread(ULONG args)
   DosClose(hf);
 
   // The system files have been transferred.
-  show_message(NULL, 1272, 0);
+  show_message(NULL, 0, 1272, 0);
 
   return;
 }

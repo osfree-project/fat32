@@ -292,10 +292,10 @@ LOG02424|2424  /|Retrieving EA flag for %s. SYS%4.4u occured. |{}
 LOG02425|2425  /|EAs detected for %s, but it is not marked having EAs. |{}
 LOG02426|2426  /|File allocation error detected for %s. |{}
 LOG02428|2428  /|CHKDSK was unable to correct the filesize. SYS%4.4u. |{}
-LOG02429|2429  /|Non matching longname for %-11.11s. |{}
+LOG02429|2429  /|Non matching longname for %s. |{}
 LOG02430|2430  /|. entry in %s is incorrect! |{}
 LOG02431|2431  /|.. entry in %s is incorrect! (%lX %lX) |{}
-LOG02432|2432  /|%s: Invalid start of clusterchain %lX found. |{}
+LOG02432|2432  /|%s: Invalid start of cluster chain %lX found. |{}
 LOG02433|2433  /|CHKDSK found an improperly terminated cluster chain for %s  |{}
 LOG02434|2434  /| and corrected the problem. |{}
 LOG02435|2435  /|A bad terminated cluster chain was found for %s |{}

@@ -178,7 +178,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     mem_free(pZeroSect, BytesPerSect * BurstSize);
 
     fBytesTotal = (double) qBytesTotal;
-    show_message ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 3,
+    show_message ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 0, 3,
              qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
@@ -395,26 +395,25 @@ int format_volume (char *path, format_params *params)
         }
 
     // Now we're commited - print some info first
-    show_message ( "Size: %g MB %u sectors\n", 0, 0, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
-    show_message ( "%d Bytes Per Sector, Cluster size %d bytes\n", 0, 0, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
+    show_message ( "Size: %g MB %u sectors\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
+    show_message ( "%d Bytes Per Sector, Cluster size %d bytes\n", 0, 0, 2, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
 
-    //show_message ( "Volume Serial No. is %x:%x", 1243, 1, TYPE_LONG, VolumeId );
     sprintf(szString, "%4.4X-%4.4X", HIUSHORT(VolumeId), LOUSHORT(VolumeId));
-    show_message ( "The Volume Serial Number is %s.", 1243, 1, TYPE_STRING, szString);
-    show_message ( "Volume label is %s", 1375, 1, TYPE_STRING, vol );
+    show_message ( "The Volume Serial Number is %s.\n", 0, 1243, 1, TYPE_STRING, szString);
+    show_message ( "Volume label is %s\n", 0, 1375, 1, TYPE_STRING, vol );
 
-    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
+    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
 
-    show_message ( "%d Total clusters\n", 0, 0, ClusterCount );
+    show_message ( "%d Total clusters\n", 0, 0, 1, ClusterCount );
     
     // fix up the FSInfo sector
     pFAT32FsInfo->dFree_Count = (UserAreaSize/dp.SectorsPerCluster)-1;
     pFAT32FsInfo->dNxt_Free = 3; // clusters 0-1 resered, we used cluster 2 for the root dir
 
-    show_message ( "%d Free Clusters\n", 0, 0, pFAT32FsInfo->dFree_Count );
+    show_message ( "%d Free Clusters\n", 0, 0, 1, pFAT32FsInfo->dFree_Count );
     // Work out the Cluster count
 
-    show_message( "Formatting drive %s\n", 534, 0, path );
+    show_message( "Formatting drive %s\n", 0, 534, 1, TYPE_STRING, path );
 
     // Once zero_sectors has run, any data on the drive is basically lost....
 
@@ -422,8 +421,8 @@ int format_volume (char *path, format_params *params)
     SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
     zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize); // &dgDrive);
 
-    show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster...\n", 0, 0, SystemAreaSize );
-    show_message ( "Initialising reserved sectors and FATs...\n", 0, 0 );
+    show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster...\n", 0, 0, 1, SystemAreaSize );
+    show_message ( "Initialising reserved sectors and FATs...\n", 0, 0, 0 );
     // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot sect position
     for ( i=0; i<2; i++ )
         {
@@ -640,7 +639,7 @@ int format(int argc, char *argv[], char *envp[])
     }
 
     if ( format_volume( path, &p ) )
-       show_message( "Done.", 1294, 0 );
+       show_message( "Done.", 0, 1294, 0 );
 
     return 0;
 }

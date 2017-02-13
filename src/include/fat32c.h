@@ -34,6 +34,9 @@ INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va
 
 #else
 
+#define LOUSHORT(l) ((USHORT)((ULONG)l))
+#define HIUSHORT(l) ((USHORT)(((ULONG)(l) >> 16) & 0xffff))
+
 #include <windows.h>
 #include <winioctl.h>  // From the Win32 SDK \Mstools\Include, or Visual Studio.Net
 
@@ -194,4 +197,4 @@ void set_vol_label (char *path, char *vol);
 void cleanup ( void );
 void quit (int rc);
 void show_progress (float fPercentWritten);
-void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumFields, ...);
+int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...);

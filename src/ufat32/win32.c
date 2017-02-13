@@ -10,6 +10,8 @@
 
 extern HANDLE hDev;
 
+char msg = FALSE;
+
 DWORD get_vol_id (void)
 {
     SYSTEMTIME s;
@@ -131,9 +133,9 @@ void open_drive (char *path , HANDLE *hDevice)
 	);
 
   if ( !bRet )
-      printf ( "Failed to allow extended DASD on device...\n" );
+      show_message ( "Failed to allow extended DASD on device...\n", 0, 0, 0 );
   else
-      printf ( "FSCTL_ALLOW_EXTENDED_DASD_IO OK\n" ); 
+      show_message ( "FSCTL_ALLOW_EXTENDED_DASD_IO OK\n", 0, 0, 0 ); 
 }
 
 void lock_drive(HANDLE hDevice)
@@ -187,8 +189,8 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   {
       //die( "Failed to get parition info", -10 );
 
-      printf ( "IOCTL_DISK_GET_PARTITION_INFO failed, \n"
-               "trying IOCTL_DISK_GET_PARTITION_INFO_EX\n" );
+      show_message ( "IOCTL_DISK_GET_PARTITION_INFO failed, \n"
+               "trying IOCTL_DISK_GET_PARTITION_INFO_EX\n", 0, 0, 0 );
 
       bRet = DeviceIoControl ( hDevice, 
 			IOCTL_DISK_GET_PARTITION_INFO_EX,
@@ -204,7 +206,7 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
       piDrive.HiddenSectors = (DWORD) (xpiDrive.StartingOffset.QuadPart / dgDrive.BytesPerSector);
 		
       bGPTMode = ( xpiDrive.PartitionStyle == PARTITION_STYLE_MBR ) ? 0 : 1;
-      printf ( "IOCTL_DISK_GET_PARTITION_INFO_EX ok, GPTMode=%d\n", bGPTMode );
+      show_message ( "IOCTL_DISK_GET_PARTITION_INFO_EX ok, GPTMode=%d\n", 0, 0, 1, bGPTMode );
   }
 
   // Only support hard disks at the moment 
@@ -329,17 +331,17 @@ void check_vol_label(char *path, char **vol_label)
            &volSerNum, &maxFileNameLen, 
            &fsFlags, fsName, sizeof(fsName));
 
-    printf("The current file system type is %s.\n", fsName);
+    show_message("The current file system type is %s.\n", 0, 0, 1, fsName);
 
-    show_message( "The specified disk did not finish formatting.\n", 1293, 1, TYPE_STRING, "FAT32" );
+    show_message( "The specified disk did not finish formatting.\n", 0, 528, 0 );
 
     if (!cur_vol || !*cur_vol)
-        show_message( "The disk has no volume label\n", 125, 0 );
+        show_message( "The disk has no volume label\n", 0, 125, 0 );
     else
     {
         if (!vol_label || !*vol_label || !**vol_label)
         {
-            show_message( "Enter the current volume label for drive %s\n", 1318, 1, TYPE_STRING, path );
+            show_message( "Enter the current volume label for drive %s ", 0, 1318, 1, TYPE_STRING, path );
 
             // Read the volume label
             gets(testvol);
@@ -348,12 +350,12 @@ void check_vol_label(char *path, char **vol_label)
 
     if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
     {
-        show_message( "An incorrect volume label was entered for this drive.\n", 636, 0 );
+        show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
         quit (1);
     }
 
-    show_message( "Warning! All data on hard disk %s will be lost!"
-                  "Proceed with FORMAT (Y/N)?\n", 1271, 1, TYPE_STRING, path );
+    show_message( "Warning! All data on hard disk %s will be lost!\n"
+                  "Proceed with FORMAT (Y/N)? ", 0, 1271, 1, TYPE_STRING, path );
 
     c = getchar();
 
@@ -375,28 +377,42 @@ void set_vol_label (char *path, char *vol)
 
 void show_progress (float fPercentWritten)
 {
-    static char f = 0;
+    char str[128];
+    int len, i;
     
-    if (! f)
-    {
-        //printf("Percent written: ");
-        show_message( "%s percent of disk formatted %s\n", 1312, 2,
-                      TYPE_STRING, str, 
-                      TYPE_STRING, "..." );
-        f = 1;
-    }
+    sprintf(str, "%3.f%%", fPercentWritten);
+    len = show_message( "%s percent of disk formatted...", 0, 1312, 1,
+                        TYPE_STRING, str);
+
+    for (i = 0; i < len; i++)
+       printf("\b");
+
+    fflush(stdout); 
 }
 
-void show_message (char *pszMsg, unsigned short usMsg, unsigned short usNumFields, ...)
+int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...)
 {
     va_list va;
     UCHAR szBuf[1024];
+    int i;
+    char *dummy;
 
     va_start(va, usNumFields);
 
     if (pszMsg)
-        vsprintf ( szBuf, pszMsg, va );
+       {
+       ULONG arg;
 
-    puts(szBuf);
+       if (strstr(pszMsg, "%s") && usMsg)
+          // TYPE_STRING
+          arg = va_arg(va, ULONG);
+
+       // output message which is not in oso001.msg
+       vsprintf ( szBuf, pszMsg, va );
+       printf ( "%s", szBuf );
+       }
+
     va_end( va );
+
+    return strlen(szBuf);
 }
