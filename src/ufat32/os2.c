@@ -780,10 +780,8 @@ void show_progress (float fPercentWritten)
 
   // construct message
   sprintf(str, "%3.f%%", fPercentWritten);
-  // 538  %1%% of the disk has been formatted. ??? or 1312 ?
-  len = show_message( "%s percent of disk formatted %s\n", 0, 1312, 2,
-                      TYPE_STRING, str, 
-                      TYPE_STRING, "..." );
+  len = show_message( "%s of the disk has been formatted\n", 0, 538, 1,
+                      TYPE_STRING, str );
 
   // restore cursor position
   for (i = 0; i < len; i++)

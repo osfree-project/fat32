@@ -381,8 +381,8 @@ void show_progress (float fPercentWritten)
     int len, i;
     
     sprintf(str, "%3.f%%", fPercentWritten);
-    len = show_message( "%s percent of disk formatted...", 0, 1312, 1,
-                        TYPE_STRING, str);
+    len = show_message( "%s of the disk has been formatted\n", 0, 538, 1,
+                        TYPE_STRING, str );
 
     for (i = 0; i < len; i++)
        printf("\b");
