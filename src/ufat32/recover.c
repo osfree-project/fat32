@@ -3,32 +3,25 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#define INCL_BASE
-#define INCL_DOSDEVIOCTL
-#define INCL_LONGLONG
-#include <os2.h>
-
 #include "portable.h"
-#include "fat32def.h"
 #include "fat32c.h"
 
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-PSZ       GetOS2Error(USHORT rc);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
 BOOL LoadTranslateTable(BOOL fSilent);
 
 BOOL DoRecover(PCDINFO pCD, char *pszFilename);
 int recover_thread(int argc, char *argv[]);
-void remount_media (HFILE hDevice);
+void remount_media (HANDLE hDevice);
 
 #define STACKSIZE 0x10000
 
 int recover_thread(int argc, char *argv[])
 {
    PCDINFO pCD;
-   HFILE  hFile;
+   HANDLE  hFile;
    ULONG  ulAction;
    BYTE   bSector[512];
    char   szTarget[0x8000];
@@ -36,6 +29,8 @@ int recover_thread(int argc, char *argv[])
    USHORT usBlocks;
    APIRET  rc;
    int i;
+
+   show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
 
    LoadTranslateTable(0);
 
@@ -60,57 +55,20 @@ int recover_thread(int argc, char *argv[])
 
    pCD->szDrive[0] = toupper(pCD->szDrive[0]);
 
-   rc = DosOpenL(pCD->szDrive,
-      &hFile,
-      &ulAction,                         /* action taken */
-      0LL,                               /* new size     */
-      0,                                 /* attributes   */
-      OPEN_ACTION_OPEN_IF_EXISTS,        /* open flags   */
-      OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE | OPEN_FLAGS_DASD |
-      OPEN_FLAGS_WRITE_THROUGH,         /* OPEN_FLAGS_NO_CACHE , */
-      0L);
-   if (rc)
-      {
-      if (rc == ERROR_DRIVE_LOCKED)
-         show_message(NULL, 0, rc, 0);
-      else
-         show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
-      DosExit(EXIT_PROCESS, 1);
-      }
+   open_drive(pCD->szDrive, &hFile);
 
    pCD->fCleanOnBoot = GetDiskStatus(pCD);
 
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
       pCD->fAutoRecover = FALSE;
 
-   //if (pCD->fFix)
-      //{
-      rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_LOCKDRIVE,
-                       NULL, 0, NULL,
-                       NULL, 0, NULL);
-      if (rc)
-         {
-         if (rc == ERROR_DRIVE_LOCKED)
-            show_message(NULL, 0, rc, 0);
-         else
-            show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
-         DosExit(EXIT_PROCESS, 1);
-         }
-      //}
-
-   rc = DosQueryFSInfo(pCD->szDrive[0] - '@', FSIL_ALLOC,
-      (PBYTE)&pCD->DiskInfo, sizeof (DISKINFO));
-   if (rc)
-      {
-      fprintf(stderr, "DosQueryFSInfo failed, %s\n", GetOS2Error(rc));
-      DosExit(EXIT_PROCESS, 1);
-      }
+   lock_drive(hFile);
    pCD->hDisk = hFile;
 
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
       {
-      show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, GetOS2Error(rc));
+      show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, get_error(rc));
       return rc;
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
@@ -118,7 +76,7 @@ int recover_thread(int argc, char *argv[])
    rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
    if (rc)
       {
-      show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, GetOS2Error(rc));
+      show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, get_error(rc));
       return rc;
       }
 
@@ -142,7 +100,6 @@ int recover_thread(int argc, char *argv[])
    usBlocks = (USHORT)(ulBytes / 4096 +
             (ulBytes % 4096 ? 1:0));
 
-   //pCD->pFatBits = halloc(usBlocks,4096);
    pCD->pFatBits = calloc(usBlocks,4096);
    if (!pCD->pFatBits)
       {
@@ -154,25 +111,14 @@ int recover_thread(int argc, char *argv[])
 
    for (i = 1; i < argc; i++)
       {
-      //printf("%s\n", argv[i]);
       DosEditName(1, argv[i], "*", szTarget, sizeof(szTarget));
       show_message("%s\n", 0, 0, 1, szTarget);
       DoRecover(pCD, argv[i]);
       }   
 
    remount_media(hFile);
-   //if (pCD->fFix)
-      //{
-      rc = DosDevIOCtl(hFile, IOCTL_DISK, DSK_UNLOCKDRIVE,
-                       NULL, 0, NULL,
-                       NULL, 0, NULL);
-      if (rc)
-         {
-         show_message("The drive cannot be unlocked. SYS%4.4u\n", 0, 0, 1, rc);
-         DosExit(EXIT_PROCESS, 1);
-         }
-      //}
-   DosClose(hFile);
+   unlock_drive(hFile);
+   close_drive(hFile);
    free(pCD);
 
    return 0;
@@ -187,10 +133,7 @@ int recover(int argc, char *argv[], char *envp[])
   // recover.com stack is too small.
 
   // allocate stack
-  rc = DosAllocMem((void **)&stack, 
-                   STACKSIZE, 
-                   PAG_READ | PAG_WRITE | 
-                   PAG_COMMIT | OBJ_TILE);
+  rc = mem_alloc((void **)&stack, STACKSIZE);
 
   if (rc)
     return rc;
@@ -212,7 +155,7 @@ int recover(int argc, char *argv[], char *envp[])
   }
 
   // deallocate new stack
-  DosFreeMem(stack);
+  mem_free(stack, STACKSIZE);
 
   return 0;
 }
@@ -226,15 +169,11 @@ BOOL DoRecover(PCDINFO pCD, char *pszFilename)
 
    ulCluster = FindPathCluster(pCD, ulCluster, pszFilename, &DirEntry, NULL);
 
-   //printf("ulCluster=%lx\n", ulCluster);
-
    if (ulCluster == FAT_EOF)
       return FALSE;
 
    memset(szRecovered, 0, sizeof(szRecovered));
    rc = RecoverChain2(pCD, ulCluster, szRecovered, sizeof(szRecovered));
-
-   //printf("rc=%lu\n", rc);
 
    if (rc)
       {

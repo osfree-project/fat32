@@ -136,8 +136,6 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
     qBytesWritten   = 0;
     fPercentWritten = 0;
 
-    //printf("Percent written: ");
-
     while ( NumSects )
     {
         if ( NumSects > BurstSize )
@@ -145,7 +143,6 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         else 
             WriteSize = NumSects;
 
-        //ret = WriteFile ( hDevice, pZeroSect, WriteSize*BytesPerSect, &dwWritten, NULL );   
         ret = write_file ( hDevice, pZeroSect, WriteSize * BytesPerSect, &dwWritten );
 
         if ( !ret )
@@ -154,7 +151,6 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         qBytesWritten += dwWritten;
 
         fPercentWritten = ( 100 * qBytesWritten ) / qBytesTotal;
-        //sprintf(Str, "%.2f%%...", fPercentWritten);
 
         if ( fPercentWritten - fPrevPercentWritten >= 1 )
         {
@@ -169,16 +165,13 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 
     query_time( &End );
 
-    //Ticks.QuadPart = End.QuadPart - Start.QuadPart;
-    //fTime = (double) ( Ticks.QuadPart ) / Frequency.QuadPart;
-    
     Ticks = End - Start;
     fTime = (double) ( Ticks ) / Frequency;
 
     mem_free(pZeroSect, BytesPerSect * BurstSize);
 
     fBytesTotal = (double) qBytesTotal;
-    show_message ( "\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 0, 3,
+    show_message ( "\n\nWrote %I64d bytes in %.2f seconds, %.2f Megabytes/sec\n", 0, 0, 3,
                    qBytesTotal, fTime, fBytesTotal/(fTime*1024.0*1024.0) );
 }
 
@@ -386,8 +379,6 @@ int format_volume (char *path, format_params *params)
     FatNeeded += (dp.BytesPerSect-1);
     FatNeeded /= dp.BytesPerSect;
 
-    //printf("dp.BytesPerSect=%lu\n", dp.BytesPerSect);
-    //printf("ClusterCount=%llu, FatNeeded=%llu, FatSize=%lu\n", ClusterCount, FatNeeded, dp.FatSize);
     if ( FatNeeded > dp.FatSize )
         {
         die ( "This drive is too big for this version \n"
@@ -398,9 +389,9 @@ int format_volume (char *path, format_params *params)
     show_message ( "Size: %g MB %u sectors\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
     show_message ( "%d Bytes Per Sector, Cluster size %d bytes\n", 0, 0, 2, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
 
+    show_message ( "Volume label is %s\n", 0, 1375, 1, TYPE_STRING, vol );
     sprintf(szString, "%4.4X-%4.4X", HIUSHORT(VolumeId), LOUSHORT(VolumeId));
     show_message ( "The Volume Serial Number is %s.\n", 0, 1243, 1, TYPE_STRING, szString);
-    show_message ( "Volume label is %s\n", 0, 1375, 1, TYPE_STRING, vol );
 
     show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
 

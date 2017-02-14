@@ -3,30 +3,22 @@
 #include <process.h>
 #include <malloc.h>
 
-#include "fat32c.h"
-#include "fat32def.h"
 #include "portable.h"
+#include "fat32c.h"
 #include "sys.h"
 
-#define  INCL_BASE
-#define  INCL_LONGLONG
-#define  INCL_DOSPROCESS
-#define  INCL_DOSDEVIOCTL
-#include <os2.h>
+void open_drive (char *path, HANDLE *hDevice);
+void close_drive(HANDLE hDevice);
+void lock_drive(HANDLE hDevice);
+void unlock_drive(HANDLE hDevice);
+APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize);
+APIRET write_drive(HANDLE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize);
+void begin_format (HANDLE hDevice);
+void remount_media (HANDLE hDevice);
 
-void open_drive (char *path, HFILE *hDevice);
-void close_drive(HFILE hDevice);
-void lock_drive(HFILE hDevice);
-void unlock_drive(HFILE hDevice);
-APIRET read_drive(HFILE hDevice, char *pBuf, ULONG *cbSize);
-APIRET write_drive(HFILE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize);
-void begin_format (HFILE hDevice);
-void remount_media (HFILE hDevice);
+ULONG ReadSect(HANDLE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 
-ULONG ReadSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-ULONG WriteSect(HFILE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-
-PSZ GetOS2Error(USHORT rc);
 
 #pragma pack(1)
 
@@ -81,25 +73,13 @@ void _System sysinstx_thread(ULONG args)
   ULONG cbSize, ulAction, cbActual, cbOffActual;
   char   file[20];
   char   *drive = (char *)args;
-  HFILE  hf;
+  FILE   *fd;
+  HANDLE  hf;
   APIRET rc;
 
-  rc = DosOpenL(drive,
-                &hf,
-                &ulAction,                         /* action taken */
-                0LL,                               /* new size     */
-                0,                                 /* attributes   */
-                OPEN_ACTION_OPEN_IF_EXISTS,        /* open flags   */
-                OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE | OPEN_FLAGS_DASD |
-                OPEN_FLAGS_WRITE_THROUGH,         /* OPEN_FLAGS_NO_CACHE , */
-                0L);
+  show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
 
-  if (rc)
-  {
-    show_message("Cannot open %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
-    return;
-  }
+  open_drive(drive, &hf);
 
   lock_drive(hf);
 
@@ -108,7 +88,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("%s\n", 0, 0, 1, get_error(rc));
     return;
   }
 
@@ -148,7 +128,7 @@ void _System sysinstx_thread(ULONG args)
   if (rc)
   {
     show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("%s\n", 0, 0, 1, get_error(rc));
     return;
   }
 
@@ -169,39 +149,39 @@ void _System sysinstx_thread(ULONG args)
   file[0] = drive[0];
   strcat(file, ":\\boot\\loader\\preldr0.mdl");
 
-  rc = DosOpen(file,
-               &hf,
-               &ulAction,                         /* action taken */
-               0L,                                /* new size     */
-               0,                                 /* attributes   */
-               OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS, /* open flags   */
-               OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYREADWRITE | OPEN_FLAGS_WRITE_THROUGH,
-               0L);
+  fd = fopen(file, "wb+");
 
-  if (rc)
+  if (! fd)
   {
-    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot create %s file\n", 0, 0, 1, file);
     return;
   }
 
-  rc = DosWrite(hf, preldr0_mdl, sizeof(preldr0_mdl), &cbActual);
+  cbActual = fwrite(preldr0_mdl, sizeof(char), sizeof(preldr0_mdl), fd);
 
-  if (rc)
+  if (! cbActual)
   {
-    show_message("Cannot writing to %s file, rc=%lu.\n", 0, 0, 1, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot writing to %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  DosSetFilePtr(hf, 0, FILE_BEGIN, &cbOffActual);
+  fclose(fd);
 
-  rc = DosRead(hf, &ldr0hdr, sizeof(ldr0hdr), &cbActual);
+  fd = fopen(file, "rb+");
 
-  if (rc)
+  if (! fd)
   {
-    show_message("Cannot read from %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot open %s file\n", 0, 0, 1, file);
+    return;
+  }
+
+  fseek(fd, 0, SEEK_SET);
+
+  cbActual = fread(&ldr0hdr, sizeof(char), sizeof(ldr0hdr), fd);
+
+  if (! cbActual)
+  {
+    show_message("Cannot read from %s file.\n", 0, 0, 1, file);
     return;
   }
 
@@ -209,109 +189,85 @@ void _System sysinstx_thread(ULONG args)
   ldr0hdr.LDR_size = sizeof(preldr0_mdl);
   strcpy(&ldr0hdr.FS, "fat");
 
-  DosSetFilePtr(hf, 0, FILE_BEGIN, &cbOffActual);
+  fseek(fd, 0, SEEK_SET);
 
-  rc = DosWrite(hf, &ldr0hdr, sizeof(ldr0hdr), &cbActual);
+  cbActual = fwrite(&ldr0hdr, sizeof(char), sizeof(ldr0hdr), fd);
 
-  if (rc)
+  if (! cbActual)
   {
-    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  DosClose(hf);
+  fclose(fd);
 
   strncpy(file + 22, ".rel", 4);
 
-  rc = DosOpen(file,
-               &hf,
-               &ulAction,                         /* action taken */
-               0L,                                /* new size     */
-               0,                                 /* attributes   */
-               OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS, /* open flags   */
-               OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYREADWRITE | OPEN_FLAGS_WRITE_THROUGH,
-               0L);
+  fd = fopen(file, "wb");
 
-  if (rc)
+  if (! fd)
   {
-    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot create %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  rc = DosWrite(hf, preldr0_rel, sizeof(preldr0_rel), &cbSize);
 
-  if (rc)
+  cbActual = fwrite(preldr0_rel, sizeof(char), sizeof(preldr0_rel), fd);
+
+  if (! cbActual)
   {
-    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  DosClose(hf);
+  fclose(fd);
 
   memset(file, 0, sizeof(file));
   file[0] = drive[0];
   strcat(file, ":\\boot\\loader\\fsd\\fat.mdl");
 
-  rc = DosOpen(file,
-               &hf,
-               &ulAction,                         /* action taken */
-               0L,                                /* new size     */
-               0,                                 /* attributes   */
-               OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS, /* open flags   */
-               OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYREADWRITE | OPEN_FLAGS_WRITE_THROUGH,
-               0L);
+  fd = fopen(file, "wb");
 
-  if (rc)
+  if (! fd)
   {
-    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 1, file);
     return;
   }
 
-  rc = DosWrite(hf, fat_mdl, sizeof(fat_mdl), &cbActual);
+  
+  cbActual = fwrite(fat_mdl, sizeof(char), sizeof(fat_mdl), fd);
 
-  if (rc)
+  if (! cbActual)
   {
-    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  DosClose(hf);
+  fclose(fd);
 
   strncpy(file + 22, ".rel", 4);
 
-  rc = DosOpen(file,
-               &hf,
-               &ulAction,                         /* action taken */
-               0L,                                /* new size     */
-               0,                                 /* attributes   */
-               OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS, /* open flags   */
-               OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYREADWRITE | OPEN_FLAGS_WRITE_THROUGH,
-               0L);
+  
+  fd = fopen(file, "wb");
 
-  if (rc)
+  if (! fd)
   {
-    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot create %s file.\n", 0, 0, 1, file);
     return;
   }
 
-  rc = DosWrite(hf, fat_rel, sizeof(fat_rel), &cbSize);
+  
+  cbActual = fwrite(fat_rel, sizeof(char), sizeof(fat_rel), fd);
 
-  if (rc)
+  if (! cbActual)
   {
-    show_message("Cannot write to %s file, rc=%lu.\n", 0, 0, 2, file, rc);
-    show_message("%s\n", 0, 0, 1, GetOS2Error(rc));
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
     return;
   }
 
   //startlw(hf);
 
-  DosClose(hf);
+  fclose(fd);
 
   // The system files have been transferred.
   show_message(NULL, 0, 1272, 0);
@@ -328,10 +284,7 @@ int sys(int argc, char *argv[], char *envp[])
   // sysinstx.com stack is too small.
 
   // allocate stack
-  rc = DosAllocMem((void **)&stack, 
-                   STACKSIZE, 
-                   PAG_READ | PAG_WRITE | 
-                   PAG_COMMIT | OBJ_TILE);
+  rc = mem_alloc((void **)&stack, STACKSIZE);
 
   if (rc)
     return rc;
@@ -352,7 +305,7 @@ int sys(int argc, char *argv[], char *envp[])
   }
 
   // deallocate new stack
-  DosFreeMem(stack);
+  mem_free(stack, STACKSIZE);
 
   return 0;
 }

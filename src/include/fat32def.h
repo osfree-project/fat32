@@ -1,9 +1,22 @@
 #ifndef FAT32DEF_H
 #define FAT32DEF_H
 
-#ifndef OS2_INCLUDED
-#define  INCL_OS2DEF
-#include <os2.h>
+#include "portable.h"
+
+#if defined(_WIN32) && !defined(OS2DEF_INCLUDED)
+
+typedef struct _FDATE {
+    USHORT day:5;
+    USHORT month:4;
+    USHORT year:7;
+} FDATE, *PFDATE;
+
+typedef struct _FTIME {
+    USHORT twosecs:5;
+    USHORT minutes:6;
+    USHORT hours:5;
+} FTIME, *PFTIME;
+
 #endif
 
 #define _FAR_
@@ -69,10 +82,7 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define ERROR_EA_FILE_CORRUPT   276     /* MSG%ERROR_EAS_CORRUPT */
 #endif
 
-#ifdef __16BITS__
-typedef unsigned short APIRET;
-#endif
-
+#ifdef __OS2__
 #define PARTITION_ENTRY_UNUSED          0x00
 #define PARTITION_FAT_12                0x01
 #define PARTITION_XENIX_1               0x02
@@ -91,6 +101,11 @@ typedef unsigned short APIRET;
 #define VALID_NTFT                      0xC0
 #define PARTITION_LINUX                  0x83
 #define PARTITION_HIDDEN                0x10
+#endif
+
+#if defined(_WIN32) && !defined(OS2DEF_INCLUDED)
+//typedef unsigned short APIRET;
+#endif
 
 #ifndef FP_SEG
 #define FP_SEG(fp) (*((unsigned _far *)&(fp)+1))
@@ -120,7 +135,9 @@ typedef unsigned short APIRET;
 #define MAX_DRIVES     10
 #define DELETED_ENTRY  0xE5
 #define ERROR_VOLUME_NOT_MOUNTED 0xEE00
+#ifdef __OS2__
 #define ERROR_VOLUME_DIRTY 627
+#endif
 #define FAT32MAXPATHCOMP 250
 #define FAT32MAXPATH 260
 #define OPEN_ACCESS_EXECUTE   0x0003
@@ -375,7 +392,7 @@ WORD  bytes_per_sector;
 typedef struct _CDInfo
 {
 BYTE        szDrive[3];
-HFILE       hDisk;
+HANDLE      hDisk;
 BOOTSECT    BootSect;
 BOOTFSINFO  FSInfo;
 ULONG       ulStartOfData;

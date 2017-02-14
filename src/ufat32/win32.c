@@ -12,6 +12,12 @@ extern HANDLE hDev;
 
 char msg = FALSE;
 
+int logbufsize = 0;
+char *logbuf = NULL;
+int  logbufpos = 0;
+
+void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
+
 DWORD get_vol_id (void)
 {
     SYSTEMTIME s;
@@ -74,6 +80,29 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     SetFilePointer ( hDevice, (LONG) Offset , &HiOffset , FILE_BEGIN );
 }
 
+void read_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+{
+    DWORD dwRead;
+    BOOL ret;
+
+    seek_to_sect ( hDevice, Sector, BytesPerSector );
+    ret = ReadFile ( hDevice, Data, NumSects*BytesPerSector, &dwRead, NULL );
+
+    if ( !ret )
+        die ( "Failed to read", ret );
+}
+
+BOOL read_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwRead )
+{
+    return ReadFile ( hDevice, pData, ulNumBytes, dwRead, NULL );
+}
+
+ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
+{
+    read_sect ( hDevice, ulSector, SECTOR_SIZE, pbSector, nSectors );
+    return 0;
+}
+
 void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
 {
     DWORD dwWritten;
@@ -89,6 +118,12 @@ void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data
 BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten )
 {
     return WriteFile ( hDevice, pData, ulNumBytes, dwWritten, NULL );
+}
+
+ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
+{
+    write_sect ( hDevice, ulSector, SECTOR_SIZE, pbSector, nSectors );
+    return 0;
 }
 
 void open_drive (char *path , HANDLE *hDevice)
@@ -209,13 +244,7 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
       show_message ( "IOCTL_DISK_GET_PARTITION_INFO_EX ok, GPTMode=%d\n", 0, 0, 1, bGPTMode );
   }
 
-  // Only support hard disks at the moment 
-  //if ( dgDrive.BytesPerSector != 512 )
-  //{
-  //    die ( "This version of fat32format only supports hard disks with 512 bytes per sector.\n" );
-  //}
   dp->BytesPerSect = dgDrive.BytesPerSector;
-  //dp->PartitionLength = piDrive.PartitionLength.QuadPart;
   dp->TotalSectors = piDrive.PartitionLength.QuadPart / dp->BytesPerSect;
   dp->SectorsPerTrack = dgDrive.SectorsPerTrack;
   dp->HiddenSectors =  piDrive.HiddenSectors;
@@ -287,9 +316,13 @@ void close_drive(HANDLE hDevice)
 }
 
 
-void mem_alloc(void **p, ULONG cb)
+int mem_alloc(void **p, ULONG cb)
 {
     *p = (void *) VirtualAlloc ( NULL, cb, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE );
+    if (*p)
+       return 0;
+
+    return 1;
 }
 
 void mem_free(void *p, ULONG cb)
@@ -375,12 +408,42 @@ void set_vol_label (char *path, char *vol)
 
 }
 
+void set_datetime(DIRENTRY *pDir)
+{
+
+}
+
+
+char *get_error(USHORT rc)
+{
+    //Get the error message, if any.
+    DWORD errID = GetLastError();
+    char *msgBuf = NULL;
+    static char szBuf[256];
+    size_t size;
+
+    //No error message has been recorded
+    if(errID == 0)
+        return "";
+
+    size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                NULL, errID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msgBuf, 0, NULL);
+
+    strncpy(szBuf, msgBuf, sizeof(szBuf));
+
+    //Free the buffer.
+    LocalFree(msgBuf);
+
+    return szBuf;
+}
+
+
 void show_progress (float fPercentWritten)
 {
     char str[128];
     int len, i;
     
-    sprintf(str, "%3.f%%", fPercentWritten);
+    sprintf(str, "%3.f", fPercentWritten);
     len = show_message( "%s of the disk has been formatted\n", 0, 538, 1,
                         TYPE_STRING, str );
 
@@ -389,6 +452,79 @@ void show_progress (float fPercentWritten)
 
     fflush(stdout); 
 }
+
+
+void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
+{
+#pragma pack (2)
+   struct
+   {
+      USHORT usRecordSize;
+      USHORT usMsgNo;
+      USHORT ulParmNo;
+      USHORT cbStrLen;
+   } header;
+#pragma pack()
+   ULONG ulParm;
+   int i, len;
+
+   header.usRecordSize = sizeof(header) + ulParmNo * sizeof(ULONG);
+   header.cbStrLen = 0;
+
+   if (psz)
+      {
+      len = strlen(psz) + 1;
+      header.cbStrLen = len;
+      header.usRecordSize += len;
+      }
+
+   header.usMsgNo = (USHORT)ulMsgNo;
+   header.ulParmNo = ulParmNo;
+
+   if (logbufpos + header.usRecordSize > logbufsize)
+      {
+      if (! logbufsize)
+         logbufsize = 0x10000;
+      if (! logbuf)
+         logbuf = malloc(logbufsize);
+      else
+         {
+         logbufsize += 0x10000;
+         logbuf = realloc(logbuf, logbufsize);
+         }
+      if (! logbuf)
+         {
+         show_message("realloc/malloc failed!\n", 0, 0, 0);
+         return;
+         }
+      }
+
+   memcpy(&logbuf[logbufpos], &header, sizeof(header));
+   logbufpos += sizeof(header);
+
+   if (psz)
+      {
+      memcpy(&logbuf[logbufpos], psz, len);
+      logbufpos += len;
+      }
+
+   for (i = 0; i < ulParmNo; i++)
+      {
+      ulParm = va_arg(va, ULONG);
+      memcpy(&logbuf[logbufpos], &ulParm, sizeof(ULONG));
+      logbufpos += sizeof(ULONG);
+      }
+}
+
+void LogOutMessage(ULONG ulMsgNo, char *psz, ULONG ulParmNo, ...)
+{
+   va_list va;
+
+   va_start(va, ulParmNo);
+   LogOutMessagePrintf(ulMsgNo, psz, ulParmNo, va);
+   va_end(va);
+}
+
 
 int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...)
 {
@@ -410,6 +546,27 @@ int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, u
        // output message which is not in oso001.msg
        vsprintf ( szBuf, pszMsg, va );
        printf ( "%s", szBuf );
+       }
+
+    // output message to CHKDSK log
+    if (usLogMsg)
+       {
+       PSZ pszString = NULL;
+       ULONG arg = va_arg(va, ULONG);
+       ULONG ulParmNo = usNumFields;
+
+       if (strstr(pszMsg, "%s"))
+          {
+          if (usMsg && arg == TYPE_STRING)
+             pszString = va_arg(va, PSZ);
+          else
+             pszString = (PSZ)arg;
+          }
+
+       if (pszString)
+          ulParmNo--;
+
+       LogOutMessagePrintf(usLogMsg, pszString, ulParmNo, va);
        }
 
     va_end( va );

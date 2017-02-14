@@ -4,11 +4,11 @@
 #include <stdio.h>
 
 #define INCL_BASE
+#define INCL_ERRORS
 
 #include <os2.h>
 #include <uconv.h>
 
-#include "portable.h"
 #include "fat32def.h"
 
 #define MAX_TRANS_TABLE     0x100
@@ -31,8 +31,6 @@
 #define LONGNAME_OK          1
 #define LONGNAME_MAKE_UNIQUE 2
 #define LONGNAME_ERROR       3
-
-//#define min(a,b)  (((a) < (b)) ? (a) : (b))
 
 extern F32PARMS f32Parms;
 
@@ -136,8 +134,8 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
 PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck);
 USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen);
 USHORT QueryNLS2Uni( USHORT usCode );
-ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
-ULONG SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
+APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
+APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usEntriesNeeded);
@@ -157,6 +155,8 @@ BOOL UpdateFSInfo(PCDINFO pCD);
 ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
 USHORT MakeChain(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulSize);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
+
+void set_datetime(DIRENTRY *pDir);
 
 /******************************************************************
 *
@@ -1547,7 +1547,7 @@ USHORT QueryNLS2Uni( USHORT usCode )
 /******************************************************************
 *
 ******************************************************************/
-ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
+APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 {
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("SetNextCluster");
@@ -1885,7 +1885,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 ******************************************************************/
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 {
-   DATETIME datetime;
+   //DATETIME datetime;
    DIRENTRY DirEntry;
    BYTE     szFileName[14];
    USHORT   usNr;
@@ -1915,16 +1915,17 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    if (pData)
       strncpy(pData, szFileName, cbData);
 
-   DosGetDateTime(&datetime);
-   DirEntry.wCreateTime.hours = datetime.hours;
-   DirEntry.wCreateTime.minutes = datetime.minutes;
-   DirEntry.wCreateTime.twosecs = datetime.seconds / 2;
-   DirEntry.wCreateDate.day = datetime.day;
-   DirEntry.wCreateDate.month = datetime.month;
-   DirEntry.wCreateDate.year = datetime.year - 1980;
-   DirEntry.wAccessDate.day = datetime.day;
-   DirEntry.wAccessDate.month = datetime.month;
-   DirEntry.wAccessDate.year = datetime.year;
+   set_datetime(&DirEntry);
+   //DosGetDateTime(&datetime);
+   //DirEntry.wCreateTime.hours = datetime.hours;
+   //DirEntry.wCreateTime.minutes = datetime.minutes;
+   //DirEntry.wCreateTime.twosecs = datetime.seconds / 2;
+   //DirEntry.wCreateDate.day = datetime.day;
+   //DirEntry.wCreateDate.month = datetime.month;
+   //DirEntry.wCreateDate.year = datetime.year - 1980;
+   //DirEntry.wAccessDate.day = datetime.day;
+   //DirEntry.wAccessDate.month = datetime.month;
+   //DirEntry.wAccessDate.year = datetime.year;
 
    DirEntry.wCluster = LOUSHORT(ulCluster);
    DirEntry.wClusterHigh = HIUSHORT(ulCluster);
@@ -1952,12 +1953,12 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 ******************************************************************/
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName)
 {
-   DATETIME pdt;
+   //DATETIME pdt;
 
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("MakeDirEntry %s", pszName);
 
-   DosGetDateTime(&pdt);
+   //DosGetDateTime(&pdt);
 
    //if (pGI)
       //{
@@ -1968,16 +1969,17 @@ USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName
       //pNew->wLastWriteTime.minutes = pGI->minutes;
       //pNew->wLastWriteTime.twosecs = pGI->seconds / 2;
 
-      pNew->wLastWriteDate.year = pdt.year - 1980;
-      pNew->wLastWriteDate.month = pdt.month;
-      pNew->wLastWriteDate.day = pdt.day;
-      pNew->wLastWriteTime.hours = pdt.hours;
-      pNew->wLastWriteTime.minutes = pdt.minutes;
-      pNew->wLastWriteTime.twosecs = pdt.seconds / 2;
+      set_datetime(pNew);
+      //pNew->wLastWriteDate.year = pdt.year - 1980;
+      //pNew->wLastWriteDate.month = pdt.month;
+      //pNew->wLastWriteDate.day = pdt.day;
+      //pNew->wLastWriteTime.hours = pdt.hours;
+      //pNew->wLastWriteTime.minutes = pdt.minutes;
+      //pNew->wLastWriteTime.twosecs = pdt.seconds / 2;
 
-      pNew->wCreateDate = pNew->wLastWriteDate;
-      pNew->wCreateTime = pNew->wLastWriteTime;
-      pNew->wAccessDate = pNew->wLastWriteDate;
+      //pNew->wCreateDate = pNew->wLastWriteDate;
+      //pNew->wCreateTime = pNew->wLastWriteTime;
+      //pNew->wAccessDate = pNew->wLastWriteDate;
       //}
 
    return ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_INSERT,
@@ -2749,22 +2751,11 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
 
       if (ulCluster != FAT_EOF)
          {
-            DATETIME datetime;
-
             NewEntry.wCluster = LOUSHORT(ulCluster);
             NewEntry.wClusterHigh = HIUSHORT(ulCluster);
             NewEntry.ulFileSize = cbBuf;
-            
-            DosGetDateTime(&datetime);
-            NewEntry.wCreateTime.hours = datetime.hours;
-            NewEntry.wCreateTime.minutes = datetime.minutes;
-            NewEntry.wCreateTime.twosecs = datetime.seconds / 2;
-            NewEntry.wCreateDate.day = datetime.day;
-            NewEntry.wCreateDate.month = datetime.month;
-            NewEntry.wCreateDate.year = datetime.year - 1980;
-            NewEntry.wAccessDate.day = datetime.day;
-            NewEntry.wAccessDate.month = datetime.month;
-            NewEntry.wAccessDate.year = datetime.year;
+
+            set_datetime(&NewEntry);
          }
       else
          {

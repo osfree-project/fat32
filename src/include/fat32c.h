@@ -6,26 +6,9 @@
 #include <ctype.h>
 #endif
 
-#if defined(__OS2__) //&& !defined(OS2_INCLUDED)
-#define INCL_DOSPROCESS
-#define INCL_DOSPROFILE
-#define INCL_DOSSEMAPHORES
-#define INCL_DOSDEVIOCTL
-#define INCL_DOSDEVICES
-#define INCL_DOSERRORS
-#define INCL_DOSFILEMGR
-#define INCL_DOSDATETIME
-#define INCL_LONGLONG
-#define INCL_DOSMISC
-#define INCL_VIO
-#include <os2.h>
-
-typedef HFILE HANDLE;
-typedef unsigned char BYTE; 
-typedef unsigned short WORD;
-typedef unsigned int DWORD;
-
 #include "fat32def.h"
+
+#if defined(__OS2__) //&& !defined(OS2_INCLUDED)
 
 #include <stdarg.h>
 
@@ -39,6 +22,10 @@ INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va
 
 #include <windows.h>
 #include <winioctl.h>  // From the Win32 SDK \Mstools\Include, or Visual Studio.Net
+
+#ifdef GetFreeSpace
+#undef GetFreeSpace
+#endif
 
 // This is just so it will build with old versions of Visual Studio. Yeah, I know...
 #ifndef IOCTL_DISK_GET_PARTITION_INFO_EX
@@ -187,13 +174,15 @@ void sectorio(HANDLE hDevice);
 void startlw(HANDLE hDevice);
 void stoplw(HANDLE hDevice);
 void close_drive(HANDLE hDevice);
-void mem_alloc(void **p, ULONG cb);
+int  mem_alloc(void **p, ULONG cb);
 void mem_free(void *p, ULONG cb);
 void query_freq(ULONGLONG *freq);
 void query_time(ULONGLONG *time);
 void check_vol_label(char *path, char **vol_label);
 char *get_vol_label(char *path, char *vol);
 void set_vol_label (char *path, char *vol);
+void set_datetime(DIRENTRY *pDir);
+char *get_error(USHORT rc);
 void cleanup ( void );
 void quit (int rc);
 void show_progress (float fPercentWritten);

@@ -1,0 +1,67 @@
+!define _32BITS
+ROOT=..\..
+PROJ=ufat32\win32
+PATH=..\..\..\$(PROJ)
+
+DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
+DESC2="Fat32Format, standalone version"
+
+# create win32 binaries
+OBJS1=$(PROJ_BLD)\format.obd $(PROJ_BLD)\win32.obd &
+      $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
+      $(PROJ_BLD)\chkdsk.obd &
+      $(PROJ_BLD)\fatfunc.obd
+OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\win32.obj
+COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
+TARGETS=$(BINROOT)\win32\fat32fmt.exe # $(BINROOT)\win32\dll\ufat32.dll
+        # $(BINROOT)\win32\fat32fmt.sym $(BINROOT)\win32\dll\ufat32.sym
+SYS=nt
+
+!include ..\..\makefile.mk
+
+DIRS=
+
+$(BINROOT)\win32\dll\ufat32.dll:
+
+$(BINROOT)\win32\fat32fmt.exe:
+
+$(BINROOT)\win32\dll\ufat32.sym:
+
+$(BINROOT)\win32\fat32fmt.sym:
+
+$(PROJ_BLD)\ufat32.ols: $(OBJS1)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\fat32fmt.ols: $(OBJS2)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS) dll initinstance terminstance
+ @%append $[*.lnk NAME $(BINROOT)\win32\dll\$^&.dll
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ # @%append $[*.lnk OPTION MIXED1632
+ # @%append $[*.lnk OPTION NODEFAULTLIBS
+ @%append $[*.lnk OPTION ST=81920
+ @%append $[*.lnk DEBUG ALL
+ # @%append $[*.lnk segment type DATA LOADONCALL NONSHARED
+ # @%append $[*.lnk segment type CODE PRELOAD 
+ # @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk EXPORT format, chkdsk, recover, sys
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt;
+ @%append $[*.lnk LIB clib3s,kernel32,user32
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\win32\$^&.exe
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk RUNTIME CONSOLE
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
+ @%append $[*.lnk LIB clib3s,kernel32,user32
+ @%append $[*.lnk @$[@

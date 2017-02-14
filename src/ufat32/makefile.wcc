@@ -3,13 +3,9 @@ ROOT=..
 PROJ=ufat32
 PATH=..\..\$(PROJ)
 
-!include ..\makefile.mk
-
 DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
 DESC2="Fat32Format, standalone version"
-# T=win32
 
-!ifneq T win32
 # create OS/2 binaries
 OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
       $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd &
@@ -19,15 +15,10 @@ COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dUSE_OS2_MSG -i=. -i=.. -i=..\in
 TARGETS=$(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\fat32fmt.exe &
         $(BINROOT)\os2\dll\ufat32.sym $(BINROOT)\os2\fat32fmt.sym
 SYS=os2v2
-!else
-# create win32 binaries
-OBJS1=
-OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\win32.obj
-COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
-TARGETS=$(BINROOT)\os2\fat32fmt.exe
-SYS=nt
-!endif
-DIRS=..\include
+
+!include ..\makefile.mk
+
+DIRS=..\include win32
 
 $(BINROOT)\os2\dll\ufat32.dll:
 
@@ -69,11 +60,6 @@ $(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
  @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
  @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
  @%append $[*.lnk OPTION MAP=$[*.wmp
-!ifneq T win32
  @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
-!else
- @%append $[*.lnk RUNTIME CONSOLE
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
-!endif
  #@%append $[*.lnk LIB os2,clibdll,os2386,clib3s
  @%append $[*.lnk @$[@
