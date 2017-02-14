@@ -1,9 +1,10 @@
 ROOT=..\..
 PROJ=ifsinf
 PATH=..\..\$(PROJ)
-TARGETS = $(BINROOT)\os2\book\ifs.inf
-DIRS=
 
 !include ..\..\makefile.mk
+
+TARGETS = $(BINROOT)\os2\book\ifs.inf
+DIRS=
 
 $(BINROOT)\os2\book\ifs.inf:

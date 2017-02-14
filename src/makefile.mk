@@ -11,7 +11,8 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BINROOT)\os2 $(BINROOT)\os2\boot $(BINROOT)\os2\dll &
            $(BINROOT)\os2\book $(BINROOT)\os2\docs $(BINROOT)\os2\docs\fat32 &
            $(BLDROOT)\util $(BLDROOT)\ifs $(BLDROOT)\ifs\libc $(BLDROOT)\partfilt $(BLDROOT)\ifsinf &
-           $(BLDROOT)\ufat32 $(BLDROOT)\fat32chk
+           $(BLDROOT)\ufat32 $(BLDROOT)\fat32chk &
+           $(BLDROOT)\ufat32\win32 $(BINROOT)\win32 $(BINROOT)\win32\dll
 
 CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
            $(PROJ_BLD)\*.map $(PROJ_BLD)\*.ols $(PROJ_BLD)\*.err $(BLDROOT)\..\include\ver.h &
@@ -84,7 +85,7 @@ distfile2 = $(distname).wpi
 AS=wasm
 LNK=wlink op q
 LIB=wlib -q
-MAPCNV=..\mapsym.awk
+MAPCNV=$(ROOT)\mapsym.awk
 IPFC=wipfc
 WIC=wic
 
@@ -118,9 +119,8 @@ $(BLDROOT)\bld.flg:
 $(BINROOT)\zip.flg: $(distfiles)
  @echo ZIP      $(distfile1)
  @cd $(BINROOT)
- @zip -r $(distfile1) $(dist) >nul 2>&1
+ @zip -r $(distfile1) $(dist) >zip.flg 2>&1
  @cd ..\$(PROJ)
- @wtouch $^@
 
 $(BINROOT)\wpi.flg: $(distfiles)
  @echo WIC      $(distfile2)
@@ -143,9 +143,8 @@ $(BINROOT)\wpi.flg: $(distfiles)
  @%append $(distname).pkg 8 -c.\os2
  @for %file in ($(sym)) do @if exist os2\%file @%append $(distname).pkg %file
  @%append $(distname).pkg -s ..\lib\fat32_010.wis
- @$(WIC) @$(distname).pkg >nul 2>&1
+ @$(WIC) @$(distname).pkg >wpi.flg 2>&1
  @cd ..\$(PROJ)
- @wtouch $^@
 
 clean: .symbolic
  -@del $(CLEANUP) >nul 2>&1
@@ -226,7 +225,11 @@ $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
 
 .c: .
 
+.c: ..
+
 .asm: .
+
+.asm: ..
 
 .lnk.exe: .autodepend
  @echo LINK     @$^.
