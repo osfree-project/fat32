@@ -76,7 +76,7 @@ void _System sysinstx_thread(ULONG args)
   HANDLE  hf;
   APIRET rc;
 
-  show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+  show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
   open_drive(drive, &hf);
 
@@ -269,7 +269,7 @@ void _System sysinstx_thread(ULONG args)
   fclose(fd);
 
   // The system files have been transferred.
-  show_message(NULL, 0, 1272, 0);
+  show_message("The system files have been transferred.\n", 0, 1272, 0);
 
   return;
 }
@@ -308,3 +308,10 @@ int sys(int argc, char *argv[], char *envp[])
 
   return 0;
 }
+
+#ifndef __DLL__
+int main(int argc, char *argv[])
+{
+  return sys(argc, argv, NULL);
+}
+#endif

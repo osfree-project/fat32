@@ -30,7 +30,7 @@ int recover_thread(int argc, char *argv[])
    APIRET  rc;
    int i;
 
-   show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+   show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
 #ifdef __OS2__
    CodepageConvInit(0);

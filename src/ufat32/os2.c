@@ -305,7 +305,7 @@ void open_drive (char *path, HANDLE *hDevice)
 {
   APIRET rc;
   ULONG  ulAction;
-  char DriveDevicePath[]="Z:"; // for DosOpenL
+  char DriveDevicePath[]="Z:"; // for DosOpen
   char *p = path;
 
   if (path[1] == ':' && path[2] == '\0')
@@ -315,9 +315,9 @@ void open_drive (char *path, HANDLE *hDevice)
     p = DriveDevicePath;
   }
 
-  rc = DosOpenL( p,              // filename
-	      (HFILE *)hDevice,    // handle returned
-              &ulAction,         // action taken by DosOpenL
+  rc = DosOpen( p,               // filename
+	      (HFILE *)hDevice,  // handle returned
+              &ulAction,         // action taken by DosOpen
               0,                 // cbFile
               0,                 // ulAttribute
               OPEN_ACTION_OPEN_IF_EXISTS, // | OPEN_ACTION_REPLACE_IF_EXISTS,

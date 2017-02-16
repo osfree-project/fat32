@@ -6,6 +6,7 @@ PATH=..\..\..\$(PROJ)
 DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
 DESC2="FORMAT, standalone version"
 DESC3="CHKDSK, standalone version"
+DESC4="SYS, standalone version"
 
 # create win32 binaries
 OBJS1=$(PROJ_BLD)\format.obd $(PROJ_BLD)\win32.obd &
@@ -16,10 +17,13 @@ OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\win32.obj &
       $(PROJ_BLD)\log.obj
 OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\win32.obc &
       $(PROJ_BLD)\fatfunc.obc $(PROJ_BLD)\log.obc
+OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\win32.obj &
+      $(PROJ_BLD)\log.obj
 COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
-TARGETS=$(BINROOT)\win32\dll\ufat32.dll &
-        $(BINROOT)\win32\fat32fmt.exe &
-        $(BINROOT)\win32\fat32chk.exe
+TARGETS=$(BINROOT)\win32\dll\ufat32.dll $(BINROOT)\win32\dll\ufat32.sym &
+        $(BINROOT)\win32\fat32fmt.exe $(BINROOT)\win32\fat32fmt.sym &
+        $(BINROOT)\win32\fat32chk.exe $(BINROOT)\win32\fat32chk.sym &
+        $(BINROOT)\win32\fat32sys.exe $(BINROOT)\win32\fat32sys.sym
 SYS=nt
 
 !include ..\..\makefile.mk
@@ -32,11 +36,15 @@ $(BINROOT)\win32\fat32fmt.exe:
 
 $(BINROOT)\win32\fat32chk.exe:
 
+$(BINROOT)\win32\fat32sys.exe:
+
 $(BINROOT)\win32\dll\ufat32.sym:
 
 $(BINROOT)\win32\fat32fmt.sym:
 
 $(BINROOT)\win32\fat32chk.sym:
+
+$(BINROOT)\win32\fat32sys.sym:
 
 $(PROJ_BLD)\ufat32.ols: $(OBJS1)
  @%create $^@
@@ -47,6 +55,10 @@ $(PROJ_BLD)\fat32fmt.ols: $(OBJS2)
  @for %e in ($<) do @%append $^@ FILE %e
 
 $(PROJ_BLD)\fat32chk.ols: $(OBJS3)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\fat32sys.ols: $(OBJS4)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
@@ -84,6 +96,17 @@ $(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols
  @%append $[*.lnk SYSTEM $(SYS)
  @%append $[*.lnk NAME $(BINROOT)\win32\$^&.exe
  @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC3)'
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk RUNTIME CONSOLE
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt
+ @%append $[*.lnk LIB clib3s,kernel32,user32
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS)
+ @%append $[*.lnk NAME $(BINROOT)\win32\$^&.exe
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC4)'
  @%append $[*.lnk OPTION MAP=$[*.wmp
  @%append $[*.lnk RUNTIME CONSOLE
  @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt

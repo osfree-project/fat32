@@ -689,7 +689,7 @@ void check_vol_label(char *path, char **vol_label)
     char   c;
     ULONG  rc;
 
-    show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+    show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
     if (! msg)
     {

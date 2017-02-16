@@ -385,7 +385,7 @@ ULONG  cbActual, ulAction;
 
    if (! pCD->fAutoCheck || ! pCD->fCleanOnBoot)
       {
-      show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+      show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
       if( p > szString )
          show_message("The volume label is %1.\n", 0, 1375, 1, TYPE_STRING, szString);
