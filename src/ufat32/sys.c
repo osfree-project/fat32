@@ -268,6 +268,28 @@ void _System sysinstx_thread(ULONG args)
 
   fclose(fd);
 
+  memset(file, 0, sizeof(file));
+  file[0] = drive[0];
+  strcat(file, ":\\os2boot");
+
+  fd = fopen(file, "wb");
+
+  if (! fd)
+  {
+    show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 1, file);
+    return;
+  }
+  
+  cbActual = fwrite(os2boot, sizeof(char), sizeof(os2boot), fd);
+
+  if (! cbActual)
+  {
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
+    return;
+  }
+
+  fclose(fd);
+
   // The system files have been transferred.
   show_message("The system files have been transferred.\n", 0, 1272, 0);
 
