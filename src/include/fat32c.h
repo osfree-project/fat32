@@ -21,6 +21,8 @@ INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va
 #define HIUSHORT(l) ((USHORT)(((ULONG)(l) >> 16) & 0xffff))
 
 #include <windows.h>
+#define UNICODE
+#include <shlwapi.h>
 #include <winioctl.h>  // From the Win32 SDK \Mstools\Include, or Visual Studio.Net
 
 #ifdef GetFreeSpace
@@ -181,8 +183,11 @@ void query_time(ULONGLONG *time);
 void check_vol_label(char *path, char **vol_label);
 char *get_vol_label(char *path, char *vol);
 void set_vol_label (char *path, char *vol);
+ULONG query_vol_label(char *path, char *pszVolLabel, int cbVolLabel);
 void set_datetime(DIRENTRY *pDir);
 char *get_error(USHORT rc);
+void query_current_disk(char *pszDrive);
+BOOL OutputToFile(HANDLE hFile);
 void cleanup ( void );
 void quit (int rc);
 void show_progress (float fPercentWritten);

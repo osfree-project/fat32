@@ -33,6 +33,7 @@
 #define INCL_DOSDATETIME
 #define INCL_LONGLONG
 #define INCL_DOSMISC
+#define INCL_DOSNLS
 #define INCL_VIO
 #include <os2.h>
 typedef ULONG   DWORD;

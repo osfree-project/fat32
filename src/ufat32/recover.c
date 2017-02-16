@@ -10,7 +10,7 @@ BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
-BOOL LoadTranslateTable(BOOL fSilent);
+void CodepageConvInit(BOOL fSilent);
 
 BOOL DoRecover(PCDINFO pCD, char *pszFilename);
 int recover_thread(int argc, char *argv[]);
@@ -30,9 +30,11 @@ int recover_thread(int argc, char *argv[])
    APIRET  rc;
    int i;
 
-   show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
+   show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
-   LoadTranslateTable(0);
+#ifdef __OS2__
+   CodepageConvInit(0);
+#endif
 
    pCD = (PCDINFO)malloc(sizeof(CDINFO));
 
@@ -46,11 +48,7 @@ int recover_thread(int argc, char *argv[])
 
    if (!strlen(pCD->szDrive))
       {
-      ULONG ulDisk;
-      ULONG  ulDrives;
-      rc = DosQueryCurrentDisk(&ulDisk, &ulDrives);
-      pCD->szDrive[0] = (BYTE)(ulDisk + '@');
-      pCD->szDrive[1] = ':';
+      query_current_disk(pCD->szDrive);
       }
 
    pCD->szDrive[0] = toupper(pCD->szDrive[0]);
@@ -111,8 +109,8 @@ int recover_thread(int argc, char *argv[])
 
    for (i = 1; i < argc; i++)
       {
-      DosEditName(1, argv[i], "*", szTarget, sizeof(szTarget));
-      show_message("%s\n", 0, 0, 1, szTarget);
+      //DosEditName(1, argv[i], "*", szTarget, sizeof(szTarget));
+      //show_message("%s\n", 0, 0, 1, szTarget);
       DoRecover(pCD, argv[i]);
       }   
 

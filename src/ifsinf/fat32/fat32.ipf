@@ -1755,11 +1755,11 @@ and several FreeLDR main files&per. No OS2BOOT is installed at this moment as it
 implemented&per. You can add more files from standard FreeLDR installation, if you need&per.
 
 :p.
-:h2 id=20047 res=30044.FAT32CHK.EXE
+:h2 id=20047 res=30044.F32CHK.EXE
 
-:p.:hp2.FAT32CHK&per.EXE&colon. :ehp2.  
+:p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
 
-:p.FAT32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
+:p.F32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
 the same parameters as CHKDSK itself&per. It is run by FAT32&per.IFS init routine&per.
 
 :p.

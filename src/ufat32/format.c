@@ -48,7 +48,6 @@ This is the Microsoft calculation from FATGEN
 */
 
 // disk file open handle
-HANDLE hDev = 0;
 extern char msg;
 
 DWORD get_fat_size_sectors ( DWORD DskSize, DWORD ReservedSecCnt, DWORD SecPerClus, DWORD NumFATs, DWORD BytesPerSect )
@@ -381,36 +380,36 @@ int format_volume (char *path, format_params *params)
 
     if ( FatNeeded > dp.FatSize )
         {
-        die ( "This drive is too big for this version \n"
-              "of fat32format, check for an upgrade\n", -5 );
+        die ( "This drive is too big for this version\n"
+              "of fat32format, check for an upgrade.\n", -5 );
         }
 
     // Now we're commited - print some info first
-    show_message ( "Size: %g MB %u sectors\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
-    show_message ( "%d Bytes Per Sector, Cluster size %d bytes\n", 0, 0, 2, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
+    show_message ( "Size: %g MB %u sectors.\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
+    show_message ( "%d Bytes Per Sector, Cluster size %d bytes.\n", 0, 0, 2, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
 
-    show_message ( "Volume label is %s\n", 0, 1375, 1, TYPE_STRING, vol );
+    show_message ( "Volume label is %1.\n", 0, 1375, 1, TYPE_STRING, vol );
     sprintf(szString, "%4.4X-%4.4X", HIUSHORT(VolumeId), LOUSHORT(VolumeId));
-    show_message ( "The Volume Serial Number is %s.\n", 0, 1243, 1, TYPE_STRING, szString);
+    show_message ( "The Volume Serial Number is %1.\n", 0, 1243, 1, TYPE_STRING, szString);
 
-    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
+    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats.\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
 
     // Work out the Cluster count
 
     sprintf(szString, "%lu", (dp.TotalSectors / 1024) * dp.BytesPerSect);
-    show_message ( "%s kilobytes total disk space\n", 0, 568, 1, TYPE_STRING, szString);
+    show_message ( "%1 kilobytes total disk space.\n", 0, 568, 1, TYPE_STRING, szString);
     
     // fix up the FSInfo sector
     pFAT32FsInfo->dFree_Count = (UserAreaSize/dp.SectorsPerCluster)-1;
     pFAT32FsInfo->dNxt_Free = 3; // clusters 0-1 resered, we used cluster 2 for the root dir
 
     sprintf(szString, "%lu", (pFAT32FsInfo->dFree_Count / 1024) * (dp.SectorsPerCluster * dp.BytesPerSect));
-    show_message ( "%s kilobytes are available\n", 0, 537, 1, TYPE_STRING, szString);
+    show_message ( "%1 kilobytes are available.\n", 0, 537, 1, TYPE_STRING, szString);
 
     sprintf(szString, "%d", 0);
-    show_message ( "%s kilobytes are in bad blocks\n", 0, 536, 1, TYPE_STRING, szString);
+    show_message ( "%1 kilobytes are in bad blocks.\n", 0, 536, 1, TYPE_STRING, szString);
 
-    show_message( "Formatting drive %s\n", 0, 534, 1, TYPE_STRING, path );
+    show_message( "\nFormatting...\n\n", 0, 534, 1, TYPE_STRING, path );
 
     // Once zero_sectors has run, any data on the drive is basically lost....
 
@@ -465,7 +464,7 @@ int format_volume (char *path, format_params *params)
 
 void usage( char *s )
 {
-        printf ( "\nFat32format, ver. 1.07, \n"
+        show_message ( "\nFat32format, ver. 1.07, \n"
                  "see http://www.ridgecrop.demon.co.uk/fat32format.htm\n"
                  "Modified and ported to OS/2 by osFree project \n"
                  "(http://osfree.org) for ufat32.dll.\n"
@@ -484,7 +483,7 @@ void usage( char *s )
                  "/P is specified by PM frontends\n"
                  "/V:<volume label>\n"
                  "/R:<reserved sectors>\n"
-                 "/? this help message\n\n", s );
+                 "/? this help message\n\n", 0, 0, 1, s );
 
         exit(1);
 }
@@ -536,7 +535,7 @@ int format(int argc, char *argv[], char *envp[])
     // set up signal handlers
     if (setup_signals())
     {
-      printf("Error setting the signal handler!\n");
+      show_message ("Error setting the signal handler!\n", 0, 0, 0);
       quit (1);
     }
 
@@ -605,7 +604,7 @@ int format(int argc, char *argv[], char *envp[])
                    (p.sectors_per_cluster != 128)      // 64K ( Microsoft say don't use 64K or bigger);               
 		   )
                 {
-                    printf ( "Ignoring bad cluster size %d\n", p.sectors_per_cluster );
+                    show_message ( "Ignoring bad cluster size %d\n", 0, 0, 1, p.sectors_per_cluster );
                     p.sectors_per_cluster = 0;
                     usage( argv[0] );
                 }
@@ -614,7 +613,7 @@ int format(int argc, char *argv[], char *envp[])
                 p.reserved_sectors = atol(val);
                 if (! p.reserved_sectors)
                 {
-                    printf( "Ignoring bad reserved sectors %d\n", p.reserved_sectors );
+                    show_message( "Ignoring bad reserved sectors %d\n", 0, 0, 1, p.reserved_sectors );
                     p.reserved_sectors = 32;
                     usage( argv[0] );
                 }
@@ -629,14 +628,12 @@ int format(int argc, char *argv[], char *envp[])
                 msg = TRUE;
                 continue;
         default:
-                // printf ( "Ignoring bad flag '-%c'\n", argv[i][1] ); 
 	        usage( argv[0] );
         }
-        //i++;
     }
 
     if ( format_volume( path, &p ) )
-       show_message( "Format completed successfully.", 0, 635, 0 );
+       show_message( "\n\n\nFormat completed successfully.\n\n\n", 0, 635, 0 );
 
     return 0;
 }
@@ -647,23 +644,6 @@ int main(int argc, char *argv[])
   return format(argc, argv, NULL);
 }
 #endif
-
-void cleanup ( void )
-{
-    if (hDev == 0)
-        return;
-
-    remount_media ( hDev );
-    unlock_drive ( hDev );
-    close_drive ( hDev);
-    hDev = 0;
-}
-
-void quit (int rc)
-{
-    cleanup ();
-    exit (rc);
-}
 
 void show_sig_string(int s)
 {
@@ -698,4 +678,110 @@ void sig_handler (int sig)
 {
     show_sig_string(sig);
     cleanup();
+}
+
+void check_vol_label(char *path, char **vol_label)
+{
+    /* Current volume label  */
+    char cur_vol[12];
+    char testvol[12];
+    /* file system information buffer */
+    char   c;
+    ULONG  rc;
+
+    show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+
+    if (! msg)
+    {
+        memset(cur_vol, 0, sizeof(cur_vol));
+        memset(testvol, 0, sizeof(testvol));
+
+        rc = query_vol_label(path, cur_vol, sizeof(cur_vol));
+
+        show_message( "The new type of file system is %1.\n", 0, 1293, 1, TYPE_STRING, "FAT32" );
+
+        if (!cur_vol || !*cur_vol)
+            show_message( "The disk has no volume label.\n", 0, 125, 0 );
+        else
+        {
+            if (!vol_label || !*vol_label || !**vol_label)
+            {
+                show_message( "Enter the current volume label for drive %1 ", 0, 1318, 1, TYPE_STRING, path );
+
+                // Read the volume label
+                gets(testvol);
+            }
+        }
+
+        // if the entered volume label is empty, or doesn't
+        // the same as a current volume label, write an error
+        if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
+        {
+            show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
+            exit (1);
+        }
+    }
+
+    show_message( "Warning!  All data on hard disk %1 will be lost!\n"
+                  "Proceed with FORMAT (Y/N)? ", 0, 1271, 1, TYPE_STRING, path );
+
+    c = getchar();
+
+    if ( c != '1' && toupper(c) != 'Y' )
+        exit (1);
+ 
+    fflush(stdout);
+}
+
+char *get_vol_label(char *path, char *vol)
+{
+    static char default_vol[12] = "NO NAME    ";
+    static char v[12] = "           ";
+    char *label = vol;
+
+    if (!vol || !*vol)
+    {
+        fflush(stdin);
+        show_message( "Enter up to 11 characters for the volume label\n"
+                      "or press Enter for no volume label. ", 0, 1288, 0 );
+
+        label = v;
+    }
+
+    memset(label, 0, 12);
+    gets(label);
+
+    if (!*label)
+        label = default_vol;
+
+    if (strlen(label) > 11)
+    {
+       show_message( "The volume label you entered exceeds the 11-character limit.\n"
+                     "The first 11 characters were written to disk.  Any characters that\n"
+                     "exceeded the 11-character limit were automatically deleted.\n", 0, 154, 0 );
+       // truncate it
+       label[11] = '\0';
+    }
+
+    return label;
+}
+
+void show_progress (float fPercentWritten)
+{
+    char str[128];
+    
+    sprintf(str, "%3.f", fPercentWritten);
+    show_message( "%1% of the disk has been formatted.", 0, 538, 1,
+                  TYPE_STRING, str );
+
+    // restore cursor position
+    printf("\r");
+
+    fflush(stdout); 
+}
+
+void quit (int rc)
+{
+    cleanup ();
+    exit (rc);
 }

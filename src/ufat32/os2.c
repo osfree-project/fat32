@@ -17,16 +17,20 @@
 #include "fat32def.h"
 #include "portable.h"
 
-extern HANDLE hDev;
+HANDLE hDev;
 
 char msg = FALSE;
 
-int logbufsize = 0;
-char *logbuf = NULL;
-int  logbufpos = 0;
-
 PSZ GetOS2Error(USHORT rc);
 
+void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
+
+#ifdef __UNICODE__
+USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
+USHORT QueryNLS2Uni( USHORT usCode );
+
+extern UCHAR rgFirstInfo[ 256 ];
+#endif
 
 #pragma pack(1)
 
@@ -85,7 +89,7 @@ void die ( char * error, DWORD rc )
     if ( rc )
         show_message("Error code: %lu\n", 0, 0, 1, rc);
 
-    quit ( rc );
+    exit ( rc );
 }
 
 void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
@@ -470,6 +474,19 @@ void remount_media (HANDLE hDevice)
   }
 }
 
+
+void cleanup ( void )
+{
+    if (hDev == 0)
+        return;
+
+    remount_media ( hDev );
+    unlock_drive ( hDev );
+    close_drive ( hDev);
+    hDev = 0;
+}
+
+
 void sectorio(HANDLE hDevice)
 {
   ULONG ulDeadFace = 0xdeadface;
@@ -529,29 +546,12 @@ void stoplw(HANDLE hDevice)
    }
 }
 
-APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize)
-{
-    // Read Device
-    return DosRead ( (HFILE)hDevice, pBuf, *cbSize, cbSize );
-}
-
-APIRET write_drive(HANDLE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize)
-{
-    // Seek
-    APIRET rc = DosSetFilePtrL((HFILE)hDevice, off, FILE_BEGIN, &off);
-
-    if ( rc )
-        die ( "Seek error!", rc );
-
-    // Write Device
-    return DosWrite ( (HFILE)hDevice, pBuf, *cbSize, cbSize );
-}
-
 void close_drive(HANDLE hDevice)
 {
     // Close Device
     DosClose ( (HFILE)hDevice );
 }
+
 
 int mem_alloc(void **p, ULONG cb)
 {
@@ -581,98 +581,26 @@ void query_time(ULONGLONG *time)
     DosTmrQueryTime( (QWORD *)time );
 }
 
-void check_vol_label(char *path, char **vol_label)
+ULONG query_vol_label(char *path, char *pszVolLabel, int cbVolLabel)
 {
-    /* Current volume label  */
-    char cur_vol[12];
-    char testvol[12];
     /* file system information buffer */
     FSINFO fsiBuffer;
-    char   c;
-    ULONG  rc;
+    APIRET rc;
 
-    show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
+    // Query the filesystem info, 
+    // including the current volume label
+    rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
+                        (PVOID)&fsiBuffer, sizeof(fsiBuffer));
 
-    if (! msg)
-    {
-        memset(cur_vol, 0, sizeof(cur_vol));
-        memset(testvol, 0, sizeof(testvol));
+    if (rc)
+        return rc;
 
-        // Query the filesystem info, 
-        // including the current volume label
-        rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
-                            (PVOID)&fsiBuffer, sizeof(fsiBuffer));
+    if (cbVolLabel < fsiBuffer.vol.cch)
+        return ERROR_BUFFER_OVERFLOW;
 
-        if (rc == NO_ERROR)
-            // Current disk volume label
-            strcpy(cur_vol, fsiBuffer.vol.szVolLabel);
-
-        show_message( "The new type of file system is %1.", 0, 1293, 1, TYPE_STRING, "FAT32" );
-
-        if (!cur_vol || !*cur_vol)
-            show_message( "The disk has no volume label\n", 0, 125, 0 );
-        else
-        {
-            if (!vol_label || !*vol_label || !**vol_label)
-            {
-                show_message( "Enter the current volume label for drive %s\n", 0, 1318, 1, TYPE_STRING, path );
-
-                // Read the volume label
-                gets(testvol);
-            }
-        }
-
-        // if the entered volume label is empty, or doesn't
-        // the same as a current volume label, write an error
-        if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
-        {
-            show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
-            quit (1);
-        }
-    }
-
-    show_message( "Warning! All data on hard disk %s will be lost!\n"
-                  "Proceed with FORMAT (Y/N)?\n", 0, 1271, 1, TYPE_STRING, path );
-
-    c = getchar();
-
-    if ( c != '1' && toupper(c) != 'Y' )
-        quit (1);
- 
-    fflush(stdout);
-}
-
-char *get_vol_label(char *path, char *vol)
-{
-    static char default_vol[12] = "NO NAME    ";
-    static char v[12] = "           ";
-    char *label = vol;
-
-    if (!vol || !*vol)
-    {
-        fflush(stdin);
-        show_message( "Enter up to 11 characters for the volume label\n"
-                      "or press Enter for no volume label.\n", 0, 1288, 0 );
-
-        label = v;
-    }
-
-    memset(label, 0, 12);
-    gets(label);
-
-    if (!*label)
-        label = default_vol;
-
-    if (strlen(label) > 11)
-    {
-       show_message( "The volume label you entered exceeds the 11-character limit.\n"
-                     "The first 11 characters were written to disk.  Any characters that\n"
-                     "exceeded the 11-character limit were automatically deleted.\n", 0, 154, 0 );
-       // truncate it
-       label[11] = '\0';
-    }
-
-    return label;
+    // Current disk volume label
+    strncpy(pszVolLabel, fsiBuffer.vol.szVolLabel, fsiBuffer.vol.cch);
+    return 0;
 }
 
 void set_vol_label (char *path, char *vol)
@@ -718,7 +646,7 @@ void set_datetime(DIRENTRY *pDir)
    pDir->wCreateDate.year = datetime.year - 1980;
    pDir->wAccessDate.day = datetime.day;
    pDir->wAccessDate.month = datetime.month;
-   pDir->wAccessDate.year = datetime.year;
+   pDir->wAccessDate.year = datetime.year - 1980;
 }
 
 
@@ -728,93 +656,101 @@ char *get_error(USHORT rc)
 }
 
 
-void show_progress (float fPercentWritten)
+void query_current_disk(char *pszDrive)
 {
-  char str[128];
-  int len, i;
+   ULONG  ulDisk;
+   ULONG  ulDrives;
+   APIRET rc;
 
-  // construct message
-  sprintf(str, "%3.f", fPercentWritten);
-  len = show_message( "%s of the disk has been formatted\n", 0, 538, 1,
-                      TYPE_STRING, str );
+   rc = DosQueryCurrentDisk(&ulDisk, &ulDrives);
 
-  // restore cursor position
-  for (i = 0; i < len; i++)
-     printf("\b");
-
-  fflush(stdout); 
+   pszDrive[0] = (BYTE)(ulDisk + '@');
+   pszDrive[1] = ':';
+   pszDrive[2] = '\0';
 }
 
 
-void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
+#ifdef __UNICODE__
+BOOL IsDBCSLead( UCHAR uch)
 {
-#pragma pack (2)
-   struct
-   {
-      USHORT usRecordSize;
-      USHORT usMsgNo;
-      USHORT ulParmNo;
-      USHORT cbStrLen;
-   } header;
-#pragma pack()
-   ULONG ulParm;
-   int i, len;
+    return ( rgFirstInfo[ uch ] == 2 );
+}
 
-   header.usRecordSize = sizeof(header) + ulParmNo * sizeof(ULONG);
-   header.cbStrLen = 0;
 
-   if (psz)
+VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
+{
+   USHORT usPage;
+   USHORT usChar;
+   USHORT usCode;
+
+   while (*pusUni && usLen)
       {
-      len = strlen(psz) + 1;
-      header.cbStrLen = len;
-      header.usRecordSize += len;
-      }
+      usPage = ((*pusUni) >> 8) & 0x00FF;
+      usChar = (*pusUni) & 0x00FF;
 
-   header.usMsgNo = (USHORT)ulMsgNo;
-   header.ulParmNo = ulParmNo;
-
-   if (logbufpos + header.usRecordSize > logbufsize)
-      {
-      if (! logbufsize)
-         logbufsize = 0x10000;
-      if (! logbuf)
-         logbuf = malloc(logbufsize);
-      else
+      usCode = QueryUni2NLS( usPage, usChar );
+      *pszName++ = ( BYTE )( usCode & 0x00FF );
+      if( usCode & 0xFF00 )
          {
-         logbufsize += 0x10000;
-         logbuf = realloc(logbuf, logbufsize);
+         *pszName++ = ( BYTE )(( usCode >> 8 ) & 0x00FF );
+         usLen--;
          }
-      if (! logbuf)
-         {
-         show_message("realloc/malloc failed!\n", 0, 0, 0);
-         return;
-         }
-      }
 
-   memcpy(&logbuf[logbufpos], &header, sizeof(header));
-   logbufpos += sizeof(header);
-
-   if (psz)
-      {
-      memcpy(&logbuf[logbufpos], psz, len);
-      logbufpos += len;
-      }
-
-   for (i = 0; i < ulParmNo; i++)
-      {
-      ulParm = va_arg(va, ULONG);
-      memcpy(&logbuf[logbufpos], &ulParm, sizeof(ULONG));
-      logbufpos += sizeof(ULONG);
+      pusUni++;
+      usLen--;
       }
 }
 
-void LogOutMessage(ULONG ulMsgNo, char *psz, ULONG ulParmNo, ...)
-{
-   va_list va;
 
-   va_start(va, ulParmNo);
-   LogOutMessagePrintf(ulMsgNo, psz, ulParmNo, va);
-   va_end(va);
+USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
+{
+   USHORT usCode;
+   USHORT usProcessedLen;
+
+   usProcessedLen = 0;
+
+   while (*pszName && usLen)
+      {
+      usCode = *pszName++;
+      if( IsDBCSLead(( UCHAR )usCode ))
+         {
+         usCode |= (( USHORT )*pszName++ << 8 ) & 0xFF00;
+         usProcessedLen++;
+         }
+
+      *pusUni++ = QueryNLS2Uni( usCode );
+      usLen--;
+      usProcessedLen++;
+      }
+
+   return usProcessedLen;
+}
+#endif
+
+
+BOOL OutputToFile(HANDLE hFile)
+{
+ULONG rc;
+ULONG ulType;
+ULONG ulAttr;
+
+   rc = DosQueryHType((HFILE)hFile, &ulType, &ulAttr);
+
+   switch (ulType & 0x000F)
+      {
+      case 0:
+         return TRUE;
+
+      case 1:
+      case 2:
+         return FALSE;
+/*
+      default:
+         return FALSE;
+*/
+      }
+
+   return FALSE;
 }
 
 

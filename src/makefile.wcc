@@ -4,4 +4,4 @@ PATH = ..
 
 !include makefile.mk
 
-DIRS = include ufat32 ufat32\win32 util ifs\libc ifs fat32chk partfilt ifsinf\ifs ifsinf\fat32
+DIRS = include ufat32 ufat32\win32 util ifs\libc ifs f32chk partfilt ifsinf\ifs ifsinf\fat32

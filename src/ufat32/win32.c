@@ -8,13 +8,9 @@
 
 #include "fat32c.h"
 
-extern HANDLE hDev;
+HANDLE hDev;
 
 char msg = FALSE;
-
-int logbufsize = 0;
-char *logbuf = NULL;
-int  logbufpos = 0;
 
 void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
 
@@ -42,7 +38,7 @@ void die ( char * error, DWORD rc )
     // Retrieve the system error message for the last-error code
 
     LPVOID lpMsgBuf;
-    DWORD dw = GetLastError(); 
+    DWORD dw = GetLastError();
 
 	if ( dw )
 		{
@@ -67,7 +63,7 @@ void die ( char * error, DWORD rc )
 
     LocalFree(lpMsgBuf);
  
-    quit (dw);
+    exit (dw);
 }
 
 void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
@@ -80,40 +76,28 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     SetFilePointer ( hDevice, (LONG) Offset , &HiOffset , FILE_BEGIN );
 }
 
-void read_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
-{
-    DWORD dwRead;
-    BOOL ret;
-
-    seek_to_sect ( hDevice, Sector, BytesPerSector );
-    ret = ReadFile ( hDevice, Data, NumSects*BytesPerSector, &dwRead, NULL );
-
-    if ( !ret )
-        die ( "Failed to read", ret );
-}
 
 BOOL read_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwRead )
 {
     return ReadFile ( hDevice, pData, ulNumBytes, dwRead, NULL );
 }
 
+
 ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
 {
-    read_sect ( hDevice, ulSector, SECTOR_SIZE, pbSector, nSectors );
+    DWORD dwRead;
+    BOOL ret;
+
+    seek_to_sect ( hDevice, ulSector, SECTOR_SIZE );
+
+    ret = ReadFile ( hDevice, pbSector, nSectors * SECTOR_SIZE, &dwRead, NULL );
+
+    if ( !ret )
+        return GetLastError();
+
     return 0;
 }
 
-void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
-{
-    DWORD dwWritten;
-    BOOL ret;
-
-    seek_to_sect ( hDevice, Sector, BytesPerSector );
-    ret=WriteFile ( hDevice, Data, NumSects*BytesPerSector, &dwWritten, NULL );
-
-    if ( !ret )
-        die ( "Failed to write", ret );
-}
 
 BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten )
 {
@@ -122,8 +106,26 @@ BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritte
 
 ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
 {
-    write_sect ( hDevice, ulSector, SECTOR_SIZE, pbSector, nSectors );
+    DWORD dwWritten;
+    BOOL ret;
+
+    seek_to_sect ( hDevice, ulSector, SECTOR_SIZE );
+    ret = WriteFile ( hDevice, pbSector, nSectors * SECTOR_SIZE, &dwWritten, NULL );
+
+    if ( !ret )
+        return GetLastError();
+
     return 0;
+}
+
+void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+{
+    DWORD rc;
+
+    rc = WriteSect ( hDevice, Sector, NumSects, Data );
+
+    if ( rc )
+        die ( "Failed to write", rc );
 }
 
 void open_drive (char *path , HANDLE *hDevice)
@@ -222,8 +224,6 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
 
   if ( !bRet )
   {
-      //die( "Failed to get parition info", -10 );
-
       show_message ( "IOCTL_DISK_GET_PARTITION_INFO failed, \n"
                "trying IOCTL_DISK_GET_PARTITION_INFO_EX\n", 0, 0, 0 );
 
@@ -290,8 +290,17 @@ void remount_media (HANDLE hDevice)
 
   if ( !bRet )
       die( "Failed to dismount device", -7 );
+}
 
-  //unlock_drive( hDevice );
+void cleanup ( void )
+{
+    if (hDev == 0)
+        return;
+
+    remount_media ( hDev );
+    unlock_drive ( hDev );
+    close_drive ( hDev);
+    hDev = 0;
 }
 
 void sectorio(HANDLE hDevice)
@@ -311,7 +320,6 @@ void stoplw(HANDLE hDevice)
 
 void close_drive(HANDLE hDevice)
 {
-    // Close Device
     CloseHandle( hDevice );
 }
 
@@ -343,74 +351,49 @@ void query_time(ULONGLONG *time)
     QueryPerformanceCounter( t );
 }
 
-void check_vol_label(char *path, char **vol_label)
+ULONG query_vol_label(char *path, char *pszVolLabel, int cbVolLabel)
 {
-    /* Current volume label  */
-    char  cur_vol[12];
-    char  testvol[12];
+    /* file system information buffer */
     ULONG volSerNum;
     ULONG maxFileNameLen;
     ULONG fsFlags;
     char  fsName[8];
-    char  c;
+    BOOL rc;
 
-    memset(cur_vol, 0, sizeof(cur_vol));
-    memset(testvol, 0, sizeof(testvol));
     memset(fsName,  0, sizeof(fsName));
 
     // Query the filesystem info, 
     // including the current volume label
-    GetVolumeInformation(path, cur_vol, sizeof(cur_vol),
-           &volSerNum, &maxFileNameLen, 
-           &fsFlags, fsName, sizeof(fsName));
+    rc = GetVolumeInformation(path, pszVolLabel, cbVolLabel,
+                              &volSerNum, &maxFileNameLen, 
+                              &fsFlags, fsName, sizeof(fsName));
 
-    show_message("The current file system type is %s.\n", 0, 0, 1, fsName);
+    if ( ! rc )
+        return GetLastError();
 
-    show_message( "The specified disk did not finish formatting.\n", 0, 528, 0 );
-
-    if (!cur_vol || !*cur_vol)
-        show_message( "The disk has no volume label\n", 0, 125, 0 );
-    else
-    {
-        if (!vol_label || !*vol_label || !**vol_label)
-        {
-            show_message( "Enter the current volume label for drive %s ", 0, 1318, 1, TYPE_STRING, path );
-
-            // Read the volume label
-            gets(testvol);
-        }
-    }
-
-    if (*testvol && *cur_vol && stricmp(testvol, cur_vol))
-    {
-        show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
-        quit (1);
-    }
-
-    show_message( "Warning! All data on hard disk %s will be lost!\n"
-                  "Proceed with FORMAT (Y/N)? ", 0, 1271, 1, TYPE_STRING, path );
-
-    c = getchar();
-
-    if ( c != '1' && toupper(c) != 'Y' )
-        quit (1);
- 
-    fflush(stdout);
-}
-
-char *get_vol_label(char *path, char *vol)
-{
-    return vol;
+    return 0;
 }
 
 void set_vol_label (char *path, char *vol)
 {
-
+    SetVolumeLabel(path, vol);
 }
 
 void set_datetime(DIRENTRY *pDir)
 {
+    SYSTEMTIME datetime;
 
+    GetSystemTime(&datetime);
+
+    pDir->wCreateTime.hours = datetime.wHour;
+    pDir->wCreateTime.minutes = datetime.wMinute;
+    pDir->wCreateTime.twosecs = datetime.wSecond / 2;
+    pDir->wCreateDate.day = datetime.wDay;
+    pDir->wCreateDate.month = datetime.wMonth;
+    pDir->wCreateDate.year = datetime.wYear - 1980;
+    pDir->wAccessDate.day = datetime.wDay;
+    pDir->wAccessDate.month = datetime.wMonth;
+    pDir->wAccessDate.year = datetime.wYear - 1980;
 }
 
 
@@ -438,91 +421,284 @@ char *get_error(USHORT rc)
 }
 
 
-void show_progress (float fPercentWritten)
+void query_current_disk(char *pszDrive)
 {
-    char str[128];
-    int len, i;
-    
-    sprintf(str, "%3.f", fPercentWritten);
-    len = show_message( "%s of the disk has been formatted\n", 0, 538, 1,
-                        TYPE_STRING, str );
+    TCHAR pBuf[MAX_PATH];
 
-    for (i = 0; i < len; i++)
-       printf("\b");
+    GetCurrentDirectory(sizeof(pBuf), pBuf);
 
-    fflush(stdout); 
+    pszDrive[0] = pBuf[0];
+    pszDrive[1] = ':';
+    pszDrive[2] = '\0';
 }
 
 
-void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va)
+#ifdef __UNICODE__
+BOOL IsDBCSLead( UCHAR uch )
 {
-#pragma pack (2)
-   struct
-   {
-      USHORT usRecordSize;
-      USHORT usMsgNo;
-      USHORT ulParmNo;
-      USHORT cbStrLen;
-   } header;
-#pragma pack()
-   ULONG ulParm;
-   int i, len;
+    return IsDBCSLeadByte(uch);
+}
 
-   header.usRecordSize = sizeof(header) + ulParmNo * sizeof(ULONG);
-   header.cbStrLen = 0;
 
-   if (psz)
+/* Unicode to OEM */
+VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
+{
+    int cbSize;
+
+    if (! pusUni || !usLen)
+       {
+       *pszName = '\0';
+       return;
+       }
+
+    cbSize = WideCharToMultiByte(CP_OEMCP, 0, pusUni, usLen, pszName, 2 * usLen, NULL, NULL);
+
+    if (! cbSize)
+       {
+       *pszName = '\0';
+       return;
+       }
+}
+
+
+/* OEM to Unicode */
+USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
+{
+    int cbSize;
+
+    if (! pszName || !usLen)
+       {
+       *pusUni = '\0';
+       return 0;
+       }
+
+    cbSize = MultiByteToWideChar(CP_OEMCP, 0, (char *)pszName, usLen, pusUni, usLen);
+
+    if (! cbSize)
+       {
+       *pusUni = '\0';
+       return 0;
+       }
+
+    return cbSize;
+}
+#endif
+
+
+BOOL OutputToFile(HANDLE hFile)
+{
+   DWORD rc = GetFileType(hFile);
+
+   switch (rc)
       {
-      len = strlen(psz) + 1;
-      header.cbStrLen = len;
-      header.usRecordSize += len;
+      case FILE_TYPE_DISK:
+         return TRUE;
+
+      case FILE_TYPE_CHAR:
+      case FILE_TYPE_PIPE:
+         return FALSE;
+/*
+      default:
+         return FALSE;
+*/
       }
 
-   header.usMsgNo = (USHORT)ulMsgNo;
-   header.ulParmNo = ulParmNo;
+   return FALSE;
+}
 
-   if (logbufpos + header.usRecordSize > logbufsize)
+
+size_t strnlen(const char * str, size_t n)
+{
+  const char *start = str;
+
+  while (*str && n-- > 0)
+    str++;
+
+  return str - start;
+}
+
+
+#define ERROR_MR_MSG_TOO_LONG   316
+#define ERROR_MR_INV_IVCOUNT    320
+#define ERROR_MR_UN_PERFORM     321
+
+
+ULONG DosInsertMessage(char **pTable, ULONG cTable,
+                       char *pszMsg, ULONG cbMsg, char *pBuf,
+                       ULONG cbBuf, ULONG *pcbMsg)
+{
+  int i;
+
+  // Check arguments
+  if (!pszMsg) return ERROR_INVALID_PARAMETER;                 // Nothing to proceed
+  if (!pBuf) return ERROR_INVALID_PARAMETER;                   // No target buffer
+  if ((cTable) && (!pTable)) return ERROR_INVALID_PARAMETER;   // No inserting strings array
+  if (cbMsg > cbBuf) return ERROR_MR_MSG_TOO_LONG;             // Target buffer too small
+
+  if (!cTable)
+  {
+    // If nothing to insert then just copy message to buffer
+    strncpy(pBuf, pszMsg, cbMsg);
+    *pcbMsg = strlen(pszMsg);
+    return NO_ERROR;
+  } else {
+    // Produce output string
+    PCHAR src;
+    PCHAR dst;
+    int   srclen;
+    int   dstlen;
+    int   len, rest, maxlen = 0;
+    int   ivcount = 0;
+    int   i;
+
+    src    = (char *)pszMsg;
+    dst    = pBuf;
+    srclen = cbMsg;
+    maxlen = srclen;
+    dstlen = 0;
+
+    // add params lenths (without zeroes)
+    for (i = 0; i < cTable; i++)
+      maxlen += strnlen(pTable[i], cbBuf) - 1;
+
+    for (;;)
+    {
+      if (*src == '%')
       {
-      if (! logbufsize)
-         logbufsize = 0x10000;
-      if (! logbuf)
-         logbuf = malloc(logbufsize);
+        src++;
+        srclen--;
+
+        ivcount++;
+
+        switch (*src)
+        {
+          case '0': // %0
+            srclen--;
+            src++;
+            break;
+          case '1': // %1
+          case '2': // %2
+          case '3': // %3
+          case '4': // %4
+          case '5': // %5
+          case '6': // %6
+          case '7': // %7
+          case '8': // %8
+          case '9': // %9
+            len = strnlen(pTable[*src - '1'], cbBuf);
+            strncpy(dst, pTable[*src - '1'],  len);
+            src++;
+            dst    += len;
+            dstlen += len;
+            break;
+          default:  // Can't perfom action?
+            if (srclen <= 0)
+              break;
+
+            ivcount--;
+
+            *dst++ = '%';
+            dstlen++;
+
+            *dst++ = *src++;
+            srclen--;
+            dstlen++;
+        }
+      }
       else
-         {
-         logbufsize += 0x10000;
-         logbuf = realloc(logbuf, logbufsize);
-         }
-      if (! logbuf)
-         {
-         show_message("realloc/malloc failed!\n", 0, 0, 0);
-         return;
-         }
-      }
-
-   memcpy(&logbuf[logbufpos], &header, sizeof(header));
-   logbufpos += sizeof(header);
-
-   if (psz)
       {
-      memcpy(&logbuf[logbufpos], psz, len);
-      logbufpos += len;
+        *dst++ = *src++;
+        srclen--;
+        dstlen++;
       }
 
-   for (i = 0; i < ulParmNo; i++)
-      {
-      ulParm = va_arg(va, ULONG);
-      memcpy(&logbuf[logbufpos], &ulParm, sizeof(ULONG));
-      logbufpos += sizeof(ULONG);
-      }
+     if (ivcount > 9)
+       return ERROR_MR_INV_IVCOUNT;
+
+     if (srclen <= 0)
+       break;
+
+     // if no bytes remaining for terminating zero, return an error
+     if (dstlen > maxlen)
+     {
+       *pcbMsg = cbBuf;
+       *dst++ = '\0';
+       dstlen++;
+       return ERROR_MR_MSG_TOO_LONG;
+     }
+   }
+
+   *dst++ = '\0';
+   dstlen++;
+   *pcbMsg = dstlen;
+
+   return NO_ERROR;
+   }
 }
 
-void LogOutMessage(ULONG ulMsgNo, char *psz, ULONG ulParmNo, ...)
-{
-   va_list va;
 
-   va_start(va, ulParmNo);
-   LogOutMessagePrintf(ulMsgNo, psz, ulParmNo, va);
-   va_end(va);
+INT cdecl iShowMsg2 ( PSZ pszMsg, USHORT usNumFields, va_list va )
+{
+static BYTE szErrNo[12] = "";
+static BYTE szOut[MAX_MESSAGE];
+static BYTE rgNum[9][50];
+ULONG ulReplySize;
+ULONG rc;
+PSZ    rgPSZ[9];
+USHORT usIndex;
+PSZ    pszMess;
+char   *p;
+int    i;
+
+   pszMess = pszMsg;
+
+   memset(szOut, 0, sizeof(szOut));
+   memset(rgPSZ, 0, sizeof(rgPSZ));
+   memset(rgNum, 0, sizeof(rgNum));
+   for (usIndex = 0; usIndex < usNumFields; usIndex++)
+      {
+      USHORT usType = va_arg(va, USHORT);
+      if (usType == TYPE_PERC)
+         {
+         sprintf(rgNum[usIndex], "%3u", va_arg(va, USHORT));
+         rgPSZ[usIndex] = rgNum[usIndex];
+         }
+      else if (usType == TYPE_LONG || usType == TYPE_LONG2)
+         {
+         if (!usIndex && usType == TYPE_LONG)
+            sprintf(rgNum[usIndex], "%12lu", va_arg(va, ULONG));
+         else
+            sprintf(rgNum[usIndex], "%lu", va_arg(va, ULONG));
+         rgPSZ[usIndex] = rgNum[usIndex];
+         }
+      else if (usType == TYPE_DOUBLE || usType == TYPE_DOUBLE2)
+         {
+         PSZ p;
+         if (!usIndex && usType == TYPE_DOUBLE)
+            sprintf(rgNum[usIndex], "%12.0lf", va_arg(va, double));
+         else
+            sprintf(rgNum[usIndex], "%lf", va_arg(va, double));
+         p = strchr(rgNum[usIndex], '.');
+         if (p)
+            *p = 0;
+         rgPSZ[usIndex] = rgNum[usIndex];
+         }
+      else if (usType == TYPE_STRING)
+         {
+         rgPSZ[usIndex] = va_arg(va, PSZ);
+         }
+      }
+
+   rc = DosInsertMessage(rgPSZ,
+      usNumFields,
+      pszMess,
+      strlen(pszMess),
+      szOut + strlen(szOut),
+      sizeof(szOut) - strlen(szOut),
+      &ulReplySize);
+   printf("%s", szOut);
+
+   return ulReplySize;
 }
 
 
@@ -530,22 +706,24 @@ int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, u
 {
     va_list va;
     UCHAR szBuf[1024];
-    int i;
+    int i, len = 0;
     char *dummy;
 
     va_start(va, usNumFields);
 
     if (pszMsg)
        {
-       ULONG arg;
-
-       if (strstr(pszMsg, "%s") && usMsg)
-          // TYPE_STRING
-          arg = va_arg(va, ULONG);
-
-       // output message which is not in oso001.msg
-       vsprintf ( szBuf, pszMsg, va );
-       printf ( "%s", szBuf );
+       if (usMsg)
+          {
+          // output message which is not in oso001.msg
+          len = iShowMsg2 ( pszMsg, usNumFields, va );
+          }
+       else
+          {
+          vsprintf( szBuf, pszMsg, va );
+          printf("%s", szBuf);
+          len = strlen(szBuf);
+          }
        }
 
     // output message to CHKDSK log
@@ -571,5 +749,40 @@ int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, u
 
     va_end( va );
 
-    return strlen(szBuf);
+    // output additional message for /P switch specified
+    if (usMsg && msg)
+       {
+       va_start(va, usNumFields);
+       printf("\nMSG_%u", usMsg);
+
+       for (i = 0; i < usNumFields; i++)
+          {
+          USHORT usType = va_arg(va, USHORT);
+          if (usType == TYPE_PERC)
+             {
+             USHORT arg = va_arg(va, USHORT);
+             printf(",%u", arg);
+             }
+          else if (usType == TYPE_LONG || usType == TYPE_LONG2)
+             {
+             ULONG arg = va_arg(va, ULONG);
+             printf(",%lu", arg);
+             }
+          else if (usType == TYPE_DOUBLE || usType == TYPE_DOUBLE2)
+             {
+             double arg = va_arg(va, double);
+             printf(",%lf", arg);
+             }
+          else if (usType == TYPE_STRING)
+             {
+             PSZ arg = va_arg(va, PSZ);
+             printf(",%s", arg);
+             }
+          }
+
+       printf("\n");
+       va_end( va );
+       }
+
+    return len;
 }

@@ -3,22 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define INCL_BASE
-#define INCL_ERRORS
-
-#include <os2.h>
-#include <uconv.h>
-
-#include "fat32def.h"
-
-#define MAX_TRANS_TABLE     0x100
-#define ARRAY_TRANS_TABLE   ( 0x10000 / MAX_TRANS_TABLE )
-
-#define INDEX_OF_START      MAX_TRANS_TABLE
-#define INDEX_OF_FIRSTINFO  MAX_TRANS_TABLE
-#define INDEX_OF_LCASECONV  ( MAX_TRANS_TABLE + 1 )
-#define INDEX_OF_END        INDEX_OF_LCASECONV
-#define EXTRA_ELEMENT       ( INDEX_OF_END - INDEX_OF_START + 1 )
+#include "fat32c.h"
 
 #define RETURN_PARENT_DIR 0xFFFF
 
@@ -32,80 +17,7 @@
 #define LONGNAME_MAKE_UNIQUE 2
 #define LONGNAME_ERROR       3
 
-extern F32PARMS f32Parms;
-
-#define ARRAY_COUNT_PAGE    4
-#define MAX_ARRAY_PAGE      ( 0x100 / ARRAY_COUNT_PAGE )
-
-#define ARRAY_COUNT_UNICODE 256
-#define MAX_ARRAY_UNICODE   (( USHORT )( 0x10000L / ARRAY_COUNT_UNICODE ))
-
-HMODULE hModConv = 0;
-HMODULE hModUni  = 0;
-
-int (* CALLCONV pUniCreateUconvObject)(UniChar * code_set, UconvObject * uobj);
-int (* CALLCONV pUniUconvToUcs)(
-             UconvObject uobj,         /* I  - Uconv object handle         */
-             void    * * inbuf,        /* IO - Input buffer                */
-             size_t    * inbytes,      /* IO - Input buffer size (bytes)   */
-             UniChar * * outbuf,       /* IO - Output buffer size          */
-             size_t    * outchars,     /* IO - Output size (chars)         */
-             size_t    * subst  );     /* IO - Substitution count          */
-int (* CALLCONV pUniUconvFromUcs)(
-             UconvObject uobj,
-             UniChar * * inbuf,
-             size_t    * inchars,
-             void    * * outbuf,
-             size_t    * outbytes,
-             size_t    * subst  );
-int (* CALLCONV pUniMapCpToUcsCp)( ULONG ulCp, UniChar *ucsCp, size_t n );
-UniChar (* CALLCONV pUniTolower )( UniChar uin );
-int (* CALLCONV pUniQueryUconvObject )
-    (UconvObject uobj, uconv_attribute_t *attr, size_t size, char first[256], char other[256], udcrange_t udcrange[32]);
-
-static ULONG     ulNewCP = 0;
-
-static BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
-
-typedef struct _UniPage
-{
-USHORT usCode[256];
-} UNIPAGE, *PUNIPAGE;
-
-static PUSHORT  rgUnicode[ ARRAY_COUNT_UNICODE ] = { NULL, };
-
-static UCHAR rgFirstInfo[ 256 ] = { 0 , };
-static PUNIPAGE rgPage[ ARRAY_COUNT_PAGE ] = { NULL, };
-
-static UCHAR rgLCase[ 256 ] =
-{   0,
-    1,   2,   3,   4,   5,   6,   7,   8,   9,  10,
-   11,  12,  13,  14,  15,  16,  17,  18,  19,  20,
-   21,  22,  23,  24,  25,  26,  27,  28,  29,  30,
-   31,  32,  33,  34,  35,  36,  37,  38,  39,  40,
-   41,  42,  43,  44,  45,  46,  47,  48,  49,  50,
-   51,  52,  53,  54,  55,  56,  57,  58,  59,  60,
-   61,  62,  63,  64,
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-   91,  92,  93,  94,  95,  96,  97,  98,  99, 100,
-  101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
-  111, 112, 113, 114, 115, 116, 117, 118, 119, 120,
-  121, 122, 123, 124, 125, 126, 127, 128, 129, 130,
-  131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
-  141, 142, 143, 144, 145, 146, 147, 148, 149, 150,
-  151, 152, 153, 154, 155, 156, 157, 158, 159, 160,
-  161, 162, 163, 164, 165, 166, 167, 168, 169, 170,
-  171, 172, 173, 174, 175, 176, 177, 178, 179, 180,
-  181, 182, 183, 184, 185, 186, 187, 188, 189, 190,
-  191, 192, 193, 194, 195, 196, 197, 198, 199, 200,
-  201, 202, 203, 204, 205, 206, 207, 208, 209, 210,
-  211, 212, 213, 214, 215, 216, 217, 218, 219, 220,
-  221, 222, 223, 224, 225, 226, 227, 228, 229, 230,
-  231, 232, 233, 234, 235, 236, 237, 238, 239, 240,
-  241, 242, 243, 244, 245, 246, 247, 248, 249, 250,
-  251, 252, 253, 254, 255
-};
+BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
 
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
@@ -114,8 +26,7 @@ ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster);
-ULONG GetNextCluster2(PCDINFO pCD, ULONG ulCluster);
+ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pCD);
 BOOL  MarkDiskStatus(PCDINFO pCD, BOOL fClean);
@@ -128,14 +39,13 @@ BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
 USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
 BYTE GetVFATCheckSum(PDIRENTRY pDir);
 APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
+PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck);
 USHORT DBCSStrlen( const PSZ pszStr );
 BOOL IsDBCSLead( UCHAR uch );
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
-PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck);
 USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen);
 USHORT QueryNLS2Uni( USHORT usCode );
 APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
-APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usEntriesNeeded);
@@ -145,18 +55,43 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName);
 BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster);
-VOID TranslateAllocBuffer( VOID );
-BOOL TranslateInit(PVOID16 rgTrans[], USHORT usSize);
-VOID GetFirstInfo( PBOOL pFirstInfo );
-VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
-BOOL LoadTranslateTable(BOOL fSilent);
-VOID GetCaseConversion( PUCHAR pCase );
 BOOL UpdateFSInfo(PCDINFO pCD);
 ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
 USHORT MakeChain(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulSize);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
+BOOL IsCharValid(char ch);
 
 void set_datetime(DIRENTRY *pDir);
+
+/******************************************************************
+*
+******************************************************************/
+BOOL IsCharValid(char ch)
+{
+    return (BOOL)strchr(rgValidChars, ch);
+}
+
+/******************************************************************
+*
+******************************************************************/
+/* Get the last-character. (sbcs/dbcs) */
+int lastchar(const char *string)
+{
+    UCHAR *s;
+    unsigned int c = 0;
+    int i, len = strlen(string);
+    s = (UCHAR *)string;
+    for(i = 0; i < len; i++)
+    {
+        c = *(s + i);
+        if(IsDBCSLead(( UCHAR )c))
+        {
+            c = (c << 8) + ( unsigned int )*(s + i + 1);
+            i++;
+        }
+    }
+    return c;
+}
 
 /******************************************************************
 *
@@ -210,22 +145,11 @@ ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
    USHORT usFat;
    APIRET rc;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("WriteFatSector");
-
    if (pCD->ulCurFATSector != ulSector)
-      //{
-      //CritMessage("FAT32: WriteFatSector: Sectors do not match!");
-      //Message("ERROR: WriteFatSector: Sectors do not match!");
       return ERROR_SECTOR_NOT_FOUND;
-      //}
 
    if (ulSector >= pCD->BootSect.bpb.BigSectorsPerFat)
-      //{
-      //CritMessage("ERROR: WriteFatSector: Sector %ld too high", ulSector);
-      //Message("ERROR: WriteFatSector: Sector %ld too high", ulSector);
       return ERROR_SECTOR_NOT_FOUND;
-      //}
 
    for (usFat = 0; usFat < pCD->BootSect.bpb.NumberOfFATs; usFat++)
       {
@@ -242,33 +166,6 @@ ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
       }
 
    return 0;
-}
-
-/******************************************************************
-*
-******************************************************************/
-ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster)
-{
-      ulCluster = GetNextCluster2(pCD, ulCluster);
-      return ulCluster;
-}
-
-/******************************************************************
-*
-******************************************************************/
-ULONG GetNextCluster2(PCDINFO pCD, ULONG ulCluster)
-{
-   PULONG pulCluster;
-
-   if (ReadFatSector(pCD, ulCluster / 128))
-      return FAT_EOF;
-
-   pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
-
-   ulCluster = *pulCluster & FAT_EOF;
-   if (ulCluster >= FAT_EOF2 && ulCluster <= FAT_EOF)
-      return FAT_EOF;
-   return ulCluster;
 }
 
 /******************************************************************
@@ -292,11 +189,8 @@ ULONG GetFreeSpace(PCDINFO pCD)
          ulTotalFree++;
       }
 
-   //if (pCD->FSInfo.ulFreeClusters != ulTotalFree)
-   //   {
-      pCD->FSInfo.ulFreeClusters = ulTotalFree;
-      UpdateFSInfo(pCD);
-   //   }
+   pCD->FSInfo.ulFreeClusters = ulTotalFree;
+   UpdateFSInfo(pCD);
 
    return ulTotalFree;
 }
@@ -311,11 +205,6 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
    ULONG ulSector;
    USHORT usFat;
    PBYTE pbSector;
-
-   //if (!pVolInfo->fDiskCleanOnMount && fClean)
-   //   return TRUE;
-   //if (pVolInfo->fWriteProtected)
-   //   return TRUE;
 
    if (pCD->ulCurFATSector != 0)
       {
@@ -339,7 +228,6 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
       Trick, set fDiskClean to FALSE, so WriteSector
       won't set is back to dirty again
    */
-   //pVolInfo->fDiskClean = FALSE;
 
    ulSector = 0L;
    for (usFat = 0; usFat < pCD->BootSect.bpb.NumberOfFATs; usFat++)
@@ -351,8 +239,6 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
       ulSector += pCD->BootSect.bpb.BigSectorsPerFat;
       }
 
-   //pVolInfo->fDiskClean = fClean;
-
    return TRUE;
 }
 
@@ -360,8 +246,6 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
 *
 ******************************************************************/
 ULONG FindDirCluster(PCDINFO pCD,
-   //struct cdfsi far * pcdfsi,       /* pcdfsi   */
-   //struct cdfsd far * pcdfsd,       /* pcdfsd   */
    PSZ pDir,
    USHORT usCurDirEnd,
    USHORT usAttrWanted,
@@ -373,26 +257,12 @@ ULONG FindDirCluster(PCDINFO pCD,
    DIRENTRY DirEntry;
    PSZ    p;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("FindDirCluster for %s, CurDirEnd %u, AttrWanted %u", pDir, usCurDirEnd, usAttrWanted );
-
-   //if (pcdfsi &&
-   //   (pcdfsi->cdi_flags & CDI_ISVALID) &&
-   //   !(pcdfsi->cdi_flags & CDI_ISROOT) &&
-   //   usCurDirEnd != 0xFFFF)
-   //   {
-   //   pDir += usCurDirEnd;
-   //   ulCluster = *(PULONG)pcdfsd;
-   //   }
-   //else
-   //   {
-      ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
-      if (strlen(pDir) >= 2)
-         {
-         if (pDir[1] == ':')
-            pDir += 2;
-         }
-   //   }
+   ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
+   if (strlen(pDir) >= 2)
+      {
+      if (pDir[1] == ':')
+         pDir += 2;
+      }
 
    if (*pDir == '\\')
       pDir++;
@@ -411,17 +281,9 @@ ULONG FindDirCluster(PCDINFO pCD,
       *pDirEnd = pDir;
    ulCluster = FindPathCluster(pCD, ulCluster, szDir, &DirEntry, NULL);
    if (ulCluster == FAT_EOF)
-      //{
-      //if (f32Parms.fMessageActive & LOG_FUNCS)
-      //   Message("FindDirCluster for '%s', not found", szDir);
       return FAT_EOF;
-      //}
    if (ulCluster != FAT_EOF && !(DirEntry.bAttr & FILE_DIRECTORY))
-      //{
-      //if (f32Parms.fMessageActive & LOG_FUNCS)
-      //   Message("FindDirCluster for '%s', not a directory", szDir);
       return FAT_EOF;
-      //}
 
    if (*pDir)
       {
@@ -459,10 +321,6 @@ PDIRENTRY pDirEnd;
 BOOL fFound;
 USHORT usMode;
 BYTE   bCheck;
-//PROCINFO ProcInfo;
-
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
 
    if (pDirEntry)
       {
@@ -488,14 +346,10 @@ BYTE   bCheck;
 
    pDirStart = malloc(pCD->ulClusterSize);
    if (!pDirStart)
-      //{
-      //Message("FAT32: Not enough memory for cluster in FindPathCluster");
       return FAT_EOF;
-      //}
    pszLongName = malloc(FAT32MAXPATHCOMP * 2);
    if (!pszLongName)
       {
-      //Message("FAT32: Not enough memory for buffers in FindPathCluster");
       free(pDirStart);
       return FAT_EOF;
       }
@@ -503,13 +357,9 @@ BYTE   bCheck;
    pszPart = pszLongName + FAT32MAXPATHCOMP;
 
    usMode = MODE_SCAN;
-   //GetProcInfo(&ProcInfo, sizeof ProcInfo);
    /*
       Allow EA files to be found!
    */
-   //if (ProcInfo.usPdb && f32Parms.fEAS && IsEASFile(pszPath))
-   //   ProcInfo.usPdb = 0;
-
    while (usMode != MODE_RETURN && ulCluster != FAT_EOF)
       {
       usMode = MODE_SCAN;
@@ -540,7 +390,7 @@ BYTE   bCheck;
       fFound = FALSE;
       while (usMode == MODE_SCAN && ulCluster != FAT_EOF)
          {
-         ReadCluster(pCD, ulCluster, pDirStart);
+         ReadCluster(pCD, ulCluster, (void *)pDirStart);
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->ulClusterSize);
 
@@ -557,7 +407,6 @@ BYTE   bCheck;
             else if ((pDir->bAttr & 0x0F) != FILE_VOLID)
                {
                MakeName(pDir, szShortName, sizeof szShortName);
-               //FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
                strupr(szShortName); // !!! @todo DBCS/Unicode
                if (strlen(pszLongName) && bCheck != GetVFATCheckSum(pDir))
                   memset(pszLongName, 0, FAT32MAXPATHCOMP);
@@ -624,20 +473,13 @@ BYTE   bCheck;
             }
          if (usMode != MODE_SCAN)
             break;
-         ulCluster = GetNextCluster(pCD, ulCluster);
+         ulCluster = GetNextCluster(pCD, ulCluster, TRUE);
          if (!ulCluster)
             ulCluster = FAT_EOF;
          }
       }
    free(pDirStart);
    free(pszLongName);
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   {
-   //   if (ulCluster != FAT_EOF)
-   //      Message("FindPathCluster for %s found cluster %ld", pszPath, ulCluster);
-   //   else
-   //      Message("FindPathCluster for %s returned EOF", pszPath);
-   //   }
    return ulCluster;
 }
 
@@ -650,8 +492,6 @@ USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark)
    PSZ   pszFile;
 
    ulDirCluster = FindDirCluster(pCD,
-      //NULL,
-      //NULL,
       pMark->szFileName,
       0xFFFF,
       RETURN_PARENT_DIR,
@@ -685,10 +525,7 @@ APIRET MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
 
    ulCluster = FindPathCluster(pCD, ulDirCluster, pszFileName, &OldEntry, NULL);
    if (ulCluster == FAT_EOF)
-      //{
-      //CritMessage("FAT32: MarkfileEAS : %s not found!", pszFileName);
       return ERROR_FILE_NOT_FOUND;
-      //}
    memcpy(&NewEntry, &OldEntry, sizeof (DIRENTRY));
    if( HAS_OLD_EAS( NewEntry.fEAS ))
         NewEntry.fEAS = FILE_HAS_NO_EAS;
@@ -706,7 +543,7 @@ APIRET MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
 /************************************************************************
 *
 ************************************************************************/
-APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName) //, USHORT usIOMode)
+APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName)
 {
    PDIRENTRY pDirectory;
    PDIRENTRY pDir2;
@@ -723,9 +560,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
    USHORT    usClusterCount;
    BOOL      fNewCluster;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("ModifyDirectory DirCluster %ld, Mode = %d",
-   //   ulDirCluster, usMode);
+   //printf("pszLongName(0)=%s\n", pszLongName);
 
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
@@ -737,6 +572,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
          rc = MakeShortName(pCD, ulDirCluster, pszLongName, DirNew.bFileName);
+         //printf("pszLongName(1)=%s\n", pszLongName);
          if (rc == LONGNAME_ERROR)
             return ERROR_FILE_EXISTS;
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
@@ -749,12 +585,14 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
 
       usEntriesNeeded = 1;
       if (pszLongName)
+         {
 #if 0
          usEntriesNeeded += strlen(pszLongName) / 13 +
             (strlen(pszLongName) % 13 ? 1 : 0);
 #else
          usEntriesNeeded += ( DBCSStrlen( pszLongName ) + 12 ) / 13;
 #endif
+         }
       }
 
    if (usMode == MODIFY_DIR_RENAME ||
@@ -788,7 +626,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
       usClusterCount++;
       if (!fNewCluster)
          {
-         rc = ReadCluster(pCD, ulCluster, pDir2); //, usIOMode);
+         rc = ReadCluster(pCD, ulCluster, pDir2);
          if (rc)
             {
             free(pDirectory);
@@ -846,10 +684,8 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                switch (usMode)
                   {
                   case MODIFY_DIR_UPDATE:
-                     //if (f32Parms.fMessageActive & LOG_FUNCS)
-                     //   Message(" Updating cluster");
                      memcpy(pWork, pNew, sizeof (DIRENTRY));
-                     rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
+                     rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                      if (rc)
                         {
                         free(pDirectory);
@@ -860,13 +696,9 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
 
                   case MODIFY_DIR_DELETE:
                   case MODIFY_DIR_RENAME:
-                     //if (f32Parms.fMessageActive & LOG_FUNCS)
-                     //   Message(" Removing entry from cluster");
                      pWork2 = pLNStart;
                      while (pWork2 < pWork)
                         {
-                        //if (f32Parms.fMessageActive & LOG_FUNCS)
-                        //   Message("Deleting Longname entry.");
                         pWork2->bFileName[0] = DELETED_ENTRY;
                         pWork2++;
                         }
@@ -878,7 +710,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                      if (ulPrevCluster != FAT_EOF &&
                         pLNStart < pDir2)
                         {
-                        rc = WriteCluster(pCD, ulPrevCluster, pDirectory); //, usIOMode);
+                        rc = WriteCluster(pCD, ulPrevCluster, (void *)pDirectory);
                         if (rc)
                            {
                            free(pDirectory);
@@ -889,7 +721,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                      /*
                         Write current cluster
                      */
-                     rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
+                     rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                      if (rc)
                         {
                         free(pDirectory);
@@ -918,21 +750,20 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
-               //if (f32Parms.fMessageActive & LOG_FUNCS)
-               //   Message(" Inserting entry into 2 clusters");
-
                pWork = (PDIRENTRY)CompactDir(pDirectory, pCD->ulClusterSize * 2, usEntriesNeeded);
+               //printf("pszLongName(2)=%s\n", pszLongName);
                pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
+               //printf("pszLongName(3)=%s\n", pszLongName);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
 
-               rc = WriteCluster(pCD, ulPrevCluster, pDirectory); //, usIOMode);
+               rc = WriteCluster(pCD, ulPrevCluster, (void *)pDirectory);
                if (rc)
                   {
                   free(pDirectory);
                   return rc;
                   }
 
-               rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
+               rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                if (rc)
                   {
                   free(pDirectory);
@@ -947,13 +778,12 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
-               //if (f32Parms.fMessageActive & LOG_FUNCS)
-               //   Message(" Inserting entry into 1 cluster");
-
+               //printf("pszLongName(4)=%s\n", pszLongName);
                pWork = (PDIRENTRY)CompactDir(pDir2, pCD->ulClusterSize, usEntriesNeeded);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
+               //printf("pszLongName(5)=%s\n", pszLongName);
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck); ////
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
-               rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
+               rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                if (rc)
                   {
                   free(pDirectory);
@@ -965,7 +795,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
             else if (usFreeEntries > 0)
                {
                MarkFreeEntries(pDir2, pCD->ulClusterSize);
-               rc = WriteCluster(pCD, ulCluster, pDir2); //, usIOMode);
+               rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                if (rc)
                   {
                   free(pDirectory);
@@ -984,12 +814,11 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
             pLNStart = (PDIRENTRY)((PBYTE)pLNStart - pCD->ulClusterSize);
 
 
-         ulNextCluster = GetNextCluster(pCD, ulCluster);
+         ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
          if (!ulNextCluster)
             ulNextCluster = FAT_EOF;
          if (ulNextCluster == FAT_EOF)
             {
-
             if (usMode == MODIFY_DIR_UPDATE ||
                 usMode == MODIFY_DIR_DELETE ||
                 usMode == MODIFY_DIR_RENAME)
@@ -1002,7 +831,6 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
             if (ulNextCluster == FAT_EOF)
                {
                free(pDirectory);
-               //Message("Modify Directory: Disk Full!");
                return ERROR_DISK_FULL;
                }
             fNewCluster = TRUE;
@@ -1063,55 +891,6 @@ BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck)
    return TRUE;
 }
 
-/************************************************************************
-*
-************************************************************************/
-VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
-{
-   USHORT usPage;
-   USHORT usChar;
-   USHORT usCode;
-
-   //if (!f32Parms.fTranslateNames)
-   //   {
-   //   while (*pusUni && usLen)
-   //      {
-   //      *pszName++ = (BYTE)*pusUni++;
-   //      usLen--;
-   //      }
-
-   //   return;
-   //   }
-
-/*
-   GetCurrentCodePage();
-*/
-
-   while (*pusUni && usLen)
-      {
-      usPage = ((*pusUni) >> 8) & 0x00FF;
-      usChar = (*pusUni) & 0x00FF;
-
-      usCode = QueryUni2NLS( usPage, usChar );
-      *pszName++ = ( BYTE )( usCode & 0x00FF );
-      if( usCode & 0xFF00 )
-         {
-         *pszName++ = ( BYTE )(( usCode >> 8 ) & 0x00FF );
-         usLen--;
-         }
-
-      pusUni++;
-      usLen--;
-      }
-}
-
-/************************************************************************
-*
-************************************************************************/
-USHORT QueryUni2NLS( USHORT usPage, USHORT usChar )
-{
-    return rgPage[ usPage / MAX_ARRAY_PAGE ][ usPage % MAX_ARRAY_PAGE ].usCode[ usChar ];
-}
 
 /******************************************************************
 *
@@ -1152,10 +931,6 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    PSZ  pszUpper;
    APIRET rc;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("MakeShortName for %s, dircluster %lu",
-   //      pszLongName, ulDirCluster);
-
    usLongName = LONGNAME_OFF;
    memset(szShortName, 0x20, 11);
    szShortName[11] = 0;
@@ -1168,13 +943,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    if (!pszUpper)
       return LONGNAME_ERROR;
 
-   //rc = FSH_UPPERCASE(pszLongName, usIndex, pszUpper);
    strupr(pszLongName); // !!! @todo DBCS/Unicode
-   //if (rc)
-   //   {
-   //   free(pszUpper);
-   //   return LONGNAME_ERROR;
-   //   }
 
    /* Skip all leading dots */
    p = pszUpper;
@@ -1192,7 +961,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    /*
       Is the name a valid 8.3 name ?
    */
-   if ((!strcmp(pszLongName, pszUpper)) && // || IsDosSession()) &&
+   if ((!strcmp(pszLongName, pszUpper)) &&
       pFirstDot == pLastDot &&
       pLastDot - pszUpper <= 8 &&
       strlen(pLastDot) <= 4)
@@ -1203,7 +972,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
          {
          while (*p)
             {
-            if (*p < 128 && !strchr(rgValidChars, *p) && *p != '.')
+            if (*p < 128 && ! IsCharValid(*p) && *p != '.')
                break;
             p++;
             }
@@ -1222,14 +991,6 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
          return usLongName;
          }
       }
-
-#if 0
-   if (IsDosSession())
-      {
-      free(pszUpper);
-      return LONGNAME_ERROR;
-      }
-#endif
 
    usLongName = LONGNAME_OK;
 
@@ -1279,7 +1040,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
          else
             usLongName = LONGNAME_MAKE_UNIQUE;
          }
-      else if (strchr(rgValidChars, *p))
+      else if (IsCharValid(*p))
          szShortName[usIndex++] = *p;
       else
          {
@@ -1398,6 +1159,8 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
    USHORT uniEnd[13];
    PUSHORT p;
 
+   //printf("pszLongName(6)=%s\n", pszLongName);
+
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
@@ -1416,6 +1179,7 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
    pLN = (PLNENTRY)pDir;
 
    bCurEntry = 1;
+   //printf("pszLongName(7)=%s\n", pszLongName);
    while (*pszLongName)
       {
 #if 0
@@ -1438,7 +1202,9 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
       memset(uniEnd, 0xFF, sizeof uniEnd);
       memset(uniName, 0, sizeof uniName);
 
+      //printf("pszLongName(8)=%s\n", pszLongName);
       pszLongName += Translate2Win(pszLongName, uniName, 13);
+      //printf("pszLongName(9)=%s\n", pszLongName);
 
       p = uniName;
       for (usIndex = 0; usIndex < 5; usIndex ++)
@@ -1494,76 +1260,11 @@ USHORT DBCSStrlen( const PSZ pszStr )
    return usRet;
 }
 
-/******************************************************************
-*
-******************************************************************/
-USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
-{
-   USHORT usCode;
-   USHORT usProcessedLen;
-
-   usProcessedLen = 0;
-
-   //if (!f32Parms.fTranslateNames)
-   //   {
-   //   while (*pszName && usLen)
-   //      {
-   //      *pusUni++ = (USHORT)*pszName++;
-   //      usLen--;
-   //      usProcessedLen++;
-   //      }
-   //   return usProcessedLen;
-   //   }
-
-/*
-   GetCurrentCodePage();
-*/
-
-   while (*pszName && usLen)
-      {
-      usCode = *pszName++;
-      if( IsDBCSLead(( UCHAR )usCode ))
-         {
-         usCode |= (( USHORT )*pszName++ << 8 ) & 0xFF00;
-         usProcessedLen++;
-         }
-
-      *pusUni++ = QueryNLS2Uni( usCode );
-      usLen--;
-      usProcessedLen++;
-      }
-
-   return usProcessedLen;
-}
-
-/******************************************************************
-*
-******************************************************************/
-USHORT QueryNLS2Uni( USHORT usCode )
-{
-    return rgUnicode[ usCode / MAX_ARRAY_UNICODE ][ usCode % MAX_ARRAY_UNICODE ];
-}
 
 /******************************************************************
 *
 ******************************************************************/
 APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
-{
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("SetNextCluster");
-
-   //if (GetFatAccess(pVolInfo, "SetNextCluster"))
-   //   return FAT_EOF;
-
-   ulCluster = SetNextCluster2(pCD, ulCluster, ulNext);
-   //ReleaseFat(pVolInfo);
-   return ulCluster;
-}
-
-/******************************************************************
-*
-******************************************************************/
-APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 {
    PULONG pulCluster;
    BOOL fUpdateFSInfo;
@@ -1588,7 +1289,7 @@ APIRET SetNextCluster2(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
       /*
          An existing chain is extended
       */
-      ulNext = SetNextCluster2(pCD, FAT_ASSIGN_NEW, FAT_EOF);
+      ulNext = SetNextCluster(pCD, FAT_ASSIGN_NEW, FAT_EOF);
       if (ulNext == FAT_EOF)
          return FAT_EOF;
       ulReturn = ulNext;
@@ -1773,9 +1474,6 @@ ULONG GetFreeCluster(PCDINFO pCD)
    ULONG ulCluster;
    BOOL fStartAt2;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("GetFreeCluster");
-
    if (pCD->FSInfo.ulFreeClusters == 0L)
       return FAT_EOF;
 
@@ -1790,7 +1488,7 @@ ULONG GetFreeCluster(PCDINFO pCD)
    else
       ulStartCluster = ulCluster;
 
-   while (GetNextCluster2(pCD, ulCluster))
+   while (GetNextCluster(pCD, ulCluster, TRUE))
       {
       ulCluster++;
       if (fStartAt2 && ulCluster >= ulStartCluster)
@@ -1825,8 +1523,6 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    APIRET rc;
 
    ulDirCluster = FindDirCluster(pCD,
-      //NULL,
-      //NULL,
       pFileSize->szFileName,
       0xFFFF,
       RETURN_PARENT_DIR,
@@ -1850,7 +1546,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
       ulClustersUsed = 1;
       while (ulClustersUsed < ulClustersNeeded)
          {
-         ULONG ulNextCluster = GetNextCluster(pCD, ulCluster);
+         ULONG ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
          if (!ulNextCluster)
             break;
          ulCluster = ulNextCluster;
@@ -1885,7 +1581,6 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 ******************************************************************/
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 {
-   //DATETIME datetime;
    DIRENTRY DirEntry;
    BYTE     szFileName[14];
    USHORT   usNr;
@@ -1916,16 +1611,6 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
       strncpy(pData, szFileName, cbData);
 
    set_datetime(&DirEntry);
-   //DosGetDateTime(&datetime);
-   //DirEntry.wCreateTime.hours = datetime.hours;
-   //DirEntry.wCreateTime.minutes = datetime.minutes;
-   //DirEntry.wCreateTime.twosecs = datetime.seconds / 2;
-   //DirEntry.wCreateDate.day = datetime.day;
-   //DirEntry.wCreateDate.month = datetime.month;
-   //DirEntry.wCreateDate.year = datetime.year - 1980;
-   //DirEntry.wAccessDate.day = datetime.day;
-   //DirEntry.wAccessDate.month = datetime.month;
-   //DirEntry.wAccessDate.year = datetime.year;
 
    DirEntry.wCluster = LOUSHORT(ulCluster);
    DirEntry.wClusterHigh = HIUSHORT(ulCluster);
@@ -1933,7 +1618,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
       {
       ULONG ulNextCluster;
       DirEntry.ulFileSize += pCD->ulClusterSize;
-      ulNextCluster = GetNextCluster(pCD, ulCluster);
+      ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
       if (!ulNextCluster)
          {
          SetNextCluster(pCD, ulCluster, FAT_EOF);
@@ -1953,34 +1638,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 ******************************************************************/
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName)
 {
-   //DATETIME pdt;
-
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("MakeDirEntry %s", pszName);
-
-   //DosGetDateTime(&pdt);
-
-   //if (pGI)
-      //{
-      //pNew->wLastWriteDate.year = pGI->year - 1980;
-      //pNew->wLastWriteDate.month = pGI->month;
-      //pNew->wLastWriteDate.day = pGI->day;
-      //pNew->wLastWriteTime.hours = pGI->hour;
-      //pNew->wLastWriteTime.minutes = pGI->minutes;
-      //pNew->wLastWriteTime.twosecs = pGI->seconds / 2;
-
-      set_datetime(pNew);
-      //pNew->wLastWriteDate.year = pdt.year - 1980;
-      //pNew->wLastWriteDate.month = pdt.month;
-      //pNew->wLastWriteDate.day = pdt.day;
-      //pNew->wLastWriteTime.hours = pdt.hours;
-      //pNew->wLastWriteTime.minutes = pdt.minutes;
-      //pNew->wLastWriteTime.twosecs = pdt.seconds / 2;
-
-      //pNew->wCreateDate = pNew->wLastWriteDate;
-      //pNew->wCreateTime = pNew->wLastWriteTime;
-      //pNew->wAccessDate = pNew->wLastWriteDate;
-      //}
+   set_datetime(pNew);
 
    return ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_INSERT,
       NULL, pNew, pszName);
@@ -2000,20 +1658,6 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
    if (!ulCluster)
       return TRUE;
 
-   //if (ulCluster >= 2 && ulCluster < pCD->ulTotalClusters + 2)
-   //   {
-   //   if (f32Parms.fMessageActive  & LOG_FUNCS)
-   //      Message("DeleteFatChain for cluster %lu", ulCluster);
-   //   }
-   //else
-   //   {
-   //   Message("DeleteFatChain for invalid cluster %lu (ERROR)", ulCluster);
-   //   return FALSE;
-   //   }
-
-   //if (GetFatAccess(pVolInfo, "DeleteFatChain"))
-   //   return FALSE;
-
    ulSector = ulCluster / 128;
    ReadFatSector(pCD, ulSector);
    ulClustersFreed = 0;
@@ -2025,8 +1669,6 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
 
       if (!ulCluster || ulCluster == FAT_BAD_CLUSTER)
          {
-         //Message("DeleteFatChain: Bad Chain (Cluster %lu)",
-         //   ulCluster);
          break;
          }
       ulSector = ulCluster / 128;
@@ -2034,10 +1676,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
          {
          rc = WriteFatSector(pCD, pCD->ulCurFATSector);
          if (rc)
-            //{
-            //ReleaseFat(pVolInfo);
             return FALSE;
-            //}
          ReadFatSector(pCD, ulSector);
          }
       pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
@@ -2049,395 +1688,14 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
       }
    rc = WriteFatSector(pCD, pCD->ulCurFATSector);
    if (rc)
-      //{
-      //ReleaseFat(pVolInfo);
       return FALSE;
-      //}
 
    pCD->FSInfo.ulFreeClusters += ulClustersFreed;
    UpdateFSInfo(pCD);
 
-   //ReleaseFat(pVolInfo);
-
    return TRUE;
 }
 
-/******************************************************************
-*
-******************************************************************/
-VOID GetFirstInfo( PBOOL pFirstInfo )
-{
-    memcpy( pFirstInfo, rgFirstInfo, sizeof( rgFirstInfo ));
-}
-
-/******************************************************************
-*
-******************************************************************/
-BOOL TranslateInit(PVOID16 rgTrans[], USHORT usSize)
-{
-   ULONG  ulCode;
-   USHORT usPage;
-   USHORT usChar;
-   INT    iIndex;
-
-   PVOID16 *prgTrans = ( PVOID16 * )rgTrans;
-
-   if( rgPage[ 0 ] == NULL )
-      TranslateAllocBuffer();
-
-   if (usSize != sizeof( PVOID ) * ( ARRAY_COUNT_UNICODE + 2 ) )
-      return FALSE;
-
-   for( iIndex = 0; iIndex < ARRAY_COUNT_UNICODE; iIndex++ )
-      memcpy( rgUnicode[ iIndex ], (void *)(void _Far16 *)prgTrans[ iIndex ], sizeof( USHORT ) * MAX_ARRAY_UNICODE );
-
-   for( iIndex = 0; iIndex < MAX_ARRAY_UNICODE; iIndex++ )
-      rgFirstInfo[ iIndex ] = ( UCHAR )((( PUSHORT )( prgTrans[ ARRAY_COUNT_UNICODE ] ))[ iIndex ]);
-
-   for( iIndex = 0; iIndex < MAX_ARRAY_UNICODE; iIndex++ )
-      rgLCase[ iIndex ] = ( UCHAR )((( PUSHORT )( prgTrans[ ARRAY_COUNT_UNICODE + 1 ] ))[ iIndex ]);
-
-   for( iIndex = 0; iIndex < ARRAY_COUNT_PAGE; iIndex++ )
-      memset( rgPage[ iIndex ], '_', sizeof( UNIPAGE ) * MAX_ARRAY_PAGE );
-
-   for (ulCode = 0; ulCode < 0x10000; ulCode++)
-      {
-      usPage = (QueryNLS2Uni(( USHORT )ulCode ) >> 8) & 0x00FF;
-      usChar = QueryNLS2Uni(( USHORT )ulCode ) & 0x00FF;
-
-      SetUni2NLS( usPage, usChar, ( USHORT )ulCode );
-      }
-
-   //f32Parms.fTranslateNames = TRUE;
-
-   return TRUE;
-}
-
-/******************************************************************
-*
-******************************************************************/
-VOID TranslateAllocBuffer( VOID )
-{
-   INT iIndex;
-
-   for( iIndex = 0; iIndex < ARRAY_COUNT_PAGE; iIndex++ )
-      rgPage[ iIndex ] = malloc( sizeof( UNIPAGE ) * MAX_ARRAY_PAGE );
-
-   for( iIndex = 0; iIndex < ARRAY_COUNT_UNICODE; iIndex++ )
-      rgUnicode[ iIndex ] = malloc( sizeof( USHORT ) * MAX_ARRAY_UNICODE );
-}
-
-/******************************************************************
-*
-******************************************************************/
-BOOL LoadTranslateTable(BOOL fSilent)
-{
-    APIRET rc;
-    ULONG ulParmSize;
-    BYTE   rgData[ 256 ];
-    // Extra space for DBCS lead info and case conversion
-    UniChar *rgTranslate[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
-    PBYTE  pChar;
-    UniChar *pUni;
-    UconvObject  uconv_object = NULL;
-    INT iIndex;
-    size_t bytes_left;
-    size_t uni_chars_left;
-    size_t num_subs;
-    ULONG rgCP[3];
-    ULONG cbCP;
-    // Extra space for DBCS lead info and case conversion
-    PVOID16 rgTransTable[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
-    char rgFirst[ 256 ];
-    USHORT first, second;
-    USHORT usCode;
-    UniChar ucsCp[ 12 ];
-    UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
-
-   rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModConv);
-   if (rc)
-      {
-      printf("FAT32: No NLS support found (%s does not load).\n", rgData);
-      printf("FAT32: No UNICODE translate table loaded!\n");
-      rc = TRUE;
-      goto free_exit;
-      }
-   rc = DosQueryProcAddr(hModConv, 0L,
-      "UniCreateUconvObject", (PFN *)&pUniCreateUconvObject);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniCreateUconvObject.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-   rc = DosQueryProcAddr(hModConv, 0L,
-      "UniUconvToUcs", (PFN *)&pUniUconvToUcs);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniUconvToUcs.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-      "UniUconvFromUcs", (PFN *)&pUniUconvFromUcs);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniUconvFromUcs.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-      "UniMapCpToUcsCp", (PFN *)&pUniMapCpToUcsCp);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniMapCpToUcsCp.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-      "UniQueryUconvObject", (PFN *)&pUniQueryUconvObject);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniQueryUconvObject.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   rc = DosLoadModule(rgData, sizeof rgData, "LIBUNI.DLL", &hModUni);
-   if (rc)
-      {
-      printf("FAT32: No NLS support found (%s does not load).\n", rgData);
-      printf("FAT32: No UNICODE translate table loaded!\n");
-      rc = TRUE;
-      goto free_exit;
-      }
-
-   rc = DosQueryProcAddr(hModUni, 0L,
-      "UniTolower", (PFN *)&pUniTolower);
-   if (rc)
-      {
-      printf("FAT32: ERROR: Could not find address of UniTolower.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   if( ulNewCP )
-        rgCP[ 0 ] = ulNewCP;
-   else
-        DosQueryCp(sizeof rgCP, rgCP, &cbCP);
-
-   if (f32Parms.ulCurCP == rgCP[0])
-   {
-      rc = FALSE;
-      goto free_exit;
-   }
-
-#if 0
-   if (f32Parms.ulCurCP && !fSayYes)
-      {
-      BYTE chChar;
-      printf("Loaded unicode translate table is for CP %lu\n", f32Parms.ulCurCP);
-      printf("Current CP is %lu\n", rgCP[0]);
-      printf("Would you like to reload the translate table for this CP [Y/N]? ");
-      fflush(stdout);
-
-      for (;;)
-         {
-         chChar = getch();
-         switch (chChar)
-            {
-            case 'y':
-            case 'Y':
-               chChar = 'Y';
-               break;
-            case 'n':
-            case 'N':
-               chChar = 'N';
-               break;
-            default :
-               DosBeep(660, 10);
-               continue;
-            }
-         printf("%c\n", chChar);
-         break;
-         }
-      if (chChar == 'N')
-         {
-         rc = FALSE;
-         goto free_exit;
-         }
-      }
-#endif
-
-   rc = pUniMapCpToUcsCp( rgCP[ 0 ], ucsCp, sizeof( ucsCp ) / sizeof( UniChar ));
-   if( rc != ULS_SUCCESS )
-   {
-        printf("FAT32: ERROR: UniMapCpToUcsCp error: return code = %u\n", rc );
-        rc = FALSE;
-        goto free_exit;
-   }
-
-   rc = pUniCreateUconvObject( ucsCp, &uconv_object);
-   if (rc != ULS_SUCCESS)
-      {
-      printf("FAT32: ERROR: UniCreateUconvObject error: return code = %u\n", rc);
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   rc = pUniQueryUconvObject( uconv_object, NULL, 0, rgFirst, NULL, NULL );
-   if (rc != ULS_SUCCESS)
-      {
-      printf("FAT32: ERROR: UniQueryUConvObject error: return code = %u\n", rc);
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   // Allocation for conversion, DBCS lead info and case conversion
-   for( iIndex = 0; iIndex <= INDEX_OF_END ; iIndex ++ )
-   {
-        rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof(USHORT ) * ARRAY_TRANS_TABLE );
-        memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
-   }
-
-   // Initialize SBCS only for conversion and set DBCS lead info
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-   {
-        rgData[ iIndex ] = ( rgFirst[ iIndex ] == 1 ) ? iIndex : 0;
-        rgTranslate[ INDEX_OF_FIRSTINFO ][ iIndex ] = rgFirst[ iIndex ];
-   }
-
-   pChar = rgData;
-   bytes_left = sizeof rgData;
-   pUni = ( PVOID )rgTranslate[ 0 ];
-   uni_chars_left = ARRAY_TRANS_TABLE;
-
-   rc = pUniUconvToUcs(uconv_object,
-      (PVOID *)&pChar,
-      &bytes_left,
-      &pUni,
-      &uni_chars_left,
-      &num_subs);
-
-   if (rc != ULS_SUCCESS)
-      {
-      printf("FAT32: ERROR: UniUconvToUcs failed, rc = %u\n", rc);
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   // Translate upper case to lower case
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-        rgUniBuffer[ iIndex ] = pUniTolower( rgTranslate[ 0 ][ iIndex ] );
-
-   // Convert lower case in Unicode to codepage code
-   pUni = ( PVOID )rgUniBuffer;
-   uni_chars_left = ARRAY_TRANS_TABLE;
-   pChar  = rgData;
-   bytes_left = sizeof rgData;
-
-   rc = pUniUconvFromUcs( uconv_object,
-        &pUni,
-        &uni_chars_left,
-        ( PVOID * )&pChar,
-        &bytes_left,
-        &num_subs );
-
-   if (rc != ULS_SUCCESS)
-      {
-      printf("FAT32: ERROR: UniUconvFromUcs failed, rc = %u\n", rc);
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   // Store codepage code to transtable
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-        rgTranslate[ INDEX_OF_LCASECONV ][ iIndex ] = rgData[ iIndex ] ? rgData[ iIndex ] : iIndex;
-
-   // Translate DBCS code to unicode
-   for( first = 0; first < ARRAY_TRANS_TABLE; first++ )
-   {
-        if( rgFirst[ first ] == 2 )
-        {
-            for( second = 0; second < 0x100; second++ )
-            {
-                  usCode = first | (( second << 8 ) & 0xFF00 );
-
-                  pChar  = ( PVOID )&usCode;
-                  bytes_left = sizeof usCode;
-                  pUni = ( PVOID )&rgTranslate[ second ][ first ];
-                  uni_chars_left = 1;
-
-                  rc = pUniUconvToUcs(uconv_object,
-                     (PVOID *)&pChar,
-                     &bytes_left,
-                     &pUni,
-                     &uni_chars_left,
-                     &num_subs);
-
-                  if (rc != ULS_SUCCESS)
-                  {
-                     printf("FAT32: ERROR: UniUconvToUcs failed, rc = %u\n", rc);
-                     rc = FALSE;
-                     goto free_exit;
-                  }
-            }
-        }
-   }
-
-   ulParmSize = sizeof rgTransTable;
-   //rc = DosFSCtl(NULL, 0, NULL,
-   //            ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
-   //            FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
-   if( !TranslateInit((PVOID)rgTransTable, ulParmSize))
-      rc = ERROR_INVALID_PARAMETER;
-   else
-      rc = 0;
-   
-   if (rc)
-      {
-      printf("FAT32: ERROR: Unable to set translate table for current Codepage.\n");
-      rc = FALSE;
-      goto free_exit;
-      }
-
-   f32Parms.ulCurCP = rgCP[0];
-   if( ! fSilent )
-       printf("FAT32: Unicode translate table for CP %lu loaded.\n", rgCP[0]);
-   rc = TRUE;
-free_exit:
-
-   for( iIndex = 0; iIndex <= INDEX_OF_END; iIndex++ )
-      if( rgTranslate[ iIndex ])
-        free( rgTranslate[ iIndex ]);
-
-   if( hModConv )
-        DosFreeModule( hModConv);
-
-   if( hModUni )
-        DosFreeModule( hModUni );
-
-   return rc;
-}
-
-/******************************************************************
-*
-******************************************************************/
-VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode )
-{
-    rgPage[ usPage / MAX_ARRAY_PAGE ][ usPage % MAX_ARRAY_PAGE ].usCode[ usChar ] = usCode;
-}
-
-/******************************************************************
-*
-******************************************************************/
-VOID GetCaseConversion( PUCHAR pCase )
-{
-    memcpy( pCase, rgLCase, sizeof( rgLCase ));
-}
 
 /******************************************************************
 *
@@ -2445,15 +1703,6 @@ VOID GetCaseConversion( PUCHAR pCase )
 BOOL UpdateFSInfo(PCDINFO pCD)
 {
    static BYTE bSector[SECTOR_SIZE] = "";
-
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("UpdateFSInfo");
-
-   //if (pCD->fFormatInProgress)
-   //   return FALSE;
-
-   //if (pCD->fWriteProtected)
-   //   return TRUE;
 
    if (pCD->BootSect.bpb.FSinfoSec == 0xFFFF)
       return TRUE;
@@ -2464,8 +1713,6 @@ BOOL UpdateFSInfo(PCDINFO pCD)
       if (!WriteSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector))
          return TRUE;
       }
-   //CritMessage("UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
-   //Message("ERROR: UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
 
    return FALSE;
 }
@@ -2486,18 +1733,11 @@ PULONG pulCluster;
 BOOL   fStartAt2;
 BOOL   fContiguous;
 
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("MakeFatChain, %lu clusters", ulClustersRequested);
-
    if (!ulClustersRequested)
       return FAT_EOF;
 
-   //if (GetFatAccess(pVolInfo, "MakeFatChain"))
-   //   return FAT_EOF;
-
    if (pCD->FSInfo.ulFreeClusters < ulClustersRequested)
       {
-      //ReleaseFat(pVolInfo);
       return FAT_EOF;
       }
 
@@ -2547,8 +1787,6 @@ BOOL   fContiguous;
             {
             if (fStartAt2)
                break;
-            //if (f32Parms.fMessageActive & LOG_FUNCS)
-            //   Message("No contiguous block found, restarting at cluster 2");
             ulFirstCluster = 2;
             fStartAt2 = TRUE;
             continue;
@@ -2597,18 +1835,10 @@ BOOL   fContiguous;
 
          if (ulPrevCluster != FAT_EOF)
             {
-            if (SetNextCluster2(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
+            if (SetNextCluster(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
                goto MakeFatChain_Error;
             }
 
-         //ReleaseFat(pVolInfo);
-         //if (f32Parms.fMessageActive & LOG_FUNCS)
-         //   {
-         //   if (fContiguous)
-         //      Message("Contiguous chain returned, first = %lu", ulReturn);
-         //   else
-         //      Message("NON Contiguous chain returned, first = %lu", ulReturn);
-         //   }
          if (pulLast)
             *pulLast = ulFirstCluster + ulClustersRequested - 1;
          return ulReturn;
@@ -2617,8 +1847,6 @@ BOOL   fContiguous;
       /*
          We get here only if no free chain long enough was found!
       */
-      //if (f32Parms.fMessageActive & LOG_FUNCS)
-      //   Message("No contiguous block found, largest found is %lu clusters", ulLargestSize);
       fContiguous = FALSE;
 
       if (ulLargestChain != FAT_EOF)
@@ -2632,7 +1860,7 @@ BOOL   fContiguous;
 
          if (ulPrevCluster != FAT_EOF)
             {
-            if (SetNextCluster2(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
+            if (SetNextCluster(pCD, ulPrevCluster, ulFirstCluster) == FAT_EOF)
                goto MakeFatChain_Error;
             }
 
@@ -2645,7 +1873,6 @@ BOOL   fContiguous;
 
 MakeFatChain_Error:
 
-   //ReleaseFat(pVolInfo);
    if (ulReturn != FAT_EOF)
       DeleteFatChain(pCD, ulReturn);
 
@@ -2662,9 +1889,6 @@ ULONG ulLastCluster;
 PULONG pulCluster;
 ULONG  ulCluster;
 USHORT rc;
-
-   //if (f32Parms.fMessageActive & LOG_FUNCS)
-   //   Message("MakeChain");
 
    ulLastCluster = ulFirstCluster + ulSize - 1;
 
@@ -2685,8 +1909,6 @@ USHORT rc;
       pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
       if (*pulCluster)
          {
-         //CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
-         //Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
          return ERROR_SECTOR_NOT_FOUND;
          }
       *pulCluster = ulCluster + 1;
@@ -2703,8 +1925,6 @@ USHORT rc;
    pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
    if (*pulCluster)
       {
-      //CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
-      //Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
       return ERROR_SECTOR_NOT_FOUND;
       }
 
@@ -2780,7 +2000,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
          goto MakeFileEnd;
 
       pBuf += pCD->ulClusterSize;
-      ulCluster = GetNextCluster(pCD, ulCluster);
+      ulCluster = GetNextCluster(pCD, ulCluster, TRUE);
       }
 
       UpdateFSInfo(pCD);

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <direct.h>
 #include <process.h>
 #include <malloc.h>
 
@@ -11,8 +12,6 @@ void open_drive (char *path, HANDLE *hDevice);
 void close_drive(HANDLE hDevice);
 void lock_drive(HANDLE hDevice);
 void unlock_drive(HANDLE hDevice);
-APIRET read_drive(HANDLE hDevice, char *pBuf, ULONG *cbSize);
-APIRET write_drive(HANDLE hDevice, LONGLONG off, char *pBuf, ULONG *cbSize);
 void begin_format (HANDLE hDevice);
 void remount_media (HANDLE hDevice);
 
@@ -77,7 +76,7 @@ void _System sysinstx_thread(ULONG args)
   HANDLE  hf;
   APIRET rc;
 
-  show_message("(UFAT32.DLL version %s compiled on " __DATE__ ")\n", 0, 0, 1, FAT32_VERSION);
+  show_message("UFAT32.DLL version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
   open_drive(drive, &hf);
 
@@ -139,11 +138,11 @@ void _System sysinstx_thread(ULONG args)
   memset(file, 0, sizeof(file));
   file[0] = drive[0];
   strcat(file, ":\\boot");
-  DosCreateDir(file, NULL);
+  mkdir(file);
   strcat(file, "\\loader");
-  DosCreateDir(file, NULL);
+  mkdir(file);
   strcat(file, "\\fsd");
-  DosCreateDir(file, NULL);
+  mkdir(file);
 
   memset(file, 0, sizeof(file));
   file[0] = drive[0];

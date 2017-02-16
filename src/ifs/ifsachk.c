@@ -30,7 +30,7 @@ void _cdecl autocheck(char *args)
 {
 
   PSZ        ModuleName      = "UFAT32";               /* name of utility dll*/
-  PSZ        ProgramName     = "FAT32CHK.EXE";         /* special exe        */
+  PSZ        ProgramName     = "F32CHK.EXE";           /* special exe        */
   PSZ        ProgramName2    = "CACHEF32.EXE";         /* special exe        */
   UCHAR      LoadError[64];                            /* for dosloadmodule  */
   HMODULE    ModuleHandle    = 0;           /* handle od ufat32.dll          */
