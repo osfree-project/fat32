@@ -126,16 +126,16 @@ return object
 <PCK INDEX=1
   PACKAGEID="NetLabs\FAT32.IFS\MAIN_FS\0\10\1"
   TITLE="FAT32.IFS Main driver"
-  TARGET="=("FindPath NetLabs\ESES\DrvPck CONFIG DEFAULT ?:\OS2\BOOT")"
+  TARGET="=("FindPath NetLabs\ESES\DrvPck CONFIG DEFAULT ?:\os2\boot")"
   SELECT
   NODESELECT
-  CONFIGSYS="IFS=$(1)\FAT32.IFS /CACHE:2048 /H /Q /AC:* /LARGEFILES | UNIQUE(FAT32.IFS) ADDAFTER(HPFS.IFS)"
+  CONFIGSYS="ifs=$(1)\fat32.ifs /cache:2048 /h /q /ac:* /largefiles | UNIQUE(fat32.ifs) ADDAFTER(hpfs.ifs)"
 ></PCK>
 
 <PCK INDEX=2
   PACKAGEID="NetLabs\FAT32.IFS\DLL\0\10\1"
   TITLE="Dynamic Link Library - Filesystem utilities"
-  TARGET="=("FindPath NetLabs\ESES\LibPck CONFIG DEFAULT ?:\OS2\DLL")"
+  TARGET="=("FindPath NetLabs\ESES\LibPck CONFIG DEFAULT ?:\os2\dll")"
   SELECT
   NODESELECT
   CONFIGSYS="LIBPATH=$(2);|ADDRIGHT"
@@ -144,56 +144,77 @@ return object
 <PCK INDEX=3
   PACKAGEID="NetLabs\FAT32.IFS\BIN\0\10\1"
   TITLE="Cache and other support programs"
-  TARGET="=("FindPath NetLabs\ESES\BinPck CONFIG DEFAULT ?:\OS2")"
+  TARGET="=("FindPath NetLabs\ESES\BinPck CONFIG DEFAULT ?:\os2")"
   SELECT
   NODESELECT
   CONFIGSYS="SET PATH=$(3);|ADDRIGHT"
-  CONFIGSYS="CALL=$(3)\CACHEF32.EXE /F /P:2 /M:50000 /B:250 /D:5000 | UNIQUE(CACHEF32.EXE) ADDAFTER(FAT32.IFS)"
+  CONFIGSYS="call=$(3)\cachef32.exe /f /p:2 /m:50000 /b:250 /d:5000 | UNIQUE(cachef32.exe) ADDAFTER(fat32.ifs)"
 >
 </PCK>
 
 <PCK INDEX=4
   PACKAGEID="NetLabs\FAT32.IFS\INF\0\10\1"
   TITLE="FAT32.IFS IPF documentation"
-  TARGET="=("FindPath NetLabs\ESES\INFPck CONFIG DEFAULT ?:\OS2\BOOK")"
-  SELECT
-  NODESELECT
-  CREATEOBJECT="WPProgram|=("ObjTitle 1")|=("FindObject <ESE_BOOKS> <WP_INFO>")|EXENAME=VIEW.EXE;STARTUPDIR=$(4);PARAMETERS=$(4)\FAT32.INF;OBJECTID=<FAT32_INF>;"
+  TARGET="=("FindPath NetLabs\ESES\INFPck CONFIG DEFAULT ?:\os2\book")"
+  FIXED
+  CREATEOBJECT="WPProgram|=("ObjTitle 1")|=("FindObject <ESE_BOOKS> <WP_INFO>")|EXENAME=view.exe;STARTUPDIR=$(4);PARAMETERS=$(4)\fat32.inf;OBJECTID=<FAT32_INF>;"
 >
 </PCK>
 
 <PCK INDEX=5
   PACKAGEID="NetLabs\FAT32.IFS\TXT\0\10\1"
   TITLE="FAT32.IFS Plaintext documentation"
-  TARGET="=("FindPath NetLabs\ESES\TxtPck CONFIG DEFAULT ?:\OS2\DOCS\FAT32")"
-  SELECT
-  NODESELECT
-  CREATEOBJECT="WPProgram|=("ObjTitle 2")|=("FindObject <ESE_DOCS> <WP_INFO>")|EXENAME=E.EXE;STARTUPDIR=$(5);PARAMETERS=$(5)\FAT32.TXT;OBJECTID=<FAT32_TXT>;"
+  TARGET="=("FindPath NetLabs\ESES\TxtPck CONFIG DEFAULT ?:\os2\docs\fat32")"
+  FIXED
+  CREATEOBJECT="WPProgram|=("ObjTitle 2")|=("FindObject <ESE_DOCS> <WP_INFO>")|EXENAME=E.EXE;STARTUPDIR=$(5);PARAMETERS=$(5)\fat32.txt;OBJECTID=<FAT32_TXT>;"
 >
 </PCK>
 
 <PCK INDEX=6
    PACKAGEID="NetLabs\FAT32.IFS\Korean support\0\10\1"
    TITLE="Korean doc and corrected COUNTRY.SYS"
-   TARGET="?:\OS2"
+   TARGET="?:\os2"
    FIXED
-   CREATEOBJECT="WPShadow|FAT32.KOR|=("FindObject <ESE_BOOKS> <WP_REFCMDFOLDER>")|SHADOWID=$(6)\DOCS\FAT32\FAT32.KOR;OBJECTID=<FAT32_KOR_SHADOW>;"
+   CREATEOBJECT="WPShadow|fat32.kor|=("FindObject <ESE_BOOKS> <WP_REFCMDFOLDER>")|SHADOWID=$(6)\docs\fat32\fat32.kor;OBJECTID=<FAT32_KOR_SHADOW>;"
 >Korean support for non-Korean systems.
 </PCK>
 
 <PCK INDEX=7
    PACKAGEID="NetLabs\FAT32.IFS\Optional drivers\0\10\1"
    TITLE="Optional drivers (patched version of os2dasd.dmd and partfilt.flt)"
-   TARGET="?:\OS2\BOOT"
    FIXED
+   TARGET="?:\os2\boot"
 ></PCK>
 
 <PCK INDEX=8
    PACKAGEID="NetLabs\FAT32.IFS\Debug symbols\0\10\1"
    TITLE="Debug symbols for all binaries"
-   TARGET="?:\OS2"
    FIXED
+   TARGET="?:\os2"
 ></PCK>
+
+<PCK INDEX=9
+   PACKAGEID="NetLabs\FAT32.IFS\Optional drivers' sym files\0\10\1"
+   TITLE="Optional drivers' symbol files"
+   FIXED
+   TARGET="?:\os2\boot"
+></PCK>
+
+<PCK INDEX=10
+   PACKAGEID="NetLabs\FAT32.IFS\Optional drivers' doc files\0\10\1"
+   TITLE="Optional drivers' documentation files"
+   FIXED
+   TARGET="?:\os2\docs\fat32"
+></PCK>
+
+<PCK INDEX=11
+  PACKAGEID="NetLabs\FAT32.IFS\IFS INF\0\10\1"
+  TITLE="The updated Installable File System document"
+  FIXED
+  TARGET="=("FindPath NetLabs\ESES\INFPck CONFIG DEFAULT ?:\os2\book")"
+  CREATEOBJECT="WPProgram|=("ObjTitle 3")|=("FindObject <ESE_BOOKS> <WP_INFO>")|EXENAME=VIEW.EXE;STARTUPDIR=$(11);PARAMETERS=$(11)\ifs.inf;OBJECTID=<IFS_INF>;"
+>
+</PCK>
 
 </HEAD>
 
