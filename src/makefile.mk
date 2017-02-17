@@ -267,19 +267,19 @@ $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
 .asm: ..
 
 .lnk.exe: .autodepend
- @echo LINK     @$^.
+ @echo LINK     $^.
  @$(LNK) @$<
 
 .lnk.dll: .autodepend
- @echo LINK     @$^.
+ @echo LINK     $^.
  @$(LNK) @$<
 
 .lnk.flt: .autodepend
- @echo LINK     @$^.
+ @echo LINK     $^.
  @$(LNK) @$<
 
 .lnk.ifs: .autodepend
- @echo LINK     @$^.
+ @echo LINK     $^.
  @$(LNK) @$[@
 
 .ols.lib: .autodepend
