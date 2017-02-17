@@ -418,8 +418,8 @@ int format_volume (char *path, format_params *params)
     SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
     zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize); // &dgDrive);
 
-    show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster...\n", 0, 0, 1, SystemAreaSize );
-    show_message ( "Initialising reserved sectors and FATs...\n", 0, 0, 0 );
+    show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster.\n", 0, 0, 1, SystemAreaSize );
+    show_message ( "Initialising reserved sectors and FATs.\n", 0, 0, 0 );
     // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot sect position
     for ( i=0; i<2; i++ )
         {

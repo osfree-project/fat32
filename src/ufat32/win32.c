@@ -159,7 +159,7 @@ void open_drive (char *path , HANDLE *hDevice)
   hDev = *hDevice;
 
   bRet = DeviceIoControl(
-	  (HANDLE) hDevice,              // handle to device
+	  (HANDLE) *hDevice,             // handle to device
 	  FSCTL_ALLOW_EXTENDED_DASD_IO,  // dwIoControlCode
 	  NULL,                          // lpInBuffer
 	  0,                             // nInBufferSize
@@ -170,9 +170,7 @@ void open_drive (char *path , HANDLE *hDevice)
 	);
 
   if ( !bRet )
-      show_message ( "Failed to allow extended DASD on device...\n", 0, 0, 0 );
-  else
-      show_message ( "FSCTL_ALLOW_EXTENDED_DASD_IO OK\n", 0, 0, 0 ); 
+      show_message ( "Failed to allow extended DASD on device.\n", 0, 0, 0 );
 }
 
 void lock_drive(HANDLE hDevice)
@@ -446,7 +444,6 @@ BOOL IsDBCSLead( UCHAR uch )
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 {
     int cbSize;
-    USHORT pBuf[256];
 
     if (! pusUni || !usLen)
        {
@@ -454,8 +451,7 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
        return;
        }
 
-    memcpy(pBuf, pusUni, usLen);
-    cbSize = WideCharToMultiByte(CP_OEMCP, 0, pBuf, usLen, pszName, 2 * usLen, NULL, NULL);
+    cbSize = WideCharToMultiByte(CP_OEMCP, 0, pusUni, usLen, pszName, 2 * usLen, NULL, NULL);
 
     if (! cbSize)
        {
@@ -469,7 +465,6 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
 {
     int cbSize;
-    USHORT pBuf[256];
 
     if (! pszName || !usLen)
        {
@@ -477,8 +472,7 @@ USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
        return 0;
        }
 
-    memcpy(pBuf, pszName, usLen);
-    cbSize = MultiByteToWideChar(CP_OEMCP, 0, (char *)pBuf, usLen, pusUni, usLen);
+    cbSize = MultiByteToWideChar(CP_OEMCP, 0, (char *)pszName, usLen, pusUni, usLen);
 
     if (! cbSize)
        {

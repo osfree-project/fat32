@@ -106,6 +106,7 @@ HANDLE hFile;
 ULONG rc = 0;
 PCDINFO pCD;
 BYTE   bSector[512];
+struct extbpb dp;
 
 #ifdef __OS2__
    /* Enable hard errors     */
@@ -176,6 +177,9 @@ BYTE   bSector[512];
 
    pCD->hDisk = hFile;
    hDisk = hFile;
+
+   get_drive_params(hFile, &dp);
+   memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
 
    rc = ReadSector(pCD, 0, 1, bSector);
    if (rc)
