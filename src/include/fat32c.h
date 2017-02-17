@@ -168,7 +168,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 void open_drive (char *path, HANDLE *hDevice);
 void lock_drive(HANDLE hDevice);
 void unlock_drive(HANDLE hDevice);
-void get_drive_params(HANDLE hDevice, struct extbpb *dp);
+BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp);
 void set_part_type(HANDLE hDevice, struct extbpb *dp, int type);
 void begin_format (HANDLE hDevice);
 void remount_media (HANDLE hDevice);

@@ -198,7 +198,7 @@ void unlock_drive(HANDLE hDevice)
       die( "Failed to unlock device", -8 );
 }
 
-void get_drive_params(HANDLE hDevice, struct extbpb *dp)
+BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp)
 {
   BOOL  bRet;
   DWORD cbRet;
@@ -249,6 +249,8 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
   dp->SectorsPerTrack = dgDrive.SectorsPerTrack;
   dp->HiddenSectors =  piDrive.HiddenSectors;
   dp->TracksPerCylinder = dgDrive.TracksPerCylinder;
+
+  return bGPTMode;
 }
 
 void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)

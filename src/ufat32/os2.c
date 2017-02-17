@@ -378,7 +378,7 @@ struct PARM {
 };
 #pragma pack()
 
-void get_drive_params(HANDLE hDevice, struct extbpb *dp)
+BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp)
 {
   APIRET rc;
   struct PARM        p;
@@ -408,6 +408,9 @@ void get_drive_params(HANDLE hDevice, struct extbpb *dp)
       dp->TotalSectors = d.cLargeSectors;
   else if ((d.cSectors) && (d.cLargeSectors == 0))
       dp->TotalSectors = d.cSectors;
+
+  // no GPT support yet on OS/2
+  return FALSE;
 }
 
 void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
