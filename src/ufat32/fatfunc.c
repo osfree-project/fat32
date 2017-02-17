@@ -199,7 +199,7 @@ ULONG GetFreeSpace(PCDINFO pCD)
 ******************************************************************/
 BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
 {
-   static BYTE bSector[SECTOR_SIZE] = "";
+   PBYTE bSector = malloc(pCD->BootSect.bpb.BytesPerSector);
    PULONG pulStatus;
    ULONG ulSector;
    USHORT usFat;
@@ -208,7 +208,10 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
    if (pCD->ulCurFATSector != 0)
       {
       if (ReadSector(pCD, pCD->ulActiveFatStart, 1, bSector))
+         {
+         free(bSector);
          return FALSE;
+         }
       pbSector = bSector;
       pulStatus = (PULONG)bSector + 1;
       }
@@ -232,12 +235,16 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
    for (usFat = 0; usFat < pCD->BootSect.bpb.NumberOfFATs; usFat++)
       {
       if (WriteSector(pCD, pCD->ulActiveFatStart + ulSector, 1, pbSector))
+         {
+         free(bSector);
          return FALSE;
+         }
       if (pCD->BootSect.bpb.ExtFlags & 0x0080)
          break;
       ulSector += pCD->BootSect.bpb.BigSectorsPerFat;
       }
 
+   free(bSector);
    return TRUE;
 }
 
@@ -1701,18 +1708,25 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
 ******************************************************************/
 BOOL UpdateFSInfo(PCDINFO pCD)
 {
-   static BYTE bSector[SECTOR_SIZE] = "";
+   PBYTE bSector = malloc(pCD->BootSect.bpb.BytesPerSector);
 
    if (pCD->BootSect.bpb.FSinfoSec == 0xFFFF)
+      {
+      free(bSector);
       return TRUE;
+      }
 
    if (!ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector))
       {
       memcpy(bSector + FSINFO_OFFSET, (void *)&pCD->FSInfo, sizeof (BOOTFSINFO));
       if (!WriteSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector))
+         {
+         free(bSector);
          return TRUE;
+         }
       }
 
+   free(bSector);
    return FALSE;
 }
 

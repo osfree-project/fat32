@@ -20,6 +20,7 @@ void remount_media (HANDLE hDevice);
 
 int recover_thread(int argc, char *argv[])
 {
+   struct extbpb dp;
    PCDINFO pCD;
    HANDLE  hFile;
    ULONG  ulAction;
@@ -63,7 +64,10 @@ int recover_thread(int argc, char *argv[])
    lock_drive(hFile);
    pCD->hDisk = hFile;
 
-   rc = ReadSect(hFile, 0, 1, SECTOR_SIZE, bSector);
+   get_drive_params(hFile, &dp);
+   memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
+
+   rc = ReadSect(hFile, 0, 1, dp.BytesPerSect, bSector);
    if (rc)
       {
       show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, get_error(rc));
@@ -71,7 +75,7 @@ int recover_thread(int argc, char *argv[])
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
 
-   rc = ReadSect(hFile, pCD->BootSect.bpb.FSinfoSec, 1, SECTOR_SIZE, bSector);
+   rc = ReadSect(hFile, pCD->BootSect.bpb.FSinfoSec, 1, dp.BytesPerSect, bSector);
    if (rc)
       {
       show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, get_error(rc));

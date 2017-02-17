@@ -70,6 +70,7 @@ struct _ldr0hdr
 void _System sysinstx_thread(ULONG args)
 {
   ULONG cbSize, ulAction, cbActual, cbOffActual;
+  struct extbpb dp;
   char   file[20];
   char   *drive = (char *)args;
   FILE   *fd;
@@ -82,7 +83,9 @@ void _System sysinstx_thread(ULONG args)
 
   lock_drive(hf);
 
-  rc = ReadSect(hf, 0, sizeof(fat32buf) / SECTOR_SIZE, SECTOR_SIZE, (char *)&fat32buf);
+  get_drive_params(hf, &dp);
+
+  rc = ReadSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
 
   if (rc)
   {
@@ -122,7 +125,7 @@ void _System sysinstx_thread(ULONG args)
   sectorio(hf);
   //stoplw(hf);
 
-  rc = WriteSect(hf, 0, sizeof(fat32buf) / SECTOR_SIZE, SECTOR_SIZE, (char *)&fat32buf);
+  rc = WriteSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
 
   if (rc)
   {
