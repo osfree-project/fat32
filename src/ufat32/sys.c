@@ -15,8 +15,8 @@ void unlock_drive(HANDLE hDevice);
 void begin_format (HANDLE hDevice);
 void remount_media (HANDLE hDevice);
 
-ULONG ReadSect(HANDLE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
+ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 
 
 #pragma pack(1)
@@ -82,7 +82,7 @@ void _System sysinstx_thread(ULONG args)
 
   lock_drive(hf);
 
-  rc = ReadSect(hf, 0, sizeof(fat32buf) / 512, (char *)&fat32buf);
+  rc = ReadSect(hf, 0, sizeof(fat32buf) / SECTOR_SIZE, SECTOR_SIZE, (char *)&fat32buf);
 
   if (rc)
   {
@@ -122,7 +122,7 @@ void _System sysinstx_thread(ULONG args)
   sectorio(hf);
   //stoplw(hf);
 
-  rc = WriteSect(hf, 0, sizeof(fat32buf) / 512, (char *)&fat32buf);
+  rc = WriteSect(hf, 0, sizeof(fat32buf) / SECTOR_SIZE, SECTOR_SIZE, (char *)&fat32buf);
 
   if (rc)
   {

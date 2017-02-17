@@ -181,6 +181,7 @@ int format_volume (char *path, format_params *params)
     DWORD    i;
     HANDLE   hDevice;
     UCHAR    PartitionType = 0x0c;
+    BOOL     bGPTMode = FALSE;
 
     int      cbRet;
     BOOL     bRet;
@@ -227,7 +228,7 @@ int format_volume (char *path, format_params *params)
 
     // Open drive
     open_drive (path, &hDevice);
-    get_drive_params(hDevice, &dp);
+    bGPTMode = get_drive_params(hDevice, &dp);
     lock_drive(hDevice);
     begin_format(hDevice);
     sectorio(hDevice);
@@ -446,7 +447,11 @@ int format_volume (char *path, format_params *params)
     //    will let you use a 48bit LBA drive.
     //    see http://www.48bitlba.com/win98.htm for instructions
 
-    set_part_type (hDevice, &dp, 0xc);
+    if ( !bGPTMode )
+       {
+       set_part_type (hDevice, &dp, 0xc);
+       }
+
     remount_media ( hDevice );
     unlock_drive ( hDevice );
     close_drive ( hDevice );
@@ -634,6 +639,8 @@ int format(int argc, char *argv[], char *envp[])
 
     if ( format_volume( path, &p ) )
        show_message( "\n\n\nFormat completed successfully.\n\n\n", 0, 635, 0 );
+    else
+       show_message( "The specified disk did not finish formatting.\n", 0, 528, 0 );
 
     return 0;
 }

@@ -7,7 +7,7 @@
 #include "fat32c.h"
 
 BOOL  GetDiskStatus(PCDINFO pCD);
-ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSect, PBYTE pbSector);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData);
 void CodepageConvInit(BOOL fSilent);
@@ -63,7 +63,7 @@ int recover_thread(int argc, char *argv[])
    lock_drive(hFile);
    pCD->hDisk = hFile;
 
-   rc = ReadSector(pCD, 0, 1, bSector);
+   rc = ReadSect(hFile, 0, 1, SECTOR_SIZE, bSector);
    if (rc)
       {
       show_message("Error: Cannot read boot sector: %s\n", 0, 0, 1, get_error(rc));
@@ -71,7 +71,7 @@ int recover_thread(int argc, char *argv[])
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
 
-   rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
+   rc = ReadSect(hFile, pCD->BootSect.bpb.FSinfoSec, 1, SECTOR_SIZE, bSector);
    if (rc)
       {
       show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, get_error(rc));

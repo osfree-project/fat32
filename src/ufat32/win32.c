@@ -83,14 +83,14 @@ BOOL read_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwRead )
 }
 
 
-ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
+ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector )
 {
     DWORD dwRead;
     BOOL ret;
 
-    seek_to_sect ( hDevice, ulSector, SECTOR_SIZE );
+    seek_to_sect ( hDevice, ulSector, BytesPerSector );
 
-    ret = ReadFile ( hDevice, pbSector, nSectors * SECTOR_SIZE, &dwRead, NULL );
+    ret = ReadFile ( hDevice, pbSector, nSectors * BytesPerSector, &dwRead, NULL );
 
     if ( !ret )
         return GetLastError();
@@ -104,13 +104,13 @@ BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritte
     return WriteFile ( hDevice, pData, ulNumBytes, dwWritten, NULL );
 }
 
-ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, PBYTE pbSector )
+ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector )
 {
     DWORD dwWritten;
     BOOL ret;
 
-    seek_to_sect ( hDevice, ulSector, SECTOR_SIZE );
-    ret = WriteFile ( hDevice, pbSector, nSectors * SECTOR_SIZE, &dwWritten, NULL );
+    seek_to_sect ( hDevice, ulSector, BytesPerSector );
+    ret = WriteFile ( hDevice, pbSector, nSectors * BytesPerSector, &dwWritten, NULL );
 
     if ( !ret )
         return GetLastError();
@@ -122,7 +122,7 @@ void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data
 {
     DWORD rc;
 
-    rc = WriteSect ( hDevice, Sector, NumSects, Data );
+    rc = WriteSect ( hDevice, Sector, NumSects, BytesPerSector, Data );
 
     if ( rc )
         die ( "Failed to write", rc );
@@ -265,15 +265,15 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
       &cbRet, NULL);
 
   if ( !bRet )
-      {
-      // This happens because the drive is a Super Floppy
-      // i.e. with no partition table. Disk.sys creates a PARTITION_INFORMATION
-      // record spanning the whole disk and then fails requests to set the 
-      // partition info since it's not actually stored on disk. 
-      // So only complain if there really is a partition table to set      
-      if ( dp->HiddenSectors  )
-	  die( "Failed to set parition info", -6 );
-      }    
+     {
+     // This happens because the drive is a Super Floppy
+     // i.e. with no partition table. Disk.sys creates a PARTITION_INFORMATION
+     // record spanning the whole disk and then fails requests to set the 
+     // partition info since it's not actually stored on disk. 
+     // So only complain if there really is a partition table to set      
+     if ( dp->HiddenSectors  )
+        die( "Failed to set parition info", -6 );
+     }
 }
 
 void begin_format (HANDLE hDevice)
@@ -444,6 +444,7 @@ BOOL IsDBCSLead( UCHAR uch )
 VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 {
     int cbSize;
+    USHORT pBuf[256];
 
     if (! pusUni || !usLen)
        {
@@ -451,7 +452,8 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
        return;
        }
 
-    cbSize = WideCharToMultiByte(CP_OEMCP, 0, pusUni, usLen, pszName, 2 * usLen, NULL, NULL);
+    memcpy(pBuf, pusUni, usLen);
+    cbSize = WideCharToMultiByte(CP_OEMCP, 0, pBuf, usLen, pszName, 2 * usLen, NULL, NULL);
 
     if (! cbSize)
        {
@@ -465,6 +467,7 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
 {
     int cbSize;
+    USHORT pBuf[256];
 
     if (! pszName || !usLen)
        {
@@ -472,7 +475,8 @@ USHORT Translate2Win(PSZ pszName, PUSHORT pusUni, USHORT usLen)
        return 0;
        }
 
-    cbSize = MultiByteToWideChar(CP_OEMCP, 0, (char *)pszName, usLen, pusUni, usLen);
+    memcpy(pBuf, pszName, usLen);
+    cbSize = MultiByteToWideChar(CP_OEMCP, 0, (char *)pBuf, usLen, pusUni, usLen);
 
     if (! cbSize)
        {

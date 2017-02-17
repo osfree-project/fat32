@@ -57,8 +57,8 @@ ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
 ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
-ULONG ReadSect(HANDLE hFile, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
-ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadSect(HANDLE hFile, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
+ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 
 ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 BOOL  GetDiskStatus(PCDINFO pCD);
@@ -278,12 +278,12 @@ ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
 
 ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 {
-   return ReadSect(pCD->hDisk, ulSector, nSectors, pbSector);
+   return ReadSect(pCD->hDisk, ulSector, nSectors, pCD->BootSect.bpb.BytesPerSector, pbSector);
 }
 
 ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
 {
-   return WriteSect(pCD->hDisk, ulSector, nSectors, pbSector);
+   return WriteSect(pCD->hDisk, ulSector, nSectors, pCD->BootSect.bpb.BytesPerSector, pbSector);
 }
 
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster)

@@ -25,7 +25,6 @@ ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);
-ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pCD);

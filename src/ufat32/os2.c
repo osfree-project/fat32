@@ -104,7 +104,7 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
         die("Seek error", rc);
 }
 
-ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
+ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
 {
    ULONG ulDataSize;
    BIOSPARAMETERBLOCK bpb;
@@ -135,7 +135,7 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
    ULONGLONG off;
    int i;
 
-   ulDataSize = nSectors * SECTOR_SIZE;
+   ulDataSize = nSectors * BytesPerSector;
 
    if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
@@ -143,12 +143,12 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;
-   off *= SECTOR_SIZE;
+   off *= BytesPerSector;
 
    for (i = 0; i < bpb.usSectorsPerTrack; i++)
    {
        ptrk->TrackTable[i].usSectorNumber = i + 1;
-       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+       ptrk->TrackTable[i].usSectorSize = BytesPerSector;
    }
 
    do
@@ -157,14 +157,14 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
        parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
        datalen4 = BUFSIZE;
 
-       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
-       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
-       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+       cyl = off / (BytesPerSector * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / BytesPerSector - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / BytesPerSector - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
 
-       if (sec + cbRead32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
-           cbRead32 = (bpb.usSectorsPerTrack - sec) * SECTOR_SIZE;
+       if (sec + cbRead32 / BytesPerSector > bpb.usSectorsPerTrack)
+           cbRead32 = (bpb.usSectorsPerTrack - sec) * BytesPerSector;
 
-       n = cbRead32 / SECTOR_SIZE;
+       n = cbRead32 / BytesPerSector;
 
        ptrk->bCommand = 1;
        ptrk->usHead = head;
@@ -189,7 +189,7 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, PBYTE pbSector)
     return rc;
 }
 
-ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
+ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
 {
    ULONG ulDataSize;
    BIOSPARAMETERBLOCK bpb;
@@ -220,7 +220,7 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
    ULONGLONG off;
    int i;
 
-   ulDataSize = nSectors * SECTOR_SIZE;
+   ulDataSize = nSectors * BytesPerSector;
 
    if ( (rc = DosDevIOCtl((HFILE)hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
@@ -228,12 +228,12 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
 
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;
-   off *= SECTOR_SIZE;
+   off *= BytesPerSector;
 
    for (i = 0; i < bpb.usSectorsPerTrack; i++)
    {
        ptrk->TrackTable[i].usSectorNumber = i + 1;
-       ptrk->TrackTable[i].usSectorSize = SECTOR_SIZE;
+       ptrk->TrackTable[i].usSectorSize = BytesPerSector;
    }
 
    do
@@ -242,14 +242,14 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, PBYTE pbSector)
        parmlen4 = sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * (bpb.usSectorsPerTrack - 1);
        datalen4 = BUFSIZE;
 
-       cyl = off / (SECTOR_SIZE * bpb.cHeads * bpb.usSectorsPerTrack);
-       head = (off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
-       sec = off / SECTOR_SIZE - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
+       cyl = off / (BytesPerSector * bpb.cHeads * bpb.usSectorsPerTrack);
+       head = (off / BytesPerSector - bpb.cHeads * bpb.usSectorsPerTrack * cyl) / bpb.usSectorsPerTrack;
+       sec = off / BytesPerSector - bpb.cHeads * bpb.usSectorsPerTrack * cyl - head * bpb.usSectorsPerTrack;
 
-       if (sec + cbWrite32 / SECTOR_SIZE > bpb.usSectorsPerTrack)
-           cbWrite32 = (bpb.usSectorsPerTrack - sec) * SECTOR_SIZE;
+       if (sec + cbWrite32 / BytesPerSector > bpb.usSectorsPerTrack)
+           cbWrite32 = (bpb.usSectorsPerTrack - sec) * BytesPerSector;
 
-       n = cbWrite32 / SECTOR_SIZE;
+       n = cbWrite32 / BytesPerSector;
 
        ptrk->bCommand = 1;
        ptrk->usHead = head;
@@ -279,7 +279,7 @@ void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data
     DWORD dwWritten;
     ULONG ret;
 
-    ret = WriteSect( hDevice, Sector, NumSects, Data);
+    ret = WriteSect( hDevice, Sector, NumSects, BytesPerSector, Data);
 
     if ( ret )
         die ( "Failed to write", ret );
@@ -415,7 +415,7 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
   APIRET rc;
   int i;
 
-  rc = ReadSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
+  rc = ReadSect(hDevice, -dp->HiddenSectors, 1, dp->BytesPerSect, (char *)&mbr);
 
   if (rc)
       die("Error reading MBR\n", rc);
@@ -426,7 +426,7 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
     {
       // set type to FAT32
       mbr.pte[i].system_id = type;
-      rc = WriteSect(hDevice, -dp->HiddenSectors, 1, (char *)&mbr);
+      rc = WriteSect(hDevice, -dp->HiddenSectors, 1, dp->BytesPerSect, (char *)&mbr);
 
       if (rc)
           die("Error writing MBR\n", rc);
