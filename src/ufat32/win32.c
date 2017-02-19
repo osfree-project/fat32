@@ -99,11 +99,6 @@ ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPer
 }
 
 
-BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten )
-{
-    return WriteFile ( hDevice, pData, ulNumBytes, dwWritten, NULL );
-}
-
 ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector )
 {
     DWORD dwWritten;
@@ -118,14 +113,13 @@ ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPe
     return 0;
 }
 
-void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
 {
     DWORD rc;
 
     rc = WriteSect ( hDevice, Sector, NumSects, BytesPerSector, Data );
 
-    if ( rc )
-        die ( "Failed to write", rc );
+    return rc;
 }
 
 void open_drive (char *path , HANDLE *hDevice)
@@ -303,11 +297,6 @@ void cleanup ( void )
     hDev = 0;
 }
 
-void sectorio(HANDLE hDevice)
-{
-    // none
-}
-
 void startlw(HANDLE hDevice)
 {
     // none
@@ -399,20 +388,18 @@ void set_datetime(DIRENTRY *pDir)
 
 char *get_error(USHORT rc)
 {
-    //Get the error message, if any.
-    DWORD errID = GetLastError();
     char *msgBuf = NULL;
     static char szBuf[256];
     size_t size;
 
     //No error message has been recorded
-    if(errID == 0)
+    if(rc == 0)
         return "";
 
     size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                NULL, errID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msgBuf, 0, NULL);
+                                NULL, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msgBuf, 0, NULL);
 
-    strncpy(szBuf, msgBuf, sizeof(szBuf));
+    CharToOem(msgBuf, szBuf);
 
     //Free the buffer.
     LocalFree(msgBuf);

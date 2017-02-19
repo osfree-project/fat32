@@ -101,7 +101,7 @@ void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect )
     rc = DosSetFilePtrL( (HFILE)hDevice, (LONGLONG)llOffset, FILE_BEGIN, &llActual );
 
     if ( rc )
-        die("Seek error", rc);
+        show_message("The drive cannot find the sector (area) requested.\n", 0, 27, 0);
 }
 
 ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
@@ -274,32 +274,16 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
     return rc;
 }
 
-void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
 {
     DWORD dwWritten;
     ULONG ret;
 
     ret = WriteSect( hDevice, Sector, NumSects, BytesPerSector, Data);
 
-    if ( ret )
-        die ( "Failed to write", ret );
-}
-
-BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten )
-{
-    BOOL  ret = TRUE;
-    ULONG rc = 0;
-
-    assert(! (ulNumBytes % 512));
-
-    if ( rc = DosWrite ( (HFILE)hDevice, pData, (ULONG)ulNumBytes >> 9, (PULONG)dwWritten ) )
-        ret = FALSE;
-
-    if (ret)
-        *dwWritten <<= 9;
-
     return ret;
 }
+
 
 void open_drive (char *path, HANDLE *hDevice)
 {
@@ -490,27 +474,6 @@ void cleanup ( void )
 }
 
 
-void sectorio(HANDLE hDevice)
-{
-  ULONG ulDeadFace = 0xdeadface;
-  ULONG ulParmSize = sizeof(ulDeadFace);
-  APIRET rc;
-
-  rc = DosFSCtl(NULL, 0, 0,
-                (PBYTE)&ulDeadFace, ulParmSize, &ulParmSize,
-                FAT32_SECTORIO,
-                NULL,
-                (HFILE)hDevice,
-                FSCTL_HANDLE);
-
-  if (rc)
-  {
-    show_message("Error %lu doing FAT32_SECTORIO.\n", 0, 0, 1, rc);
-    show_message("%s\n", 0, 0, 1, get_error(rc));
-    return;
-  }
-}
-
 void startlw(HANDLE hDevice)
 {
    ULONG ulDataSize = 0;
@@ -576,6 +539,7 @@ void mem_free(void *p, ULONG cb)
 
 void query_freq(ULONGLONG *freq)
 {
+    *freq = 0;
     DosTmrQueryFreq( (ULONG *)freq );
 }
 

@@ -122,7 +122,7 @@ void _System sysinstx_thread(ULONG args)
   strncpy(&fat32buf.FS, "fat", 3);
   fat32buf.FS[3] = 0;
 
-  sectorio(hf);
+  //sectorio(hf);
   //stoplw(hf);
 
   rc = WriteSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
@@ -159,15 +159,19 @@ void _System sysinstx_thread(ULONG args)
     return;
   }
 
-  cbActual = fwrite(preldr0_mdl, sizeof(char), sizeof(preldr0_mdl), fd);
+  cbActual = fwrite(preldr0_mdl, sizeof(preldr0_mdl), 1, fd);
 
   if (! cbActual)
   {
-    show_message("Cannot writing to %s file.\n", 0, 0, 1, file);
+    show_message("Cannot write to %s file.\n", 0, 0, 1, file);
     return;
   }
 
   fclose(fd);
+
+  memset(file, 0, sizeof(file));
+  file[0] = drive[0];
+  strcat(file, ":\\boot\\loader\\preldr0.mdl");
 
   fd = fopen(file, "rb+");
 
@@ -179,7 +183,7 @@ void _System sysinstx_thread(ULONG args)
 
   fseek(fd, 0, SEEK_SET);
 
-  cbActual = fread(&ldr0hdr, sizeof(char), sizeof(ldr0hdr), fd);
+  cbActual = fread(&ldr0hdr, sizeof(ldr0hdr), 1, fd);
 
   if (! cbActual)
   {
@@ -193,7 +197,7 @@ void _System sysinstx_thread(ULONG args)
 
   fseek(fd, 0, SEEK_SET);
 
-  cbActual = fwrite(&ldr0hdr, sizeof(char), sizeof(ldr0hdr), fd);
+  cbActual = fwrite(&ldr0hdr, sizeof(ldr0hdr), 1, fd);
 
   if (! cbActual)
   {
@@ -214,7 +218,7 @@ void _System sysinstx_thread(ULONG args)
   }
 
 
-  cbActual = fwrite(preldr0_rel, sizeof(char), sizeof(preldr0_rel), fd);
+  cbActual = fwrite(preldr0_rel, sizeof(preldr0_rel), 1, fd);
 
   if (! cbActual)
   {
@@ -237,7 +241,7 @@ void _System sysinstx_thread(ULONG args)
   }
 
   
-  cbActual = fwrite(fat_mdl, sizeof(char), sizeof(fat_mdl), fd);
+  cbActual = fwrite(fat_mdl, sizeof(fat_mdl), 1, fd);
 
   if (! cbActual)
   {
@@ -259,7 +263,7 @@ void _System sysinstx_thread(ULONG args)
   }
 
   
-  cbActual = fwrite(fat_rel, sizeof(char), sizeof(fat_rel), fd);
+  cbActual = fwrite(fat_rel, sizeof(fat_rel), 1, fd);
 
   if (! cbActual)
   {
@@ -283,7 +287,7 @@ void _System sysinstx_thread(ULONG args)
     return;
   }
   
-  cbActual = fwrite(os2boot, sizeof(char), sizeof(os2boot), fd);
+  cbActual = fwrite(os2boot, sizeof(os2boot), 1, fd);
 
   if (! cbActual)
   {

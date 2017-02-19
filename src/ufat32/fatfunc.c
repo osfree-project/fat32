@@ -1960,16 +1960,20 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
    ULONG ulClustersNeeded;
    ULONG ulCluster;
    DIRENTRY OldEntry, NewEntry;
+   char pszFileName[256] = {0};
    APIRET rc;
    char file_exists = 0;
    int i;
+
+   if (pszFile)
+      strcpy(pszFileName, pszFile);
 
    if (cbBuf)
       {
       ulClustersNeeded = cbBuf / pCD->ulClusterSize +
          (cbBuf % pCD->ulClusterSize ? 1 : 0);
 
-      ulCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &OldEntry, NULL);
+      ulCluster = FindPathCluster(pCD, ulDirCluster, pszFileName, &OldEntry, NULL);
 
       if (ulCluster != FAT_EOF)
          {
@@ -1998,9 +2002,9 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
       }
 
    if (! file_exists)
-      rc = MakeDirEntry(pCD, ulDirCluster, &NewEntry, pszFile);
+      rc = MakeDirEntry(pCD, ulDirCluster, &NewEntry, pszFileName);
    else
-      rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, pszFile);
+      rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, pszFileName);
 
    if (rc)
       goto MakeFileEnd;

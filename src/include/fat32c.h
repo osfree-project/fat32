@@ -162,8 +162,7 @@ struct extbpb
 void die ( char * error, DWORD rc );
 DWORD get_vol_id (void);
 void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect );
-void write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects );
-BOOL write_file ( HANDLE hDevice, BYTE *pData, DWORD ulNumBytes, DWORD *dwWritten );
+ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects );
 void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumSects); //, DISK_GEOMETRY* pdgDrive  )
 void open_drive (char *path, HANDLE *hDevice);
 void lock_drive(HANDLE hDevice);

@@ -126,7 +126,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 
     mem_alloc((void **)&pZeroSect, BytesPerSect * BurstSize);
 
-    seek_to_sect( hDevice, Sector, BytesPerSect );
+    //seek_to_sect( hDevice, Sector, BytesPerSect );
 
     query_freq( &Frequency );
     query_time( &Start );
@@ -142,12 +142,13 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         else 
             WriteSize = NumSects;
 
-        ret = write_file ( hDevice, pZeroSect, WriteSize * BytesPerSect, &dwWritten );
+        seek_to_sect( hDevice, Sector, BytesPerSect );
+        ret = write_sect ( hDevice, Sector, BytesPerSect, pZeroSect, WriteSize );
 
-        if ( !ret )
+        if ( ret )
             die ( "Failed to write", ret );  
 
-        qBytesWritten += dwWritten;
+        qBytesWritten += WriteSize * BytesPerSect;
 
         fPercentWritten = ( 100 * qBytesWritten ) / qBytesTotal;
 
@@ -160,6 +161,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         }
         
         NumSects -= WriteSize;
+        Sector   += WriteSize;
     }
 
     query_time( &End );
@@ -231,7 +233,7 @@ int format_volume (char *path, format_params *params)
     bGPTMode = get_drive_params(hDevice, &dp);
     lock_drive(hDevice);
     begin_format(hDevice);
-    sectorio(hDevice);
+    //sectorio(hDevice);
 
     // Checks on Disk Size
     // qTotalSectors = dp.PartitionLength / dp.BytesPerSect;
