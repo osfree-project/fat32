@@ -605,15 +605,16 @@ void set_datetime(DIRENTRY *pDir)
 
    DosGetDateTime(&datetime);
 
-   pDir->wCreateTime.hours = datetime.hours;
-   pDir->wCreateTime.minutes = datetime.minutes;
-   pDir->wCreateTime.twosecs = datetime.seconds / 2;
-   pDir->wCreateDate.day = datetime.day;
-   pDir->wCreateDate.month = datetime.month;
-   pDir->wCreateDate.year = datetime.year - 1980;
-   pDir->wAccessDate.day = datetime.day;
-   pDir->wAccessDate.month = datetime.month;
-   pDir->wAccessDate.year = datetime.year - 1980;
+   pDir->wLastWriteDate.year = datetime.year - 1980;
+   pDir->wLastWriteDate.month = datetime.month;
+   pDir->wLastWriteDate.day = datetime.day;
+   pDir->wLastWriteTime.hours = datetime.hours;
+   pDir->wLastWriteTime.minutes = datetime.minutes;
+   pDir->wLastWriteTime.twosecs = datetime.seconds / 2;
+
+   pDir->wCreateDate = pDir->wLastWriteDate;
+   pDir->wCreateTime = pDir->wLastWriteTime;
+   pDir->wAccessDate = pDir->wLastWriteDate;
 }
 
 

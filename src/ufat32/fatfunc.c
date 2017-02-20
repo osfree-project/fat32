@@ -566,8 +566,6 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
    USHORT    usClusterCount;
    BOOL      fNewCluster;
 
-   //printf("pszLongName(0)=%s\n", pszLongName);
-
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
@@ -578,9 +576,9 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
          rc = MakeShortName(pCD, ulDirCluster, pszLongName, DirNew.bFileName);
-         //printf("pszLongName(1)=%s\n", pszLongName);
          if (rc == LONGNAME_ERROR)
             return ERROR_FILE_EXISTS;
+         set_datetime(&DirNew);
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
@@ -691,6 +689,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                   {
                   case MODIFY_DIR_UPDATE:
                      memcpy(pWork, pNew, sizeof (DIRENTRY));
+                     set_datetime(pWork);
                      rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                      if (rc)
                         {
@@ -757,11 +756,8 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                pWork = (PDIRENTRY)CompactDir(pDirectory, pCD->ulClusterSize * 2, usEntriesNeeded);
-               //printf("pszLongName(2)=%s\n", pszLongName);
                pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
-               //printf("pszLongName(3)=%s\n", pszLongName);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
-
                rc = WriteCluster(pCD, ulPrevCluster, (void *)pDirectory);
                if (rc)
                   {
@@ -784,10 +780,8 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                {
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
-               //printf("pszLongName(4)=%s\n", pszLongName);
                pWork = (PDIRENTRY)CompactDir(pDir2, pCD->ulClusterSize, usEntriesNeeded);
-               //printf("pszLongName(5)=%s\n", pszLongName);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck); ////
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                rc = WriteCluster(pCD, ulCluster, (void *)pDir2);
                if (rc)
@@ -1165,8 +1159,6 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
    USHORT uniEnd[13];
    PUSHORT p;
 
-   //printf("pszLongName(6)=%s\n", pszLongName);
-
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
@@ -1185,7 +1177,6 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
    pLN = (PLNENTRY)pDir;
 
    bCurEntry = 1;
-   //printf("pszLongName(7)=%s\n", pszLongName);
    while (*pszLongName)
       {
 #if 0
@@ -1208,9 +1199,7 @@ PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
       memset(uniEnd, 0xFF, sizeof uniEnd);
       memset(uniName, 0, sizeof uniName);
 
-      //printf("pszLongName(8)=%s\n", pszLongName);
       pszLongName += Translate2Win(pszLongName, uniName, 13);
-      //printf("pszLongName(9)=%s\n", pszLongName);
 
       p = uniName;
       for (usIndex = 0; usIndex < 5; usIndex ++)
@@ -1644,8 +1633,6 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 ******************************************************************/
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName)
 {
-   set_datetime(pNew);
-
    return ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_INSERT,
       NULL, pNew, pszName);
 }
@@ -1991,8 +1978,6 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
             NewEntry.wCluster = LOUSHORT(ulCluster);
             NewEntry.wClusterHigh = HIUSHORT(ulCluster);
             NewEntry.ulFileSize = cbBuf;
-
-            set_datetime(&NewEntry);
          }
       else
          {

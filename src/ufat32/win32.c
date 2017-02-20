@@ -42,19 +42,8 @@ void die ( char * error, DWORD rc )
 
 	if ( dw )
 		{
-		FormatMessage(
-			FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-			FORMAT_MESSAGE_FROM_SYSTEM |
-			FORMAT_MESSAGE_IGNORE_INSERTS,
-			NULL,
-			dw,
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			(LPTSTR) &lpMsgBuf,
-			0, NULL );
-
 		// Display the error message and exit the process
-
-		fprintf ( stderr, "%s\nGetLastError()=%d: %s\n", error, dw, lpMsgBuf );	
+		fprintf ( stderr, "%s\nGetLastError() == %d: %s\n", error, dw, get_error(dw) );	
 		}
 	else
 		{
@@ -374,15 +363,16 @@ void set_datetime(DIRENTRY *pDir)
 
     GetSystemTime(&datetime);
 
-    pDir->wCreateTime.hours = datetime.wHour;
-    pDir->wCreateTime.minutes = datetime.wMinute;
-    pDir->wCreateTime.twosecs = datetime.wSecond / 2;
-    pDir->wCreateDate.day = datetime.wDay;
-    pDir->wCreateDate.month = datetime.wMonth;
-    pDir->wCreateDate.year = datetime.wYear - 1980;
-    pDir->wAccessDate.day = datetime.wDay;
-    pDir->wAccessDate.month = datetime.wMonth;
-    pDir->wAccessDate.year = datetime.wYear - 1980;
+    pDir->wLastWriteDate.year = datetime.wYear - 1980;
+    pDir->wLastWriteDate.month = datetime.wMonth;
+    pDir->wLastWriteDate.day = datetime.wDay;
+    pDir->wLastWriteTime.hours = datetime.wHour;
+    pDir->wLastWriteTime.minutes = datetime.wMinute;
+    pDir->wLastWriteTime.twosecs = datetime.wSecond / 2;
+
+    pDir->wCreateDate = pDir->wLastWriteDate;
+    pDir->wCreateTime = pDir->wLastWriteTime;
+    pDir->wAccessDate = pDir->wLastWriteDate;
 }
 
 
