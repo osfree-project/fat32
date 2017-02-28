@@ -671,7 +671,7 @@ ULONG dummy = 0;
             if (!fMsg)
                {
                show_message("\n", 0, 0, 0);
-               show_message("The system detected lost data on disk %1.\n", 0, 562, 1, TYPE_STRING, pCD->szDrive);
+               show_message("The system detected lost data on disk %1.\n", 2442, 562, 1, TYPE_STRING, pCD->szDrive);
                show_message("CHKDSK has searched %1% of the disk.", 0, 563, 1, TYPE_PERC, usNew);
                printf("\r");
 
@@ -694,14 +694,16 @@ ULONG dummy = 0;
 
       if (pCD->usLostChains >= MAX_LOST_CHAINS)
          show_message("Warning!  Not enough memory is available for CHKDSK\n"
-                      "to recover all lost data.\n", 0, 548, 0);
+                      "to recover all lost data.\n", 2441, 548, 0);
 
       if (!pCD->fAutoRecover)
+         {
          show_message("%1 lost clusters found in %2 chains\n"
                       "These clusters and chains will be erased unless you convert\n"
-                      "them to files.  Do you want to convert them to files(Y/N)? ", 0, 1356, 2,
+                      "them to files.  Do you want to convert them to files(Y/N)? ", 2440, 1356, 2,
             TYPE_LONG2, pCD->ulLostClusters,
             TYPE_LONG2, (ULONG)pCD->usLostChains);
+         }
       fflush(stdout);
 
       for (;;)
@@ -814,7 +816,7 @@ UCHAR fModified = FALSE;
    pCD->ulDirClusters += ulClusters;
 
    if (pCD->fDetailed == 2)
-      show_message("\n\nDirectory of %s (%lu clusters)\n\n", 0, 0, 0, pszPath, ulClusters);
+      show_message("\n\nDirectory of %s (%lu clusters)\n\n", 2438, 0, 2, pszPath, ulClusters);
 
    ulBytesNeeded = (ULONG)pCD->BootSect.bpb.SectorsPerCluster * (ULONG)pCD->BootSect.bpb.BytesPerSector * ulClusters;
    pbCluster = calloc(ulClusters, pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector);
@@ -889,8 +891,7 @@ UCHAR fModified = FALSE;
                {
                show_message("The longname %s does not belong to %s\\%s\n", 0, 0, 3,
                   szLongName, pszPath, MakeName(pDir, szShortName, sizeof(szShortName)));
-               show_message("The longname does not belong to %s\n", 2414, 0, 1,
-                  MakeName(pDir, szShortName, sizeof(szShortName)));
+               show_message("The longname does not belong to %s.\n", 2414, 0, 1, MakeName(pDir, szShortName, sizeof(szShortName)));
                if (pCD->fFix)
                   {
                   // mark it as deleted
@@ -966,7 +967,7 @@ UCHAR fModified = FALSE;
                      Mark.fEAS = ( BYTE )( pDir->fEAS == FILE_HAS_OLD_EAS ? FILE_HAS_EAS : FILE_HAS_CRITICAL_EAS );
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        show_message("This has been corrected\n", 0, 0, 0);
+                        show_message("This has been corrected\n", 2439, 0, 0);
                      else
                         show_message("SYS%4.4u: Unable to correct problem\n", 2416, 0, 1, rc);
                 }
@@ -1014,7 +1015,7 @@ UCHAR fModified = FALSE;
                      Mark.fEAS = FILE_HAS_NO_EAS;
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        show_message("This has been corrected\n", 0, 0, 0);
+                        show_message("This has been corrected\n", 2439, 0, 0);
                      else
                         show_message("SYS%4.4u: Unable to correct problem\n", 2416, 0, 1, rc);
                      }
@@ -1030,7 +1031,7 @@ UCHAR fModified = FALSE;
                      Mark.fEAS = FILE_HAS_NO_EAS;
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                      if (!rc)
-                        show_message("This has been corrected\n", 0, 0, 0);
+                        show_message("This has been corrected\n", 2439, 0, 0);
                      else
                         show_message("SYS%4.4u: Unable to correct problem\n", 2416, 0, 1, rc);
                      }
@@ -1123,7 +1124,7 @@ UCHAR fModified = FALSE;
                            Mark.fEAS = FILE_HAS_EAS;
                            rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
                            if (!rc)
-                              show_message("This has been corrected\n", 0, 0, 0);
+                              show_message("This has been corrected\n", 2439, 0, 0);
                            else
                               show_message("SYS%4.4u: Unable to correct problem\n", 2416, 0, 1, rc);
                            }
@@ -1175,7 +1176,7 @@ UCHAR fModified = FALSE;
                         pCD->ulErrorCount++;
                         }
                      else
-                        show_message("CHKDSK corrected an allocation error for the file %1.\n", 0, 560, 1,
+                        show_message("CHKDSK corrected an allocation error for the file %1.\n", 2444, 560, 1,
                            TYPE_STRING, fs.szFileName);
                      }
 
@@ -1641,6 +1642,6 @@ ULONG  rc, dummy1 = 0, dummy2 = 0;
    pCD->ulRecoveredClusters += ulSize;
    pCD->ulRecoveredFiles++;
 
-   show_message("CHKDSK placed recovered data in file %1.\n", 0, 574, 1, TYPE_STRING, szRecovered);
+   show_message("CHKDSK placed recovered data in file %1.\n", 2443, 574, 1, TYPE_STRING, szRecovered);
    return TRUE;
 }

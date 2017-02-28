@@ -724,12 +724,13 @@ ULONG ulAttr;
 
 int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...)
 {
-    va_list va;
+    va_list va, va2;
     UCHAR szBuf[1024];
     int len, i;
     char *dummy;
 
     va_start(va, usNumFields);
+    va_copy(va2, va);
 
     if (usMsg)
        {
@@ -748,24 +749,25 @@ int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, u
     if (usLogMsg)
        {
        PSZ pszString = NULL;
-       ULONG arg = va_arg(va, ULONG);
        ULONG ulParmNo = usNumFields;
 
-       if (strstr(pszMsg, "%s"))
+       if (pszMsg && strstr(pszMsg, "%1"))
           {
+          ULONG arg = va_arg(va2, ULONG);
           if (usMsg && arg == TYPE_STRING)
-             pszString = va_arg(va, PSZ);
-          else
-             pszString = (PSZ)arg;
+             pszString = va_arg(va2, PSZ);
           }
+       else if (pszMsg && strstr(pszMsg, "%s"))
+          pszString = (PSZ)va_arg(va2, PSZ);
 
        if (pszString)
           ulParmNo--;
 
-       LogOutMessagePrintf(usLogMsg, pszString, ulParmNo, va);
+       LogOutMessagePrintf(usLogMsg, pszString, ulParmNo, va2);
        }
 
-    va_end( va );
+    va_end(va2);
+    va_end(va);
 
     // output additional message for /P switch specified
     if (usMsg && msg)
