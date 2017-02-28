@@ -73,7 +73,7 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen);
 ULONG FindDirCluster(PCDINFO pCD, PSZ pDir, USHORT usCurDirEnd, USHORT usAttrWanted, PSZ *pDirEnd);
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
-APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
 BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
 void CodepageConvInit(BOOL fSilent);
@@ -495,13 +495,14 @@ ChkDskMainExit:
       {
       // write chkdsk log
       if (! pCD->fCleanOnBoot || ! pCD->fAutoCheck )
-         MakeFile(pCD, pCD->BootSect.bpb.RootDirStrtClus, "chkdsk.log", logbuf, logbufpos);
+         MakeFile(pCD, pCD->BootSect.bpb.RootDirStrtClus, "chkdsk.old", "chkdsk.log", logbuf, logbufpos);
 
       // remount disk for changes to take effect
       if (! pCD->fAutoCheck)
          remount_media(pCD->hDisk);
       }
 
+   free((void *)pCD->pFatBits);
    return rc;
 }
 

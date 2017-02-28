@@ -57,7 +57,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster);
 BOOL UpdateFSInfo(PCDINFO pCD);
 ULONG MakeFatChain(PCDINFO pCD, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
 USHORT MakeChain(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulSize);
-APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 BOOL IsCharValid(char ch);
 
 void set_datetime(DIRENTRY *pDir);
@@ -1942,23 +1942,38 @@ USHORT rc;
 /******************************************************************
 *
 ******************************************************************/
-APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG cbBuf)
+APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf)
 {
    ULONG ulClustersNeeded;
-   ULONG ulCluster;
-   DIRENTRY OldEntry, NewEntry;
+   ULONG ulCluster, ulOldCluster;
+   DIRENTRY OldOldEntry, OldNewEntry, OldEntry, NewEntry;
+   char pszOldFileName[256] = {0};
    char pszFileName[256] = {0};
    APIRET rc;
    char file_exists = 0;
    int i;
 
-   if (pszFile)
-      strcpy(pszFileName, pszFile);
-
    if (cbBuf)
       {
       ulClustersNeeded = cbBuf / pCD->ulClusterSize +
          (cbBuf % pCD->ulClusterSize ? 1 : 0);
+
+      if (pszOldFile)
+         {
+         if (pszFile)
+            strcpy(pszOldFileName, pszOldFile);
+
+         ulOldCluster = FindPathCluster(pCD, ulDirCluster, pszOldFileName, &OldOldEntry, NULL);
+
+         if (ulOldCluster != FAT_EOF)
+            {
+            DeleteFatChain(pCD, ulOldCluster);
+            ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_DELETE, &OldOldEntry, NULL, NULL);
+            }
+         }
+
+      if (pszFile)
+         strcpy(pszFileName, pszFile);
 
       ulCluster = FindPathCluster(pCD, ulDirCluster, pszFileName, &OldEntry, NULL);
 
@@ -1966,7 +1981,16 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
          {
          file_exists = 1;
          memcpy(&NewEntry, &OldEntry, sizeof(DIRENTRY));
-         DeleteFatChain(pCD, ulCluster);
+         if (!pszOldFile)
+            DeleteFatChain(pCD, ulCluster);
+         else
+            {
+            memcpy(&OldNewEntry, &OldEntry, sizeof(DIRENTRY));
+            // rename chkdsk.log to chkdsk.old
+            rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_RENAME, &OldEntry, &OldNewEntry, pszOldFileName);
+            if (rc)
+               goto MakeFileEnd;
+            }
          }
       else
          memset(&NewEntry, 0, sizeof(DIRENTRY));
@@ -1986,7 +2010,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszFile, PBYTE pBuf, ULONG 
          }
       }
 
-   if (! file_exists)
+   if (! file_exists || pszOldFile)
       rc = MakeDirEntry(pCD, ulDirCluster, &NewEntry, pszFileName);
    else
       rc = ModifyDirectory(pCD, ulDirCluster, MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, pszFileName);
