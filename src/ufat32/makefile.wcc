@@ -12,7 +12,7 @@ DESC4="SYS, standalone version"
 OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
       $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd &
       $(PROJ_BLD)\chkdsk.obd $(PROJ_BLD)\fatfunc.obd $(PROJ_BLD)\unicode.obd &
-      $(PROJ_BLD)\log.obd
+      $(PROJ_BLD)\log.obd $(PROJ_BLD)\init.obd
 OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj &
       $(PROJ_BLD)\log.obj
 OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc &
@@ -20,10 +20,11 @@ OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc &
 OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\os2.obj &
       $(PROJ_BLD)\msg.obj $(PROJ_BLD)\log.obj
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-TARGETS=$(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\dll\ufat32.sym &
-        $(BINROOT)\os2\fat32fmt.exe $(BINROOT)\os2\fat32fmt.sym &
+C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+TARGETS=$(BINROOT)\os2\fat32fmt.exe $(BINROOT)\os2\fat32fmt.sym &
         $(BINROOT)\os2\fat32chk.exe $(BINROOT)\os2\fat32chk.sym &
-        $(BINROOT)\os2\fat32sys.exe $(BINROOT)\os2\fat32sys.sym
+        $(BINROOT)\os2\fat32sys.exe $(BINROOT)\os2\fat32sys.sym &
+        $(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\dll\ufat32.sym
 SYS=os2v2
 
 !include ..\makefile.mk
@@ -68,16 +69,27 @@ $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
  @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
  @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $[*.lnk OPTION MIXED1632
- #@%append $[*.lnk OPTION NODEFAULTLIBS
+ @%append $[*.lnk OPTION NODEFAULTLIBS
  @%append $[*.lnk OPTION ST=81920
+ @%append $[*.lnk OPTION NOSTUB,ELIMINATE
  @%append $[*.lnk DEBUG ALL
  @%append $[*.lnk segment type DATA LOADONCALL NONSHARED
  @%append $[*.lnk segment type CODE PRELOAD 
  @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
  @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk EXPORT CHKDSK,FORMAT,RECOVER,SYS
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;
- @%append $[*.lnk LIB os2386,clib3s
+ @%append $[*.lnk EXPORT &
+     CHKDSK,  &
+     FORMAT,  &
+     RECOVER, &
+     SYS,     &
+     chkdsk,  &
+     format,  &
+     recover, &
+     sys
+ @%append $[*.lnk IMPORT &
+     DOSSETSIGHANDLER DOSCALLS.14
+ @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $[*.lnk LIB os2386,clib3s,math3s
  @%append $[*.lnk @$[@
 
 $(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
@@ -119,3 +131,7 @@ $(PROJ_BLD)\os2.obc: os2.c
 $(PROJ_BLD)\os2.obd: os2.c
  @echo CC       $^.
  @$(CC) $(COPT)  -d__DLL__ -d__UNICODE__ -bd -fr=$^*.err -fo=$^@ $<
+
+$(PROJ_BLD)\init.obd: init.c16
+ @echo CC       $^.
+ @wcc $(C16OPT)  -d__DLL__ -bd -fr=$^*.err -fo=$^@ $<

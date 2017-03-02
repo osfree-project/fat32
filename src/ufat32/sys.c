@@ -67,17 +67,33 @@ struct _ldr0hdr
 
 #define STACKSIZE 0x10000
 
-void _System sysinstx_thread(ULONG args)
+static void usage(char *s)
+{
+   show_message("Usage: [c:\\] %s x:\n"
+                "(c) Netlabs, 2016, covered by (L)GPL\n"
+                "Make a disk system.\n\n", 0, 0, 1, s);
+}
+
+void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 {
   ULONG cbSize, ulAction, cbActual, cbOffActual;
   struct extbpb dp;
   char   file[20];
-  char   *drive = (char *)args;
+  char   *drive = rgArgv[1];
   FILE   *fd;
   HANDLE  hf;
   APIRET rc;
 
   show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+
+  if (!rgArgv[1] ||
+      (rgArgv[1] && (strstr(strlwr(rgArgv[1]), "/h") || strstr(strlwr(rgArgv[1]), "/?"))) ||
+      (rgArgv[2] && (strstr(strlwr(rgArgv[2]), "/h") || strstr(strlwr(rgArgv[2]), "/?"))))
+     {
+     // show help
+     usage(rgArgv[0]);
+     exit(0);
+     }
 
   open_drive(drive, &hf);
 
@@ -321,14 +337,17 @@ int sys(int argc, char *argv[], char *envp[])
   _asm {
     mov eax, esp
     mov edx, stack
-    mov ecx, argv
+    mov ecx, envp
     add edx, STACKSIZE - 4
     mov esp, edx
     push eax
-    mov ecx, [ecx + 4]
+    push ecx
+    mov ecx, argv
+    push ecx
+    mov ecx, argc
     push ecx
     call sysinstx_thread
-    add esp, 4
+    add esp, 12
     pop esp
   }
 

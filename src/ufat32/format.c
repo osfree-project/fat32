@@ -47,6 +47,8 @@ This is the Microsoft calculation from FATGEN
     return( FatSz );
 */
 
+USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
+
 // disk file open handle
 extern char msg;
 
@@ -469,7 +471,7 @@ int format_volume (char *path, format_params *params)
     return( TRUE );
 }
 
-void usage( char *s )
+static void usage( char *s )
 {
         show_message ( "\nFat32format, ver. 1.07, \n"
                  "see http://www.ridgecrop.demon.co.uk/fat32format.htm\n"
@@ -499,6 +501,10 @@ void sig_handler (int sig);
 
 int setup_signals (void)
 {
+#if defined(__OS2__) && defined(__DLL__)
+    // setup 16-bit signals
+    INIT16(0, 0);
+#endif
     if (SIG_ERR == signal(SIGABRT, sig_handler)) {
        perror("Could not set SIGABRT");
        return EXIT_FAILURE;

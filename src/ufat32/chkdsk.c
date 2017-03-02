@@ -79,6 +79,8 @@ BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
 void CodepageConvInit(BOOL fSilent);
 int lastchar(const char *string);
 
+USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
+
 extern int logbufsize;
 extern char *logbuf;
 extern int  logbufpos;
@@ -90,13 +92,27 @@ static BOOL fToFile;
 
 extern char msg;
 
-VOID Handler(INT iSignal)
+static void Handler(INT iSignal)
 {
-   show_message("Signal %d was received\n", 0, 0, 1, iSignal);
+   show_message("\nSignal %d was received\n", 0, 0, 1, iSignal);
 
    // remount disk for changes to take effect
-   if (hDisk)
-      remount_media(hDisk);
+   cleanup();
+   exit(1);
+}
+
+static void usage(char *s)
+{
+   show_message("Usage: [c:\\] %s x: [/v[:[1|2]] [/p] [/f] [/c] [/a] [/h] [/?]]\n"
+                "(c) Henk Kelder & Netlabs, covered by (L)GPL\n"
+                "/v         verbose, /v[:<verboseness level>]\n"
+                "/p         use with PM frontend\n"
+                "/f         fix errors\n"
+                "/c         auto recover files only if the FS\n"
+                "           is in inconsistent state\n"
+                "/a         autocheck\n"
+                "/h or /?   show help\n",
+                0, 0, 1, s);
 }
 
 int chkdsk_thread(int iArgc, char *rgArgv[], char *rgEnv[])
@@ -147,6 +163,9 @@ struct extbpb dp;
             case 'A':
                pCD->fAutoCheck = TRUE;
                break;
+            case 'H':
+            case '?':
+               break;
             default :
                show_message( "%1 is not a valid parameter with the CHKDSK\n"
                              "command when checking a hard disk.\n", 0, 543, 1, TYPE_STRING, rgArgv[iArg] );
@@ -196,7 +215,16 @@ struct extbpb dp;
       return rc;
       }
 
-   rc = ChkDskMain(pCD);
+   if (!strncmp(pCD->BootSect.FileSystem, "FAT32   ", 8))
+      {
+      // try checking only FAT32 drives
+      rc = ChkDskMain(pCD);
+      }
+   else
+      {
+      // show help
+      usage(rgArgv[0]);
+      }
 
    if (pCD->fFix)
       {
@@ -333,6 +361,9 @@ ULONG  cbActual, ulAction;
          signal(SIGFPE, Handler);
          signal(SIGSEGV, Handler);
          signal(SIGILL, Handler);
+#if defined(__OS2__) && defined(__DLL__)
+         rc = INIT16(0, 0);
+#endif
          // issue BEGINFORMAT ioctl to prepare disk for checking
          begin_format(pCD->hDisk);
          }
@@ -362,6 +393,7 @@ ULONG  cbActual, ulAction;
 
    pCD->pFatBits = calloc(usBlocks,4096);
    if (!pCD->pFatBits)
+   //if (mem_alloc((void **)&pCD->pFatBits, ulBytes))
       {
       show_message("Not enough memory for FATBITS\n", 0, 0, 0);
       rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -502,6 +534,7 @@ ChkDskMainExit:
          remount_media(pCD->hDisk);
       }
 
+   //mem_free((void *)pCD->pFatBits, ulBytes);
    free((void *)pCD->pFatBits);
    return rc;
 }
@@ -701,9 +734,14 @@ ULONG dummy = 0;
          {
          show_message("%1 lost clusters found in %2 chains\n"
                       "These clusters and chains will be erased unless you convert\n"
-                      "them to files.  Do you want to convert them to files(Y/N)? ", 2440, 1356, 2,
+                      "them to files.  Do you want to convert them to files(Y/N)? ", 0, 1356, 2,
             TYPE_LONG2, pCD->ulLostClusters,
             TYPE_LONG2, (ULONG)pCD->usLostChains);
+         show_message("%lu lost clusters found in %lu chains\n"
+                      "These clusters and chains will be erased unless you convert\n"
+                      "them to files.  Do you want to convert them to files(Y/N)? ", 2440, 0, 2,
+            pCD->ulLostClusters,
+            (ULONG)pCD->usLostChains);
          }
       fflush(stdout);
 
