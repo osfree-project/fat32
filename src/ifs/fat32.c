@@ -5021,7 +5021,7 @@ USHORT    usFreeEntries;
 DIRENTRY  DirNew;
 ULONG     ulCluster;
 ULONG     ulPrevCluster;
-ULONG     ulNextCluster;
+ULONG     ulNextCluster = FAT_EOF;
 PDIRENTRY pLNStart;
 USHORT    rc;
 USHORT    usClusterCount;
@@ -5030,7 +5030,6 @@ BOOL      fNewCluster;
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("ModifyDirectory DirCluster %ld, Mode = %d",
       ulDirCluster, usMode);
-
 
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
@@ -5318,7 +5317,7 @@ BOOL      fNewCluster;
                    usMode == MODIFY_DIR_DELETE ||
                    usMode == MODIFY_DIR_RENAME)
                   {
-                  if (ulBlock >= pVolInfo->ulClusterSize / pVolInfo->ulBlockSize)
+                  if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
                      {
                      free(pDirectory);
                      return ERROR_FILE_NOT_FOUND;
