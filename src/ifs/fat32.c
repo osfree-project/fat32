@@ -5021,6 +5021,7 @@ USHORT    usFreeEntries;
 DIRENTRY  DirNew;
 ULONG     ulCluster;
 ULONG     ulPrevCluster;
+ULONG     ulPrevBlock;
 ULONG     ulNextCluster = FAT_EOF;
 PDIRENTRY pLNStart;
 USHORT    rc;
@@ -5098,6 +5099,7 @@ BOOL      fNewCluster;
    ulCluster = ulDirCluster;
    pLNStart = NULL;
    ulPrevCluster = FAT_EOF;
+   ulPrevBlock = 0;
    usClusterCount = 0;
    fNewCluster = FALSE;
    while (ulCluster != FAT_EOF)
@@ -5228,6 +5230,7 @@ BOOL      fNewCluster;
                            usMode = MODIFY_DIR_INSERT;
                            ulCluster = ulDirCluster;
                            ulPrevCluster = FAT_EOF;
+                           ulPrevBlock = 0;
                            usClusterCount = 0;
                            pLNStart = NULL;
                            continue;
@@ -5250,7 +5253,7 @@ BOOL      fNewCluster;
                   pWork = fSetLongName(pWork, pszLongName, bCheck);
                   memcpy(pWork, &DirNew, sizeof (DIRENTRY));
 
-                  rc = WriteBlock(pVolInfo, ulPrevCluster, ulBlock, pDirectory, usIOMode);
+                  rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
                   if (rc)
                      {
                      free(pDirectory);
@@ -5303,6 +5306,7 @@ BOOL      fNewCluster;
          if (ulCluster != FAT_EOF)
             {
             ulPrevCluster = ulCluster;
+            ulPrevBlock = ulBlock;
             memmove(pDirectory, pDir2, pVolInfo->ulBlockSize);
             if (pLNStart)
                pLNStart = (PDIRENTRY)((PBYTE)pLNStart - pVolInfo->ulBlockSize);
@@ -5360,9 +5364,15 @@ BOOL      fNewCluster;
                }
             break;
             }
+         if (ulCluster == FAT_EOF)
+            break;
          if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
             ulCluster = ulNextCluster;
          }
+      if (ulCluster == FAT_EOF)
+         break;
+      if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
+         ulCluster = ulNextCluster;
       }
 
    free(pDirectory);
