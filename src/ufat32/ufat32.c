@@ -10,7 +10,6 @@ int chkdsk(int argc, char *argv[], char *envp[]);
 int recover(int argc, char *argv[], char *envp[]);
 int sys(int argc, char *argv[], char *envp[]);
 
-int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...);
 void cleanup(void);
 
 short _Far16 _Pascal _loadds CHKDSK(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp)
@@ -168,7 +167,7 @@ static void show_sig_string(int s)
     printf("\n\nSignal: %d = %s\n", s, str);
 }
 
-// the 16-bit exception handler
+// the 16-bit signal handler
 void _Far16 _Pascal _loadds HANDLER(USHORT x, USHORT iSignal)
 {
    show_sig_string(iSignal);
@@ -176,4 +175,16 @@ void _Far16 _Pascal _loadds HANDLER(USHORT x, USHORT iSignal)
    // remount disk for changes to take effect
    cleanup();
    exit(1);
+}
+
+// 16-bit exception handler
+int _Far16 _Pascal _loadds HANDLER2(void)
+{
+   printf("\n\nException has caught\n");
+
+   // remount disk for changes to take effect
+   cleanup();
+   exit(1);
+
+   return 0;
 }

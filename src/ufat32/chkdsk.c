@@ -165,6 +165,9 @@ struct extbpb dp;
                break;
             case 'H':
             case '?':
+               // show help
+               usage(rgArgv[0]);
+               exit(0);
                break;
             default :
                show_message( "%1 is not a valid parameter with the CHKDSK\n"
@@ -460,7 +463,7 @@ ULONG  cbActual, ulAction;
                    ulFreeBlocks);
       }
 
-   show_message("\n%1 bytes total disk spaceî\n", 0, 1361, 1,
+   show_message("\n%1 bytes total disk space.\n", 0, 1361, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
    if (pCD->ulBadClusters)
       show_message("%1 bytes in bad sectors.\n", 0, 1362, 1,

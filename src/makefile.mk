@@ -26,8 +26,7 @@ dll      = &
 
 util     = &
  cachef32.exe &
- diskdump.exe &
- diskinfo.exe &
+ f32parts.exe &
  f32mon.exe   &
  f32stat.exe  &
  f32chk.exe &
@@ -54,7 +53,7 @@ adddrv   = &
 
 sym      = &
  boot\fat32.sym dll\ufat32.sym &
- cachef32.sym diskdump.sym diskinfo.sym f32mon.sym &
+ cachef32.sym f32parts.sym f32mon.sym &
  f32stat.sym f32chk.sym fat32chk.sym fat32fmt.sym fat32sys.sym
 
 adddrvsym = &
@@ -69,8 +68,7 @@ distlist = &
  $(p)os2\boot\partfilt.flt $(p)os2\boot\partfilt.sym &
  $(p)os2\dll\ufat32.dll $(p)os2\dll\ufat32.sym &
  $(p)os2\cachef32.exe $(p)os2\cachef32.sym &
- $(p)os2\diskdump.exe $(p)os2\diskdump.sym &
- $(p)os2\diskinfo.exe $(p)os2\diskinfo.sym &
+ $(p)os2\f32parts.exe $(p)os2\f32parts.sym &
  $(p)os2\f32mon.exe $(p)os2\f32mon.sym &
  $(p)os2\f32stat.exe $(p)os2\f32stat.sym &
  $(p)os2\f32chk.exe $(p)os2\f32chk.sym &
@@ -121,7 +119,7 @@ CC=wcc
 !endif
 
 .SUFFIXES:
-.SUFFIXES: .flt .ifs .dll .exe .lib .lnk .ols .obc .obd .obj .cpp .c .h .asm .sym .map .wmp .inf .ipf .bmp
+.SUFFIXES: .flt .ifs .dll .exe .lib .lnk .ols .obc .obd .obj .cpp .c .c16 .h .asm .sym .map .wmp .inf .ipf .bmp
 
 all: $(BLDROOT)\bld.flg $(PROJ_BLD)\makefile.wcc dirs copy targets &
      $(BINROOT)\zip-os2.flg $(BINROOT)\zip-win32.flg $(BINROOT)\wpi.flg .symbolic

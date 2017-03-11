@@ -1960,8 +1960,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PB
 
       if (pszOldFile)
          {
-         if (pszFile)
-            strcpy(pszOldFileName, pszOldFile);
+         strcpy(pszOldFileName, pszOldFile);
 
          ulOldCluster = FindPathCluster(pCD, ulDirCluster, pszOldFileName, &OldOldEntry, NULL);
 

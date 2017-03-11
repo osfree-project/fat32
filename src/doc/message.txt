@@ -301,4 +301,11 @@ LOG02434|2434  /| and corrected the problem. |{}
 LOG02435|2435  /|A bad terminated cluster chain was found for %s |{}
 LOG02436|2436  /|%s is fragmented |{}
 LOG02437|2437  /|CHKDSK was unable to recover a lost chain. SYS%4.4u |{}
+LOG02438|2438  /| | |Directory of %s (%lu clusters) | | |{}
+LOG02439|2439  /|This has been corrected |{}
+LOG02440|2440  /|%lu lost clusters found in %lu chains |{}
+LOG02441|2441  /|Warning!  Not enough memory is available for CHKDSK|to recover all lost data. |{}
+LOG02442|2442  /|The system detected lost data on disk %s. |{}
+LOG02443|2443  /|CHKDSK placed recovered data in file %s. |{}
+LOG02444|2444  /|CHKDSK corrected an allocation error for the file %s. |{}
 

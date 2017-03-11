@@ -791,7 +791,7 @@ int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, u
           else if (usType == TYPE_DOUBLE || usType == TYPE_DOUBLE2)
              {
              double arg = va_arg(va, double);
-             printf(",%lf", arg);
+             printf(",%12.0lf", arg);
              }
           else if (usType == TYPE_STRING)
              {

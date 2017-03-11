@@ -87,7 +87,8 @@ $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
      recover, &
      sys
  @%append $[*.lnk IMPORT &
-     DOSSETSIGHANDLER DOSCALLS.14
+     DOSSETSIGHANDLER DOSCALLS.14, &
+     DOSSETVEC DOSCALLS.89
  @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
  @%append $[*.lnk LIB os2386,clib3s,math3s
  @%append $[*.lnk @$[@

@@ -1,22 +1,27 @@
 #define  INCL_DOSSIGNALS
 #define  INCL_DOSERRORS
-#define  INCL_VIO
+#define  INCL_DOSMISC
 #include <os2.h>
 
-#include <stdio.h>
-
-typedef unsigned short USHORT;
-
 void _far _pascal _loadds HANDLER(USHORT a, USHORT b);
+int  _far _pascal _loadds HANDLER2(void);
 
 USHORT _far _pascal _loadds INIT16(hmod, flag)
 {
    if (!flag)
       {
-      /* Install the 16-bit signal handler */
+      PFN pfn;
+      /* Install the 16-bit signal handler    */
       DosSetSigHandler(HANDLER, 0, 0, SIGA_ACCEPT, SIG_CTRLC);
       DosSetSigHandler(HANDLER, 0, 0, SIGA_ACCEPT, SIG_CTRLBREAK);
       DosSetSigHandler(HANDLER, 0, 0, SIGA_ACCEPT, SIG_KILLPROCESS);
+      /* Install the 16-bit exception handler */
+      DosSetVec(00, HANDLER2, &pfn);
+      DosSetVec(04, HANDLER2, &pfn);
+      DosSetVec(05, HANDLER2, &pfn);
+      DosSetVec(06, HANDLER2, &pfn);
+      DosSetVec(07, HANDLER2, &pfn);
+      DosSetVec(16, HANDLER2, &pfn);
       }
 
    return 1;
