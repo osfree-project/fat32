@@ -174,8 +174,8 @@ USHORT rc;
             Message("File has been previously opened!");
          if (ulCluster != pOpenInfo->pSHInfo->ulStartCluster)
             Message("ulCluster with this open and the previous one are not the same!");
-         ulCluster    = pOpenInfo->pSHInfo->ulStartCluster;
-         DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
+         //ulCluster    = pOpenInfo->pSHInfo->ulStartCluster;
+         //DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
          }
 
       if (ulCluster == FAT_EOF)
