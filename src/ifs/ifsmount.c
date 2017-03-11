@@ -166,6 +166,7 @@ P_VolChars   pVolChars;
          pVolInfo->ulCurFatSector = -1L;
          pVolInfo->ulClusterSize = (ULONG)pSect->bpb.BytesPerSector;
          pVolInfo->ulClusterSize *= pSect->bpb.SectorsPerCluster;
+         pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
          pVolInfo->ulTotalClusters = (pSect->bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
 
          pVolInfo->hVBP    = hVBP;
@@ -178,7 +179,7 @@ P_VolChars   pVolChars;
          pVolInfo->fFormatInProgress = FALSE;
 
          if (usDefaultRASectors == 0xFFFF)
-            pVolInfo->usRASectors = (pVolInfo->ulClusterSize / SECTOR_SIZE ) * 2;
+            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / SECTOR_SIZE ) * 2;
          else
             pVolInfo->usRASectors = usDefaultRASectors;
 
@@ -186,8 +187,8 @@ P_VolChars   pVolChars;
          if( pVolInfo->usRASectors > MAX_RASECTORS )
             pVolInfo->usRASectors = MAX_RASECTORS;
 #else
-         if (pVolInfo->usRASectors > (pVolInfo->ulClusterSize / SECTOR_SIZE) * 4)
-            pVolInfo->usRASectors = (pVolInfo->ulClusterSize / SECTOR_SIZE ) * 4;
+         if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / SECTOR_SIZE) * 4)
+            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / SECTOR_SIZE ) * 4;
 #endif
 
          if (pSect->bpb.FSinfoSec != 0xFFFF)
@@ -300,6 +301,7 @@ P_VolChars   pVolChars;
 
          // fake values assuming sector == cluster
          pVolInfo->ulClusterSize   = pvpfsi->vpi_bsize;
+         pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
          pVolInfo->ulTotalClusters = pvpfsi->vpi_totsec;
 
          pVolInfo->usRASectors = usDefaultRASectors;

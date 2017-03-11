@@ -155,7 +155,7 @@ PFEA pTarFea;
       rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFileName);
 
 usStoreEASExit:
-   freeseg(pTarFeal);
+   free(pTarFeal);
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usModifyEAS for %s returned %d",
@@ -373,7 +373,7 @@ USHORT   usMaxSize;
 usGetEASExit:
 
    if (pSrcFeal)
-      freeseg(pSrcFeal);
+      free(pSrcFeal);
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usGetEAS for %s returned %d (%lu bytes in EAS)",
@@ -537,6 +537,8 @@ PBYTE  pszEAName;
 PBYTE pRead;
 USHORT rc;
 USHORT usClustersUsed;
+USHORT usBlocksUsed;
+BOOL fFirst = TRUE;
 
    *ppFEAL = NULL;
 
@@ -549,7 +551,7 @@ USHORT usClustersUsed;
 
    if ((ulCluster && ulCluster != FAT_EOF) || fCreate)
       {
-      pFEAL = gdtAlloc(MAX_EA_SIZE, FALSE);
+      pFEAL = malloc(MAX_EA_SIZE);
       if (!pFEAL)
          return ERROR_NOT_ENOUGH_MEMORY;
       memset(pFEAL, 0, (size_t) MAX_EA_SIZE);
@@ -568,21 +570,25 @@ USHORT usClustersUsed;
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usReadEAS: Reading (1) cluster %lu", ulCluster);
 
-   rc = ReadCluster(pVolInfo, ulCluster, pRead, 0);
+   rc = ReadBlock(pVolInfo, ulCluster, 0, pRead, 0);
    if (rc)
       {
-      freeseg(pFEAL);
+      free(pFEAL);
       return rc;
       }
    if (pFEAL->cbList > MAX_EA_SIZE)
       {
-      freeseg(pFEAL);
+      free(pFEAL);
       return ERROR_EAS_DIDNT_FIT;
       }
 
    usClustersUsed = (USHORT)(pFEAL->cbList / pVolInfo->ulClusterSize);
    if (pFEAL->cbList % pVolInfo->ulClusterSize)
       usClustersUsed++;
+
+   usBlocksUsed = (USHORT)(pFEAL->cbList / pVolInfo->ulBlockSize);
+   if (pFEAL->cbList % pVolInfo->ulBlockSize)
+      usBlocksUsed++;
 
    /*
       vreemd: zonder deze Messages lijkt deze routine mis te gaan.
@@ -591,34 +597,52 @@ USHORT usClustersUsed;
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usReadEAS: %u clusters used", usClustersUsed);
 
-   usClustersUsed--;
-   pRead += pVolInfo->ulClusterSize;
+   usBlocksUsed--;
+   pRead += pVolInfo->ulBlockSize;
 
    while (usClustersUsed)
       {
-      ulCluster = GetNextCluster(pVolInfo, ulCluster);
-      if (!ulCluster)
-         ulCluster = FAT_EOF;
-      if (ulCluster == FAT_EOF)
+      ULONG ulBlock;
+      if (!fFirst)
          {
-         freeseg(pFEAL);
-         return ERROR_EA_FILE_CORRUPT;
+         ulCluster = GetNextCluster(pVolInfo, ulCluster);
+         if (!ulCluster)
+            ulCluster = FAT_EOF;
+         if (ulCluster == FAT_EOF)
+            {
+            free(pFEAL);
+            return ERROR_EA_FILE_CORRUPT;
+            }
          }
-   /*
-      vreemd: zonder deze Messages lijkt deze routine mis te gaan.
-      Optimalisatie?
-   */
-      if (f32Parms.fMessageActive & LOG_EAS)
-         Message("usReadEAS: Reading (2) cluster %lu", ulCluster);
+      for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
+         {
+         if (fFirst)
+            {
+            // skip the 1st block we've already read
+            fFirst = FALSE;
+            continue;
+            }
+      /*
+         vreemd: zonder deze Messages lijkt deze routine mis te gaan.
+         Optimalisatie?
+      */
+         if (f32Parms.fMessageActive & LOG_EAS)
+            Message("usReadEAS: Reading (2) cluster %lu, block %lu", ulCluster, ulBlock);
 
-      rc = ReadCluster(pVolInfo, ulCluster, pRead, 0);
-      if (rc)
-         {
-         freeseg(pFEAL);
-         return rc;
+         rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pRead, 0);
+         if (rc)
+            {
+            free(pFEAL);
+            return rc;
+            }
+         pRead += pVolInfo->ulBlockSize;
+         usBlocksUsed--;
+         if (!usBlocksUsed)
+            break;
          }
+      if (!usBlocksUsed)
+         break;
       usClustersUsed--;
-      pRead += pVolInfo->ulClusterSize;
       }
    *ppFEAL = pFEAL;
 
@@ -674,10 +698,12 @@ PBYTE  pszEAName;
 PBYTE pWrite;
 USHORT rc;
 USHORT usClustersNeeded;
+USHORT usBlocksNeeded;
 DIRENTRY DirEntry;
 DIRENTRY DirNew;
 BOOL     fCritical;
 PFEA     pFea, pFeaEnd;
+BOOL fFirst = TRUE;
 
    if (pFEAL->cbList > MAX_EA_SIZE)
       return ERROR_EA_LIST_TOO_LONG;
@@ -689,6 +715,10 @@ PFEA     pFea, pFeaEnd;
    usClustersNeeded = (USHORT)pFEAL->cbList / pVolInfo->ulClusterSize;
    if (pFEAL->cbList % pVolInfo->ulClusterSize)
       usClustersNeeded++;
+
+   usBlocksNeeded = (USHORT)pFEAL->cbList / pVolInfo->ulBlockSize;
+   if (pFEAL->cbList % pVolInfo->ulBlockSize)
+      usBlocksNeeded++;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
    if (!ulCluster || ulCluster == FAT_EOF)
@@ -747,14 +777,18 @@ PFEA     pFea, pFeaEnd;
    ulNextCluster = FAT_EOF;
    while (usClustersNeeded)
       {
+      ULONG ulBlock;
       ulNextCluster = GetNextCluster(pVolInfo, ulCluster);
       if (!ulNextCluster)
          ulNextCluster = FAT_EOF;
-      rc = WriteCluster(pVolInfo, ulCluster, pWrite, 0);
-      if (rc)
-         return rc;
+      for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
+         {
+         rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pWrite, 0);
+         if (rc)
+            return rc;
+         pWrite += pVolInfo->ulBlockSize;
+         }
       usClustersNeeded --;
-      pWrite += pVolInfo->ulClusterSize;
 
       if (usClustersNeeded)
          {

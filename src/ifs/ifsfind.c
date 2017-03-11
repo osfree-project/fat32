@@ -13,7 +13,7 @@
 #include "fat32ifs.h"
 
 static USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel);
-static BOOL GetCluster(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usClusterIndex);
+static BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usBlockIndex);
 
 /******************************************************************
 *
@@ -23,7 +23,6 @@ int far pascal _loadds FS_FINDCLOSE(struct fsfsi far * pfsfsi,
 {
 PVOLINFO pVolInfo;
 PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
-PDIRENTRY pDirEntries;
 APIRET rc = 0;
 
    _asm push es;
@@ -47,13 +46,8 @@ APIRET rc = 0;
 
    if (pFindInfo->pInfo)
       {
-      pDirEntries = pFindInfo->pInfo->pDirEntries;
-
       if (RemoveFindEntry(pVolInfo, pFindInfo->pInfo))
          free(pFindInfo->pInfo);
-
-      if (pDirEntries)
-         freeseg(pDirEntries);
 
       pFindInfo->pInfo = NULL;
       }
@@ -86,6 +80,7 @@ USHORT rc;
 USHORT usIndex;
 USHORT usNeededLen;
 USHORT usNumClusters;
+USHORT usNumBlocks;
 ULONG  ulCluster;
 ULONG  ulDirCluster;
 PSZ    pSearch;
@@ -212,8 +207,9 @@ PROCINFO ProcInfo;
       ulCluster = GetNextCluster( pVolInfo, ulCluster);
       }
 
-   ulNeededSpace = sizeof (FINFO) + (usNumClusters - 1) * sizeof (ULONG);
-   //ulNeededSpace += pVolInfo->ulClusterSize;
+   usNumBlocks = usNumClusters * (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+   ulNeededSpace = sizeof (FINFO) + (usNumBlocks - 1) * sizeof (ULONG);
+   ulNeededSpace += pVolInfo->ulBlockSize;
 
    GetProcInfo(&ProcInfo, sizeof ProcInfo);
 
@@ -226,15 +222,6 @@ PROCINFO ProcInfo;
       }
 
    memset(pFindInfo->pInfo, 0, (size_t)ulNeededSpace);
-   pFindInfo->pInfo->pDirEntries = (PDIRENTRY)gdtAlloc(pVolInfo->ulClusterSize, FALSE);
-
-   if (!pFindInfo->pInfo->pDirEntries)
-      {
-      rc = ERROR_NOT_ENOUGH_MEMORY;
-      goto FS_FINDFIRSTEXIT;
-      }
-
-   memset(pFindInfo->pInfo->pDirEntries, 0, (size_t)pVolInfo->ulClusterSize);
 
    if (!pVolInfo->pFindInfo)
       pVolInfo->pFindInfo = pFindInfo->pInfo;
@@ -247,12 +234,12 @@ PROCINFO ProcInfo;
       }
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
-   pFindInfo->usEntriesPerCluster = pVolInfo->ulClusterSize / sizeof (DIRENTRY);
-   pFindInfo->usClusterIndex = 0;
+   pFindInfo->usEntriesPerBlock = pVolInfo->ulBlockSize / sizeof (DIRENTRY);
+   pFindInfo->usBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
-   pFindInfo->usTotalClusters = usNumClusters;
-   //pFindInfo->pInfo->pDirEntries =
-   //   (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
+   pFindInfo->usTotalBlocks = usNumBlocks;
+   pFindInfo->pInfo->pDirEntries =
+      (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
 
    if (f32Parms.fMessageActive & LOG_FIND)
       Message("pInfo at %lX, pDirEntries at %lX",
@@ -265,7 +252,7 @@ PROCINFO ProcInfo;
    FSH_UPPERCASE(pFindInfo->pInfo->szSearch, sizeof pFindInfo->pInfo->szSearch, pFindInfo->pInfo->szSearch);
 
    pFindInfo->ulMaxEntry   = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
-   if (!GetCluster(pVolInfo, pFindInfo, 0))
+   if (!GetBlock(pVolInfo, pFindInfo, 0))
       {
       rc = ERROR_SYS_INTERNAL;
       goto FS_FINDFIRSTEXIT;
@@ -549,22 +536,22 @@ PBYTE pStart = *ppData;
 USHORT rc;
 DIRENTRY _huge * pDir;
 BYTE bCheck1;
-USHORT usClusterIndex;
+USHORT usBlockIndex;
 
 
    memset(szLongName, 0, sizeof szLongName);
-   pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerCluster];
+   pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
    bCheck1 = 0;
    while (pFindInfo->ulCurEntry < pFindInfo->ulMaxEntry)
       {
       memset(szShortName, 0, sizeof(szShortName)); // vs
 
-      usClusterIndex = (USHORT)(pFindInfo->ulCurEntry / pFindInfo->usEntriesPerCluster);
-      if (usClusterIndex != pFindInfo->usClusterIndex)
+      usBlockIndex = (USHORT)(pFindInfo->ulCurEntry / pFindInfo->usEntriesPerBlock);
+      if (usBlockIndex != pFindInfo->usBlockIndex)
          {
-         if (!GetCluster(pVolInfo, pFindInfo, usClusterIndex))
+         if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
             return ERROR_SYS_INTERNAL;
-         pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerCluster];
+         pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
          }
 
       if (pDir->bFileName[0] && pDir->bFileName[0] != DELETED_ENTRY)
@@ -1063,16 +1050,19 @@ int far pascal _loadds FS_FINDNOTIFYNEXT(
    ulTimeOut = ulTimeOut;
 }
 
-BOOL GetCluster(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usClusterIndex)
+BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usBlockIndex)
 {
 USHORT usIndex;
+USHORT usBlocksPerCluster = pVolInfo->ulClusterSize / pVolInfo->ulBlockSize;
+USHORT usClusterIndex = usBlockIndex / usBlocksPerCluster;
+ULONG  ulBlock = usBlockIndex % usBlocksPerCluster;
 
-   if (usClusterIndex >= pFindInfo->usTotalClusters)
+   if (usBlockIndex >= pFindInfo->usTotalBlocks)
       return FALSE;
 
    if (!pFindInfo->pInfo->rgClusters[usClusterIndex])
       {
-      for (usIndex = pFindInfo->usClusterIndex; usIndex < usClusterIndex; usIndex++)
+      for (usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
          pFindInfo->pInfo->rgClusters[usIndex + 1] =
             GetNextCluster( pVolInfo, pFindInfo->pInfo->rgClusters[usIndex]);
@@ -1088,10 +1078,10 @@ USHORT usIndex;
    if (pFindInfo->pInfo->rgClusters[usClusterIndex] == FAT_EOF)
       return FALSE;
 
-   if (ReadCluster( pVolInfo,
-      pFindInfo->pInfo->rgClusters[usClusterIndex], pFindInfo->pInfo->pDirEntries, 0))
+   if (ReadBlock( pVolInfo,
+      pFindInfo->pInfo->rgClusters[usClusterIndex], ulBlock, pFindInfo->pInfo->pDirEntries, 0))
       return FALSE;
 
-   pFindInfo->usClusterIndex = usClusterIndex;
+   pFindInfo->usBlockIndex = usBlockIndex;
    return TRUE;
 }

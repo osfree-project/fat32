@@ -150,6 +150,7 @@ ULONG    ulCurFatSector;
 PBYTE    pbFatSector;
 ULONG    ulTotalClusters;
 ULONG    ulClusterSize;
+ULONG    ulBlockSize;
 USHORT   hVBP;
 PVOID    pFindInfo;
 BYTE     bDrive;
@@ -184,9 +185,9 @@ typedef struct _FindInfo /* MAX 24 BYTES ! */
 PFINFO    pInfo;
 ULONG     ulCurEntry;
 ULONG     ulMaxEntry;
-USHORT    usEntriesPerCluster;
-USHORT    usClusterIndex;
-USHORT    usTotalClusters;
+USHORT    usEntriesPerBlock;
+USHORT    usBlockIndex;
+USHORT    usTotalBlocks;
 BOOL      fLongNames;
 BYTE      bAttr;
 BYTE      bMustAttr;
@@ -215,6 +216,7 @@ PVOID       pNext;
 BOOL        fSectorMode;
 BOOL        fCommitAttr;
 ULONG       ulCurCluster;
+ULONG       ulCurBlock;
 BOOL        fLargeVolume;
 } OPENINFO, *POPENINFO;
 
@@ -316,8 +318,8 @@ IMPORT F32PARMS   f32Parms;
 #define RETURN_PARENT_DIR 0xFFFF
 
 IMPORT VOID PutMessage(PSZ pszMsg);
-IMPORT USHORT ReadCluster(PVOLINFO pVolInfo, ULONG ulCluster, PVOID pbCluster, USHORT usIOMode);
-IMPORT USHORT WriteCluster(PVOLINFO pVolInfo, ULONG ulCluster, PVOID pbCluster, USHORT usIOMode);
+IMPORT USHORT ReadBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode);
+IMPORT USHORT WriteBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode);
 IMPORT ULONG GetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster);
 IMPORT ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
 IMPORT USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
