@@ -303,14 +303,14 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
         i < ulOffset / ulClusterSize + 1;
         i++, ulCluster = GetNextCluster(pVolInfo, ulCluster))
       {
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
           return ERROR_SECTOR_NOT_FOUND;
       } */
 
    // get cluster number from file offset
    ulCluster = PositionToOffset(pVolInfo, pOpenInfo, ulOffset);
 
-   if (ulCluster == FAT_EOF)
+   if (ulCluster == pVolInfo->ulFatEof)
        return ERROR_SECTOR_NOT_FOUND;
 
    *pulBlkNo = pVolInfo->BootSect.bpb.HiddenSectors + pVolInfo->ulStartOfData +

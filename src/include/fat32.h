@@ -27,6 +27,10 @@ ULONG  ulCurCluster;
 ULONG  ulClusterSize;
 ULONG  ulStartOfData;
 ULONG  ulTotalClusters;
+UCHAR  bFatType;
+ULONG  ulFatEof;
+ULONG  ulFatEof2;
+ULONG  ulFatBad;
 PBYTE  pFatBits;
 } DRIVEINFO, *PDRIVEINFO;
 

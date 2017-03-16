@@ -167,6 +167,11 @@ ULONG    ulLastDiskTime;
 STRATFUNC pfnStrategy;
 STRATFUNC pfnPriority;
 BOOL      fFormatInProgress;
+UCHAR     bFatType;
+ULONG     ulFatEof;
+ULONG     ulFatEof2;
+ULONG     ulFatBad;
+ULONG     ulFatClean;
 } VOLINFO, *PVOLINFO; // FAR ?
 
 

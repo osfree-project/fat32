@@ -60,6 +60,11 @@ ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadSect(HANDLE hFile, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 
+UCHAR GetFatType(PBOOTSECT pSect);
+ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster);
+ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster);
+void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue);
+
 ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pCD);
@@ -211,16 +216,59 @@ struct extbpb dp;
       }
    memcpy(&pCD->BootSect, bSector, sizeof (BOOTSECT));
 
-   rc = ReadSector(pCD, pCD->BootSect.bpb.FSinfoSec, 1, bSector);
-   if (rc)
+   pCD->bFatType = GetFatType(&pCD->BootSect);
+
+   switch (pCD->bFatType)
       {
-      show_message("Error: Cannot read FSInfo sector\n%s\n", 0, 0, 1, get_error(rc));
-      return rc;
+      case FAT_TYPE_FAT12:
+         pCD->ulFatEof   = FAT12_EOF;
+         pCD->ulFatEof2  = FAT12_EOF2;
+         pCD->ulFatBad   = FAT12_BAD_CLUSTER;
+         pCD->ulFatClean = FAT12_CLEAN_SHUTDOWN;
+         break;
+
+      case FAT_TYPE_FAT16:
+         pCD->ulFatEof   = FAT16_EOF;
+         pCD->ulFatEof2  = FAT16_EOF2;
+         pCD->ulFatBad   = FAT16_BAD_CLUSTER;
+         pCD->ulFatClean = FAT16_CLEAN_SHUTDOWN;
+         break;
+
+      case FAT_TYPE_FAT32:
+         pCD->ulFatEof   = FAT32_EOF;
+         pCD->ulFatEof2  = FAT32_EOF2;
+         pCD->ulFatBad   = FAT32_BAD_CLUSTER;
+         pCD->ulFatClean = FAT32_CLEAN_SHUTDOWN;
+         break;
+
+      case FAT_TYPE_EXFAT:
+         pCD->ulFatEof   = EXFAT_EOF;
+         pCD->ulFatEof2  = EXFAT_EOF2;
+         pCD->ulFatBad   = EXFAT_BAD_CLUSTER;
+         pCD->ulFatClean = EXFAT_CLEAN_SHUTDOWN;
       }
 
-   if (!strncmp(pCD->BootSect.FileSystem, "FAT32   ", 8))
+   if (pCD->bFatType < FAT_TYPE_FAT32)
       {
-      // try checking only FAT32 drives
+      // create FAT32-type extended BPB for FAT12/FAT16
+      pCD->BootSect.ulVolSerial = ((PBOOTSECT0)bSector)->ulVolSerial;
+      memcpy(pCD->BootSect.VolumeLabel, ((PBOOTSECT0)bSector)->VolumeLabel, 11);
+      memcpy(pCD->BootSect.FileSystem, ((PBOOTSECT0)bSector)->FileSystem, 8);
+
+      if (!((PBOOTSECT0)bSector)->bpb.TotalSectors)
+         pCD->BootSect.bpb.BigTotalSectors = ((PBOOTSECT0)bSector)->bpb.BigTotalSectors;
+      else
+         pCD->BootSect.bpb.BigTotalSectors = ((PBOOTSECT0)bSector)->bpb.TotalSectors;
+
+      pCD->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT0)bSector)->bpb.SectorsPerFat;
+      pCD->BootSect.bpb.ExtFlags = 0;
+      // special value for root dir cluster (fake one)
+      pCD->BootSect.bpb.RootDirStrtClus = 1;
+      }
+
+   if (pCD->bFatType)
+      {
+      // try checking only FAT32/FAT16/FAT12/exFAT drives
       rc = ChkDskMain(pCD);
       }
    else
@@ -351,6 +399,7 @@ PSZ    p;
 ULONG  dummy = 0;
 HFILE  hf;
 ULONG  cbActual, ulAction;
+PSZ    pszType;
 
    if (pCD->fFix)
       {
@@ -383,8 +432,17 @@ ULONG  cbActual, ulAction;
       pCD->ulActiveFatStart +=
          pCD->BootSect.bpb.BigSectorsPerFat * (pCD->BootSect.bpb.ExtFlags & 0x000F);
 
-   pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
-     pCD->BootSect.bpb.BigSectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
+   if (pCD->bFatType == FAT_TYPE_FAT32)
+      {
+      pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
+        pCD->BootSect.bpb.BigSectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
+      }
+   else if (pCD->bFatType < FAT_TYPE_FAT32)
+      {
+      pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
+        pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs +
+        (pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) / pCD->BootSect.bpb.BytesPerSector;
+      }
 
    pCD->ulClusterSize = pCD->BootSect.bpb.BytesPerSector * pCD->BootSect.bpb.SectorsPerCluster;
    pCD->ulTotalClusters = (pCD->BootSect.bpb.BigTotalSectors - pCD->ulStartOfData) / pCD->BootSect.bpb.SectorsPerCluster;
@@ -433,6 +491,27 @@ ULONG  cbActual, ulAction;
          HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
       show_message("The Volume Serial Number is %1.\n", 0, 1243, 1, TYPE_STRING, szString);
       }
+
+   switch (pCD->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         pszType = "FAT12";
+         break;
+
+      case FAT_TYPE_FAT16:
+         pszType = "FAT16";
+         break;
+
+      case FAT_TYPE_FAT32:
+         pszType = "FAT32";
+         break;
+
+      case FAT_TYPE_EXFAT:
+         pszType = "exFAT";
+      }
+
+   show_message("The type of file system for the disk is %1.\n", 0, 1507, 1, TYPE_STRING, pszType);
+   show_message("\n", 0, 0, 0);
 
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
       pCD->fAutoRecover = FALSE;
@@ -557,13 +636,12 @@ ULONG CheckFats(PCDINFO pCD)
 {
 PBYTE pSector;
 USHORT nFat;
-ULONG ulSector;
+ULONG ulSector = 0;
 ULONG  rc;
 USHORT usPerc = 0xFFFF;
 BOOL   fDiff;
-ULONG  ulCluster;
+ULONG  ulCluster = 0;
 USHORT usIndex;
-PULONG pulCluster;
 USHORT fRetco;
 
 /*
@@ -615,10 +693,8 @@ USHORT fRetco;
             fDiff = TRUE;
          }
 
-      pulCluster = (PULONG)pSector;
       if (!ulSector)
          {
-         pulCluster += 2;
          ulCluster = 2;
          usIndex = 2;
          }
@@ -626,17 +702,17 @@ USHORT fRetco;
          usIndex = 0;
       for (; ulCluster < pCD->ulTotalClusters + 2 && usIndex < nSectors * 128; usIndex++)
          {
-         if ((*pulCluster & FAT_EOF) >= pCD->ulTotalClusters + 2)
+         ULONG ulNextCluster = GetFatEntry(pCD, ulCluster);
+         if (ulNextCluster >= pCD->ulTotalClusters + 2)
             {
-            ULONG ulVal = *pulCluster & FAT_EOF;
-            if (!(ulVal >= FAT_BAD_CLUSTER && ulVal <= FAT_EOF))
+            ULONG ulVal = ulNextCluster;
+            if (!(ulVal >= pCD->ulFatBad && ulVal <= pCD->ulFatEof))
                {
                show_message("FAT Entry for cluster %lu contains an invalid value.\n", 2406, 0, 1,
                   ulCluster);
                fRetco = 1;
                }
             }
-         pulCluster++;
          ulCluster++;
          }
       }
@@ -691,7 +767,7 @@ ULONG dummy = 0;
          usPerc = usNew;
          }
       /* bad cluster ? */
-      if (ulNext == FAT_BAD_CLUSTER)
+      if (ulNext == pCD->ulFatBad)
          {
          pCD->ulBadClusters++;
          MarkCluster(pCD, ulCluster+2, "Bad sectors");
@@ -841,6 +917,8 @@ PBYTE pEA;
 ULONG rc;
 ULONG dummy = 0;
 UCHAR fModified = FALSE;
+ULONG  ulSector;
+USHORT usSectorsRead;
 
    if (!ulDirCluster)
       {
@@ -871,12 +949,36 @@ UCHAR fModified = FALSE;
    memset(pbCluster, 0, pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector);
    ulCluster = ulDirCluster;
    p = pbCluster;
-   while (ulCluster != FAT_EOF)
+
+   if (ulCluster == 1)
       {
-      ReadCluster(pCD, ulCluster, p);
-      ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+      // root directory starting sector for FAT12/FAT16 case
+      ulSector = pCD->BootSect.bpb.ReservedSectors +
+         pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
+      usSectorsRead = 0;
+      }
+
+   while (ulCluster != pCD->ulFatEof)
+      {
+      if (ulCluster == 1)
+         {
+         // reading root directory on FAT12/FAT16
+         ReadSector(pCD, ulSector, pCD->BootSect.bpb.SectorsPerCluster, p);
+         // reading the root directory in case of FAT12/FAT16
+         ulSector += pCD->BootSect.bpb.SectorsPerCluster;
+         usSectorsRead += pCD->BootSect.bpb.SectorsPerCluster;
+         if (usSectorsRead * pCD->BootSect.bpb.BytesPerSector >=
+            pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+            // root directory ended
+            ulCluster = 0;
+         }
+      else
+         {
+         ReadCluster(pCD, ulCluster, p);
+         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         }
       if (!ulCluster)
-         ulCluster = FAT_EOF;
+         ulCluster = pCD->ulFatEof;
       p += pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector;
       }
 
@@ -1036,13 +1138,13 @@ UCHAR fModified = FALSE;
                rc = NO_ERROR;
                ulDirCluster = FindDirCluster(pCD, Mark.szFileName, -1, 0xffff, &pszFile);
 
-               if (ulDirCluster == FAT_EOF)
+               if (ulDirCluster == pCD->ulFatEof)
                   rc = ERROR_PATH_NOT_FOUND;
                else
                   {
                   ulFileCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &DirEntry, NULL);
 
-                  if (ulFileCluster == FAT_EOF)
+                  if (ulFileCluster == pCD->ulFatEof)
                      rc = ERROR_FILE_NOT_FOUND;
                   }
                if (rc)
@@ -1114,13 +1216,13 @@ UCHAR fModified = FALSE;
                            ulDirCluster = FindDirCluster(pCD, pbPath, -1, 0xffff, &pszFile);
 
                            rc = NO_ERROR;
-                           if (ulDirCluster == FAT_EOF)
+                           if (ulDirCluster == pCD->ulFatEof)
                               rc = ERROR_PATH_NOT_FOUND;
                            else
                               {
                               ulFileCluster = FindPathCluster(pCD, ulDirCluster, pszFile, &DirEntry, NULL);
 
-                              if (ulFileCluster == FAT_EOF)
+                              if (ulFileCluster == pCD->ulFatEof)
                                  rc = ERROR_FILE_NOT_FOUND;
                               }
                            
@@ -1134,7 +1236,7 @@ UCHAR fModified = FALSE;
                            ulDstFileCluster = FindPathCluster(pCD, ulDirCluster, Mark.szFileName, &DstDirEntry, NULL);
 
                            rc = NO_ERROR;
-                           if (ulDstFileCluster == FAT_EOF)
+                           if (ulDstFileCluster == pCD->ulFatEof)
                               rc = ERROR_FILE_NOT_FOUND;
 
                            if (ulDstFileCluster == ulFileCluster)
@@ -1344,13 +1446,35 @@ UCHAR fModified = FALSE;
       {
       // write directory back
       ulCluster = ulDirCluster;
-      p = pbCluster;
-      while (ulCluster != FAT_EOF)
+      if (ulCluster == 1)
          {
-         WriteCluster(pCD, ulCluster, p);
-         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         // root directory starting sector for FAT12/FAT16 case
+         ulSector = pCD->BootSect.bpb.ReservedSectors +
+            pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
+         usSectorsRead = 0;
+         }
+      p = pbCluster;
+      while (ulCluster != pCD->ulFatEof)
+         {
+         if (ulCluster == 1)
+            {
+            // reading root directory on FAT12/FAT16
+            WriteSector(pCD, ulSector, pCD->BootSect.bpb.SectorsPerCluster, p);
+            // reading the root directory in case of FAT12/FAT16
+            ulSector += pCD->BootSect.bpb.SectorsPerCluster;
+            usSectorsRead += pCD->BootSect.bpb.SectorsPerCluster;
+            if (usSectorsRead * pCD->BootSect.bpb.BytesPerSector >=
+               pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+               // root directory ended
+               ulCluster = 0;
+            }
+         else
+            {
+            WriteCluster(pCD, ulCluster, p);
+            ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+            }
          if (!ulCluster)
-            ulCluster = FAT_EOF;
+            ulCluster = pCD->ulFatEof;
          p += pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector;
          }
       }
@@ -1373,6 +1497,17 @@ BOOL  fShown = FALSE;
    if (!ulCluster)
       return ulCount;
 
+   if (ulCluster == 1)
+      {
+      // special case: root directory in FAT12/FAT16 case
+      ulCount = pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
+         (pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector);
+      return (pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
+         (pCD->BootSect.bpb.SectorsPerCluster * pCD->BootSect.bpb.BytesPerSector)) ?
+         ulCount + 1 :
+         ulCount;
+      }
+
    if (ulCluster  > pCD->ulTotalClusters + 2)
       {
       show_message("%s: Invalid start of cluster chain %lX found\n", 2432, 0, 2,
@@ -1380,7 +1515,7 @@ BOOL  fShown = FALSE;
       return 0;
       }
 
-   while (ulCluster != FAT_EOF)
+   while (ulCluster != pCD->ulFatEof)
       {
       ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE);
       if (!MarkCluster(pCD, ulCluster, pszFile))
@@ -1392,7 +1527,7 @@ BOOL  fShown = FALSE;
          if (pCD->fFix)
             {
             show_message("CHKDSK found an improperly terminated cluster chain for %s ", 2433, 0, 1, pszFile);
-            if (SetNextCluster(pCD, ulCluster, FAT_EOF) != FAT_EOF)
+            if (SetNextCluster(pCD, ulCluster, pCD->ulFatEof) != pCD->ulFatEof)
                {
                show_message(", but was unable to fix it\n", 0, 0, 0);
                pCD->ulErrorCount++;
@@ -1405,10 +1540,10 @@ BOOL  fShown = FALSE;
             show_message("A bad terminated cluster chain was found for %s\n", 2435, 0, 1, pszFile);
             pCD->ulErrorCount++;
             }
-         ulNextCluster = FAT_EOF;
+         ulNextCluster = pCD->ulFatEof;
          }
 
-      if (ulNextCluster != FAT_EOF && ulNextCluster != ulCluster + 1)
+      if (ulNextCluster != pCD->ulFatEof && ulNextCluster != ulCluster + 1)
          {
          if (pCD->fDetailed)
             {
@@ -1483,6 +1618,8 @@ PDIRENTRY pDirStart, pDir, pDirEnd;
 ULONG ulCluster;
 DIRENTRY DirEntry;
 BOOL     fFound;
+ULONG  ulSector;
+USHORT usSectorsRead;
 
    pDir = NULL;
 
@@ -1492,9 +1629,20 @@ BOOL     fFound;
 
    fFound = FALSE;
    ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
-   while (!fFound && ulCluster != FAT_EOF)
+   if (ulCluster == 1)
       {
-      ReadCluster(pCD, ulCluster, (PBYTE)pDirStart);
+      // root directory starting sector
+      ulSector = pCD->BootSect.bpb.ReservedSectors +
+        pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs;
+      usSectorsRead = 0;
+      }
+   while (!fFound && ulCluster != pCD->ulFatEof)
+      {
+      if (ulCluster == 1)
+         // reading root directory on FAT12/FAT16
+         ReadSector(pCD, ulSector, pCD->BootSect.bpb.SectorsPerCluster, (void *)pDirStart);
+      else
+         ReadCluster(pCD, ulCluster, (void *)pDirStart);
       pDir = pDirStart;
       pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pCD->ulClusterSize);
       while (pDir < pDirEnd)
@@ -1509,9 +1657,20 @@ BOOL     fFound;
          }
       if (!fFound)
          {
-         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         if (ulCluster == 1)
+            {
+            // reading the root directory in case of FAT12/FAT16
+            ulSector += pCD->BootSect.bpb.SectorsPerCluster;
+            usSectorsRead += pCD->BootSect.bpb.SectorsPerCluster;
+            if (usSectorsRead * pCD->BootSect.bpb.BytesPerSector >
+                pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+               // root directory ended
+               ulCluster = 0;
+            }
+         else
+            ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
          if (!ulCluster)
-            ulCluster = FAT_EOF;
+            ulCluster = pCD->ulFatEof;
          }
       }
    free(pDirStart);
@@ -1571,28 +1730,26 @@ PLNENTRY pLN = (PLNENTRY)pDir;
 
 ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad)
 {
-PULONG pulCluster;
-ULONG  ulSector;
-ULONG  ulRet;
+ULONG  ulSector = 0;
+ULONG  ulRet = 0;
 
-   ulSector = ulCluster / 128;
+   ulSector = GetFatEntrySec(pCD, ulCluster);
    if (!ReadFATSector(pCD, ulSector))
-      return FAT_EOF;
+      return pCD->ulFatEof;
 
-   pulCluster = (PULONG)pCD->pbFATSector + ulCluster % 128;
+   ulRet = GetFatEntry(pCD, ulCluster);
 
-   ulRet = *pulCluster & FAT_EOF;
-   if (ulRet >= FAT_EOF2 && ulRet <= FAT_EOF)
-      return FAT_EOF;
+   if (ulRet >= pCD->ulFatEof2 && ulRet <= pCD->ulFatEof)
+      return pCD->ulFatEof;
 
-   if (ulRet == FAT_BAD_CLUSTER && fAllowBad)
+   if (ulRet == pCD->ulFatBad && fAllowBad)
       return ulRet;
 
    if (ulRet >= pCD->ulTotalClusters  + 2)
       {
       show_message("Error: Next cluster for %lu = %8.8lX\n", 0, 0, 2,
-         ulCluster, *pulCluster);
-      return FAT_EOF;
+         ulCluster, ulRet);
+      return pCD->ulFatEof;
       }
 
    return ulRet;
@@ -1659,7 +1816,7 @@ USHORT usIndex;
 
 BOOL ClusterInChain(PCDINFO pCD, ULONG ulStart, ULONG ulCluster)
 {
-   while (ulStart && ulStart != FAT_EOF)
+   while (ulStart && ulStart != pCD->ulFatEof)
       {
       if (ulStart == ulCluster)
          return TRUE;
@@ -1686,4 +1843,203 @@ ULONG  rc, dummy1 = 0, dummy2 = 0;
 
    show_message("CHKDSK placed recovered data in file %1.\n", 2443, 574, 1, TYPE_STRING, szRecovered);
    return TRUE;
+}
+
+UCHAR GetFatType(PBOOTSECT pSect)
+{
+   /*
+    *  check for FAT32 according to the Microsoft FAT32 specification
+    */
+   PBPB  pbpb;
+   ULONG FATSz;
+   ULONG TotSec;
+   ULONG RootDirSectors;
+   ULONG NonDataSec;
+   ULONG DataSec;
+   ULONG CountOfClusters;
+
+   if (!pSect)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
+   pbpb = &pSect->bpb;
+
+   if (!pbpb->BytesPerSector)
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   if (pbpb->BytesPerSector != SECTOR_SIZE)
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   if (! pbpb->SectorsPerCluster)
+      {
+      // this could be the case with a JFS partition, for example
+      return FAT_TYPE_NONE;
+      }
+
+   if(( ULONG )pbpb->BytesPerSector * pbpb->SectorsPerCluster > MAX_CLUSTER_SIZE )
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   RootDirSectors = ((pbpb->RootDirEntries * 32UL) + (pbpb->BytesPerSector-1UL)) / pbpb->BytesPerSector;
+
+   if (pbpb->SectorsPerFat)
+      {
+      FATSz = pbpb->SectorsPerFat;
+      }
+   else
+      {
+      FATSz = pbpb->BigSectorsPerFat;
+      } /* endif */
+
+   if (pbpb->TotalSectors)
+      {
+      TotSec = pbpb->TotalSectors;
+      }
+   else
+      {
+      TotSec = pbpb->BigTotalSectors;
+      } /* endif */
+
+   NonDataSec = pbpb->ReservedSectors
+                   +  (pbpb->NumberOfFATs * FATSz)
+                   +  RootDirSectors;
+
+   if (TotSec < NonDataSec)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
+   DataSec = TotSec - NonDataSec;
+   CountOfClusters = DataSec / pbpb->SectorsPerCluster;
+
+   if ((CountOfClusters >= 65525UL) && !memcmp(pSect->FileSystem, "FAT32   ", 8))
+      {
+      return FAT_TYPE_FAT32;
+      } /* endif */
+
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT", 3))
+      {
+      ULONG TotClus = (TotSec - NonDataSec) / pbpb->SectorsPerCluster;
+
+      if (TotClus < 0xff6)
+         return FAT_TYPE_FAT12;
+
+      return FAT_TYPE_FAT16;
+      }
+
+   return FAT_TYPE_NONE;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster)
+{
+ULONG  ulSector;
+
+   ulCluster &= pCD->ulFatEof;
+
+   switch (pCD->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         ulSector = ((ulCluster * 3) / 2) / 512;
+         break;
+
+      case FAT_TYPE_FAT16:
+         ulSector = ulCluster / 256;
+         break;
+
+      case FAT_TYPE_FAT32:
+      case FAT_TYPE_EXFAT:
+         ulSector = ulCluster / 128;
+      }
+
+   return ulSector;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster)
+{
+   ulCluster &= pCD->ulFatEof;
+
+   switch (pCD->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         {
+         PUSHORT pusCluster;
+         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + (((ulCluster * 3) / 2) % 512));
+         ulCluster = ( ((ulCluster * 3) % 2) ?
+            *pusCluster >> 4 : // odd
+            *pusCluster )      // even
+            & pCD->ulFatEof;
+         break;
+         }
+
+      case FAT_TYPE_FAT16:
+         {
+         PUSHORT pusCluster;
+         pusCluster = (PUSHORT)pCD->pbFATSector + (ulCluster % 256);
+         ulCluster = *pusCluster & pCD->ulFatEof;
+         break;
+         }
+
+      case FAT_TYPE_FAT32:
+      case FAT_TYPE_EXFAT:
+         {
+         PULONG pulCluster;
+         pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
+         ulCluster = *pulCluster & pCD->ulFatEof;
+         }
+      }
+
+   return ulCluster;
+}
+
+/******************************************************************
+*
+******************************************************************/
+void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue)
+{
+   ulCluster &= pCD->ulFatEof;
+   ulValue   &= pCD->ulFatEof;
+
+   switch (pCD->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         {
+         PUSHORT pusCluster;
+         USHORT  usPrevValue;
+         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + (((ulCluster * 3) / 2) % 512));
+         usPrevValue = *pusCluster;
+         ulValue = ((ulCluster * 3) % 2)  ?
+            (usPrevValue & 0xf) | (ulValue << 4) : // odd
+            (usPrevValue & 0xf000) | (ulValue);    // even
+         *pusCluster = ulValue;
+         break;
+         }
+
+      case FAT_TYPE_FAT16:
+         {
+         PUSHORT pusCluster;
+         pusCluster = (PUSHORT)pCD->pbFATSector + (ulCluster % 256);
+         *pusCluster = ulValue;
+         break;
+         }
+
+      case FAT_TYPE_FAT32:
+      case FAT_TYPE_EXFAT:
+         {
+         PULONG pulCluster;
+         pulCluster = (PULONG)pCD->pbFATSector + (ulCluster % 128);
+         *pulCluster = ulValue;
+         }
+      }
 }

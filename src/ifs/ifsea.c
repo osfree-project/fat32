@@ -184,7 +184,7 @@ ULONG    ulCluster;
       return rc;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
-   if (ulCluster == FAT_EOF || !ulCluster)
+   if (ulCluster == pVolInfo->ulFatEof || !ulCluster)
       {
       rc = 0;
       goto usGetEASizeExit;
@@ -402,7 +402,7 @@ DIRENTRY SrcEntry, TarEntry;
 
    ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, &SrcEntry, NULL);
    ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, &TarEntry, NULL);
-   if (ulTarCluster != FAT_EOF)
+   if (ulTarCluster != pVolInfo->ulFatEof)
       {
       rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
       if (rc)
@@ -410,7 +410,7 @@ DIRENTRY SrcEntry, TarEntry;
       DeleteFatChain(pVolInfo, ulTarCluster);
       }
 
-   if (ulSrcCluster == FAT_EOF)
+   if (ulSrcCluster == pVolInfo->ulFatEof)
       goto usCopyEASExit;
 
    rc = CopyChain(pVolInfo, ulSrcCluster, &ulTarCluster);
@@ -459,7 +459,7 @@ DIRENTRY SrcEntry, TarEntry;
 
    ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, &SrcEntry, NULL);
    ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, &TarEntry, NULL);
-   if (ulTarCluster != FAT_EOF && ulTarCluster != ulSrcCluster)
+   if (ulTarCluster != pVolInfo->ulFatEof && ulTarCluster != ulSrcCluster)
       {
       rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
       if (rc)
@@ -467,7 +467,7 @@ DIRENTRY SrcEntry, TarEntry;
       DeleteFatChain(pVolInfo, ulTarCluster);
       }
 
-   if (ulSrcCluster == FAT_EOF)
+   if (ulSrcCluster == pVolInfo->ulFatEof)
       goto usMoveEASExit;
 
    if (ulSrcDirCluster == ulTarDirCluster)
@@ -507,7 +507,7 @@ USHORT rc;
 
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, &OldEntry, NULL);
-   if (ulCluster == FAT_EOF)
+   if (ulCluster == pVolInfo->ulFatEof)
       {
       CritMessage("FAT32: MarkfileEAS : %s not found!", pszFileName);
       return ERROR_FILE_NOT_FOUND;
@@ -549,7 +549,7 @@ BOOL fFirst = TRUE;
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, NULL, NULL);
    free(pszEAName);
 
-   if ((ulCluster && ulCluster != FAT_EOF) || fCreate)
+   if ((ulCluster && ulCluster != pVolInfo->ulFatEof) || fCreate)
       {
       pFEAL = malloc(MAX_EA_SIZE);
       if (!pFEAL)
@@ -560,7 +560,7 @@ BOOL fFirst = TRUE;
    else
       pFEAL = NULL;
 
-   if (!ulCluster || ulCluster == FAT_EOF)
+   if (!ulCluster || ulCluster == pVolInfo->ulFatEof)
       {
       *ppFEAL = pFEAL;
       return 0;
@@ -607,8 +607,8 @@ BOOL fFirst = TRUE;
          {
          ulCluster = GetNextCluster(pVolInfo, ulCluster);
          if (!ulCluster)
-            ulCluster = FAT_EOF;
-         if (ulCluster == FAT_EOF)
+            ulCluster = pVolInfo->ulFatEof;
+         if (ulCluster == pVolInfo->ulFatEof)
             {
             free(pFEAL);
             return ERROR_EA_FILE_CORRUPT;
@@ -664,7 +664,7 @@ ULONG    ulCluster;
       return rc;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
-   if (ulCluster == FAT_EOF)
+   if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = 0;
       goto usDeleteEASExit;
@@ -721,11 +721,11 @@ BOOL fFirst = TRUE;
       usBlocksNeeded++;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
-   if (!ulCluster || ulCluster == FAT_EOF)
+   if (!ulCluster || ulCluster == pVolInfo->ulFatEof)
       {
       BOOL fNew = FALSE;
 
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
          {
          fNew = TRUE;
          memset(&DirNew, 0, sizeof DirNew);
@@ -737,8 +737,8 @@ BOOL fFirst = TRUE;
       DirNew.ulFileSize = pFEAL->cbList;
 
 
-      ulCluster = MakeFatChain(pVolInfo, FAT_EOF, (ULONG)usClustersNeeded, NULL);
-      if (ulCluster == FAT_EOF)
+      ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, (ULONG)usClustersNeeded, NULL);
+      if (ulCluster == pVolInfo->ulFatEof)
          {
          free(pszEAName);
          return ERROR_DISK_FULL;
@@ -774,13 +774,13 @@ BOOL fFirst = TRUE;
    free(pszEAName);
 
    pWrite = (PBYTE)pFEAL;
-   ulNextCluster = FAT_EOF;
+   ulNextCluster = pVolInfo->ulFatEof;
    while (usClustersNeeded)
       {
       ULONG ulBlock;
       ulNextCluster = GetNextCluster(pVolInfo, ulCluster);
       if (!ulNextCluster)
-         ulNextCluster = FAT_EOF;
+         ulNextCluster = pVolInfo->ulFatEof;
       for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
          {
          rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pWrite, 0);
@@ -792,17 +792,17 @@ BOOL fFirst = TRUE;
 
       if (usClustersNeeded)
          {
-         if (ulNextCluster == FAT_EOF)
+         if (ulNextCluster == pVolInfo->ulFatEof)
             ulCluster = MakeFatChain(pVolInfo, ulCluster, (ULONG)usClustersNeeded, NULL);
          else
             ulCluster = ulNextCluster;
-         if (ulCluster == FAT_EOF)
+         if (ulCluster == pVolInfo->ulFatEof)
             return ERROR_DISK_FULL;
          }
       }
-   if (ulNextCluster != FAT_EOF)
+   if (ulNextCluster != pVolInfo->ulFatEof)
       {
-      SetNextCluster(pVolInfo, ulCluster, FAT_EOF);
+      SetNextCluster(pVolInfo, ulCluster, pVolInfo->ulFatEof);
       DeleteFatChain(pVolInfo, ulNextCluster);
       }
 

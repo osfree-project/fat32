@@ -18,7 +18,7 @@
 
 PRIVATE volatile PSHOPENINFO pGlobSH = NULL;
 
-PRIVATE VOID ResetAllCurrents(POPENINFO pOI);
+PRIVATE VOID ResetAllCurrents(PVOLINFO pVolInfo, POPENINFO pOI);
 
 ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONGLONG ullOffset);
 PRIVATE USHORT NewSize(PVOLINFO pVolInfo,
@@ -144,7 +144,7 @@ USHORT rc;
          usCurDirEnd,
          RETURN_PARENT_DIR,
          &pszFile);
-      if (ulDirCluster == FAT_EOF)
+      if (ulDirCluster == pVolInfo->ulFatEof)
          {
          rc = ERROR_PATH_NOT_FOUND;
          goto FS_OPENCREATEEXIT;
@@ -178,7 +178,7 @@ USHORT rc;
          //DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
          }
 
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
          {
          if (!(usOpenFlag & FILE_CREATE))
             {
@@ -239,7 +239,7 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
          {
          memset(&DirEntry, 0, sizeof (DIRENTRY));
          DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
@@ -260,8 +260,8 @@ USHORT rc;
             {
             ULONG ulClustersNeeded = size / pVolInfo->ulClusterSize +
                   (size % pVolInfo->ulClusterSize ? 1:0);
-            ulCluster = MakeFatChain(pVolInfo, FAT_EOF, ulClustersNeeded, NULL);
-            if (ulCluster != FAT_EOF)
+            ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, NULL);
+            if (ulCluster != pVolInfo->ulFatEof)
                {
                DirEntry.wCluster = LOUSHORT(ulCluster);
                DirEntry.wClusterHigh = HIUSHORT(ulCluster);
@@ -335,8 +335,8 @@ USHORT rc;
 
          if (ulCluster)
             DeleteFatChain(pVolInfo, ulCluster);
-         pOpenInfo->pSHInfo->ulLastCluster = FAT_EOF;
-         ResetAllCurrents(pOpenInfo);
+         pOpenInfo->pSHInfo->ulLastCluster = pVolInfo->ulFatEof;
+         ResetAllCurrents(pVolInfo, pOpenInfo);
          ulCluster = 0;
 
          if (f32Parms.fLargeFiles)
@@ -354,8 +354,8 @@ USHORT rc;
             {
             ULONG ulClustersNeeded = size / pVolInfo->ulClusterSize +
                   (size % pVolInfo->ulClusterSize ? 1:0);
-            ulCluster = MakeFatChain(pVolInfo, FAT_EOF, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
-            if (ulCluster != FAT_EOF)
+            ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
+            if (ulCluster != pVolInfo->ulFatEof)
                {
                DirEntry.wCluster = LOUSHORT(ulCluster);
                DirEntry.wClusterHigh = HIUSHORT(ulCluster);
@@ -431,7 +431,7 @@ USHORT rc;
       if (ulCluster)
          pOpenInfo->ulCurCluster = ulCluster;
       else
-         pOpenInfo->ulCurCluster = FAT_EOF;
+         pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
 
       pOpenInfo->ulCurBlock = 0;
 
@@ -621,14 +621,14 @@ USHORT rc;
    return TRUE;
 }
 
-VOID ResetAllCurrents(POPENINFO pOI)
+VOID ResetAllCurrents(PVOLINFO pVolInfo, POPENINFO pOI)
 {
 PSHOPENINFO pSH = pOI->pSHInfo;
 
    pOI = (POPENINFO)pSH->pChild;
    while (pOI)
       {
-      pOI->ulCurCluster = FAT_EOF;
+      pOI->ulCurCluster = pVolInfo->ulFatEof;
       pOI = (POPENINFO)pOI->pNext;
       }
 }
@@ -938,7 +938,7 @@ ULONGLONG size;
         }
 
         pOpenInfo->pSHInfo->fMustCommit = TRUE;
-        if (pOpenInfo->ulCurCluster == FAT_EOF)
+        if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
            {
            pOpenInfo->ulCurCluster = PositionToOffset(pVolInfo, pOpenInfo, pos);
            pOpenInfo->ulCurBlock = pOpenInfo->ulCurBlock = (pos / pVolInfo->ulBlockSize) % (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
@@ -953,7 +953,7 @@ ULONGLONG size;
         usBlockOffset   = (USHORT)(pos % ulBytesPerBlock); /* get remainder */
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToRead) &&
                 (usBlockOffset)
@@ -999,7 +999,7 @@ ULONGLONG size;
                 pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
                 {
-                    pOpenInfo->ulCurCluster = FAT_EOF;
+                    pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
                 }
             }
             pOpenInfo->ulCurBlock = (pos / pVolInfo->ulBlockSize) % (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
@@ -1011,7 +1011,7 @@ ULONGLONG size;
         */
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToRead)
             )
@@ -1037,16 +1037,16 @@ ULONGLONG size;
             if (ulCurrBytesToRead < pVolInfo->ulClusterSize)
                usAdjacentBlocks = ulCurrBytesToRead / pVolInfo->ulBlockSize;
 
-            while (usBlocks && (ulCurrCluster != FAT_EOF))
+            while (usBlocks && (ulCurrCluster != pVolInfo->ulFatEof))
             {
                 ulNextCluster       = GetNextCluster(pVolInfo, ulCurrCluster);
                 if (!ulNextCluster)
                 {
-                    ulNextCluster = FAT_EOF;
+                    ulNextCluster = pVolInfo->ulFatEof;
                 }
 
                 if  (
-                        (ulNextCluster != FAT_EOF) &&
+                        (ulNextCluster != pVolInfo->ulFatEof) &&
                         (ulNextCluster == (ulCurrCluster+1)) &&
                         (usClustersToProcess)
                     )
@@ -1135,7 +1135,7 @@ ULONGLONG size;
         */
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToRead)
             )
@@ -1158,7 +1158,6 @@ ULONGLONG size;
                 {
                     goto FS_READEXIT;
                 }
-                Message("3: read %lu, curblk: %lu", ulCurrBytesToRead, pOpenInfo->ulCurBlock);
                 memcpy(pBufPosition,pbCluster, (USHORT)ulCurrBytesToRead);
 
                 pos                     += (USHORT)ulCurrBytesToRead;
@@ -1470,10 +1469,10 @@ ULONGLONG size;
 
         if (pos + usBytesToWrite > size)
         {
-            ULONG ulLast = FAT_EOF;
+            ULONG ulLast = pVolInfo->ulFatEof;
 
             if (
-                    pOpenInfo->ulCurCluster == FAT_EOF &&
+                    pOpenInfo->ulCurCluster == pVolInfo->ulFatEof &&
                     pos == size &&
                     !(size % pVolInfo->ulBlockSize)
                 )
@@ -1490,13 +1489,13 @@ ULONGLONG size;
             if (f32Parms.fLargeFiles)
                size = psffsi->sfi_sizel;
 
-            if (ulLast != FAT_EOF)
+            if (ulLast != pVolInfo->ulFatEof)
             {
                 pOpenInfo->ulCurCluster = GetNextCluster(pVolInfo, ulLast);
                 if (!pOpenInfo->ulCurCluster)
-                    pOpenInfo->ulCurCluster = FAT_EOF;
+                    pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
 
-                if (pOpenInfo->ulCurCluster == FAT_EOF)
+                if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
                 {
                     Message("FS_WRITE (INIT) No next cluster available!");
                     CritMessage("FAT32: FS_WRITE (INIT) No next cluster available!");
@@ -1504,13 +1503,13 @@ ULONGLONG size;
             }
         }
 
-        if (pOpenInfo->ulCurCluster == FAT_EOF)
+        if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
            {
            pOpenInfo->ulCurCluster = PositionToOffset(pVolInfo, pOpenInfo, pos);
            pOpenInfo->ulCurBlock = pOpenInfo->ulCurBlock = (pos / pVolInfo->ulBlockSize) % (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
            }
 
-        if (pOpenInfo->ulCurCluster == FAT_EOF)
+        if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
         {
             Message("FS_WRITE (INIT2) No next cluster available!");
             CritMessage("FAT32: FS_WRITE (INIT2) No next cluster available!");
@@ -1527,7 +1526,7 @@ ULONGLONG size;
         usBlockOffset     = (USHORT)(pos % ulBytesPerBlock);
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToWrite) &&
                 (usBlockOffset)
@@ -1579,7 +1578,7 @@ ULONGLONG size;
                 pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
                 {
-                    pOpenInfo->ulCurCluster = FAT_EOF;
+                    pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
                 }
             }
             pOpenInfo->ulCurBlock = (pos / pVolInfo->ulBlockSize) % (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
@@ -1590,7 +1589,7 @@ ULONGLONG size;
         */
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToWrite)
             )
@@ -1616,16 +1615,16 @@ ULONGLONG size;
             if (ulCurrBytesToWrite < pVolInfo->ulClusterSize)
                usAdjacentBlocks = ulCurrBytesToWrite / pVolInfo->ulBlockSize;
 
-            while (usBlocks && (ulCurrCluster != FAT_EOF))
+            while (usBlocks && (ulCurrCluster != pVolInfo->ulFatEof))
             {
                 ulNextCluster       = GetNextCluster(pVolInfo, ulCurrCluster);
                 if (!ulNextCluster)
                 {
-                    ulNextCluster = FAT_EOF;
+                    ulNextCluster = pVolInfo->ulFatEof;
                 }
 
                 if  (
-                        (ulNextCluster != FAT_EOF) &&
+                        (ulNextCluster != pVolInfo->ulFatEof) &&
                         (ulNextCluster == (ulCurrCluster+1)) &&
                         (usClustersToProcess)
                     )
@@ -1715,7 +1714,7 @@ ULONGLONG size;
         */
         if
             (
-                (pOpenInfo->ulCurCluster != FAT_EOF) &&
+                (pOpenInfo->ulCurCluster != pVolInfo->ulFatEof) &&
                 (pos < size) &&
                 (usBytesToWrite)
             )
@@ -1801,7 +1800,7 @@ ULONG ulCurCluster;
 
    ulCurCluster = pOpenInfo->pSHInfo->ulStartCluster;
    if (!ulCurCluster)
-      return FAT_EOF;
+      return pVolInfo->ulFatEof;
 
    if (ullOffset < pVolInfo->ulClusterSize)
       return ulCurCluster;
@@ -1923,7 +1922,7 @@ USHORT rc;
    if (pos != (ULONG)llNewOffset)
       {
       pos = (ULONG)llNewOffset;
-      pOpenInfo->ulCurCluster = FAT_EOF;
+      pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
       }
    rc = 0;
 
@@ -2054,7 +2053,7 @@ USHORT rc;
          pszFile++;
 
          ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &DirOld, NULL);
-         if (ulCluster == FAT_EOF)
+         if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_COMMITEXIT;
@@ -2272,10 +2271,10 @@ ULONGLONG size;
          {
          DeleteFatChain(pVolInfo, pOpenInfo->pSHInfo->ulStartCluster);
          pOpenInfo->pSHInfo->ulStartCluster = 0L;
-         pOpenInfo->pSHInfo->ulLastCluster = FAT_EOF;
+         pOpenInfo->pSHInfo->ulLastCluster = pVolInfo->ulFatEof;
          }
 
-      ResetAllCurrents(pOpenInfo);
+      ResetAllCurrents(pVolInfo, pOpenInfo);
 
       psffsi->sfi_size = (ULONG)ullLen;
 
@@ -2301,8 +2300,8 @@ ULONGLONG size;
 
    if (!pOpenInfo->pSHInfo->ulStartCluster)
       {
-      ulCluster = MakeFatChain(pVolInfo, FAT_EOF, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
-      if (ulCluster == FAT_EOF)
+      ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
+      if (ulCluster == pVolInfo->ulFatEof)
          return ERROR_DISK_FULL;
       pOpenInfo->pSHInfo->ulStartCluster = ulCluster;
       }
@@ -2318,18 +2317,18 @@ ULONGLONG size;
       else
          ulCluster = PositionToOffset(pVolInfo, pOpenInfo, ullLen);
 
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
          return ERROR_SECTOR_NOT_FOUND;
 
       ulNextCluster = GetNextCluster(pVolInfo, ulCluster);
-      if (ulNextCluster != FAT_EOF)
+      if (ulNextCluster != pVolInfo->ulFatEof)
          {
-         SetNextCluster( pVolInfo, ulCluster, FAT_EOF);
+         SetNextCluster( pVolInfo, ulCluster, pVolInfo->ulFatEof);
          DeleteFatChain(pVolInfo, ulNextCluster);
          }
       pOpenInfo->pSHInfo->ulLastCluster = ulCluster;
 
-      ResetAllCurrents(pOpenInfo);
+      ResetAllCurrents(pVolInfo, pOpenInfo);
       }
    else
       {
@@ -2338,7 +2337,7 @@ ULONGLONG size;
       */
 
       ulCluster = pOpenInfo->pSHInfo->ulLastCluster;
-      if (ulCluster == FAT_EOF)
+      if (ulCluster == pVolInfo->ulFatEof)
          {
          CritMessage("FAT32: Lastcluster empty in NewSize!");
          Message("FAT32: Lastcluster empty in NewSize!");
@@ -2352,7 +2351,7 @@ ULONGLONG size;
       if (ulClustersNeeded > ulClusterCount)
          {
          ulNextCluster = MakeFatChain(pVolInfo, ulCluster, ulClustersNeeded - ulClusterCount, &pOpenInfo->pSHInfo->ulLastCluster);
-         if (ulNextCluster == FAT_EOF)
+         if (ulNextCluster == pVolInfo->ulFatEof)
             return ERROR_DISK_FULL;
          }
       }
@@ -2483,7 +2482,7 @@ ULONGLONG size;
          ULONG ulCluster;
 
          ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &DirEntry, NULL);
-         if (ulCluster == FAT_EOF)
+         if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_FILEINFOEXIT;

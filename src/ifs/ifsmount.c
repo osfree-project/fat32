@@ -50,7 +50,7 @@ typedef struct _RP_GETDRIVERCAPS  {     /* RPDC */
 
 PRIVATE BOOL RemoveVolume(PVOLINFO pVolInfo);
 PRIVATE USHORT CheckWriteProtect(PVOLINFO);
-PRIVATE BOOL IsFAT32(PBOOTSECT pBoot);
+PRIVATE UCHAR GetFatType(PBOOTSECT pBoot);
 PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR);
 IMPORT SEL cdecl SaSSel(void);
 
@@ -90,12 +90,6 @@ P_VolChars   pVolChars;
       case MOUNT_MOUNT  :
          pSect = (PBOOTSECT)pBoot;
 
-         if (!IsFAT32(pSect))
-            {
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
-
          if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
             hDupVBP = 0;
 
@@ -107,6 +101,62 @@ P_VolChars   pVolChars;
                rc = ERROR_NOT_ENOUGH_MEMORY;
                goto FS_MOUNT_EXIT;
                }
+
+            memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
+
+            pVolInfo->bFatType = GetFatType(pSect);
+
+            if (pVolInfo->bFatType == FAT_TYPE_NONE)
+               {
+               rc = ERROR_VOLUME_NOT_MOUNTED;
+               freeseg(pVolInfo);
+               goto FS_MOUNT_EXIT;
+               }
+
+            if (!f32Parms.fFat && (pVolInfo->bFatType < FAT_TYPE_FAT32))
+               {
+               rc = ERROR_VOLUME_NOT_MOUNTED;
+               freeseg(pVolInfo);
+               goto FS_MOUNT_EXIT;
+               }
+
+            if (!f32Parms.fExFat && (pVolInfo->bFatType == FAT_TYPE_EXFAT))
+               {
+               rc = ERROR_VOLUME_NOT_MOUNTED;
+               freeseg(pVolInfo);
+               goto FS_MOUNT_EXIT;
+               }
+
+            switch (pVolInfo->bFatType)
+               {
+               case FAT_TYPE_FAT12:
+                  pVolInfo->ulFatEof   = FAT12_EOF;
+                  pVolInfo->ulFatEof2  = FAT12_EOF2;
+                  pVolInfo->ulFatBad   = FAT12_BAD_CLUSTER;
+                  pVolInfo->ulFatClean = FAT12_CLEAN_SHUTDOWN;
+                  break;
+
+               case FAT_TYPE_FAT16:
+                  pVolInfo->ulFatEof   = FAT16_EOF;
+                  pVolInfo->ulFatEof2  = FAT16_EOF2;
+                  pVolInfo->ulFatBad   = FAT16_BAD_CLUSTER;
+                  pVolInfo->ulFatClean = FAT16_CLEAN_SHUTDOWN;
+                  break;
+
+               case FAT_TYPE_FAT32:
+                  pVolInfo->ulFatEof   = FAT32_EOF;
+                  pVolInfo->ulFatEof2  = FAT32_EOF2;
+                  pVolInfo->ulFatBad   = FAT32_BAD_CLUSTER;
+                  pVolInfo->ulFatClean = FAT32_CLEAN_SHUTDOWN;
+                  break;
+
+               case FAT_TYPE_EXFAT:
+                  pVolInfo->ulFatEof   = EXFAT_EOF;
+                  pVolInfo->ulFatEof2  = EXFAT_EOF2;
+                  pVolInfo->ulFatBad   = EXFAT_BAD_CLUSTER;
+                  pVolInfo->ulFatClean = EXFAT_CLEAN_SHUTDOWN;
+               }
+
             rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
             if (rc)
                {
@@ -116,7 +166,6 @@ P_VolChars   pVolChars;
                }
             *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
 
-            memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
             pVolInfo->pNextVolInfo = NULL;
 
             if (!pGlobVolInfo)
@@ -155,11 +204,17 @@ P_VolChars   pVolChars;
          memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
 
          pVolInfo->ulActiveFatStart = pSect->bpb.ReservedSectors;
-         if (pSect->bpb.ExtFlags & 0x0080)
-            pVolInfo->ulActiveFatStart +=
-               pSect->bpb.BigSectorsPerFat * (pSect->bpb.ExtFlags & 0x000F);
-         pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
-               pSect->bpb.BigSectorsPerFat * pSect->bpb.NumberOfFATs;
+         if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+            {
+            pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
+                  pSect->bpb.BigSectorsPerFat * pSect->bpb.NumberOfFATs;
+            }
+         else if (pVolInfo->bFatType < FAT_TYPE_FAT32)
+            {
+            pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
+               pSect->bpb.SectorsPerFat * pSect->bpb.NumberOfFATs +
+               (pSect->bpb.RootDirEntries * sizeof(DIRENTRY)) / pSect->bpb.BytesPerSector;
+            }
 
          pVolInfo->pBootFSInfo = (PBOOTFSINFO)(pVolInfo + 1);
          pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
@@ -167,7 +222,6 @@ P_VolChars   pVolChars;
          pVolInfo->ulClusterSize = (ULONG)pSect->bpb.BytesPerSector;
          pVolInfo->ulClusterSize *= pSect->bpb.SectorsPerCluster;
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
-         pVolInfo->ulTotalClusters = (pSect->bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
 
          pVolInfo->hVBP    = hVBP;
          pVolInfo->hDupVBP = hDupVBP;
@@ -191,13 +245,45 @@ P_VolChars   pVolChars;
             pVolInfo->usRASectors = (pVolInfo->ulBlockSize / SECTOR_SIZE ) * 4;
 #endif
 
-         if (pSect->bpb.FSinfoSec != 0xFFFF)
+         if (pVolInfo->bFatType == FAT_TYPE_FAT32 && pSect->bpb.FSinfoSec != 0xFFFF)
             {
             ReadSector(pVolInfo, pSect->bpb.FSinfoSec, 1, pVolInfo->pbFatSector, DVIO_OPNCACHE);
             memcpy(pVolInfo->pBootFSInfo, pVolInfo->pbFatSector + FSINFO_OFFSET, sizeof (BOOTFSINFO));
             }
          else
             memset(pVolInfo->pBootFSInfo, 0, sizeof (BOOTFSINFO));
+
+         if (pVolInfo->bFatType < FAT_TYPE_FAT32)
+            {
+            // create FAT32-type extended BPB for FAT12/FAT16
+            pVolInfo->BootSect.ulVolSerial = ((PBOOTSECT0)pSect)->ulVolSerial;
+            memcpy(pVolInfo->BootSect.VolumeLabel, ((PBOOTSECT0)pSect)->VolumeLabel, 11);
+            memcpy(pVolInfo->BootSect.FileSystem, ((PBOOTSECT0)pSect)->FileSystem, 8);
+
+            if (!((PBOOTSECT0)pSect)->bpb.TotalSectors)
+               pVolInfo->BootSect.bpb.BigTotalSectors = ((PBOOTSECT0)pSect)->bpb.BigTotalSectors;
+            else
+               pVolInfo->BootSect.bpb.BigTotalSectors = ((PBOOTSECT0)pSect)->bpb.TotalSectors;
+
+            pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT0)pSect)->bpb.SectorsPerFat;
+            pVolInfo->BootSect.bpb.ExtFlags = 0;
+            // special value for root dir cluster (fake one)
+            pVolInfo->BootSect.bpb.RootDirStrtClus = 1;
+            // force calculating the free space
+            pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
+            }
+
+         pVolInfo->ulTotalClusters =
+            (pVolInfo->BootSect.bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
+
+         if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+            {
+            if (pSect->bpb.ExtFlags & 0x0080)
+               {
+               pVolInfo->ulActiveFatStart +=
+                  pSect->bpb.BigSectorsPerFat * (pSect->bpb.ExtFlags & 0x000F);
+               }
+            }
 
          rc = CheckWriteProtect(pVolInfo);
          if (rc && rc != ERROR_WRITE_PROTECT)
@@ -468,7 +554,7 @@ USHORT rc;
 }
 
 
-static BOOL IsFAT32(PBOOTSECT pSect)
+static UCHAR GetFatType(PBOOTSECT pSect)
 {
    /*
     *  check for FAT32 according to the Microsoft FAT32 specification
@@ -483,30 +569,30 @@ static BOOL IsFAT32(PBOOTSECT pSect)
 
    if (!pSect)
       {
-      return FALSE;
+      return FAT_TYPE_NONE;
       } /* endif */
 
    pbpb = &pSect->bpb;
 
    if (!pbpb->BytesPerSector)
       {
-      return FALSE;
+      return FAT_TYPE_NONE;
       }
 
    if (pbpb->BytesPerSector != SECTOR_SIZE)
       {
-      return FALSE;
+      return FAT_TYPE_NONE;
       }
 
    if (! pbpb->SectorsPerCluster)
       {
       // this could be the case with a JFS partition, for example
-      return FALSE;
+      return FAT_TYPE_NONE;
       }
 
    if(( ULONG )pbpb->BytesPerSector * pbpb->SectorsPerCluster > MAX_CLUSTER_SIZE )
       {
-      return FALSE;
+      return FAT_TYPE_NONE;
       }
 
    RootDirSectors = ((pbpb->RootDirEntries * 32UL) + (pbpb->BytesPerSector-1UL)) / pbpb->BytesPerSector;
@@ -535,18 +621,38 @@ static BOOL IsFAT32(PBOOTSECT pSect)
 
    if (TotSec < NonDataSec)
       {
-      return FALSE;
+      return FAT_TYPE_NONE;
       } /* endif */
 
    DataSec = TotSec - NonDataSec;
    CountOfClusters = DataSec / pbpb->SectorsPerCluster;
 
-   if ((CountOfClusters < 65525UL) || memicmp(pSect->FileSystem, "FAT32", 5))
+   if ((CountOfClusters >= 65525UL) && !memcmp(pSect->FileSystem, "FAT32   ", 8))
       {
-      return FALSE;
+      return FAT_TYPE_FAT32;
       } /* endif */
 
-   return TRUE;
+   if (!memcmp(pSect->FileSystem, "FAT12   ", 8))
+      {
+      return FAT_TYPE_FAT12;
+      } /* endif */
+
+   if (!memcmp(pSect->FileSystem, "FAT16   ", 8))
+      {
+      return FAT_TYPE_FAT16;
+      } /* endif */
+
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT", 3))
+      {
+      ULONG TotClus = (TotSec - NonDataSec) / pbpb->SectorsPerCluster;
+
+      if (TotClus < 0xff6)
+         return FAT_TYPE_FAT12;
+
+      return FAT_TYPE_FAT16;
+      }
+
+   return FAT_TYPE_NONE;
 }
 
 

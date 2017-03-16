@@ -171,7 +171,7 @@ BOOL DoRecover(PCDINFO pCD, char *pszFilename)
 
    ulCluster = FindPathCluster(pCD, ulCluster, pszFilename, &DirEntry, NULL);
 
-   if (ulCluster == FAT_EOF)
+   if (ulCluster == pCD->ulFatEof)
       return FALSE;
 
    memset(szRecovered, 0, sizeof(szRecovered));

@@ -22,6 +22,8 @@ ULONG GetClusterCount(PDRIVEINFO pDrive, ULONG ulCluster);
 
 IMPORT BOOL ClusterInUse(PDRIVEINFO pDrive, ULONG ulCluster);
 
+ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster);
+ULONG GetFatEntrySec(PDRIVEINFO pDrive, ULONG ulCluster);
 
 BYTE szMaxPath[512];
 ULONG ulTotalClusters = 0;
@@ -86,7 +88,7 @@ static BYTE szShortName[13];
 
    ulCluster = ulDirCluster;
    p = pbCluster;
-   while (ulCluster != FAT_EOF)
+   while (ulCluster != pDrive->ulFatEof)
       {
       ReadCluster(pDrive, ulCluster);
       memcpy((void *)p, pDrive->pbCluster, pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector);
@@ -313,11 +315,11 @@ ULONG ulNextCluster;
       }
 
    ulNextCluster = ulCluster;
-   while (ulNextCluster && ulNextCluster != FAT_EOF)
+   while (ulNextCluster && ulNextCluster != pDrive->ulFatEof)
       {
       MarkCluster(pDrive, ulNextCluster);
       ulNextCluster = GetNextCluster(pDrive, ulNextCluster);
-      if (ulNextCluster != FAT_EOF && ulNextCluster >= pDrive->ulTotalClusters + 2)
+      if (ulNextCluster != pDrive->ulFatEof && ulNextCluster >= pDrive->ulTotalClusters + 2)
          {
          printf("ERROR: FAT Appears damaged!! (FAT Sector %ld contains %8.8lX)\n",
             pDrive->ulCurFATSector, ulNextCluster);
@@ -325,7 +327,7 @@ ULONG ulNextCluster;
          }
       ulCount++;
       }
-   if (ulNextCluster != FAT_EOF)
+   if (ulNextCluster != pDrive->ulFatEof)
       printf("ERROR: Chain started at cluster %ld was not terminated properly!\n", ulCluster);
 
    return ulCount;
@@ -432,19 +434,16 @@ APIRET rc;
 
 ULONG GetNextCluster(PDRIVEINFO pDrive, ULONG ulCluster)
 {
-PULONG pulCluster;
-
-   if (!ReadFATSector(pDrive, ulCluster / 128))
+   if (!ReadFATSector(pDrive, GetFatEntrySec(pDrive, ulCluster)))
       {
       printf("GetNextCluster for cluster %8.8lX failed\n",
          ulCluster);
-      return FAT_EOF;
+      return pDrive->ulFatEof;
       }
 
-   pulCluster = (PULONG)pDrive->pbFATSector + (ulCluster % 128);
-   ulCluster = *pulCluster & FAT_EOF;
-   if (ulCluster >= FAT_EOF2 && ulCluster <= FAT_EOF)
-      return FAT_EOF;
+   ulCluster = GetFatEntry(pDrive, ulCluster);
+   if (ulCluster >= pDrive->ulFatEof2 && ulCluster <= pDrive->ulFatEof)
+      return pDrive->ulFatEof;
 
    return ulCluster;
 

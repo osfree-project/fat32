@@ -272,11 +272,11 @@ char far *p;
         for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
         {
             ulNextCluster = GetNextCluster( pVolInfo, ulCluster );
-            if( ulNextCluster == FAT_BAD_CLUSTER )
+            if( ulNextCluster == pVolInfo->ulFatBad )
                 break;
         }
 
-        if( ulNextCluster == FAT_BAD_CLUSTER )
+        if( ulNextCluster == pVolInfo->ulFatBad )
         {
             usSectors = ( ulStartCluster != ulCluster ) ?
                 ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;

@@ -124,9 +124,18 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define FILE_VOLID     0x0008
 #define FILE_LONGNAME  0x000F
 #define FILE_HIDE      0x8000
-#define FAT_EOF        0x0FFFFFFF
-#define FAT_EOF2       0x0FFFFFF8
-#define FAT_BAD_CLUSTER 0x0FFFFFF7
+#define FAT12_EOF        0x0FFF
+#define FAT12_EOF2       0x0FF8
+#define FAT12_BAD_CLUSTER 0x0FF7
+#define FAT16_EOF        0x0FFFF
+#define FAT16_EOF2       0x0FFF8
+#define FAT16_BAD_CLUSTER 0x0FFF7
+#define FAT32_EOF        0x0FFFFFFF
+#define FAT32_EOF2       0x0FFFFFF8
+#define FAT32_BAD_CLUSTER 0x0FFFFFF7
+#define EXFAT_EOF        0xFFFFFFFF
+#define EXFAT_EOF2       0xFFFFFFF8
+#define EXFAT_BAD_CLUSTER 0xFFFFFFF7
 #define FAT_ASSIGN_NEW 0xFFFFFFFF
 #define FAT_NOTUSED    0x00000000
 #define SECTOR_SIZE    512
@@ -162,8 +171,14 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define HAS_WINNT_EXT_NAME( fEAS ) (( fEAS ) & FILE_HAS_WINNT_EXT_NAME )
 #define HAS_WINNT_EXT_EXT( fEAS ) (( fEAS ) & FILE_HAS_WINNT_EXT_EXT )
 
+#define FAT12_CLEAN_SHUTDOWN  0x080
+#define FAT12_NO_DISK_ERROR   0x040
+#define FAT16_CLEAN_SHUTDOWN  0x0800
+#define FAT16_NO_DISK_ERROR   0x0400
 #define FAT32_CLEAN_SHUTDOWN  0x08000000
 #define FAT32_NO_DISK_ERROR   0x04000000
+#define EXFAT_CLEAN_SHUTDOWN  0x80000000
+#define EXFAT_NO_DISK_ERROR   0x40000000
 
 /* FSCTL function numbers */
 #define FAT32_GETLOGDATA        0x8000
@@ -201,10 +216,17 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define FAT32_WRITECLUSTER    0xFE
 #define FAT32_WRITESECTOR     0xFF
 
+#define FAT_TYPE_NONE  0
+#define FAT_TYPE_FAT12 1
+#define FAT_TYPE_FAT16 2
+#define FAT_TYPE_FAT32 3
+#define FAT_TYPE_EXFAT 4
+
 #pragma pack(1)
 
 typedef struct _BPB
 {
+// common for all FAT's
 USHORT BytesPerSector;
 UCHAR  SectorsPerCluster;
 USHORT ReservedSectors;
@@ -217,6 +239,7 @@ USHORT SectorsPerTrack;
 USHORT Heads;
 ULONG  HiddenSectors;
 ULONG  BigTotalSectors;
+// fat32 specific
 ULONG  BigSectorsPerFat;
 USHORT ExtFlags;
 USHORT FS_Version;
@@ -225,6 +248,23 @@ USHORT FSinfoSec;
 USHORT BkUpBootSec;
 BYTE   bReserved[12];
 } BPB, *PBPB;
+
+typedef struct _BPB0
+{
+// common for all FAT's
+USHORT BytesPerSector;
+UCHAR  SectorsPerCluster;
+USHORT ReservedSectors;
+BYTE   NumberOfFATs;
+USHORT RootDirEntries;
+USHORT TotalSectors;
+BYTE   MediaDescriptor;
+USHORT SectorsPerFat;
+USHORT SectorsPerTrack;
+USHORT Heads;
+ULONG  HiddenSectors;
+ULONG  BigTotalSectors;
+} BPB0, *PBPB0;
 
 //#pragma pack(1)
 
@@ -255,6 +295,8 @@ USHORT fForceLoad;
 USHORT fCalcFree;
 CHAR   fLargeFiles;
 CHAR   fReadonly;
+CHAR   fFat;
+CHAR   fExFat;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options
@@ -275,6 +317,17 @@ ULONG ulVolSerial;
 BYTE VolumeLabel[11];
 BYTE FileSystem[8];
 } BOOTSECT, *PBOOTSECT;
+
+typedef struct _BootSector0
+{
+BYTE bJmp[3];
+BYTE oemID[8];
+BPB0  bpb;
+BYTE bUnknown[3];
+ULONG ulVolSerial;
+BYTE VolumeLabel[11];
+BYTE FileSystem[8];
+} BOOTSECT0, *PBOOTSECT0;
 
 typedef struct _BOOTFSINFO
 {
@@ -423,6 +476,11 @@ ULONG       ulHiddenFiles;
 ULONG       ulErrorCount;
 ULONG       ulTotalChains;
 ULONG       ulFragmentedChains;
+UCHAR       bFatType;
+ULONG       ulFatEof;
+ULONG       ulFatEof2;
+ULONG       ulFatBad;
+ULONG       ulFatClean;
 BYTE _huge * pFatBits;
 //BYTE      * pFatBits;
 DISKINFO    DiskInfo;

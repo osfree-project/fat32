@@ -89,6 +89,9 @@ ULONG ulNeededSpace;
 USHORT usEntriesWanted;
 EAOP   EAOP;
 PROCINFO ProcInfo;
+ULONG  ulSector;
+USHORT usSectorsRead;
+USHORT usSectorsPerBlock;
 
    _asm push es;
 
@@ -193,18 +196,30 @@ PROCINFO ProcInfo;
       RETURN_PARENT_DIR,
       &pSearch);
 
-
-   if (ulDirCluster == FAT_EOF)
+   if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_FINDFIRSTEXIT;
       }
 
    ulCluster = ulDirCluster;
-   while (ulCluster && ulCluster != FAT_EOF)
+
+   if (ulCluster == 1)
       {
-      usNumClusters++;
-      ulCluster = GetNextCluster( pVolInfo, ulCluster);
+      // FAT12/FAT16 root directory size (contiguous)
+      USHORT usRootDirSize = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
+         (pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
+      usNumClusters = (pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
+         (pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
+         usRootDirSize + 1 : usRootDirSize;
+      }
+   else
+      {
+      while (ulCluster && ulCluster != pVolInfo->ulFatEof)
+         {
+         usNumClusters++;
+         ulCluster = GetNextCluster(pVolInfo, ulCluster);
+         }
       }
 
    usNumBlocks = usNumClusters * (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
@@ -588,7 +603,7 @@ USHORT usBlockIndex;
                   /* support for the FAT32 variation of WinNT family */
                   if( HAS_WINNT_EXT( pDir->fEAS ))
                   {
-                        PBYTE pDot = strchr( szLongName, '.' );;
+                        PBYTE pDot = strchr( szLongName, '.' );
 
                         if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
                         {
@@ -1056,31 +1071,86 @@ USHORT usIndex;
 USHORT usBlocksPerCluster = pVolInfo->ulClusterSize / pVolInfo->ulBlockSize;
 USHORT usClusterIndex = usBlockIndex / usBlocksPerCluster;
 ULONG  ulBlock = usBlockIndex % usBlocksPerCluster;
+USHORT usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+         (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+USHORT usSectorsRead;
+ULONG  ulSector;
+CHAR   fRootDir = FALSE;
+
+   if (pFindInfo->pInfo->rgClusters[0] == 1)
+      {
+      // FAT12/FAT16 root directory, special case
+      fRootDir = TRUE;
+      }
 
    if (usBlockIndex >= pFindInfo->usTotalBlocks)
       return FALSE;
 
    if (!pFindInfo->pInfo->rgClusters[usClusterIndex])
       {
+      if (fRootDir)
+         {
+         usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster;
+         ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
+            pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
+            usIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
+         usSectorsRead = usIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
+         }
       for (usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
-         pFindInfo->pInfo->rgClusters[usIndex + 1] =
-            GetNextCluster( pVolInfo, pFindInfo->pInfo->rgClusters[usIndex]);
+         if (fRootDir)
+            {
+            // reading the root directory in case of FAT12/FAT16
+            ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+            // put sector numbers instead of cluster numbers in case of FAT root dir
+            if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
+                pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+               // root directory ended
+               pFindInfo->pInfo->rgClusters[usIndex + 1] = 0;
+            else
+               // put starting sector numbers, instead of
+               // cluster numbers, in case of FAT12/FAT16 root directory
+               pFindInfo->pInfo->rgClusters[usIndex + 1] = ulSector;
+            }
+         else
+            {
+            pFindInfo->pInfo->rgClusters[usIndex + 1] =
+               GetNextCluster( pVolInfo, pFindInfo->pInfo->rgClusters[usIndex]);
+            }
 
          if (!pFindInfo->pInfo->rgClusters[usIndex + 1])
-            pFindInfo->pInfo->rgClusters[usIndex + 1] = FAT_EOF;
+            pFindInfo->pInfo->rgClusters[usIndex + 1] = pVolInfo->ulFatEof;
 
-         if (pFindInfo->pInfo->rgClusters[usIndex + 1] == FAT_EOF)
+         if (pFindInfo->pInfo->rgClusters[usIndex + 1] == pVolInfo->ulFatEof)
             return FALSE;
          }
       }
 
-   if (pFindInfo->pInfo->rgClusters[usClusterIndex] == FAT_EOF)
+   if (pFindInfo->pInfo->rgClusters[usClusterIndex] == pVolInfo->ulFatEof)
       return FALSE;
 
-   if (ReadBlock( pVolInfo,
-      pFindInfo->pInfo->rgClusters[usClusterIndex], ulBlock, pFindInfo->pInfo->pDirEntries, 0))
-      return FALSE;
+   if (fRootDir)
+      {
+      // FAT12/FAT16 root directory, special case
+      ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
+         pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
+         usClusterIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
+      // use sector read instead, in case of FAT12/FAT16 root directory
+      // (because it is not associated with any cluster in this case)
+      if (ReadSector( pVolInfo,
+         ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (char *)pFindInfo->pInfo->pDirEntries, 0 ))
+         return FALSE;
+      }
+   else
+      {
+      if (ReadBlock( pVolInfo,
+         pFindInfo->pInfo->rgClusters[usClusterIndex], ulBlock, pFindInfo->pInfo->pDirEntries, 0))
+         return FALSE;
+      }
+
+   if (fRootDir)
+      pFindInfo->pInfo->rgClusters[0] = 1;
 
    pFindInfo->usBlockIndex = usBlockIndex;
    return TRUE;

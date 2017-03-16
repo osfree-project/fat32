@@ -22,7 +22,10 @@ mainifs  = &
  fat32.ifs
 
 dll      = &
- ufat32.dll
+ ufat32.dll &
+ ufat12.dll &
+ ufat16.dll &
+ uexfat.dll
 
 util     = &
  cachef32.exe &
@@ -67,6 +70,8 @@ distlist = &
  $(p)os2\boot\fat32.ifs $(p)os2\boot\fat32.sym &
  $(p)os2\boot\partfilt.flt $(p)os2\boot\partfilt.sym &
  $(p)os2\dll\ufat32.dll $(p)os2\dll\ufat32.sym &
+ $(p)os2\dll\ufat12.dll $(p)os2\dll\ufat16.dll &
+ $(p)os2\dll\uexfat.dll &
  $(p)os2\cachef32.exe $(p)os2\cachef32.sym &
  $(p)os2\f32parts.exe $(p)os2\f32parts.sym &
  $(p)os2\f32mon.exe $(p)os2\f32mon.sym &

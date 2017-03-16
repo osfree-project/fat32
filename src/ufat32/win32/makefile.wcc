@@ -7,6 +7,9 @@ DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
 DESC2="FORMAT, standalone version"
 DESC3="CHKDSK, standalone version"
 DESC4="SYS, standalone version"
+DESC5="UFAT16 Forwarder DLL, Henk Kelder & Netlabs"
+DESC6="UFAT12 Forwarder DLL, Henk Kelder & Netlabs"
+DESC7="UEXFAT Forwarder DLL, Henk Kelder & Netlabs"
 
 # create win32 binaries
 OBJS1=$(PROJ_BLD)\format.obd $(PROJ_BLD)\win32.obd &
@@ -19,11 +22,14 @@ OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\win32.obc &
       $(PROJ_BLD)\fatfunc.obc $(PROJ_BLD)\log.obc
 OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\win32.obj &
       $(PROJ_BLD)\log.obj
+OBJS5=$(PROJ_BLD)\stub.obd
 COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
 TARGETS=$(BINROOT)\win32\dll\ufat32.dll $(BINROOT)\win32\dll\ufat32.sym &
         $(BINROOT)\win32\fat32fmt.exe $(BINROOT)\win32\fat32fmt.sym &
         $(BINROOT)\win32\fat32chk.exe $(BINROOT)\win32\fat32chk.sym &
         $(BINROOT)\win32\fat32sys.exe $(BINROOT)\win32\fat32sys.sym
+        # $(BINROOT)\win32\dll\ufat16.dll $(BINROOT)\win32\dll\ufat12.dll &
+        # $(BINROOT)\win32\dll\uexfat.dll
 SYS=nt
 
 !include ..\..\makefile.mk
@@ -31,6 +37,12 @@ SYS=nt
 DIRS=
 
 $(BINROOT)\win32\dll\ufat32.dll:
+
+$(BINROOT)\win32\dll\ufat16.dll:
+
+$(BINROOT)\win32\dll\ufat12.dll:
+
+$(BINROOT)\win32\dll\uexfat.dll:
 
 $(BINROOT)\win32\fat32fmt.exe:
 
@@ -50,6 +62,18 @@ $(PROJ_BLD)\ufat32.ols: $(OBJS1)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
 
+$(PROJ_BLD)\ufat16.ols: $(OBJS5)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\ufat12.ols: $(OBJS5)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\uexfat.ols: $(OBJS5)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ FILE %e
+
 $(PROJ_BLD)\fat32fmt.ols: $(OBJS2)
  @%create $^@
  @for %e in ($<) do @%append $^@ FILE %e
@@ -64,20 +88,72 @@ $(PROJ_BLD)\fat32sys.ols: $(OBJS4)
 
 $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
  @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS) dll initinstance terminstance
+ @%append $[*.lnk SYSTEM $(SYS) dll
  @%append $[*.lnk NAME $(BINROOT)\win32\dll\$^&.dll
  @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- # @%append $[*.lnk OPTION MIXED1632
- # @%append $[*.lnk OPTION NODEFAULTLIBS
  @%append $[*.lnk OPTION ST=81920
  @%append $[*.lnk DEBUG ALL
- # @%append $[*.lnk segment type DATA LOADONCALL NONSHARED
- # @%append $[*.lnk segment type CODE PRELOAD 
- # @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
  @%append $[*.lnk OPTION MAP=$[*.wmp
  @%append $[*.lnk EXPORT format, chkdsk, recover, sys
  @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\nt;
  @%append $[*.lnk LIB clib3s,kernel32,user32
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS) dll
+ @%append $[*.lnk NAME $(BINROOT)\win32\dll\$^&.dll
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC5)'
+ @%append $[*.lnk segment type DATA shared
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk IMPORT &
+     chkdsk   ufat32.chkdsk,  &
+     format   ufat32.format,  &
+     recover  ufat32.recover, &
+     sys      ufat32.sys
+ @%append $[*.lnk EXPORT &
+     chkdsk,  &
+     format,  &
+     recover, &
+     sys
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS) dll
+ @%append $[*.lnk NAME $(BINROOT)\win32\dll\$^&.dll
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC6)'
+ @%append $[*.lnk segment type DATA shared
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk IMPORT &
+     chkdsk   ufat32.chkdsk,  &
+     format   ufat32.format,  &
+     recover  ufat32.recover, &
+     sys      ufat32.sys
+ @%append $[*.lnk EXPORT &
+     chkdsk,  &
+     format,  &
+     recover, &
+     sys
+ @%append $[*.lnk @$[@
+
+$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
+ @%create $[*.lnk
+ @%append $[*.lnk SYSTEM $(SYS) dll
+ @%append $[*.lnk NAME $(BINROOT)\win32\dll\$^&.dll
+ @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC7)'
+ @%append $[*.lnk segment type DATA shared
+ @%append $[*.lnk OPTION MAP=$[*.wmp
+ @%append $[*.lnk IMPORT &
+     chkdsk   ufat32.chkdsk,  &
+     format   ufat32.format,  &
+     recover  ufat32.recover, &
+     sys      ufat32.sys
+ @%append $[*.lnk EXPORT &
+     chkdsk,  &
+     format,  &
+     recover, &
+     sys
  @%append $[*.lnk @$[@
 
 $(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
@@ -120,3 +196,7 @@ $(PROJ_BLD)\win32.obc: win32.c
 $(PROJ_BLD)\win32.obd: win32.c
  @echo CC       $^.
  @$(CC) $(COPT)  -d__DLL__ -d__UNICODE__ -bd -fr=$^*.err -fo=$^@ $<
+
+$(PROJ_BLD)\stub.obd: stub.c
+ @echo CC       $^.
+ @$(CC) -q -zq -fr=$^*.err -fo=$^@ $<

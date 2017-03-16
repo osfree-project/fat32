@@ -70,13 +70,13 @@ USHORT rc;
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile);
-   if (ulDirCluster == FAT_EOF)
+   if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_FILEATTRIBUTEEXIT;
       }
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
-   if (ulCluster == FAT_EOF)
+   if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_FILE_NOT_FOUND;
       goto FS_FILEATTRIBUTEEXIT;
@@ -201,7 +201,7 @@ USHORT rc;
          usCurDirEnd,
          RETURN_PARENT_DIR,
          &pszFile);
-      if (ulDirCluster == FAT_EOF)
+      if (ulDirCluster == pVolInfo->ulFatEof)
          {
          rc = ERROR_PATH_NOT_FOUND;
          goto FS_PATHINFOEXIT;
@@ -215,7 +215,7 @@ USHORT rc;
       if (usLevel != FIL_NAMEISVALID)
          {
          ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
-         if (ulCluster == FAT_EOF)
+         if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_PATHINFOEXIT;
@@ -480,7 +480,7 @@ USHORT rc;
           usLevel == FIL_STANDARDL || usLevel == FIL_QUERYEASIZEL)
          {
          ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
-         if (ulCluster == FAT_EOF)
+         if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_PATHINFOEXIT;

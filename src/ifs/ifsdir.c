@@ -102,8 +102,7 @@ BYTE     szDirLongName[ FAT32MAXPATH ];
             FILE_DIRECTORY,
             &pszFile);
 
-
-         if (ulCluster == FAT_EOF || *pszFile)
+         if (ulCluster == pVolInfo->ulFatEof || *pszFile)
             {
             rc = ERROR_PATH_NOT_FOUND;
             goto FS_CHDIREXIT;
@@ -224,21 +223,21 @@ ULONG    ulBlock;
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile);
-   if (ulDirCluster == FAT_EOF)
+   if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_MKDIREXIT;
       }
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
-   if (ulCluster != FAT_EOF)
+   if (ulCluster != pVolInfo->ulFatEof)
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_MKDIREXIT;
       }
 
-   ulCluster = SetNextCluster( pVolInfo, FAT_ASSIGN_NEW, FAT_EOF);
-   if (ulCluster == FAT_EOF)
+   ulCluster = SetNextCluster( pVolInfo, FAT_ASSIGN_NEW, pVolInfo->ulFatEof);
+   if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_DISK_FULL;
       goto FS_MKDIREXIT;
@@ -396,14 +395,14 @@ BYTE     szLongName[ FAT32MAXPATH ];
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile);
-   if (ulDirCluster == FAT_EOF)
+   if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
       }
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
-   if (ulCluster == FAT_EOF || !(DirEntry.bAttr & FILE_DIRECTORY))
+   if (ulCluster == pVolInfo->ulFatEof || !(DirEntry.bAttr & FILE_DIRECTORY))
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
@@ -425,7 +424,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
 
    ulNextCluster = ulCluster;
    usFileCount = 0;
-   while (ulNextCluster != FAT_EOF)
+   while (ulNextCluster != pVolInfo->ulFatEof)
       {
       ULONG ulBlock;
       for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
@@ -453,7 +452,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
          }
       ulNextCluster = GetNextCluster( pVolInfo, ulNextCluster);
       if (!ulNextCluster)
-         ulNextCluster = FAT_EOF;
+         ulNextCluster = pVolInfo->ulFatEof;
       }
    free(pDir);
    if (usFileCount)

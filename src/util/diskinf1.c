@@ -32,6 +32,10 @@ static VOID   vListMBR(HFILE hDisk, PMBR pMBR,  PDEVICEPARAMETERBLOCK pdpmb, ULO
 static APIRET PrepareDrive(PDRIVEINFO pDrive);
 VOID vDumpSector(PBYTE pbSector);
 
+UCHAR GetFatType(PBOOTSECT pSect);
+ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster);
+ULONG GetFatEntrySec(PDRIVEINFO pDrive, ULONG ulCluster);
+
 /****************************************************************
 *
 ****************************************************************/
@@ -554,13 +558,64 @@ USHORT    usBlocks;
 
 
    memcpy(&pDrive->bpb, &bSect.bpb, sizeof pDrive->bpb);
+
+   pDrive->bFatType = GetFatType(&bSect);
+
+   switch (pDrive->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         pDrive->ulFatEof  = FAT12_EOF;
+         pDrive->ulFatEof2 = FAT12_EOF2;
+         pDrive->ulFatBad  = FAT12_BAD_CLUSTER;
+         break;
+
+      case FAT_TYPE_FAT16:
+         pDrive->ulFatEof  = FAT16_EOF;
+         pDrive->ulFatEof2 = FAT16_EOF2;
+         pDrive->ulFatBad  = FAT16_BAD_CLUSTER;
+         break;
+
+      case FAT_TYPE_FAT32:
+         pDrive->ulFatEof  = FAT32_EOF;
+         pDrive->ulFatEof2 = FAT32_EOF2;
+         pDrive->ulFatBad  = FAT32_BAD_CLUSTER;
+         break;
+
+      case FAT_TYPE_EXFAT:
+         pDrive->ulFatEof  = EXFAT_EOF;
+         pDrive->ulFatEof2 = EXFAT_EOF2;
+         pDrive->ulFatBad  = EXFAT_BAD_CLUSTER;
+      }
+
+   if (pDrive->bFatType < FAT_TYPE_FAT32)
+      {
+      // create FAT32-type extended BPB for FAT12/FAT16
+      if (!((PBOOTSECT0)&bSect)->bpb.TotalSectors)
+         pDrive->bpb.BigTotalSectors = ((PBOOTSECT0)&bSect)->bpb.BigTotalSectors;
+      else
+         pDrive->bpb.BigTotalSectors = ((PBOOTSECT0)&bSect)->bpb.TotalSectors;
+
+      pDrive->bpb.BigSectorsPerFat = ((PBOOTSECT0)&bSect)->bpb.SectorsPerFat;
+      pDrive->bpb.ExtFlags |= 0x0080;
+      pDrive->bpb.RootDirStrtClus = 2;
+      }
+
    pDrive->ulStartOfFAT = pDrive->bpb.ReservedSectors;
 
    pDrive->ulCurFATSector = -1L;
-   pDrive->ulCurCluster = FAT_EOF;
+   pDrive->ulCurCluster = pDrive->ulFatEof;
    pDrive->ulClusterSize = pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector;
-   pDrive->ulStartOfData = pDrive->bpb.ReservedSectors +
-               pDrive->bpb.BigSectorsPerFat * pDrive->bpb.NumberOfFATs;
+   if (pDrive->bFatType == FAT_TYPE_FAT32)
+      {
+      pDrive->ulStartOfData = pDrive->bpb.ReservedSectors +
+         pDrive->bpb.BigSectorsPerFat * pDrive->bpb.NumberOfFATs;
+      }
+   else if (pDrive->bFatType < FAT_TYPE_FAT32)
+      {
+      pDrive->ulStartOfData = pDrive->bpb.ReservedSectors +
+         pDrive->bpb.SectorsPerFat * pDrive->bpb.NumberOfFATs +
+         (pDrive->bpb.RootDirEntries * sizeof(DIRENTRY)) / pDrive->bpb.BytesPerSector;
+      }
    pDrive->ulTotalClusters = (pDrive->bpb.BigTotalSectors - pDrive->ulStartOfData) / pDrive->bpb.SectorsPerCluster;
 
    pDrive->pbCluster = malloc(pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector);
@@ -639,3 +694,160 @@ USHORT usIndex;
 
 }
 
+UCHAR GetFatType(PBOOTSECT pSect)
+{
+   /*
+    *  check for FAT32 according to the Microsoft FAT32 specification
+    */
+   PBPB  pbpb;
+   ULONG FATSz;
+   ULONG TotSec;
+   ULONG RootDirSectors;
+   ULONG NonDataSec;
+   ULONG DataSec;
+   ULONG CountOfClusters;
+
+   if (!pSect)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
+   pbpb = &pSect->bpb;
+
+   if (!pbpb->BytesPerSector)
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   if (pbpb->BytesPerSector != SECTOR_SIZE)
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   if (! pbpb->SectorsPerCluster)
+      {
+      // this could be the case with a JFS partition, for example
+      return FAT_TYPE_NONE;
+      }
+
+   if(( ULONG )pbpb->BytesPerSector * pbpb->SectorsPerCluster > MAX_CLUSTER_SIZE )
+      {
+      return FAT_TYPE_NONE;
+      }
+
+   RootDirSectors = ((pbpb->RootDirEntries * 32UL) + (pbpb->BytesPerSector-1UL)) / pbpb->BytesPerSector;
+
+   if (pbpb->SectorsPerFat)
+      {
+      FATSz = pbpb->SectorsPerFat;
+      }
+   else
+      {
+      FATSz = pbpb->BigSectorsPerFat;
+      } /* endif */
+
+   if (pbpb->TotalSectors)
+      {
+      TotSec = pbpb->TotalSectors;
+      }
+   else
+      {
+      TotSec = pbpb->BigTotalSectors;
+      } /* endif */
+
+   NonDataSec = pbpb->ReservedSectors
+                   +  (pbpb->NumberOfFATs * FATSz)
+                   +  RootDirSectors;
+
+   if (TotSec < NonDataSec)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
+   DataSec = TotSec - NonDataSec;
+   CountOfClusters = DataSec / pbpb->SectorsPerCluster;
+
+   if ((CountOfClusters >= 65525UL) && !memcmp(pSect->FileSystem, "FAT32   ", 8))
+      {
+      return FAT_TYPE_FAT32;
+      } /* endif */
+
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT", 3))
+      {
+      ULONG TotClus = (TotSec - NonDataSec) / pbpb->SectorsPerCluster;
+
+      if (TotClus < 0xff6)
+         return FAT_TYPE_FAT12;
+
+      return FAT_TYPE_FAT16;
+      }
+
+   return FAT_TYPE_NONE;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntrySec(PDRIVEINFO pDrive, ULONG ulCluster)
+{
+ULONG  ulSector;
+
+   ulCluster &= pDrive->ulFatEof;
+
+   switch (pDrive->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         ulSector = ((ulCluster * 3) / 2) / 512;
+         break;
+
+      case FAT_TYPE_FAT16:
+         ulSector = ulCluster / 256;
+         break;
+
+      case FAT_TYPE_FAT32:
+      case FAT_TYPE_EXFAT:
+         ulSector = ulCluster / 128;
+      }
+
+   return ulSector;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster)
+{
+   ulCluster &= pDrive->ulFatEof;
+
+   switch (pDrive->bFatType)
+      {
+      case FAT_TYPE_FAT12:
+         {
+         PUSHORT pusCluster;
+         pusCluster = (PUSHORT)((PBYTE)pDrive->pbFATSector + (((ulCluster * 3) / 2) % 512));
+         ulCluster = ( ((ulCluster * 3) % 2) ?
+            *pusCluster >> 4 : // odd
+            *pusCluster )      // even
+            & pDrive->ulFatEof;
+         break;
+         }
+
+      case FAT_TYPE_FAT16:
+         {
+         PUSHORT pusCluster;
+         pusCluster = (PUSHORT)pDrive->pbFATSector + (ulCluster % 256);
+         ulCluster = *pusCluster & pDrive->ulFatEof;
+         break;
+         }
+
+      case FAT_TYPE_FAT32:
+      case FAT_TYPE_EXFAT:
+         {
+         PULONG pulCluster;
+         pulCluster = (PULONG)pDrive->pbFATSector + (ulCluster % 128);
+         ulCluster = *pulCluster & pDrive->ulFatEof;
+         }
+      }
+
+   return ulCluster;
+}
