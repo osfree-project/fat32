@@ -54,6 +54,10 @@ PRIVATE UCHAR GetFatType(PBOOTSECT pBoot);
 PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR);
 IMPORT SEL cdecl SaSSel(void);
 
+ULONG fat_mask = 0;
+ULONG fat32_mask = 0;
+ULONG exfat_mask = 0;
+
 #pragma optimize("eglt",off)
 
 int far pascal _loadds FS_MOUNT(unsigned short usFlag,      /* flag     */
@@ -121,6 +125,15 @@ P_VolChars   pVolChars;
                }
 
             if (!f32Parms.fExFat && (pVolInfo->bFatType == FAT_TYPE_EXFAT))
+               {
+               rc = ERROR_VOLUME_NOT_MOUNTED;
+               freeseg(pVolInfo);
+               goto FS_MOUNT_EXIT;
+               }
+
+            if (! (fat_mask   & (1UL << pvpfsi->vpi_drive)) &&
+                ! (fat32_mask & (1UL << pvpfsi->vpi_drive)) &&
+                ! (exfat_mask & (1UL << pvpfsi->vpi_drive)) )
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
                freeseg(pVolInfo);

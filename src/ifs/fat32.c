@@ -60,6 +60,9 @@ static USHORT DBCSStrlen( const PSZ pszStr );
 
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
+extern ULONG fat_mask;
+extern ULONG fat32_mask;
+extern ULONG exfat_mask;
 
 void _cdecl autocheck(char *args);
 
@@ -1548,22 +1551,118 @@ APIRET rc = 0;
          f32Parms.fReadonly = TRUE;
          }
 
-      p = strstr(szArguments, "/fat");
+      p = strstr(szArguments, "/fat:");
       if (!p)
-         p = strstr(szArguments, "-fat");
+         p = strstr(szArguments, "-fat:");
       if (p)
          {
-         // mount all FAT disks
+         // mount FAT12/FAT16 disks
          f32Parms.fFat = TRUE;
+         p += 5;
+
+         while (*p != '\0' && *p != ' ')
+            {
+            char ch = tolower(*p);
+            int num;
+            if ('a' <= ch && ch <= 'z')
+               {
+               num = ch - 'a';
+               // set FAT12/FAT16 disks mount mask
+               fat_mask |= (1UL << num);
+               }
+            else if (*p == '*')
+               {
+               // mount all FAT12/FAT16 disks
+               fat_mask = 0xffffffff;
+               break;
+               }
+            p++;
+            }
+         }
+      else
+         {
+         p = strstr(szArguments, "/fat");
+         if (!p)
+            p = strstr(szArguments, "-fat");
+         if (p)
+            {
+            // mount all FAT12/FAT16 disks
+            f32Parms.fFat = TRUE;
+            fat_mask = 0xffffffff;
+            }
          }
 
-      p = strstr(szArguments, "/exfat");
+      p = strstr(szArguments, "/fat32:");
       if (!p)
-         p = strstr(szArguments, "-exfat");
+         p = strstr(szArguments, "-fat32:");
       if (p)
          {
-         // mount all FAT disks
+         p += 7;
+
+         while (*p != '\0' && *p != ' ')
+            {
+            char ch = tolower(*p);
+            int num;
+            if ('a' <= ch && ch <= 'z')
+               {
+               num = ch - 'a';
+               // set FAT32 disks mount mask
+               fat32_mask |= (1UL << num);
+               }
+            else if (*p == '*')
+               {
+               // mount all FAT32 disks
+               fat32_mask = 0xffffffff;
+               break;
+               }
+            p++;
+            }
+         }
+      else
+         {
+         // mount all FAT32 disks
+         fat32_mask = 0xffffffff;
+         }
+
+      p = strstr(szArguments, "/exfat:");
+      if (!p)
+         p = strstr(szArguments, "-exfat:");
+      if (p)
+         {
+         // mount exFAT disks
          f32Parms.fExFat = TRUE;
+         p += 7;
+
+         while (*p != '\0' && *p != ' ')
+            {
+            char ch = tolower(*p);
+            int num;
+            if ('a' <= ch && ch <= 'z')
+               {
+               num = ch - 'a';
+               // set exFAT disks mount mask
+               exfat_mask |= (1UL << num);
+               }
+            else if (*p == '*')
+               {
+               // mount all exFAT disks
+               exfat_mask = 0xffffffff;
+               break;
+               }
+            p++;
+            }
+         }
+      else
+         {
+         p = strstr(szArguments, "/exfat");
+         if (!p)
+            p = strstr(szArguments, "-exfat");
+         if (p)
+            {
+            // mount all exFAT disks
+            f32Parms.fExFat = TRUE;
+            exfat_mask = 0xffffffff;
+            }
          }
 #if 1
    if (!DosGetInfoSeg(&sGlob, &sLoc))
