@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
-#include <uconv.h>
 #include <process.h>
 
 #define INCL_DOSNLS
@@ -22,29 +21,6 @@
 #define TIME_FACTOR 1
 
 #define SHAREMEM	 "\\SHAREMEM\\CACHEF32"
-
-int (* CALLCONV pUniCreateUconvObject)(UniChar * code_set, UconvObject * uobj);
-int (* CALLCONV pUniUconvToUcs)(
-			 UconvObject uobj,		   /* I  - Uconv object handle		   */
-			 void	 * * inbuf, 	   /* IO - Input buffer 			   */
-			 size_t    * inbytes,	   /* IO - Input buffer size (bytes)   */
-			 UniChar * * outbuf,	   /* IO - Output buffer size		   */
-			 size_t    * outchars,	   /* IO - Output size (chars)		   */
-			 size_t    * subst	);	   /* IO - Substitution count		   */
-int (* CALLCONV pUniUconvFromUcs)(
-			 UconvObject uobj,
-			 UniChar * * inbuf,
-			 size_t    * inchars,
-			 void	 * * outbuf,
-			 size_t    * outbytes,
-			 size_t    * subst	);
-int (* CALLCONV pUniMapCpToUcsCp)( ULONG ulCp, UniChar *ucsCp, size_t n );
-UniChar (* CALLCONV pUniTolower )( UniChar uin );
-int (* CALLCONV pUniQueryUconvObject )
-	(UconvObject uobj, uconv_attribute_t *attr, size_t size, char first[256], char other[256], udcrange_t udcrange[32]);
-
-HMODULE hModConv = 0;
-HMODULE hModUni  = 0;
 
 PRIVATE VOID Handler(INT iSignal);
 PRIVATE VOID InitProg(INT iArgc, PSZ rgArgv[]);
@@ -65,8 +41,11 @@ PRIVATE ULONG GetFAT32Drives(VOID);
 PRIVATE BOOL IsDiskFat32(PSZ pszDisk);
 PRIVATE VOID ShowRASectors(VOID);
 PRIVATE BOOL SetRASectors(PSZ pszArg);
-PRIVATE BOOL LoadTranslateTable(VOID);
 PRIVATE void WriteLogMessage(PSZ pszMessage);
+
+BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource);
+
+HMODULE   hMod = 0;
 
 static PSZ rgPriority[]=
 {
@@ -246,6 +225,7 @@ USHORT	  uscbLVB;
 ULONG	  ulDataSize;
 ULONG	  ulParmSize;
 BOOL	  fSetParms = FALSE;
+BYTE      rgData[ 256 ];
 ULONG	  ulParm;
 
    for (iArg = 1; iArg < iArgc; iArg++)
@@ -258,6 +238,21 @@ ULONG	  ulParm;
 		  break;
 	  }
    }
+
+   rc = DosLoadModule(rgData, sizeof(rgData), "UFAT32.DLL", &hMod);
+   if (rc)
+      {
+      printf("FAT32: Utility DLL not found (%s does not load).\n", rgData);
+      printf("FAT32: No UNICODE translate table loaded!\n");
+      return;
+      }
+   rc = DosQueryProcAddr(hMod, 0L,
+      "LoadTranslateTable", (PFN *)&pLoadTranslateTable);
+   if (rc)
+      {
+      printf("FAT32: ERROR: Could not find address of LoadTranslateTable.\n");
+      return;
+      }
 
    /*
 	  Determine if we run in the foreground
@@ -500,8 +495,11 @@ ULONG	  ulParm;
 		 }
 	  }
 
-   if ( fForeGround && LoadTranslateTable())
-	  fSetParms = TRUE;
+   if ( fForeGround && (*pLoadTranslateTable)(FALSE, TRUE))
+   	  fSetParms = TRUE;
+
+   if( hMod )
+        DosFreeModule(hMod);
 
    if (fSetParms)
 	  {
@@ -928,301 +926,6 @@ BOOL IsDiskFat32(PSZ pszDisk)
 	  return TRUE;
 	  }
    return FALSE;
-}
-
-#define MAX_TRANS_TABLE 	0x100
-#define ARRAY_TRANS_TABLE	( 0x10000 / MAX_TRANS_TABLE )
-
-#define INDEX_OF_START		MAX_TRANS_TABLE
-#define INDEX_OF_FIRSTINFO	MAX_TRANS_TABLE
-#define INDEX_OF_LCASECONV	( MAX_TRANS_TABLE + 1 )
-#define INDEX_OF_END		INDEX_OF_LCASECONV
-#define EXTRA_ELEMENT		( INDEX_OF_END - INDEX_OF_START + 1 )
-
-BOOL LoadTranslateTable(VOID)
-{
-APIRET rc;
-ULONG ulParmSize;
-BYTE   rgData[ 256 ];
-// Extra space for DBCS lead info and case conversion
-UniChar *rgTranslate[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
-PBYTE  pChar;
-UniChar *pUni;
-UconvObject  uconv_object = NULL;
-INT iIndex;
-size_t bytes_left;
-size_t uni_chars_left;
-size_t num_subs;
-ULONG rgCP[3];
-ULONG cbCP;
-// Extra space for DBCS lead info and case conversion
-PVOID16 rgTransTable[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
-char rgFirst[ 256 ];
-USHORT first, second;
-USHORT usCode;
-UniChar ucsCp[ 12 ];
-UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
-
-   rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModConv);
-   if (rc)
-	  {
-	  printf("No NLS support found (%s does not load).\n", rgData);
-	  printf("No UNICODE translate table loaded!\n");
-	  rc = TRUE;
-	  goto free_exit;
-	  }
-   rc = DosQueryProcAddr(hModConv, 0L,
-	  "UniCreateUconvObject", (PFN *)&pUniCreateUconvObject);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniCreateUconvObject.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-   rc = DosQueryProcAddr(hModConv, 0L,
-	  "UniUconvToUcs", (PFN *)&pUniUconvToUcs);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniUconvToUcs.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-	  "UniUconvFromUcs", (PFN *)&pUniUconvFromUcs);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniUconvFromUcs.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-	  "UniMapCpToUcsCp", (PFN *)&pUniMapCpToUcsCp);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniMapCpToUcsCp.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   rc = DosQueryProcAddr(hModConv, 0L,
-	  "UniQueryUconvObject", (PFN *)&pUniQueryUconvObject);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniQueryUconvObject.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   rc = DosLoadModule(rgData, sizeof rgData, "LIBUNI.DLL", &hModUni);
-   if (rc)
-	  {
-	  printf("No NLS support found (%s does not load).\n", rgData);
-	  printf("No UNICODE translate table loaded!\n");
-	  rc = TRUE;
-	  goto free_exit;
-	  }
-
-   rc = DosQueryProcAddr(hModUni, 0L,
-	  "UniTolower", (PFN *)&pUniTolower);
-   if (rc)
-	  {
-	  printf("ERROR: Could not find address of UniTolower.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   if( ulNewCP )
-		rgCP[ 0 ] = ulNewCP;
-   else
-		DosQueryCp(sizeof rgCP, rgCP, &cbCP);
-
-   if (f32Parms.ulCurCP == rgCP[0])
-   {
-	  rc = FALSE;
-	  goto free_exit;
-   }
-
-   if (f32Parms.ulCurCP && !fSayYes)
-	  {
-	  BYTE chChar;
-	  printf("Loaded unicode translate table is for CP %lu\n", f32Parms.ulCurCP);
-	  printf("Current CP is %lu\n", rgCP[0]);
-	  printf("Would you like to reload the translate table for this CP [Y/N]? ");
-	  fflush(stdout);
-
-	  for (;;)
-		 {
-		 chChar = getch();
-		 switch (chChar)
-			{
-			case 'y':
-			case 'Y':
-			   chChar = 'Y';
-			   break;
-			case 'n':
-			case 'N':
-			   chChar = 'N';
-			   break;
-			default :
-			   DosBeep(660, 10);
-			   continue;
-			}
-		 printf("%c\n", chChar);
-		 break;
-		 }
-	  if (chChar == 'N')
-		 {
-		 rc = FALSE;
-		 goto free_exit;
-		 }
-	  }
-
-   rc = pUniMapCpToUcsCp( rgCP[ 0 ], ucsCp, sizeof( ucsCp ) / sizeof( UniChar ));
-   if( rc != ULS_SUCCESS )
-   {
-		printf("UniMapCpToUcsCp error: return code = %u\n", rc );
-		rc = FALSE;
-		goto free_exit;
-   }
-
-   rc = pUniCreateUconvObject( ucsCp, &uconv_object);
-   if (rc != ULS_SUCCESS)
-	  {
-	  printf("UniCreateUconvObject error: return code = %u\n", rc);
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   rc = pUniQueryUconvObject( uconv_object, NULL, 0, rgFirst, NULL, NULL );
-   if (rc != ULS_SUCCESS)
-	  {
-	  printf("UniQueryUConvObject error: return code = %u\n", rc);
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   // Allocation for conversion, DBCS lead info and case conversion
-   for( iIndex = 0; iIndex <= INDEX_OF_END ; iIndex ++ )
-   {
-		rgTransTable[ iIndex ] = rgTranslate[ iIndex ] = malloc( sizeof(USHORT ) * ARRAY_TRANS_TABLE );
-		memset( rgTranslate[ iIndex ], 0, sizeof( USHORT ) * ARRAY_TRANS_TABLE );
-   }
-
-   // Initialize SBCS only for conversion and set DBCS lead info
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-   {
-		rgData[ iIndex ] = ( rgFirst[ iIndex ] == 1 ) ? iIndex : 0;
-		rgTranslate[ INDEX_OF_FIRSTINFO ][ iIndex ] = rgFirst[ iIndex ];
-   }
-
-   pChar = rgData;
-   bytes_left = sizeof rgData;
-   pUni = ( PVOID )rgTranslate[ 0 ];
-   uni_chars_left = ARRAY_TRANS_TABLE;
-
-   rc = pUniUconvToUcs(uconv_object,
-	  (PVOID *)&pChar,
-	  &bytes_left,
-	  &pUni,
-	  &uni_chars_left,
-	  &num_subs);
-
-   if (rc != ULS_SUCCESS)
-	  {
-	  printf("UniUconvToUcs failed, rc = %u\n", rc);
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   // Translate upper case to lower case
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-		rgUniBuffer[ iIndex ] = pUniTolower( rgTranslate[ 0 ][ iIndex ] );
-
-   // Convert lower case in Unicode to codepage code
-   pUni = ( PVOID )rgUniBuffer;
-   uni_chars_left = ARRAY_TRANS_TABLE;
-   pChar  = rgData;
-   bytes_left = sizeof rgData;
-
-   rc = pUniUconvFromUcs( uconv_object,
-		&pUni,
-		&uni_chars_left,
-		( PVOID * )&pChar,
-		&bytes_left,
-		&num_subs );
-
-   if (rc != ULS_SUCCESS)
-	  {
-	  printf("UniUconvFromUcs failed, rc = %u\n", rc);
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   // Store codepage code to transtable
-   for( iIndex = 0; iIndex < ARRAY_TRANS_TABLE; iIndex++ )
-		rgTranslate[ INDEX_OF_LCASECONV ][ iIndex ] = rgData[ iIndex ] ? rgData[ iIndex ] : iIndex;
-
-   // Translate DBCS code to unicode
-   for( first = 0; first < ARRAY_TRANS_TABLE; first++ )
-   {
-		if( rgFirst[ first ] == 2 )
-		{
-			for( second = 0; second < 0x100; second++ )
-			{
-				  usCode = first | (( second << 8 ) & 0xFF00 );
-
-				  pChar  = ( PVOID )&usCode;
-				  bytes_left = sizeof usCode;
-				  pUni = ( PVOID )&rgTranslate[ second ][ first ];
-				  uni_chars_left = 1;
-
-				  rc = pUniUconvToUcs(uconv_object,
-					 (PVOID *)&pChar,
-					 &bytes_left,
-					 &pUni,
-					 &uni_chars_left,
-					 &num_subs);
-
-				  if (rc != ULS_SUCCESS)
-				  {
-					 printf("UniUconvToUcs failed, rc = %u\n", rc);
-					 rc = FALSE;
-					 goto free_exit;
-				  }
-			}
-		}
-   }
-
-   ulParmSize = sizeof rgTransTable;
-   rc = DosFSCtl(NULL, 0, NULL,
-			   ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
-			   FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
-   if (rc)
-	  {
-	  printf("Unable to set translate table for current Codepage.\n");
-	  rc = FALSE;
-	  goto free_exit;
-	  }
-
-   f32Parms.ulCurCP = rgCP[0];
-   if( !fSilent )
-	  printf("Unicode translate table for CP %lu loaded.\n", rgCP[0]);
-   rc = TRUE;
-free_exit:
-
-   for( iIndex = 0; iIndex <= INDEX_OF_END; iIndex++ )
-	  if( rgTranslate[ iIndex ])
-		free( rgTranslate[ iIndex ]);
-
-   if( hModConv )
-		DosFreeModule( hModConv);
-
-   if( hModUni )
-		DosFreeModule( hModUni );
-
-   return rc;
 }
 
 void WriteLogMessage(PSZ pszMessage)

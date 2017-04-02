@@ -10,6 +10,8 @@ int chkdsk(int argc, char *argv[], char *envp[]);
 int recover(int argc, char *argv[], char *envp[]);
 int sys(int argc, char *argv[], char *envp[]);
 
+BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource);
+
 void cleanup(void);
 
 short _Far16 _Pascal _loadds CHKDSK(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp)
@@ -125,6 +127,11 @@ short _Far16 _Pascal _loadds SYS(short argc, char *_Seg16 *_Seg16 argv, char *_S
    free(Envp); free(Argv);
 
    return NO_ERROR;
+}
+
+BOOL _Far16 _Pascal _loadds LOADTRANSTBL(BOOL fSilent, UCHAR ucSource)
+{
+   return LoadTranslateTable(fSilent, ucSource);
 }
 
 #define SIG_CTRLC        1

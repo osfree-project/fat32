@@ -26,6 +26,8 @@ VOID TranslateAllocBuffer( VOID );
 
 extern F32PARMS f32Parms;
 
+USHORT _Far16 _Pascal _loadds GETSHRSEG(PVOID16 *p);
+
 int (* CALLCONV pUniCreateUconvObject)(UniChar * code_set, UconvObject * uobj);
 int (* CALLCONV pUniUconvToUcs)(
              UconvObject uobj,         /* I  - Uconv object handle         */
@@ -175,7 +177,7 @@ VOID TranslateAllocBuffer( VOID )
 /******************************************************************
 *
 ******************************************************************/
-BOOL LoadTranslateTable(BOOL fSilent)
+BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource)
 {
     APIRET rc;
     ULONG ulParmSize;
@@ -433,11 +435,44 @@ BOOL LoadTranslateTable(BOOL fSilent)
         }
    }
 
-   ulParmSize = sizeof rgTransTable;
-   if( !TranslateInit((PVOID)rgTransTable, ulParmSize))
-      rc = ERROR_INVALID_PARAMETER;
-   else
-      rc = 0;
+   switch (ucSource)
+   {
+   case 0:
+      {
+         // called from CHKDSK or IFS init routine
+         ulParmSize = sizeof rgTransTable;
+         if( !TranslateInit((PVOID)rgTransTable, ulParmSize) )
+            rc = ERROR_INVALID_PARAMETER;
+         else
+            rc = 0;
+      }
+      break;
+
+   case 1:
+      {
+         // called from cachef32.exe
+         ulParmSize = sizeof rgTransTable;
+         rc = DosFSCtl(NULL, 0, NULL,
+                     ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
+                     FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
+      }
+      break;
+#ifdef __DLL__
+   case 2:
+      {
+         // called from IFS init
+         PVOID16 p;
+         ulParmSize = sizeof rgTransTable;
+         if( !GETSHRSEG(&p) )
+            rc = ERROR_INVALID_PARAMETER;
+         else
+         {
+            rc = 0;
+            memcpy((PVOID)p, (PVOID)rgTransTable, ulParmSize);
+         }
+      }
+#endif
+   }
    
    if (rc)
       {
@@ -493,7 +528,7 @@ VOID CaseConversionInit( VOID )
 
 void CodepageConvInit(BOOL fSilent)
 {
-   LoadTranslateTable(fSilent);
+   LoadTranslateTable(fSilent, FALSE);
    TranslateInitDBCSEnv();
    CaseConversionInit();
 }
