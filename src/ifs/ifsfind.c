@@ -266,7 +266,12 @@ USHORT usSectorsPerBlock;
    strcpy(pFindInfo->pInfo->szSearch, pSearch);
    FSH_UPPERCASE(pFindInfo->pInfo->szSearch, sizeof pFindInfo->pInfo->szSearch, pFindInfo->pInfo->szSearch);
 
-   pFindInfo->ulMaxEntry   = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+   if (ulDirCluster == 1)
+      // FAT12/FAT16 root directory case
+      pFindInfo->ulMaxEntry = pVolInfo->BootSect.bpb.RootDirEntries;
+   else
+      pFindInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+
    if (!GetBlock(pVolInfo, pFindInfo, 0))
       {
       rc = ERROR_SYS_INTERNAL;
@@ -274,7 +279,6 @@ USHORT usSectorsPerBlock;
       }
 
    pFindInfo->ulCurEntry = 0;
-
 
    if (usAttr & 0x0040)
       {
@@ -552,7 +556,6 @@ USHORT rc;
 DIRENTRY _huge * pDir;
 BYTE bCheck1;
 USHORT usBlockIndex;
-
 
    memset(szLongName, 0, sizeof szLongName);
    pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];

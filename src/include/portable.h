@@ -20,6 +20,10 @@
 #define _inline
 #endif
 
+#if defined(__RING3__)
+#define FAR _far
+#endif
+
 #if defined(__OS2__) && !defined(__16BITS__)
 #define INCL_LONGLONG
 #define INCL_DOSPROCESS
@@ -107,15 +111,21 @@ typedef void    *HANDLE;
    Standard types                      Prefix to be used for variable names.
 */
 
-#if !defined(OS2DEF_INCLUDED) && !defined(__16BITS__)
+#if !defined(OS2DEF_INCLUDED) //|| defined(__RING3__)
 
-#ifndef _INC_WINDOWS
+//#if !defined(__16BITS__)
+#if !defined(_INC_WINDOWS) && (!defined(__16BITS__) || defined(__RING3__))
 typedef int             BOOL ;      /* b */
-#endif 
 typedef BOOL *          PBOOL ;     /* pb */
+#endif 
+//#endif
 
-
+#if !defined(__16BITS__) || defined(__RING3__)
 typedef char            CHAR ;      /* c */
+typedef signed short    SHORT ;     /* s */
+typedef signed int      INT ;       /* i */
+#endif
+
 typedef CHAR *          PCHAR ;     /* pc */
 
 typedef unsigned char   UCHAR ;     /* uc */
@@ -133,13 +143,11 @@ typedef BYTE *          PBYTE ;     /* puc */
 #endif
 
 
-typedef signed short    SHORT ;     /* s */
 typedef SHORT *         PSHORT ;    /* ps */
 
 typedef unsigned short  USHORT ;    /* us */
 typedef USHORT *        PUSHORT ;   /* pus */
 
-typedef signed int      INT ;       /* i */
 #ifndef _INC_WINDOWS
 typedef INT *           PINT ;      /* pi */
 #else
