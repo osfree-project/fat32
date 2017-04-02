@@ -13,7 +13,33 @@ ULONG autocheck_mask = 0;              /* global to be set by parse args for */
 ULONG force_mask = 0;                  /* global to be set by parse args for */
                                        /* drives to be autochecked regardless*/
                                        /* of dirty status                    */
+
+extern ULONG fat_mask;
+extern ULONG fat32_mask;
+extern ULONG exfat_mask;
+
+extern F32PARMS f32Parms;
+
+UCHAR fRing3 = FALSE;
+
 VOID _cdecl InitMessage(PSZ pszMessage, ...);
+UCHAR GetFatType(PBOOTSECT pBoot);
+BOOL TranslateInit(BYTE rgTrans[], USHORT usSize);
+
+#define MAX_TRANS_TABLE     0x100
+#define ARRAY_TRANS_TABLE   ( 0x10000 / MAX_TRANS_TABLE )
+
+#define INDEX_OF_START      MAX_TRANS_TABLE
+#define INDEX_OF_FIRSTINFO  MAX_TRANS_TABLE
+#define INDEX_OF_LCASECONV  ( MAX_TRANS_TABLE + 1 )
+#define INDEX_OF_END        INDEX_OF_LCASECONV
+#define EXTRA_ELEMENT       ( INDEX_OF_END - INDEX_OF_START + 1 )
+
+#define ARRAY_COUNT_PAGE    4
+#define MAX_ARRAY_PAGE      ( 0x100 / ARRAY_COUNT_PAGE )
+
+#define ARRAY_COUNT_UNICODE 256
+#define MAX_ARRAY_UNICODE   (( USHORT )( 0x10000L / ARRAY_COUNT_UNICODE ))
 
 /*
  * NAME:        autocheck()
@@ -28,19 +54,15 @@ VOID _cdecl InitMessage(PSZ pszMessage, ...);
 
 void _cdecl autocheck(char *args)
 {
-
-  PSZ        ModuleName      = "UFAT32";               /* name of utility dll*/
+  PSZ        pszSharedMem    = "\\SHAREMEM\\FAT32\\TRANSTBL";
   PSZ        ProgramName     = "F32CHK.EXE";           /* special exe        */
-  PSZ        ProgramName2    = "CACHEF32.EXE";         /* special exe        */
   UCHAR      LoadError[64];                            /* for dosloadmodule  */
-  HMODULE    ModuleHandle    = 0;           /* handle od ufat32.dll          */
-  PFN        ModuleAddr      = 0;           /* addr of chkdsk                */
-  ULONG      ModuleType      = 0;
   UCHAR Arg_Buf[256];                       /* argument buffer               */
   USHORT env,cmd;
   RESULTCODES Result;
   USHORT len = 0;                           /* temp var for filling in buffer*/
   ULONG i;                                  /* loop count                    */
+  SEL   sel;
   char far * temp;
 
   char     drive[4];                        /* drive name ie C:              */
@@ -50,14 +72,26 @@ void _cdecl autocheck(char *args)
   ULONG    rc =0;
   USHORT   bytes_read;                      /* bytes read by dosread         */
   BOOTSECT *boot_rec;                       /* extended boot structure       */
+  UCHAR    type;
+
+  fRing3 = TRUE;
 
   /* get the current environment to be passed in on execpgm */
   DosGetEnv(&env, &cmd);
 
   for (i = 2; i <= 25; i++)  /* loop for max drives allowed */
   {
-    if ((autocheck_mask & (1UL << i)) == 0) /* mask not on for this drive */
+    if ( ! (autocheck_mask & (1UL << i)) )
     {
+      // mask not on for this drive
+      continue;  /* go to next drive */
+    }
+
+    if ( ! (fat_mask   & (1UL << i)) &&
+         ! (fat32_mask & (1UL << i)) &&
+         ! (exfat_mask & (1UL << i)) )
+    {
+      // skip disabled drive letters
       continue;  /* go to next drive */
     }
 
@@ -87,20 +121,18 @@ void _cdecl autocheck(char *args)
       continue;
     }
 
-    /* check the system_id in the boot sector to be sure it is JFS */
+    /* check the system_id in the boot sector to be sure it is FAT */
     /* if it is not then we will just skip this drive              */
     /* due to link problems we can't use memcmp for this           */
 
-    boot_rec = (BOOTSECT *) boot_sector;
-    if (boot_rec->FileSystem[0] != 'F' ||
-        boot_rec->FileSystem[1] != 'A' ||
-        boot_rec->FileSystem[2] != 'T' ||
-        boot_rec->FileSystem[3] != '3' ||
-        boot_rec->FileSystem[4] != '2' ||
-        boot_rec->FileSystem[5] != ' ' ||
-        boot_rec->FileSystem[6] != ' ' ||
-        boot_rec->FileSystem[7] != ' ')
+    // get FAT type
+    type = GetFatType((PBOOTSECT)boot_sector);
+
+    if ( (type == FAT_TYPE_NONE) )
+         (! f32Parms.fFat   && (type <  FAT_TYPE_FAT32)) ||
+         (! f32Parms.fExFat && (type == FAT_TYPE_EXFAT)) )
     {
+      // skip unsupported (or disabled) FS'es
       continue;
     }
 
@@ -144,7 +176,7 @@ void _cdecl autocheck(char *args)
 
     /* if the force mask is set for this drive ommit the /C, otherwise */
     /* add it as parm 5 */
-    if ((force_mask & (1<< i)) == 0)
+    if (! (force_mask & (1UL << i)) )
     {
       Arg_Buf[len] = '/';
       len++;
@@ -159,15 +191,20 @@ void _cdecl autocheck(char *args)
 
     /* call exec PGM to execute chkdsk on this drive */
     rc = DosExecPgm(LoadError, sizeof(LoadError), 0, /* EXEC_SYNC */
-                      Arg_Buf, MAKEP(env,0), &Result, ProgramName);
+                    Arg_Buf, MAKEP(env,0), &Result, ProgramName);
 
   } /* end for */
 
 #if 0
-  if (! args)
-    return;
+  //if (! args)
+  //  return;
 
-  temp = ProgramName2;
+  rc = DosAllocShrSeg(sizeof(PVOID) * (MAX_TRANS_TABLE + EXTRA_ELEMENT), pszSharedMem, &sel);
+
+  if (rc)
+     return;
+
+  temp = ProgramName;
   len  = 0;
 
   while (*temp)        /* copy prog name as first arg */
@@ -180,13 +217,6 @@ void _cdecl autocheck(char *args)
   Arg_Buf[len] = '\0'; /* special null after first arg, all others use blank */
   len++;
 
-  while (*args)        /* copy prog name as first arg */
-  {
-    Arg_Buf[len] = *args;
-    len++;
-    args++;
-  }
-
   /* terminate the arg buf with a double null */
   Arg_Buf[len]='\0';
   len++;
@@ -194,8 +224,14 @@ void _cdecl autocheck(char *args)
 
   /* call exec PGM to execute chkdsk on this drive */
   rc = DosExecPgm(LoadError, sizeof(LoadError), 0, /* EXEC_SYNC */
-                  Arg_Buf, MAKEP(env,0), &Result, ProgramName2);
+                  Arg_Buf, MAKEP(env,0), &Result, ProgramName);
+
+  /* Now we'll call f32chk.exe without parameters,
+     in order to load the unicode translate table */
+  TranslateInit(MAKEP(sel, 0), sizeof(PVOID) * (MAX_TRANS_TABLE + EXTRA_ELEMENT) );
+  DosFreeSeg(sel);
 #endif
 
+  fRing3 = FALSE;
   return;
 }

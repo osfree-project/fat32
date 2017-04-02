@@ -50,9 +50,10 @@ typedef struct _RP_GETDRIVERCAPS  {     /* RPDC */
 
 PRIVATE BOOL RemoveVolume(PVOLINFO pVolInfo);
 PRIVATE USHORT CheckWriteProtect(PVOLINFO);
-PRIVATE UCHAR GetFatType(PBOOTSECT pBoot);
 PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR);
 IMPORT SEL cdecl SaSSel(void);
+
+UCHAR GetFatType(PBOOTSECT pBoot);
 
 ULONG fat_mask = 0;
 ULONG fat32_mask = 0;
@@ -491,7 +492,7 @@ P_VolChars   pVolChars;
 
          usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
          UpdateFSInfo(pVolInfo);
-         MarkDiskStatus(pVolInfo, TRUE);
+         MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
 
          // delete pVolInfo from the list
          RemoveVolume(pVolInfo);
@@ -567,7 +568,7 @@ USHORT rc;
 }
 
 
-static UCHAR GetFatType(PBOOTSECT pSect)
+UCHAR GetFatType(PBOOTSECT pSect)
 {
    /*
     *  check for FAT32 according to the Microsoft FAT32 specification
@@ -645,12 +646,12 @@ static UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_FAT32;
       } /* endif */
 
-   if (!memcmp(pSect->FileSystem, "FAT12   ", 8))
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT12   ", 8))
       {
       return FAT_TYPE_FAT12;
       } /* endif */
 
-   if (!memcmp(pSect->FileSystem, "FAT16   ", 8))
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT16   ", 8))
       {
       return FAT_TYPE_FAT16;
       } /* endif */

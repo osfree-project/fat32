@@ -32,6 +32,8 @@ static void * rgpSegment[MAX_SELECTORS] = {0};
 static BOOL fLocked = FALSE;
 static ULONG ulMemSem = 0UL;
 
+extern UCHAR fRing3;
+
 VOID CheckHeap(VOID)
 {
 USHORT usSel;
@@ -61,6 +63,18 @@ USHORT rc;
       }
 }
 
+void *alloc3(size_t tSize)
+{
+   SEL sel;
+   DosAllocSeg(tSize, &sel, 0);
+   return MAKEP(sel, 0);
+}
+
+void free3(void *p)
+{
+   DosFreeSeg(SELECTOROF(p));
+}
+
 /*********************************************************************
 * malloc
 *********************************************************************/
@@ -72,6 +86,11 @@ void * cdecl malloc(size_t tSize)
 {
 USHORT usSel;
 void * pRet;
+
+   if (fRing3)
+      {
+      return alloc3(tSize);
+      }
 
 /*   CheckHeap();*/
 
@@ -188,6 +207,12 @@ USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_MEM)
       Message("free %lX", pntr);
+
+   if (fRing3)
+      {
+      free3(pntr);
+      return;
+      }
 
 /*   CheckHeap();*/
 
