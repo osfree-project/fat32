@@ -10,7 +10,9 @@ int main(int argc, char **argv)
   char szObjName[260];
   PSZ pszModname  = "UFAT32";
   PSZ pszFunction = "CHKDSK";
+  PSZ pszFunction2 = "LOADTRANSTBL";
   USHORT far pascal (*pfn)(int argc, char far * far *argv, char far * far *envp);
+  USHORT far pascal (*pfn2)(BOOL fSilent, UCHAR ucSource);
   HMODULE hmod;
   SEL    datasel;
   char   far *env, far *cmd, far *p;
@@ -33,7 +35,16 @@ int main(int argc, char **argv)
     return rc;
 
   if (argc == 1)
-    return ERROR_INVALID_PARAMETER;
+  {
+    // load unicode translate table
+    rc = DosGetProcAddr(hmod, pszFunction2, (void far *)&pfn2);
+
+    if (rc)
+      return rc;
+
+    (*pfn2)(TRUE, 2);
+    return 0;
+  }
 
   Argv = _fmalloc(argc * sizeof(char far *));
 
