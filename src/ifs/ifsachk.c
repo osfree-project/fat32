@@ -128,7 +128,7 @@ void _cdecl autocheck(char *args)
     // get FAT type
     type = GetFatType((PBOOTSECT)boot_sector);
 
-    if ( (type == FAT_TYPE_NONE) )
+    if ( (type == FAT_TYPE_NONE) ||
          (! f32Parms.fFat   && (type <  FAT_TYPE_FAT32)) ||
          (! f32Parms.fExFat && (type == FAT_TYPE_EXFAT)) )
     {
