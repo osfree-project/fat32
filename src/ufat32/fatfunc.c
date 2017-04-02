@@ -1654,14 +1654,116 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    return rc;
 }
 
+
+/******************************************************************
+*
+******************************************************************/
+ULONG MakeDir(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pDir, PSZ pszFile)
+{
+ULONG ulCluster;
+PVOID pbCluster;
+APIRET rc;
+
+   ulCluster = SetNextCluster(pCD, FAT_ASSIGN_NEW, pCD->ulFatEof);
+   if (ulCluster == pCD->ulFatEof)
+      {
+      ulCluster = pCD->ulFatEof;
+      goto MKDIREXIT;
+      }
+
+   pbCluster = malloc(pCD->ulClusterSize);
+   if (!pbCluster)
+      {
+      SetNextCluster( pCD, ulCluster, 0L);
+      ulCluster = pCD->ulFatEof;
+      goto MKDIREXIT;
+      }
+
+   memset(pbCluster, 0, pCD->ulClusterSize);
+
+   pDir = (PDIRENTRY)pbCluster;
+
+   pDir->wCluster = LOUSHORT(ulCluster);
+   pDir->wClusterHigh = HIUSHORT(ulCluster);
+   pDir->bAttr = FILE_DIRECTORY;
+
+   rc = MakeDirEntry(pCD, ulDirCluster, (PDIRENTRY)pbCluster, pszFile);
+   if (rc)
+      {
+      free(pbCluster);
+      ulCluster = pCD->ulFatEof;
+      goto MKDIREXIT;
+      }
+   memset(pDir->bFileName, 0x20, 11);
+   memcpy(pDir->bFileName, ".", 1);
+
+   memcpy(pDir + 1, pDir, sizeof (DIRENTRY));
+   pDir++;
+
+   memcpy(pDir->bFileName, "..", 2);
+   if (ulDirCluster == pCD->BootSect.bpb.RootDirStrtClus)
+      {
+      pDir->wCluster = 0;
+      pDir->wClusterHigh = 0;
+      }
+   else
+      {
+      pDir->wCluster = LOUSHORT(ulDirCluster);
+      pDir->wClusterHigh = HIUSHORT(ulDirCluster);
+      }
+   pDir->bAttr = FILE_DIRECTORY;
+
+   rc = WriteCluster(pCD, ulCluster, pbCluster);
+
+   if (rc)
+      {
+      ulCluster = pCD->ulFatEof;
+      goto MKDIREXIT;
+      }
+
+MKDIREXIT:
+   return ulCluster;
+}
+
 /******************************************************************
 *
 ******************************************************************/
 USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 {
+   static ULONG ulDirCluster = 0;
    DIRENTRY DirEntry;
    BYTE     szFileName[14];
    USHORT   usNr;
+
+   memset(&DirEntry, 0, sizeof (DIRENTRY));
+
+   memcpy(DirEntry.bFileName, "FOUND   000", 11);
+   strcpy(szFileName, "FOUND.000");
+
+   for (usNr = 0; usNr <= 999; usNr++)
+      {
+      USHORT iPos = 8;
+      USHORT usNum = usNr;
+
+         while (usNum)
+            {
+            szFileName[iPos] = (BYTE)((usNum % 10) + '0');
+            usNum /= 10;
+            iPos--;
+            }
+         if (FindPathCluster(pCD, pCD->BootSect.bpb.RootDirStrtClus,
+            szFileName, NULL, NULL) == pCD->ulFatEof)
+            break;
+      }
+   if (usNr > 999)
+      return ERROR_FILE_EXISTS;
+   memcpy(DirEntry.bExtention, szFileName + 6, 3);
+
+   set_datetime(&DirEntry);
+   if (!ulDirCluster)
+      ulDirCluster = MakeDir(pCD, pCD->BootSect.bpb.RootDirStrtClus, &DirEntry, szFileName);
+   if (ulDirCluster == pCD->ulFatEof)
+      return ERROR_DISK_FULL;
 
    memset(&DirEntry, 0, sizeof (DIRENTRY));
 
@@ -1678,7 +1780,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
             usNum /= 10;
             iPos--;
             }
-         if (FindPathCluster(pCD, pCD->BootSect.bpb.RootDirStrtClus,
+         if (FindPathCluster(pCD, ulDirCluster,
             szFileName, NULL, NULL) == pCD->ulFatEof)
             break;
       }
@@ -1707,7 +1809,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
       }
 
    return MakeDirEntry(pCD,
-      pCD->BootSect.bpb.RootDirStrtClus,
+      ulDirCluster,
       &DirEntry, szFileName);
 }
 
