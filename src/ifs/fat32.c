@@ -1699,23 +1699,36 @@ APIRET rc = 0;
    //rc = DosLoadModule(szObjname, sizeof(szObjname), "DOSCALLS", &hmod);
    rc = DosLoadModule(szObjname, sizeof(szObjname), "KEE", &hmod);
 
-   if (rc && f32Parms.fLargeFiles)
+   if (rc)
       {
       rc = 0;
       InitMessage("WARNING: Large files support will be disabled.");
       f32Parms.fLargeFiles = FALSE;
       }
 
-   // DOSCALLS.981 == DosOpenL
-   //rc = DosGetProcAddr(hmod, MAKEP(0, 981), &pfn);
+   //rc = DosGetProcAddr(hmod, MAKEP(0, 40), &pfn);
 
    //if (rc || ! pfn)
    //   {
-   //   InitMessage("WARNING: No long files support!");
+   //   InitMessage("WARNING: Large files support will be disabled.");
    //   rc = 0;
    //   f32Parms.fLargeFiles = FALSE;
    //   goto FS_INITEXIT;
    //   }
+
+   //pKernThunkStackTo16 = (ULONG)pfn;
+
+   //rc = DosGetProcAddr(hmod, MAKEP(0, 41), &pfn);
+
+   //if (rc || ! pfn)
+   //   {
+   //   InitMessage("WARNING: Large files support will be disabled.");
+   //   rc = 0;
+   //   f32Parms.fLargeFiles = FALSE;
+   //   goto FS_INITEXIT;
+   //   }
+
+   //pKernThunkStackTo32 = (ULONG)pfn;
 
    if (f32Parms.fLargeFiles)
       {
