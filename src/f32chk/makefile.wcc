@@ -17,23 +17,25 @@ $(BINROOT)\os2\f32chk.sym:
 
 $(BINROOT)\os2\f32chk.exe:
 
-$(PROJ_BLD)\f32chk.ols: $(OBJS)
+$(PROJ_BLD)\f32chk.lnk: makefile.wcc ..\makefile.mk
+
+$(PROJ_BLD)\f32chk.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS)
- @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $[*.lnk OPTION ST=24576
- @%append $[*.lnk DEBUG ALL
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk ALIAS &
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION ST=24576
+ @%append $@ DEBUG ALL
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ ALIAS &
    DosPutMessage=DOSPUTMESSAGE, &
    DosExit=DOSEXIT, &
    DosGetProcAddr=DOSGETPROCADDR, &
    DosLoadModule=DOSLOADMODULE, &
    DosFreeModule=DOSFREEMODULE, &
    DosGetEnv=DOSGETENV
- @%append $[*.lnk @$[@
+ @%append $@ @$[@

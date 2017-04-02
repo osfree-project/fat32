@@ -28,43 +28,45 @@ $(BINROOT)\os2\boot\partfilt.flt:
 
 $(BINROOT)\os2\boot\partfilt.sym:
 
-$(PROJ_BLD)\partfilt.ols: $(OBJS)
+$(PROJ_BLD)\partfilt.lnk: makefile.wcc ..\makefile.mk
+
+$(PROJ_BLD)\partfilt.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
- @%create $[*.lnk
- @%append $[*.lnk format os2 lx phys
- @%append $[*.lnk name $(BINROOT)\os2\boot\$^&.flt
- @%append $[*.lnk option description '$(FILEVER)  $(DESC)'
- #@%append $[*.lnk option mixed1632
- @%append $[*.lnk option quiet
- @%append $[*.lnk option nostub
- @%append $[*.lnk option align=4
- @%append $[*.lnk option nocase
- @%append $[*.lnk option stack=0
- @%append $[*.lnk option manyautodata
- @%append $[*.lnk option map=$[*.wmp
- @%append $[*.lnk alias E2Init=_E2Init
- @%append $[*.lnk alias DevHelp=_DevHelp
- @%append $[*.lnk alias memcpy=_memcpy
- @%append $[*.lnk alias memset=_memset
- #@%append $[*.lnk debug all
- @%append $[*.lnk segment type DATA SHARED
- @%append $[*.lnk segment type CODE IOPL
- @%append $[*.lnk order
- @%append $[*.lnk clname 'DATA' 
- @%append $[*.lnk segment 'DDHeader' 
- @%append $[*.lnk segment _DATA 
- @%append $[*.lnk clname 'CONST'
- @%append $[*.lnk clname 'BSS'
- @%append $[*.lnk clname 'CODE'
- @%append $[*.lnk segment 'StratCode' 
- @%append $[*.lnk segment _TEXT 
- @%append $[*.lnk segment 'InitCode'
- #@%append $[*.lnk libpath $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;
- #@%append $[*.lnk lib clibc
- @%append $[*.lnk @$[@
+ @%create $@
+ @%append $@ format os2 lx phys
+ @%append $@ name $(BINROOT)\os2\boot\$^&.flt
+ @%append $@ option description '$(FILEVER)  $(DESC)'
+ #@%append $@ option mixed1632
+ @%append $@ option quiet
+ @%append $@ option nostub
+ @%append $@ option align=4
+ @%append $@ option nocase
+ @%append $@ option stack=0
+ @%append $@ option manyautodata
+ @%append $@ option map=$[*.wmp
+ @%append $@ alias E2Init=_E2Init
+ @%append $@ alias DevHelp=_DevHelp
+ @%append $@ alias memcpy=_memcpy
+ @%append $@ alias memset=_memset
+ #@%append $@ debug all
+ @%append $@ segment type DATA SHARED
+ @%append $@ segment type CODE IOPL
+ @%append $@ order
+ @%append $@ clname 'DATA' 
+ @%append $@ segment 'DDHeader' 
+ @%append $@ segment _DATA 
+ @%append $@ clname 'CONST'
+ @%append $@ clname 'BSS'
+ @%append $@ clname 'CODE'
+ @%append $@ segment 'StratCode' 
+ @%append $@ segment _TEXT 
+ @%append $@ segment 'InitCode'
+ #@%append $@ libpath $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;
+ #@%append $@ lib clibc
+ @%append $@ @$[@
 
 # 'DDHeader'	CLASS 'DATA'
 # _DATA		CLASS 'DATA'

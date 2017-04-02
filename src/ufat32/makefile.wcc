@@ -25,10 +25,10 @@ OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\os2.obj &
 OBJS5=$(PROJ_BLD)\stub.obd
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-TARGETS=$(BINROOT)\os2\fat32fmt.exe $(BINROOT)\os2\fat32fmt.sym &
-        $(BINROOT)\os2\fat32chk.exe $(BINROOT)\os2\fat32chk.sym &
-        $(BINROOT)\os2\fat32sys.exe $(BINROOT)\os2\fat32sys.sym &
-        $(BINROOT)\os2\dll\ufat32.dll $(BINROOT)\os2\dll\ufat32.sym &
+TARGETS=$(BINROOT)\os2\fat32fmt.sym &
+        $(BINROOT)\os2\fat32chk.sym &
+        $(BINROOT)\os2\fat32sys.sym &
+        $(BINROOT)\os2\dll\ufat32.sym &
         $(BINROOT)\os2\dll\ufat16.dll $(BINROOT)\os2\dll\ufat12.dll &
         $(BINROOT)\os2\dll\uexfat.dll
 SYS=os2v2
@@ -51,81 +51,84 @@ $(BINROOT)\os2\fat32chk.exe:
 
 $(BINROOT)\os2\fat32sys.exe:
 
-$(BINROOT)\os2\dll\ufat32.sym:
+$(BINROOT)\os2\dll\ufat32.sym: $(BINROOT)\os2\dll\ufat32.dll
 
-$(BINROOT)\os2\fat32fmt.sym:
+$(BINROOT)\os2\fat32fmt.sym: $(BINROOT)\os2\fat32fmt.exe
 
-$(BINROOT)\os2\fat32chk.sym:
+$(BINROOT)\os2\fat32chk.sym: $(BINROOT)\os2\fat32chk.exe
 
-$(BINROOT)\os2\fat32sys.sym:
+$(BINROOT)\os2\fat32sys.sym: $(BINROOT)\os2\fat32sys.exe
 
-$(PROJ_BLD)\ufat32.ols: $(OBJS1)
+$(PROJ_BLD)\ufat32.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS1)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat16.ols: $(OBJS5)
+$(PROJ_BLD)\ufat16.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat12.ols: $(OBJS5)
+$(PROJ_BLD)\ufat12.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\uexfat.ols: $(OBJS5)
+$(PROJ_BLD)\uexfat.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32fmt.ols: $(OBJS2)
+$(PROJ_BLD)\fat32fmt.ols: $(OBJS2) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS2)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32chk.ols: $(OBJS3)
+$(PROJ_BLD)\fat32chk.ols: $(OBJS3) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS3)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32sys.ols: $(OBJS4)
+$(PROJ_BLD)\fat32sys.ols: $(OBJS4) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS4)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS) dll
- @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $[*.lnk OPTION MIXED1632
- @%append $[*.lnk OPTION NODEFAULTLIBS
- @%append $[*.lnk OPTION ST=81920
- @%append $[*.lnk OPTION NOSTUB,ELIMINATE
- @%append $[*.lnk DEBUG ALL
- @%append $[*.lnk segment type DATA LOADONCALL NONSHARED
- @%append $[*.lnk segment type CODE PRELOAD 
- @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk EXPORT &
+$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS) dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION MIXED1632
+ @%append $@ OPTION NODEFAULTLIBS
+ @%append $@ OPTION ST=81920
+ @%append $@ OPTION NOSTUB,ELIMINATE
+ @%append $@ DEBUG ALL
+ @%append $@ segment type DATA LOADONCALL NONSHARED
+ @%append $@ segment type CODE PRELOAD 
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=40960
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
      SYS,     &
+     LOADTRANSTBL, &
      chkdsk,  &
      format,  &
      recover, &
-     sys
- @%append $[*.lnk IMPORT &
+     sys,     &
+     LoadTranslateTable
+ @%append $@ IMPORT &
+     DOSGETSHRSEG DOSCALLS.36, &
      DOSSETSIGHANDLER DOSCALLS.14, &
      DOSSETVEC DOSCALLS.89
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
- @%append $[*.lnk LIB os2386,clib3s,math3s
- @%append $[*.lnk @$[@
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIB os2386,clib3s,math3s
+ @%append $@ @$[@
 
-$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS) dll
- @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC5)'
- @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT
- @%append $[*.lnk segment type DATA shared
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk IMPORT &
+$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS) dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC5)'
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT
+ @%append $@ segment type DATA shared
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ IMPORT &
      CHKDSK   ufat32.CHKDSK,  &
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
@@ -134,7 +137,7 @@ $(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
      format   ufat32.format,  &
      recover  ufat32.recover, &
      sys      ufat32.sys
- @%append $[*.lnk EXPORT &
+ @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
@@ -143,17 +146,17 @@ $(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
      format,  &
      recover, &
      sys
- @%append $[*.lnk @$[@
+ @%append $@ @$[@
 
-$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS) dll
- @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC6)'
- @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT
- @%append $[*.lnk segment type DATA shared
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk IMPORT &
+$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS) dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC6)'
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT
+ @%append $@ segment type DATA shared
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ IMPORT &
      CHKDSK   ufat32.CHKDSK,  &
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
@@ -162,7 +165,7 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
      format   ufat32.format,  &
      recover  ufat32.recover, &
      sys      ufat32.sys
- @%append $[*.lnk EXPORT &
+ @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
@@ -171,17 +174,17 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
      format,  &
      recover, &
      sys
- @%append $[*.lnk @$[@
+ @%append $@ @$[@
 
-$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS) dll
- @%append $[*.lnk NAME $(BINROOT)\os2\dll\$^&.dll
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC7)'
- @%append $[*.lnk OPTION MANYAUTODATA, CASEEXACT
- @%append $[*.lnk segment type DATA shared
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk IMPORT &
+$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS) dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC7)'
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT
+ @%append $@ segment type DATA shared
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ IMPORT &
      CHKDSK   ufat32.CHKDSK,  &
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
@@ -190,7 +193,7 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
      format   ufat32.format,  &
      recover  ufat32.recover, &
      sys      ufat32.sys
- @%append $[*.lnk EXPORT &
+ @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
@@ -199,37 +202,37 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
      format,  &
      recover, &
      sys
- @%append $[*.lnk @$[@
+ @%append $@ @$[@
 
-$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS)
- @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
- @%append $[*.lnk LIB os2386,clib3s
- @%append $[*.lnk @$[@
+$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIB os2386,clib3s
+ @%append $@ @$[@
 
-$(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS)
- @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC3)'
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
- @%append $[*.lnk LIB os2386,clib3s
- @%append $[*.lnk @$[@
+$(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC3)'
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIB os2386,clib3s
+ @%append $@ @$[@
 
-$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS)
- @%append $[*.lnk NAME $(BINROOT)\os2\$^&.exe
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC4)'
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
- @%append $[*.lnk LIB os2386,clib3s
- @%append $[*.lnk @$[@
+$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols makefile.wcc ..\makefile.mk
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC4)'
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIB os2386,clib3s
+ @%append $@ @$[@
 
 .obc: $(PROJ_BLD)
 
