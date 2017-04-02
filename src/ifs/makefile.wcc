@@ -12,9 +12,12 @@ DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
 COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 # -zt=24576
 # *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
+COPT32=-3 -mf -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=. -i=.. -i=..\include
 AOPT=-q -i=. -i=.. -i=..\include
 
-SYS=os2 dll initglobal
+SYS=os2 lx phys
+# SYS=os2 lx dll initglobal
+# SYS=os2 dll initglobal
 
 OBJS=$(PROJ_BLD)\fat32.obj &
      $(PROJ_BLD)\ifsmount.obj &
@@ -22,6 +25,7 @@ OBJS=$(PROJ_BLD)\fat32.obj &
      $(PROJ_BLD)\ifsdir.obj &
      $(PROJ_BLD)\ifsattr.obj &
      $(PROJ_BLD)\ifsfile.obj &
+     $(PROJ_BLD)\ifsfil32.obj &
      $(PROJ_BLD)\ifslog.obj &
      $(PROJ_BLD)\ifscache.obj &
      $(PROJ_BLD)\ifsswap.obj &
@@ -35,26 +39,29 @@ $(BINROOT)\os2\boot\fat32.ifs:
 
 $(BINROOT)\os2\boot\fat32.sym:
 
-$(PROJ_BLD)\fat32.ols: $(OBJS)
+$(PROJ_BLD)\fat32.lnk: makefile.wcc ..\makefile.mk
+
+$(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@
- @for %e in ($<) do @%append $^@ FILE %e
+ @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
- @%create $[*.lnk
- @%append $[*.lnk SYSTEM $(SYS)
- @%append $[*.lnk NAME $(BINROOT)\os2\boot\$^&.ifs
- @%append $[*.lnk OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- #@%append $[*.lnk DEBUG ALL
- @%append $[*.lnk option protmode
- @%append $[*.lnk option quiet
- @%append $[*.lnk option stack=0
- @%append $[*.lnk segment type CODE PRELOAD EXECUTEREAD SHARED
- @%append $[*.lnk segment type DATA PRELOAD SHARED
- @%append $[*.lnk OPTION MAP=$[*.wmp
- @%append $[*.lnk OPTION MANYAUTODATA
- @%append $[*.lnk OPTION NODEFAULTLIBS
- @%append $[*.lnk LIB $(LIBROOT)\libc.lib
- @%append $[*.lnk EXPORT &
+ @%create $@
+ @%append $@ FORMAT $(SYS)
+ @%append $@ NAME $(BINROOT)\os2\boot\$^&.ifs
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ # @%append $@ DEBUG ALL
+ # @%append $@ option protmode
+ @%append $@ option quiet
+ @%append $@ option stack=0
+ @%append $@ segment type CODE PRELOAD EXECUTEREAD SHARED
+ @%append $@ segment type DATA PRELOAD SHARED
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ OPTION MANYAUTODATA
+ @%append $@ OPTION NODEFAULTLIBS
+ @%append $@ OPTION MIXED1632
+ @%append $@ LIB $(LIBROOT)\libc.lib
+ @%append $@ EXPORT &
     FS_ALLOCATEPAGESPACE, &
     FS_ATTACH, &
 #      Not yet implemented
@@ -110,9 +117,16 @@ $(PROJ_BLD)\fat32.ols: $(OBJS)
     FS_WRITE, &
 #
     FS_ATTRIBUTE, &
-    FS_NAME
+    FS_NAME, &
 #    FS_MPSAFEFLAGS2
- @%append $[*.lnk IMPORT &
+    FS32_CHGFILEPTR, &
+    FS32_CHGFILEPTRL, &
+    FS32_READ, &
+    FS32_READFILEATCACHE, &
+    FS32_RETURNFILECACHE, &
+    FS32_WRITE
+    # FS32_ATTRIBUTE = FS_ATTRIBUTE
+ @%append $@ IMPORT &
     FSH_SEGALLOC FSHELPER.1, &
     FSH_SEGFREE FSHELPER.2, &
     FSH_SEGREALLOC FSHELPER.3, &
@@ -167,6 +181,26 @@ $(PROJ_BLD)\fat32.ols: $(OBJS)
     FSH_IOBOOST FSHELPER.52, &
     FSH_QUERYSERVERTHREAD FSHELPER.53, &
     FSH_QUERYOPLOCK FSHELPER.54, &
-    FSH_EXTENDTIMESLICE FSHELPER.55
+    FSH_EXTENDTIMESLICE FSHELPER.55, &
 #    MFSH_SYSCTL FSHELPER.56
- @%append $[*.lnk @$[@
+    DOSGETINFOSEG DOSCALLS.8, &
+    DOSLOADMODULE DOSCALLS.44, &
+    DOSGETPROCADDR DOSCALLS.45, &
+    DOSOPEN DOSCALLS.70, &
+    DOSREAD DOSCALLS.137, &
+    DOSWRITE DOSCALLS.138, &
+    DOSCLOSE DOSCALLS.59, &
+    DOSALLOCSEG DOSCALLS.34, &
+    DOSFREESEG DOSCALLS.39, &
+    DOSGETENV DOSCALLS.91, &
+    DOSPUTMESSAGE DOSCALLS.383, &
+    DOSEXECPGM DOSCALLS.144, &
+    Dos32FlatDS DOSCALLS.370, &
+    _TKSSBase MVDM.2, &
+    KernThunkStackTo16 KEE.40, &
+    KernThunkStackTo32 KEE.41
+ @%append $@ @$[@
+
+$(PROJ_BLD)\ifsfil32.obj: ifsfil32.c
+ @echo CC       $^.
+ @wcc386 $(COPT32) -fr=$^*.err -fo=$^@ $<
