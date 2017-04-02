@@ -3,6 +3,10 @@
 #define  INCL_DOSMISC
 #include <os2.h>
 
+#include <string.h>
+
+char pszSharedMem[] = "\\SHAREMEM\\FAT32\\TRANSTBL";
+
 void _far _pascal _loadds HANDLER(USHORT a, USHORT b);
 int  _far _pascal _loadds HANDLER2(void);
 
@@ -25,4 +29,18 @@ USHORT _far _pascal _loadds INIT16(hmod, flag)
       }
 
    return 1;
+}
+
+USHORT _far _pascal _loadds GETSHRSEG(PVOID *p)
+{
+   USHORT rc;
+   SEL    sel;
+
+  rc = DosGetShrSeg(pszSharedMem, &sel);
+
+  if (rc)
+    return FALSE;
+
+   *p = MAKEP(sel, 0);
+   return TRUE;
 }
