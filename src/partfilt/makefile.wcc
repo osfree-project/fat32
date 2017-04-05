@@ -28,7 +28,7 @@ $(BINROOT)\os2\boot\partfilt.flt:
 
 $(BINROOT)\os2\boot\partfilt.sym:
 
-$(PROJ_BLD)\partfilt.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\partfilt.lnk: $(PROJ_BLD)\partfilt.ols
 
 $(PROJ_BLD)\partfilt.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@

@@ -17,7 +17,7 @@ $(BINROOT)\os2\f32chk.sym:
 
 $(BINROOT)\os2\f32chk.exe:
 
-$(PROJ_BLD)\f32chk.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\f32chk.lnk: $(PROJ_BLD)\f32chk.ols
 
 $(PROJ_BLD)\f32chk.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@

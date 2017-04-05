@@ -48,15 +48,15 @@ $(BINROOT)\os2\f32mon.sym:
 
 $(BINROOT)\os2\f32stat.sym:
 
-$(PROJ_BLD)\f32stat.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\f32stat.lnk: $(PROJ_BLD)\f32stat.ols
 
-$(PROJ_BLD)\cachef32.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\cachef32.lnk: $(PROJ_BLD)\cachef32.ols
 
-$(PROJ_BLD)\f32mon.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\f32mon.lnk: $(PROJ_BLD)\f32mon.ols
 
-$(PROJ_BLD)\f32parts.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\f32parts.lnk: $(PROJ_BLD)\f32parts.ols
 
-$(PROJ_BLD)\diskdump.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\diskdump.lnk: $(PROJ_BLD)\diskdump.ols
 
 $(PROJ_BLD)\f32stat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@

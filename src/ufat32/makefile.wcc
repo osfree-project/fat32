@@ -87,7 +87,7 @@ $(PROJ_BLD)\fat32sys.ols: $(OBJS4) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS4)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
@@ -120,7 +120,7 @@ $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols makefile.wcc ..\makefile.mk
  @%append $@ LIB os2386,clib3s,math3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
@@ -133,22 +133,26 @@ $(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols makefile.wcc ..\makefile.mk
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
      SYS      ufat32.SYS,     &
+     LOADTRANSTBL ufat32.LOADTRANSTBL, &
      chkdsk   ufat32.chkdsk,  &
      format   ufat32.format,  &
      recover  ufat32.recover, &
-     sys      ufat32.sys
+     sys      ufat32.sys,     &
+     LoadTranslateTable ufat32.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
      SYS,     &
+     LOADTRANSTBL, &
      chkdsk,  &
      format,  &
      recover, &
-     sys
+     sys, &
+     LoadTranslateTable
  @%append $@ @$[@
 
-$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
@@ -161,22 +165,26 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols makefile.wcc ..\makefile.mk
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
      SYS      ufat32.SYS,     &
+     LOADTRANSTBL ufat32.LOADTRANSTBL, &
      chkdsk   ufat32.chkdsk,  &
      format   ufat32.format,  &
      recover  ufat32.recover, &
-     sys      ufat32.sys
+     sys      ufat32.sys,     &
+     LoadTranslateTable ufat32.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
      SYS,     &
+     LOADTRANSTBL, &
      chkdsk,  &
      format,  &
      recover, &
-     sys
+     sys,     &
+     LoadTranslateTable
  @%append $@ @$[@
 
-$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
@@ -189,22 +197,26 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols makefile.wcc ..\makefile.mk
      FORMAT   ufat32.FORMAT,  &
      RECOVER  ufat32.RECOVER, &
      SYS      ufat32.SYS,     &
+     LOADTRANSTBL ufat32.LOADTRANSTBL, &
      chkdsk   ufat32.chkdsk,  &
      format   ufat32.format,  &
      recover  ufat32.recover, &
-     sys      ufat32.sys
+     sys      ufat32.sys,     &
+     LoadTranslateTable ufat32.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
      RECOVER, &
      SYS,     &
+     LOADTRANSTBL, &
      chkdsk,  &
      format,  &
      recover, &
-     sys
+     sys,     &
+     LoadTranslateTable
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
  @%append $@ NAME $(BINROOT)\os2\$^&.exe
@@ -214,7 +226,7 @@ $(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols makefile.wcc ..\makefile.mk
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
  @%append $@ NAME $(BINROOT)\os2\$^&.exe
@@ -224,7 +236,7 @@ $(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols makefile.wcc ..\makefile.mk
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
  @%append $@ NAME $(BINROOT)\os2\$^&.exe

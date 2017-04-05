@@ -39,7 +39,7 @@ $(BINROOT)\os2\boot\fat32.ifs:
 
 $(BINROOT)\os2\boot\fat32.sym:
 
-$(PROJ_BLD)\fat32.lnk: makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\fat32.lnk: $(PROJ_BLD)\fat32.ols
 
 $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%create $^@
