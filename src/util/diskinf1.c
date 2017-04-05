@@ -33,8 +33,10 @@ static APIRET PrepareDrive(PDRIVEINFO pDrive);
 VOID vDumpSector(PBYTE pbSector);
 
 UCHAR GetFatType(PBOOTSECT pSect);
-ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster);
 ULONG GetFatEntrySec(PDRIVEINFO pDrive, ULONG ulCluster);
+ULONG GetFatEntryBlock(PDRIVEINFO pDrive, ULONG ulCluster, USHORT usBlockSize);
+ULONG GetFatEntryEx(PDRIVEINFO pDrive, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize);
+ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster);
 
 /****************************************************************
 *
@@ -790,6 +792,15 @@ UCHAR GetFatType(PBOOTSECT pSect)
 ******************************************************************/
 ULONG GetFatEntrySec(PDRIVEINFO pDrive, ULONG ulCluster)
 {
+   // in three sector blocks
+   return GetFatEntryBlock(pDrive, ulCluster, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntryBlock(PDRIVEINFO pDrive, ULONG ulCluster, USHORT usBlockSize)
+{
 ULONG  ulSector;
 
    ulCluster &= pDrive->ulFatEof;
@@ -797,16 +808,16 @@ ULONG  ulSector;
    switch (pDrive->bFatType)
       {
       case FAT_TYPE_FAT12:
-         ulSector = ((ulCluster * 3) / 2) / 512;
+         ulSector = ((ulCluster * 3) / 2) / usBlockSize;
          break;
 
       case FAT_TYPE_FAT16:
-         ulSector = ulCluster / 256;
+         ulSector = (ulCluster * 2) / usBlockSize;
          break;
 
       case FAT_TYPE_FAT32:
       case FAT_TYPE_EXFAT:
-         ulSector = ulCluster / 128;
+         ulSector = (ulCluster * 4) / usBlockSize;
       }
 
    return ulSector;
@@ -817,6 +828,15 @@ ULONG  ulSector;
 ******************************************************************/
 ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster)
 {
+   // in three sector blocks
+   return GetFatEntryEx(pDrive, pDrive->pbFATSector[0], ulCluster, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntryEx(PDRIVEINFO pDrive, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize)
+{
    ulCluster &= pDrive->ulFatEof;
 
    switch (pDrive->bFatType)
@@ -824,7 +844,12 @@ ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster)
       case FAT_TYPE_FAT12:
          {
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)((PBYTE)pDrive->pbFATSector + (((ulCluster * 3) / 2) % 512));
+         ULONG   ulOffset = (ulCluster * 3) / 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = ( ((ulCluster * 3) % 2) ?
             *pusCluster >> 4 : // odd
             *pusCluster )      // even
@@ -835,7 +860,12 @@ ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster)
       case FAT_TYPE_FAT16:
          {
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)pDrive->pbFATSector + (ulCluster % 256);
+         ULONG   ulOffset = ulCluster * 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pusCluster & pDrive->ulFatEof;
          break;
          }
@@ -844,7 +874,12 @@ ULONG GetFatEntry(PDRIVEINFO pDrive, ULONG ulCluster)
       case FAT_TYPE_EXFAT:
          {
          PULONG pulCluster;
-         pulCluster = (PULONG)pDrive->pbFATSector + (ulCluster % 128);
+         ULONG  ulOffset = ulCluster * 4;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pulCluster & pDrive->ulFatEof;
          }
       }

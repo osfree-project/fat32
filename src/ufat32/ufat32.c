@@ -1,3 +1,5 @@
+/* 16-bit wrappers for 32-bit code */
+
 #define INCL_DOSERRORS
 #include <os2.h>
 

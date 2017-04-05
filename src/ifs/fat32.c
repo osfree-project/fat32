@@ -58,6 +58,13 @@ static USHORT MakeChain(PVOLINFO pVolInfo, ULONG ulFirstCluster, ULONG ulSize);
 static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark);
 static USHORT DBCSStrlen( const PSZ pszStr );
 
+static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster);
+static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, USHORT usBlockSize);
+static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster);
+static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize);
+static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue);
+static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize);
+
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
 extern ULONG fat_mask;
@@ -3144,22 +3151,28 @@ USHORT rc;
 ******************************************************************/
 USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector)
 {
+ULONG  ulSec = ulSector * 3;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("ReadFatSector");
 
+   // read multiples of three sectors,
+   // to fit a whole number of FAT12 entries
+   // (ulSector is indeed a number of 3*512
+   // bytes blocks, so, it is needed to multiply by 3)
+
    if (pVolInfo->ulCurFatSector == ulSector)
       return 0;
 
-   if (ulSector >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
+   if (ulSec >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
       {
-      CritMessage("ERROR: ReadFatSector: Sector %lu too high", ulSector);
-      Message("ERROR: ReadFatSector: Sector %lu too high", ulSector);
+      CritMessage("ERROR: ReadFatSector: Sector %lu too high", ulSec);
+      Message("ERROR: ReadFatSector: Sector %lu too high", ulSec);
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   rc = ReadSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSector, 1,
+   rc = ReadSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
       pVolInfo->pbFatSector, 0);
    if (rc)
       return rc;
@@ -3174,11 +3187,17 @@ USHORT rc;
 ******************************************************************/
 USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector)
 {
+ULONG  ulSec = ulSector * 3;
 USHORT usFat;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("WriteFatSector");
+
+   // read multiples of three sectors,
+   // to fit a whole number of FAT12 entries
+   // (ulSector is indeed a number of 3*512
+   // bytes blocks, so, it is needed to multiply by 3)
 
    if (pVolInfo->ulCurFatSector != ulSector)
       {
@@ -3187,23 +3206,23 @@ USHORT rc;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   if (ulSector >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
+   if (ulSec >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
       {
-      CritMessage("ERROR: WriteFatSector: Sector %ld too high", ulSector);
-      Message("ERROR: WriteFatSector: Sector %ld too high", ulSector);
+      CritMessage("ERROR: WriteFatSector: Sector %ld too high", ulSec);
+      Message("ERROR: WriteFatSector: Sector %ld too high", ulSec);
       return ERROR_SECTOR_NOT_FOUND;
       }
 
    for (usFat = 0; usFat < pVolInfo->BootSect.bpb.NumberOfFATs; usFat++)
       {
-      rc = WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSector, 1,
+      rc = WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
          pVolInfo->pbFatSector, 0);
       if (rc)
          return rc;
 
       if (pVolInfo->BootSect.bpb.ExtFlags & 0x0080)
          break;
-      ulSector += pVolInfo->BootSect.bpb.BigSectorsPerFat; // !!!
+      ulSec += pVolInfo->BootSect.bpb.BigSectorsPerFat; // !!!
       // @todo what if pVolInfo->ulActiveFatStart does not point to 1st FAT?
       }
 
@@ -3215,6 +3234,14 @@ USHORT rc;
 ******************************************************************/
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster)
 {
+   return GetFatEntryBlock(pVolInfo, ulCluster, 512 * 3); // in three sector blocks
+}
+
+/******************************************************************
+*
+******************************************************************/
+static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, USHORT usBlockSize)
+{
 ULONG  ulSector;
 
    ulCluster &= pVolInfo->ulFatEof;
@@ -3222,16 +3249,16 @@ ULONG  ulSector;
    switch (pVolInfo->bFatType)
       {
       case FAT_TYPE_FAT12:
-         ulSector = ((ulCluster * 3) / 2) / 512;
+         ulSector = ((ulCluster * 3) / 2) / usBlockSize;
          break;
 
       case FAT_TYPE_FAT16:
-         ulSector = ulCluster / 256;
+         ulSector = (ulCluster * 2) / usBlockSize;
          break;
 
       case FAT_TYPE_FAT32:
       case FAT_TYPE_EXFAT:
-         ulSector = ulCluster / 128;
+         ulSector = (ulCluster * 4) / usBlockSize;
       }
 
    return ulSector;
@@ -3242,6 +3269,14 @@ ULONG  ulSector;
 ******************************************************************/
 static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
 {
+   return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize)
+{
    ulCluster &= pVolInfo->ulFatEof;
 
    switch (pVolInfo->bFatType)
@@ -3249,38 +3284,14 @@ static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
       case FAT_TYPE_FAT12:
          {
          ULONG   ulOffset;
-         USHORT  usRemainingNibbles;
-         ULONG   ulNextCluster;
          PUSHORT pusCluster;
 
-         ulOffset = ((ulCluster * 3) / 2) % 512;
+         ulOffset = (ulCluster * 3) / 2;
 
-         if (ulOffset == 511)
-            {
-            // last cluster in the current FAT
-            // block crosses the block boundary
-            usRemainingNibbles = (512 * 2) - ((ulCluster * 3) % (512 * 2));
-            pusCluster = (PUSHORT)((PBYTE)pVolInfo->pbFatSector + ulOffset);
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
 
-            ulNextCluster = ( ((ulCluster * 3) % 2) ?
-            *pusCluster >> 4 : // odd
-            *pusCluster );     // even
-
-            ulNextCluster = (usRemainingNibbles == 1) ?
-               ulNextCluster & 0xf :
-               ulNextCluster & 0xff;
-
-            // read next FAT sector
-            ReadFatSector(pVolInfo, GetFatEntrySec(pVolInfo, ulCluster + 1)); //// need to read block instead of sector!
-
-            ulCluster = *(PBYTE)pVolInfo->pbFatSector;
-            ulCluster = ( (usRemainingNibbles == 1) ?
-               ((ulCluster & 0xff) << 4) | ulNextCluster :
-               ((ulCluster & 0x0f) << 8) | ulNextCluster ) & pVolInfo->ulFatEof;
-            break;
-            }
-
-         pusCluster = (PUSHORT)((PBYTE)pVolInfo->pbFatSector + ulOffset);
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = ( ((ulCluster * 3) % 2) ?
             *pusCluster >> 4 : // odd
             *pusCluster )      // even
@@ -3291,7 +3302,12 @@ static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
       case FAT_TYPE_FAT16:
          {
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)pVolInfo->pbFatSector + (ulCluster % 256);
+         ULONG   ulOffset = ulCluster * 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pusCluster & pVolInfo->ulFatEof;
          break;
          }
@@ -3300,7 +3316,12 @@ static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
       case FAT_TYPE_EXFAT:
          {
          PULONG pulCluster;
-         pulCluster = (PULONG)pVolInfo->pbFatSector + (ulCluster % 128);
+         ULONG   ulOffset = ulCluster * 4;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pulCluster & pVolInfo->ulFatEof;
          }
       }
@@ -3313,6 +3334,14 @@ static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
 ******************************************************************/
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue)
 {
+   SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize)
+{
 USHORT usPrevValue;
 
    ulCluster &= pVolInfo->ulFatEof;
@@ -3323,58 +3352,33 @@ USHORT usPrevValue;
       case FAT_TYPE_FAT12:
          {
          ULONG   ulOffset;
-         USHORT  usRemainingNibbles;
-         ULONG   ulNextCluster;
          PUSHORT pusCluster;
+         ULONG   ulNewValue;
+         ULONG   usPrevValue;
 
-         ulOffset = ((ulCluster * 3) / 2) % 512;
+         ulOffset = (ulCluster * 3) / 2;
 
-         if (ulOffset == 511)
-            {
-            // last cluster in the current FAT
-            // block crosses the block boundary
-            usRemainingNibbles = (512 * 2) - ((ulCluster * 3) % (512 * 2));
-            pusCluster = (PUSHORT)((PBYTE)pVolInfo->pbFatSector + ulOffset);
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
 
-            ulNextCluster = ( ((ulCluster * 3) % 2) ?
-            *pusCluster >> 4 : // odd
-            *pusCluster );     // even
-
-            ulNextCluster = (usRemainingNibbles == 1) ?
-               ulNextCluster & 0xf :
-               ulNextCluster & 0xff;
-
-            usPrevValue = *(PBYTE)pusCluster;
-
-            ulValue = (usRemainingNibbles == 1) ?
-              (usPrevValue & 0xf) | ((ulValue & 0xf) << 4) :
-              (ulValue & 0xff);
-            *(PBYTE)pusCluster = ulValue;
-
-            // read next FAT sector
-            ReadFatSector(pVolInfo, GetFatEntrySec(pVolInfo, ulCluster + 1)); //// need to read block instead of sector!
-
-            usPrevValue = *(PBYTE)pVolInfo->pbFatSector;
-            ulValue = ( (usRemainingNibbles == 1) ?
-               ((ulValue & 0xff0) >> 4) :
-               ((ulValue & 0xf00) >> 8) | (usPrevValue & 0xf0) ) & pVolInfo->ulFatEof;
-            *(PBYTE)pusCluster = ulValue;
-            break;
-            }
-
-         pusCluster = (PUSHORT)((PBYTE)pVolInfo->pbFatSector + (((ulCluster * 3) / 2) % 512));
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          usPrevValue = *pusCluster;
-         ulValue = ((ulCluster * 3) % 2)  ?
+         ulNewValue = ((ulCluster * 3) % 2)  ?
             (usPrevValue & 0xf) | (ulValue << 4) : // odd
             (usPrevValue & 0xf000) | (ulValue);    // even
-         *pusCluster = ulValue;
+         *pusCluster = ulNewValue;
          break;
          }
 
       case FAT_TYPE_FAT16:
          {
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)pVolInfo->pbFatSector + (ulCluster % 256);
+         ULONG   ulOffset = ulCluster * 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          *pusCluster = ulValue;
          break;
          }
@@ -3383,7 +3387,12 @@ USHORT usPrevValue;
       case FAT_TYPE_EXFAT:
          {
          PULONG pulCluster;
-         pulCluster = (PULONG)pVolInfo->pbFatSector + (ulCluster % 128);
+         ULONG   ulOffset = ulCluster * 4;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          *pulCluster = ulValue;
          }
       }
@@ -3779,7 +3788,7 @@ ULONG ulNextCluster = 0;
 
    if (pVolInfo->ulCurFatSector != 0)
       {
-      if (ReadFatSector(pVolInfo, 0))
+      if (ReadFatSector(pVolInfo, 0)) //// floppy
          return FALSE;
       pVolInfo->ulCurFatSector = 0;
       }
@@ -3993,7 +4002,7 @@ PULONG p;
    if (! pVolInfo->fFormatInProgress)
       {
       // check if volume is present
-      rc = FSH_SETVOLUME(hVBP, 0);
+      rc = FSH_SETVOLUME(hVBP, 0); //// hang on diskette insert
 
       if (rc == ERROR_VOLUME_CHANGED)
          return NULL;

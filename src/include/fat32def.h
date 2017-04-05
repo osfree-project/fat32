@@ -420,7 +420,8 @@ ULONG ulSector;
 USHORT nSectors;
 } WRITESECTORDATA, *PWRITESECTORDATA;
 
-#define BLOCK_SIZE  0x4000
+//#define BLOCK_SIZE  0x4000 // read multiples of three sectors,
+#define BLOCK_SIZE  0x3000   // to fit a whole number of FAT12 entries
 #define MAX_MESSAGE 2048
 #define TYPE_LONG    0
 #define TYPE_STRING  1
@@ -453,7 +454,7 @@ ULONG       ulActiveFatStart;
 ULONG       ulClusterSize;
 ULONG       ulTotalClusters;
 ULONG       ulCurFATSector;
-BYTE        pbFATSector[512];
+BYTE        pbFATSector[512 * 3];
 BOOL        fDetailed;
 BOOL        fPM;
 BOOL        fFix;

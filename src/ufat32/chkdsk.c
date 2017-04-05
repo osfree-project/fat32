@@ -61,11 +61,16 @@ ULONG ReadSect(HANDLE hFile, ULONG ulSector, USHORT nSectors, USHORT BytesPerSec
 ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 
 UCHAR GetFatType(PBOOTSECT pSect);
+ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster);
+ULONG GetFatEntriesPerSec(PCDINFO pCD);
+ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster);
+void  SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue);
+
 ULONG GetFatEntryBlock(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize);
 ULONG GetFatEntriesPerBlock(PCDINFO pCD, USHORT usBlockSize);
 ULONG GetFatSize(PCDINFO pCD);
-ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize);
-void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize);
+ULONG GetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize);
+void  SetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize);
 
 ULONG SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext);
 BOOL  GetDiskStatus(PCDINFO pCD);
@@ -83,6 +88,8 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
 BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
+ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
+ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);
 void CodepageConvInit(BOOL fSilent);
 int lastchar(const char *string);
 
@@ -424,6 +431,7 @@ PSZ    pszType;
          signal(SIGSEGV, Handler);
          signal(SIGILL, Handler);
 #if defined(__OS2__) && defined(__DLL__)
+         /* Install 16-bit signal handler */
          rc = INIT16(0, 0);
 #endif
          // issue BEGINFORMAT ioctl to prepare disk for checking
@@ -489,7 +497,7 @@ PSZ    pszType;
       p--;
    *p = 0;
 
-   if (pCD->BootSect.bpb.MediaDescriptor != 0xF8)
+   if (pCD->bFatType >= FAT_TYPE_FAT16 && pCD->BootSect.bpb.MediaDescriptor != 0xF8)
       {
       show_message("The media descriptor is incorrect\n", 2400, 0, 0);
       pCD->ulErrorCount++;
@@ -684,7 +692,8 @@ ULONG  ulReadPortion;
    fDiff = FALSE;
    ulCluster = 0L;
    fRetco = 0;
-   for (ulSector = 0; ulSector < pCD->BootSect.bpb.BigSectorsPerFat; ulSector+=32)
+   //for (ulSector = 0; ulSector < pCD->BootSect.bpb.BigSectorsPerFat; ulSector+=32)
+   for (ulSector = 0; ulSector < pCD->BootSect.bpb.BigSectorsPerFat; ulSector+=24)
       {
       USHORT usNew  = (USHORT)(ulSector * 100 / pCD->BootSect.bpb.BigSectorsPerFat);
       USHORT nSectors;
@@ -733,7 +742,7 @@ ULONG  ulReadPortion;
          usIndex = 0;
       for (; ulCluster < pCD->ulTotalClusters + 2 && usIndex < GetFatEntriesPerBlock(pCD, ulReadPortion); usIndex++)
          {
-         ULONG ulNextCluster = GetFatEntry(pCD, ulCluster, BLOCK_SIZE);
+         ULONG ulNextCluster = GetFatEntryEx(pCD, pSector, ulCluster, ulReadPortion);
          if (ulNextCluster >= pCD->ulTotalClusters + 2)
             {
             ULONG ulVal = ulNextCluster;
@@ -1777,11 +1786,11 @@ ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad)
 ULONG  ulSector = 0;
 ULONG  ulRet = 0;
 
-   ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+   ulSector = GetFatEntrySec(pCD, ulCluster);
    if (!ReadFATSector(pCD, ulSector))
       return pCD->ulFatEof;
 
-   ulRet = GetFatEntry(pCD, ulCluster, 512);
+   ulRet = GetFatEntry(pCD, ulCluster);
 
    if (ulRet >= pCD->ulFatEof2 && ulRet <= pCD->ulFatEof)
       return pCD->ulFatEof;
@@ -1801,12 +1810,18 @@ ULONG  ulRet = 0;
 
 BOOL ReadFATSector(PCDINFO pCD, ULONG ulSector)
 {
+ULONG  ulSec = ulSector * 3;
 ULONG rc;
+
+   // read multiples of three sectors,
+   // to fit a whole number of FAT12 entries
+   // (ulSector is indeed a number of 3*512
+   // bytes blocks, so, it is needed to multiply by 3)
 
    if (pCD->ulCurFATSector == ulSector)
       return TRUE;
 
-   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSector, 1,
+   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSec, 3,
       (PBYTE)pCD->pbFATSector);
    if (rc)
       return FALSE;
@@ -1983,6 +1998,14 @@ UCHAR GetFatType(PBOOTSECT pSect)
 /******************************************************************
 *
 ******************************************************************/
+ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster)
+{
+   return GetFatEntryBlock(pCD, ulCluster, 512 * 3); // in three sector blocks
+}
+
+/******************************************************************
+*
+******************************************************************/
 ULONG GetFatEntryBlock(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
 {
 ULONG  ulSector;
@@ -2010,6 +2033,14 @@ ULONG  ulSector;
 /******************************************************************
 *
 ******************************************************************/
+ULONG GetFatEntriesPerSec(PCDINFO pCD)
+{
+   return GetFatEntriesPerBlock(pCD, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
 ULONG GetFatEntriesPerBlock(PCDINFO pCD, USHORT usBlockSize)
 {
    switch (pCD->bFatType)
@@ -2027,6 +2058,7 @@ ULONG GetFatEntriesPerBlock(PCDINFO pCD, USHORT usBlockSize)
 
    return 0;
 }
+
 /******************************************************************
 *
 ******************************************************************/
@@ -2050,13 +2082,21 @@ ULONG ulFatSize = pCD->ulTotalClusters;
          ulFatSize *= 4;
       }
 
-   return 0;
+   return ulFatSize;
 }
 
 /******************************************************************
 *
 ******************************************************************/
-ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
+ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster)
+{
+   return GetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG GetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize)
 {
    ulCluster &= pCD->ulFatEof;
 
@@ -2065,37 +2105,13 @@ ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
       case FAT_TYPE_FAT12:
          {
          ULONG   ulOffset;
-         USHORT  usRemainingNibbles;
-         ULONG   ulNextCluster;
          PUSHORT pusCluster;
+         ulOffset = (ulCluster * 3) / 2;
 
-         ulOffset = ((ulCluster * 3) / 2) % usBlockSize;
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
 
-         if (ulOffset == usBlockSize - 1)
-            {
-            // last cluster in the current FAT
-            // block crosses the block boundary
-            usRemainingNibbles = (usBlockSize * 2) - ((ulCluster * 3) % (usBlockSize * 2));
-            pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + ulOffset);
-            ulNextCluster = ( ((ulCluster * 3) % 2) ?
-            *pusCluster >> 4 : // odd
-            *pusCluster );     // even
-
-            ulNextCluster = (usRemainingNibbles == 1) ?
-               ulNextCluster & 0xf :
-               ulNextCluster & 0xff;
-
-            // read next FAT sector
-            ReadFATSector(pCD, GetFatEntryBlock(pCD, ulCluster + 1, usBlockSize)); //// need to read block instead of sector!
-
-            ulCluster = *(PBYTE)pCD->pbFATSector;
-            ulCluster = ( (usRemainingNibbles == 1) ?
-               ((ulCluster & 0xff) << 4) | ulNextCluster :
-               ((ulCluster & 0x0f) << 8) | ulNextCluster ) & pCD->ulFatEof;
-            break;
-            }
-
-         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + ulOffset);
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = ( ((ulCluster * 3) % 2) ?
             *pusCluster >> 4 : // odd
             *pusCluster )      // even
@@ -2105,8 +2121,14 @@ ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
 
       case FAT_TYPE_FAT16:
          {
+         ULONG   ulOffset;
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + ((ulCluster * 2) % usBlockSize));
+         ulOffset = ulCluster * 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pusCluster & pCD->ulFatEof;
          break;
          }
@@ -2114,8 +2136,14 @@ ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
       case FAT_TYPE_FAT32:
       case FAT_TYPE_EXFAT:
          {
+         ULONG   ulOffset;
          PULONG pulCluster;
-         pulCluster = (PULONG)((PBYTE)pCD->pbFATSector + ((ulCluster * 4) % usBlockSize));
+         ulOffset = ulCluster * 4;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pulCluster & pCD->ulFatEof;
          }
       }
@@ -2126,7 +2154,15 @@ ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize)
 /******************************************************************
 *
 ******************************************************************/
-void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize)
+void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue)
+{
+   SetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, ulValue, 512 * 3);
+}
+
+/******************************************************************
+*
+******************************************************************/
+void SetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize)
 {
    ulCluster &= pCD->ulFatEof;
    ulValue   &= pCD->ulFatEof;
@@ -2136,57 +2172,33 @@ void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize
       case FAT_TYPE_FAT12:
          {
          ULONG   ulOffset;
-         USHORT  usRemainingNibbles;
-         ULONG   ulNextCluster;
          PUSHORT pusCluster;
          USHORT  usPrevValue;
+         ULONG   ulNewValue;
+         ulOffset = (ulCluster * 3) / 2;
 
-         ulOffset = ((ulCluster * 3) / 2) % usBlockSize;
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
 
-         if (ulOffset == usBlockSize - 1)
-            {
-            // last cluster in the current FAT
-            // block crosses the block boundary
-            usRemainingNibbles = (usBlockSize * 2) - ((ulCluster * 3) % (usBlockSize * 2));
-            pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + ulOffset);
-            ulNextCluster = ( ((ulCluster * 3) % 2) ?
-            *pusCluster >> 4 : // odd
-            *pusCluster );     // even
-
-            usPrevValue = *(PBYTE)pusCluster;
-            ulValue = (usRemainingNibbles == 1) ?
-              (usPrevValue & 0xf) | ((ulValue & 0xf) << 4) :
-              (ulValue & 0xff);
-            *(PBYTE)pusCluster = ulValue;
-
-            ulNextCluster = (usRemainingNibbles == 1) ?
-               ulNextCluster & 0xf :
-               ulNextCluster & 0xff;
-
-            // read next FAT sector
-            ReadFATSector(pCD, GetFatEntryBlock(pCD, ulCluster + 1, usBlockSize)); //// need to read block instead of sector!
-
-            usPrevValue = *(PBYTE)pCD->pbFATSector;
-            ulValue = ( (usRemainingNibbles == 1) ?
-               (ulValue & 0xff) :
-               (ulValue & 0x0f) | (usPrevValue & 0xf0) ) & pCD->ulFatEof;
-            *(PBYTE)pusCluster = ulValue;
-            break;
-            }
-
-         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + (((ulCluster * 3) / 2) % usBlockSize));
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          usPrevValue = *pusCluster;
-         ulValue = ((ulCluster * 3) % 2)  ?
+         ulNewValue = ((ulCluster * 3) % 2)  ?
             (usPrevValue & 0xf) | (ulValue << 4) : // odd
             (usPrevValue & 0xf000) | (ulValue);    // even
-         *pusCluster = ulValue;
+         *pusCluster = ulNewValue;
          break;
          }
 
       case FAT_TYPE_FAT16:
          {
+         ULONG   ulOffset;
          PUSHORT pusCluster;
-         pusCluster = (PUSHORT)((PBYTE)pCD->pbFATSector + ((ulCluster * 2) % usBlockSize));
+         ulOffset = ulCluster * 2;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          *pusCluster = ulValue;
          break;
          }
@@ -2194,8 +2206,14 @@ void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize
       case FAT_TYPE_FAT32:
       case FAT_TYPE_EXFAT:
          {
-         PULONG pulCluster;
-         pulCluster = (PULONG)((PBYTE)pCD->pbFATSector + ((ulCluster * 4) % usBlockSize));
+         ULONG   ulOffset;
+         PULONG  pulCluster;
+         ulOffset = ulCluster * 4;
+
+         if (usBlockSize)
+            ulOffset %= usBlockSize;
+
+         pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          *pulCluster = ulValue;
          }
       }

@@ -62,9 +62,15 @@ APIRET MakeDir(PCDINFO pCD, ULONG ulDirCluster, PDIRENTRY pDir, PSZ pszFile);
 BOOL IsCharValid(char ch);
 
 UCHAR GetFatType(PBOOTSECT pSect);
-ULONG GetFatEntryBlock(PCDINFO pCD, ULONG ulCluster, USHORT usBytesPerBlock);
-ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster, USHORT usBytesPerBlock);
-void  SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue, USHORT usBytesPerBlock);
+ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster);
+ULONG GetFatEntriesPerSec(PCDINFO pCD);
+ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster);
+void  SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue);
+ULONG GetFatEntryBlock(PCDINFO pCD, ULONG ulCluster, USHORT usBlockSize);
+ULONG GetFatEntriesPerBlock(PCDINFO pCD, USHORT usBlockSize);
+ULONG GetFatSize(PCDINFO pCD);
+ULONG GetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize);
+void  SetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize);
 
 void set_datetime(DIRENTRY *pDir);
 
@@ -109,7 +115,7 @@ BOOL GetDiskStatus(PCDINFO pCD)
    if (ReadFatSector(pCD, 0L))
       return FALSE;
 
-   ulStatus = GetFatEntry(pCD, 1, 512);
+   ulStatus = GetFatEntry(pCD, 1);
 
    if (ulStatus & pCD->ulFatClean)
       fStatus = TRUE;
@@ -124,15 +130,21 @@ BOOL GetDiskStatus(PCDINFO pCD)
 ******************************************************************/
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector)
 {
+   ULONG  ulSec = ulSector * 3;
    APIRET rc;
+
+   // read multiples of three sectors,
+   // to fit a whole number of FAT12 entries
+   // (ulSector is indeed a number of 3*512
+   // bytes blocks, so, it is needed to multiply by 3)
 
    if (pCD->ulCurFATSector == ulSector)
       return 0;
 
-   if (ulSector >= pCD->BootSect.bpb.BigSectorsPerFat)
+   if (ulSec >= pCD->BootSect.bpb.BigSectorsPerFat)
       return ERROR_SECTOR_NOT_FOUND;
 
-   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSector, 1,
+   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSec, 3,
       pCD->pbFATSector);
    if (rc)
       return rc;
@@ -148,17 +160,23 @@ ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector)
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
 {
    USHORT usFat;
+   ULONG  ulSec = ulSector * 3;
    APIRET rc;
 
    if (pCD->ulCurFATSector != ulSector)
       return ERROR_SECTOR_NOT_FOUND;
 
-   if (ulSector >= pCD->BootSect.bpb.BigSectorsPerFat)
+   // read multiples of three sectors,
+   // to fit a whole number of FAT12 entries
+   // (ulSector is indeed a number of 3*512
+   // bytes blocks, so, it is needed to multiply by 3)
+
+   if (ulSec >= pCD->BootSect.bpb.BigSectorsPerFat)
       return ERROR_SECTOR_NOT_FOUND;
 
    for (usFat = 0; usFat < pCD->BootSect.bpb.NumberOfFATs; usFat++)
       {
-      rc = WriteSector(pCD, pCD->ulActiveFatStart + ulSector, 1,
+      rc = WriteSector(pCD, pCD->ulActiveFatStart + ulSec, 3,
          pCD->pbFATSector);
 
       if (rc)
@@ -167,7 +185,7 @@ ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector)
       if (pCD->BootSect.bpb.ExtFlags & 0x0080)
          break;
 
-      ulSector += pCD->BootSect.bpb.BigSectorsPerFat;
+      ulSec += pCD->BootSect.bpb.BigSectorsPerFat;
       }
 
    return 0;
@@ -187,10 +205,10 @@ ULONG GetFreeSpace(PCDINFO pCD)
    ulTotalFree = 0;
    for (ulCluster = 2; ulCluster < pCD->ulTotalClusters + 2; ulCluster++)
       {
-      ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+      ulSector = GetFatEntrySec(pCD, ulCluster);
       if (ulSector != pCD->ulCurFATSector)
          ReadFatSector(pCD, ulSector);
-      ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+      ulNextCluster = GetFatEntry(pCD, ulCluster);
       if (ulNextCluster == 0)
          {
          ulTotalFree++;
@@ -222,7 +240,7 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
          }
       }
 
-   ulNextCluster = GetFatEntry(pCD, 1, 512);
+   ulNextCluster = GetFatEntry(pCD, 1);
 
    if (fClean)
       {
@@ -233,7 +251,7 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
       ulNextCluster  &= ~pCD->ulFatClean;
       }
 
-   SetFatEntry(pCD, 1, ulNextCluster, 512);
+   SetFatEntry(pCD, 1, ulNextCluster);
 
    /*
       Trick, set fDiskClean to FALSE, so WriteSector
@@ -1404,11 +1422,11 @@ APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
       ulReturn = ulNext;
       }
 
-   if (ReadFatSector(pCD, GetFatEntryBlock(pCD, ulCluster, 512)))
+   if (ReadFatSector(pCD, GetFatEntrySec(pCD, ulCluster)))
       return pCD->ulFatEof;
 
    fUpdateFSInfo = FALSE;
-   ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+   ulNextCluster = GetFatEntry(pCD, ulCluster);
    if (ulNextCluster && !ulNext)
       {
       fUpdateFSInfo = TRUE;
@@ -1421,9 +1439,9 @@ APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
       pCD->FSInfo.ulFreeClusters--;
       }
 
-   SetFatEntry(pCD, ulCluster, ulNext, 512);
+   SetFatEntry(pCD, ulCluster, ulNext);
 
-   rc = WriteFatSector(pCD, GetFatEntryBlock(pCD, ulCluster, 512));
+   rc = WriteFatSector(pCD, GetFatEntrySec(pCD, ulCluster));
    if (rc)
       return pCD->ulFatEof;
 
@@ -1870,7 +1888,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
    if (!ulCluster)
       return TRUE;
 
-   ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+   ulSector = GetFatEntrySec(pCD, ulCluster);
    ReadFatSector(pCD, ulSector);
    ulClustersFreed = 0;
    while (!(ulCluster >= pCD->ulFatEof2 && ulCluster <= pCD->ulFatEof))
@@ -1883,7 +1901,7 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
          {
          break;
          }
-      ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+      ulSector = GetFatEntrySec(pCD, ulCluster);
       if (ulSector != pCD->ulCurFATSector)
          {
          rc = WriteFatSector(pCD, pCD->ulCurFATSector);
@@ -1891,9 +1909,9 @@ BOOL DeleteFatChain(PCDINFO pCD, ULONG ulCluster)
             return FALSE;
          ReadFatSector(pCD, ulSector);
          }
-      ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+      ulNextCluster = GetFatEntry(pCD, ulCluster);
 
-      SetFatEntry(pCD, ulCluster, 0L, 512);
+      SetFatEntry(pCD, ulCluster, 0L);
       ulClustersFreed++;
       ulCluster = ulNextCluster;
       }
@@ -1996,8 +2014,8 @@ BOOL   fContiguous;
          */
          while (ulFirstCluster < pCD->ulTotalClusters + 2)
             {
-            ulSector = GetFatEntryBlock(pCD, ulFirstCluster, 512);
-            ulNextCluster = GetFatEntry(pCD, ulFirstCluster, 512);
+            ulSector = GetFatEntrySec(pCD, ulFirstCluster);
+            ulNextCluster = GetFatEntry(pCD, ulFirstCluster);
             if (ulSector != pCD->ulCurFATSector)
                ReadFatSector(pCD, ulSector);
             if (!ulNextCluster)
@@ -2027,8 +2045,8 @@ BOOL   fContiguous;
                   ulCluster < pCD->ulTotalClusters + 2;
                         ulCluster++)
             {
-            ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
-            ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+            ulSector = GetFatEntrySec(pCD, ulCluster);
+            ulNextCluster = GetFatEntry(pCD, ulCluster);
             if (ulSector != pCD->ulCurFATSector)
                ReadFatSector(pCD, ulSector);
             if (ulNextCluster)
@@ -2117,13 +2135,13 @@ USHORT rc;
 
    ulLastCluster = ulFirstCluster + ulSize - 1;
 
-   ulSector = GetFatEntryBlock(pCD, ulFirstCluster, 512);
+   ulSector = GetFatEntrySec(pCD, ulFirstCluster);
    if (ulSector != pCD->ulCurFATSector)
       ReadFatSector(pCD, ulSector);
 
    for (ulCluster = ulFirstCluster; ulCluster < ulLastCluster; ulCluster++)
       {
-      ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+      ulSector = GetFatEntrySec(pCD, ulCluster);
       if (ulSector != pCD->ulCurFATSector)
          {
          rc = WriteFatSector(pCD, pCD->ulCurFATSector);
@@ -2131,15 +2149,15 @@ USHORT rc;
             return rc;
          ReadFatSector(pCD, ulSector);
          }
-      ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+      ulNextCluster = GetFatEntry(pCD, ulCluster);
       if (ulNextCluster)
          {
          return ERROR_SECTOR_NOT_FOUND;
          }
-      SetFatEntry(pCD, ulCluster, ulCluster + 1, 512);
+      SetFatEntry(pCD, ulCluster, ulCluster + 1);
       }
 
-   ulSector = GetFatEntryBlock(pCD, ulCluster, 512);
+   ulSector = GetFatEntrySec(pCD, ulCluster);
    if (ulSector != pCD->ulCurFATSector)
       {
       rc = WriteFatSector(pCD, pCD->ulCurFATSector);
@@ -2147,13 +2165,13 @@ USHORT rc;
          return rc;
       ReadFatSector(pCD, ulSector);
       }
-   ulNextCluster = GetFatEntry(pCD, ulCluster, 512);
+   ulNextCluster = GetFatEntry(pCD, ulCluster);
    if (ulNextCluster)
       {
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   SetFatEntry(pCD, ulCluster, pCD->ulFatEof, 512);
+   SetFatEntry(pCD, ulCluster, pCD->ulFatEof);
    rc = WriteFatSector(pCD, pCD->ulCurFATSector);
    if (rc)
       return rc;
