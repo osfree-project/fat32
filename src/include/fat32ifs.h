@@ -105,7 +105,7 @@ REQUEST rgReq[MAXRQENTRIES];
 
 typedef struct _Cache
 {
-BYTE  bSector[SECTOR_SIZE];
+BYTE  bSector[SECTOR_SIZE * 8];
 } CACHE, *PCACHE;
 
 #define SET  1
@@ -167,6 +167,7 @@ ULONG    ulLastDiskTime;
 STRATFUNC pfnStrategy;
 STRATFUNC pfnPriority;
 BOOL      fFormatInProgress;
+BOOL      fRemovable;
 UCHAR     bFatType;
 ULONG     ulFatEof;
 ULONG     ulFatEof2;
@@ -410,7 +411,7 @@ IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 #define GetCurTime() (*pGITicks)
 
 
-#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 3 + 10000)
+#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + 10000)
 
 
 #endif

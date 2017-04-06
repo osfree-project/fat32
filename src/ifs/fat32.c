@@ -841,10 +841,14 @@ POPENINFO pOpenInfo;
          /* if a less volume than 2GB, converts a size from in bytes to in sectors. */
          if(!pOpenInfo->fLargeVolume)
             {
-            pArgDat->sf.psffsi->sfi_size /= SECTOR_SIZE;
+            struct vpfsi far * pvpfsi;
+            struct vpfsd far * pvpfsd;
+
+            FSH_GETVOLPARM(pArgDat->sf.psffsi->sfi_hVPB, &pvpfsi, &pvpfsd);
+            pArgDat->sf.psffsi->sfi_size /= pvpfsi->vpi_bsize;
 
             if (f32Parms.fLargeFiles)
-               pArgDat->sf.psffsi->sfi_sizel /= SECTOR_SIZE;
+               pArgDat->sf.psffsi->sfi_sizel /= pvpfsi->vpi_bsize;
             }
 
          pOpenInfo->fSectorMode = TRUE;
@@ -2062,8 +2066,8 @@ PBIOSPARAMETERBLOCK pBPB;
                if (pVolInfo->usRASectors > MAX_RASECTORS)
                   pVolInfo->usRASectors = MAX_RASECTORS;
 #else
-               if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / 512 ) * 4)
-                  pVolInfo->usRASectors = (pVolInfo->ulBlockSize / 512 ) * 4;
+               if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4)
+                  pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4;
 #endif
                *(PUSHORT)pParm = pVolInfo->usRASectors;
                Message("usRASectors changed to %u", pVolInfo->usRASectors);
@@ -2229,7 +2233,7 @@ PBIOSPARAMETERBLOCK pBPB;
                   goto FS_IOCTLEXIT;
                   }
                pRSD = (PREADSECTORDATA)pParm;
-               if ((USHORT)cbData < pRSD->nSectors * SECTOR_SIZE)
+               if ((USHORT)cbData < pRSD->nSectors * pVolInfo->BootSect.bpb.BytesPerSector)
                   {
                   rc = ERROR_BUFFER_OVERFLOW;
                   goto FS_IOCTLEXIT;
@@ -2263,7 +2267,7 @@ PBIOSPARAMETERBLOCK pBPB;
                   goto FS_IOCTLEXIT;
                   }
                pWSD = (PWRITESECTORDATA)pParm;
-               if ((USHORT)cbData < pWSD->nSectors * SECTOR_SIZE)
+               if ((USHORT)cbData < pWSD->nSectors * pVolInfo->BootSect.bpb.BytesPerSector)
                   {
                   rc = ERROR_INSUFFICIENT_BUFFER;
                   goto FS_IOCTLEXIT;
@@ -3080,7 +3084,7 @@ USHORT rc;
 USHORT ReadBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode)
 {
 ULONG ulSector;
-ULONG ulSectorsPerBlock = pVolInfo->ulBlockSize / SECTOR_SIZE;
+ULONG ulSectorsPerBlock = pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -3116,7 +3120,7 @@ USHORT rc;
 USHORT WriteBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode)
 {
 ULONG ulSector;
-ULONG ulSectorsPerBlock = pVolInfo->ulBlockSize / SECTOR_SIZE;
+ULONG ulSectorsPerBlock = pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -3234,7 +3238,7 @@ USHORT rc;
 ******************************************************************/
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   return GetFatEntryBlock(pVolInfo, ulCluster, 512 * 3); // in three sector blocks
+   return GetFatEntryBlock(pVolInfo, ulCluster, pVolInfo->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
 }
 
 /******************************************************************
@@ -3269,7 +3273,7 @@ ULONG  ulSector;
 ******************************************************************/
 static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, 512 * 3);
+   return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, pVolInfo->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -3334,7 +3338,7 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
 ******************************************************************/
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue)
 {
-   SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, 512 * 3);
+   SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, pVolInfo->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -3481,7 +3485,6 @@ ULONG ulTotalFree;
 
    ReleaseFat(pVolInfo);
    return ulTotalFree;
-
 }
 /******************************************************************
 *
@@ -3740,7 +3743,7 @@ USHORT rc;
 ******************************************************************/
 BOOL UpdateFSInfo(PVOLINFO pVolInfo)
 {
-static BYTE bSector[SECTOR_SIZE] = "";
+PBYTE bSector;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("UpdateFSInfo");
@@ -3758,15 +3761,21 @@ static BYTE bSector[SECTOR_SIZE] = "";
    if (pVolInfo->bFatType < FAT_TYPE_FAT32)
       return TRUE;
 
+   bSector = malloc(pVolInfo->BootSect.bpb.BytesPerSector);
+
    if (!ReadSector(pVolInfo, pVolInfo->BootSect.bpb.FSinfoSec, 1, bSector, DVIO_OPNCACHE))
       {
       memcpy(bSector + FSINFO_OFFSET, pVolInfo->pBootFSInfo, sizeof (BOOTFSINFO));
       if (!WriteSector(pVolInfo, pVolInfo->BootSect.bpb.FSinfoSec, 1, bSector, DVIO_OPNCACHE | DVIO_OPWRTHRU))
+         {
+         free(bSector);
          return TRUE;
+         }
       }
    CritMessage("UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
    Message("ERROR: UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
 
+   free(bSector);
    return FALSE;
 }
 
@@ -3788,7 +3797,7 @@ ULONG ulNextCluster = 0;
 
    if (pVolInfo->ulCurFatSector != 0)
       {
-      if (ReadFatSector(pVolInfo, 0)) //// floppy
+      if (ReadFatSector(pVolInfo, 0))
          return FALSE;
       pVolInfo->ulCurFatSector = 0;
       }
@@ -3999,14 +4008,15 @@ PULONG p;
       return NULL;
 
    // prevent blocking in FSH_SETVOLUME when remounting after format
-   if (! pVolInfo->fFormatInProgress)
+   /* if (! pVolInfo->fFormatInProgress && ! pVolInfo->fRemovable)
       {
       // check if volume is present
-      rc = FSH_SETVOLUME(hVBP, 0); //// hang on diskette insert
+      Message("FSH_SETVOLUME");
+      rc = FSH_SETVOLUME(hVBP, 0);
 
       if (rc == ERROR_VOLUME_CHANGED)
          return NULL;
-      }
+      } */
 
    rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pVolInfo, sizeof (VOLINFO));
    if (rc)

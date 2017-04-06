@@ -135,7 +135,7 @@ INT iArg;
 HANDLE hFile;
 ULONG rc = 0;
 PCDINFO pCD;
-BYTE   bSector[512];
+BYTE   bSector[SECTOR_SIZE * 8];
 struct extbpb dp;
 
 #ifdef __OS2__
@@ -704,7 +704,7 @@ ULONG  ulReadPortion;
          usPerc = usNew;
          }
 
-      nSectors = BLOCK_SIZE / 512;
+      nSectors = BLOCK_SIZE / pCD->BootSect.bpb.BytesPerSector;
       if ((ULONG)nSectors > pCD->BootSect.bpb.BigSectorsPerFat - ulSector)
          nSectors = (USHORT)(pCD->BootSect.bpb.BigSectorsPerFat - ulSector);
 
@@ -1929,10 +1929,10 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       }
 
-   if (pbpb->BytesPerSector != SECTOR_SIZE)
-      {
-      return FAT_TYPE_NONE;
-      }
+   //if (pbpb->BytesPerSector != SECTOR_SIZE)
+   //   {
+   //   return FAT_TYPE_NONE;
+   //   }
 
    if (! pbpb->SectorsPerCluster)
       {
@@ -2000,7 +2000,7 @@ UCHAR GetFatType(PBOOTSECT pSect)
 ******************************************************************/
 ULONG GetFatEntrySec(PCDINFO pCD, ULONG ulCluster)
 {
-   return GetFatEntryBlock(pCD, ulCluster, 512 * 3); // in three sector blocks
+   return GetFatEntryBlock(pCD, ulCluster, pCD->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
 }
 
 /******************************************************************
@@ -2035,7 +2035,7 @@ ULONG  ulSector;
 ******************************************************************/
 ULONG GetFatEntriesPerSec(PCDINFO pCD)
 {
-   return GetFatEntriesPerBlock(pCD, 512 * 3);
+   return GetFatEntriesPerBlock(pCD, pCD->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -2090,7 +2090,7 @@ ULONG ulFatSize = pCD->ulTotalClusters;
 ******************************************************************/
 ULONG GetFatEntry(PCDINFO pCD, ULONG ulCluster)
 {
-   return GetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, 512 * 3);
+   return GetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, pCD->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -2156,7 +2156,7 @@ ULONG GetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, USHORT usBloc
 ******************************************************************/
 void SetFatEntry(PCDINFO pCD, ULONG ulCluster, ULONG ulValue)
 {
-   SetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, ulValue, 512 * 3);
+   SetFatEntryEx(pCD, pCD->pbFATSector, ulCluster, ulValue, pCD->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************

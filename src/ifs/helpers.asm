@@ -1,6 +1,6 @@
 .386p
 
-SAS_SEL equ 70h
+;SAS_SEL equ 70h
 ERROR_NOT_SUPPORTED        equ 50
 ERROR_INVALID_PARAMETER    equ 87
 ERROR_PROTECTION_VIOLATION equ 115
@@ -105,12 +105,12 @@ DGROUP group CONST, CONST2, _DATA, _BSS
 
 _TEXT segment word public 'CODE' use16
 
-public _SaSSel
+;public _SaSSel
 
-SaSSel PROC
-    mov ax,SAS_SEL
-    ret
-SaSSel ENDP
+;SaSSel PROC
+;    mov ax,SAS_SEL
+;    ret
+;SaSSel ENDP
 
 _TEXT ends
 

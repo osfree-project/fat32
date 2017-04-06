@@ -247,7 +247,7 @@ P_VolChars   pVolChars;
          pVolInfo->fFormatInProgress = FALSE;
 
          if (usDefaultRASectors == 0xFFFF)
-            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / SECTOR_SIZE ) * 2;
+            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 2;
          else
             pVolInfo->usRASectors = usDefaultRASectors;
 
@@ -255,8 +255,8 @@ P_VolChars   pVolChars;
          if( pVolInfo->usRASectors > MAX_RASECTORS )
             pVolInfo->usRASectors = MAX_RASECTORS;
 #else
-         if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / SECTOR_SIZE) * 4)
-            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / SECTOR_SIZE ) * 4;
+         if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector) * 4)
+            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4;
 #endif
 
          if (pVolInfo->bFatType == FAT_TYPE_FAT32 && pSect->bpb.FSinfoSec != 0xFFFF)
@@ -287,6 +287,10 @@ P_VolChars   pVolChars;
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
 
+         if (! pVolInfo->BootSect.bpb.BigSectorsPerFat)
+            // if partition is small
+            pVolInfo->BootSect.bpb.BigSectorsPerFat = pVolInfo->BootSect.bpb.SectorsPerFat;
+
          pVolInfo->ulTotalClusters =
             (pVolInfo->BootSect.bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
 
@@ -308,7 +312,8 @@ P_VolChars   pVolChars;
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
 
-         pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
+         //pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
+
          if (!pVolInfo->fDiskCleanOnMount && f32Parms.fMessageActive & LOG_FS)
             Message("DISK IS DIRTY!");
          if (pVolInfo->fWriteProtected)
@@ -318,7 +323,9 @@ P_VolChars   pVolChars;
             pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
           /*!pVolInfo->fDiskClean ||*/
             pVolInfo->BootSect.bpb.FSinfoSec == 0xFFFF)
-         GetFreeSpace(pVolInfo);
+            {
+            GetFreeSpace(pVolInfo);
+            }
 
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
@@ -328,6 +335,15 @@ P_VolChars   pVolChars;
             Message("Strategy2 not found, searching Device Driver chain !");
             pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
             }
+
+         if ( pVolChars && (pVolChars->VolDescriptor & VC_REMOVABLE_MEDIA) )
+            pVolInfo->fRemovable = TRUE;
+
+         if (! pVolInfo->fRemovable)
+            pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
+         else
+            // ignore disk status on floppies
+            pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = TRUE;
 
          if (f32Parms.fMessageActive & LOG_FS)
             {
@@ -366,11 +382,11 @@ P_VolChars   pVolChars;
          if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
             hDupVBP = 0;
 
-         if (pvpfsi->vpi_bsize != SECTOR_SIZE)
-            {
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
+         //if (pvpfsi->vpi_bsize != SECTOR_SIZE)
+         //   {
+         //   rc = ERROR_VOLUME_NOT_MOUNTED;
+         //   goto FS_MOUNT_EXIT;
+         //   }
       
          pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
          if (!pVolInfo)
@@ -492,7 +508,12 @@ P_VolChars   pVolChars;
 
          usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
          UpdateFSInfo(pVolInfo);
-         MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+
+         if (! pVolInfo->fRemovable)
+            {
+            // ignore dirty status on floppies
+            MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+            }
 
          // delete pVolInfo from the list
          RemoveVolume(pVolInfo);
@@ -593,10 +614,10 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       }
 
-   if (pbpb->BytesPerSector != SECTOR_SIZE)
-      {
-      return FAT_TYPE_NONE;
-      }
+   //if (pbpb->BytesPerSector != SECTOR_SIZE)
+   //   {
+   //   return FAT_TYPE_NONE;
+   //   }
 
    if (! pbpb->SectorsPerCluster)
       {
@@ -672,6 +693,8 @@ UCHAR GetFatType(PBOOTSECT pSect)
 
 #pragma optimize("eglt",off)
 
+#define SAS_SEL 0x70
+
 P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
 {
    RP_GETDRIVERCAPS rp={0};
@@ -683,7 +706,7 @@ P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
    struct SAS_dd_section far *pDDSection;
    struct SysDev far *pDD;
 
-   SAS_selector    = SaSSel();
+   SAS_selector    = SAS_SEL;
    pSas            = (struct SAS far *)MAKEP(SAS_selector,0);
    pDDSection      = (struct SAS_dd_section far *)MAKEP(SAS_selector,pSas->SAS_dd_data);
    pDD             = (struct SysDev far *)MAKEP(SAS_selector,pDDSection->SAS_dd_bimodal_chain);

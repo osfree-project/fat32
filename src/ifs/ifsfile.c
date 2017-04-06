@@ -454,9 +454,9 @@ USHORT rc;
 
       //size = pVolInfo->BootSect.bpb.BigTotalSectors;
       /* if a less volume than 2GB, do normal IO else sector IO */
-      size = pVolInfo->BootSect.bpb.BigTotalSectors * SECTOR_SIZE;
+      size = pVolInfo->BootSect.bpb.BigTotalSectors * pVolInfo->BootSect.bpb.BytesPerSector;
       //if( size < SECTORS_OF_2GB )
-      //   size *= SECTOR_SIZE;
+      //   size *= pVolInfo->BootSect.bpb.BytesPerSector;
       //else
       //   pOpenInfo->fLargeVolume = TRUE;
 

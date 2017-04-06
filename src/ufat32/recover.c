@@ -24,7 +24,7 @@ int recover_thread(int argc, char *argv[])
    PCDINFO pCD;
    HANDLE  hFile;
    ULONG  ulAction;
-   BYTE   bSector[512];
+   BYTE   bSector[SECTOR_SIZE * 8];
    char   szTarget[0x8000];
    ULONG  ulBytes;
    USHORT usBlocks;

@@ -47,8 +47,8 @@ PRIVATE PVOID  GetPhysAddr(PRQLIST pRQ, ULONG ulEntry);
 PRIVATE BOOL   fFindSector(ULONG ulSector, BYTE bDrive, PUSHORT pusIndex);
 PRIVATE USHORT WriteCacheSector(PVOLINFO pVolInfo, USHORT usCBIndex, BOOL fSetTime);
 PRIVATE VOID   UpdateChain(USHORT usCBIndex);
-PRIVATE VOID   vGetSectorFromCache(USHORT usCBIndex, PBYTE pbSector);
-PRIVATE VOID   vReplaceSectorInCache(USHORT usCBIndex, PBYTE pbSector, BOOL fDirty);
+PRIVATE VOID   vGetSectorFromCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector);
+PRIVATE VOID   vReplaceSectorInCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector, BOOL fDirty);
 PRIVATE VOID   LockBuffer(PCACHEBASE pBase);
 PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE USHORT usEmergencyFlush(VOID);
@@ -224,7 +224,7 @@ char far *p;
       See if all sectors are in cache
    */
    fFromCache = TRUE;
-   for (usIndex = 0,p=pbData; usIndex < nSectors; usIndex++,p += (ULONG)SECTOR_SIZE)
+   for (usIndex = 0,p=pbData; usIndex < nSectors; usIndex++,p += (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
       {
       if (!IsSectorInCache(pVolInfo, ulSector + usIndex, p))
          {
@@ -253,7 +253,7 @@ char far *p;
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      pbSectors = malloc(usSectors * 512);
+      pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
       }
    if (!pbSectors)
       {
@@ -299,7 +299,7 @@ char far *p;
     */
     if (!rc)
        {
-       for (usIndex = 0,p=pbSectors; usIndex < usSectors; usIndex++,p+= (ULONG)SECTOR_SIZE)
+       for (usIndex = 0,p=pbSectors; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
           {
           /*
              Was sector already in cache?
@@ -324,7 +324,7 @@ char far *p;
              */
                 if (rgfDirty[usCBIndex])
                    {
-                   vGetSectorFromCache(usCBIndex, p);
+                   vGetSectorFromCache(pVolInfo, usCBIndex, p);
                    }
                    rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]); /* when fFindSector returns with true it has the semaphore requested */
                 break;
@@ -335,7 +335,7 @@ char far *p;
     if (!rc && pbSectors != pbData)
        {
        f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
-       memcpy(pbData, pbSectors, min( usSectors, nSectors ) * 512);
+       memcpy(pbData, pbSectors, min( usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
        }
 
    if (pbSectors != pbData)
@@ -386,7 +386,7 @@ char *p;
 
    if (!rc)
       {
-      for (usIndex = 0,p= pbData; usIndex < usSectors; usIndex++,p+= (ULONG)SECTOR_SIZE)
+      for (usIndex = 0,p= pbData; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
          {
          fSectorInCache =
             fFindSector(ulSector + usIndex, pVolInfo->bDrive, &usCBIndex);
@@ -405,11 +405,11 @@ char *p;
                   PCACHE pCache;
 
                   pCache = GetAddress(usCBIndex);
-                  fIdent = memcmp(p, pCache->bSector, SECTOR_SIZE) == 0;
+                  fIdent = memcmp(p, pCache->bSector, pVolInfo->BootSect.bpb.BytesPerSector) == 0;
                   }
 
                if( !fIdent )
-                  vReplaceSectorInCache(usCBIndex, p, fDirty);
+                  vReplaceSectorInCache(pVolInfo, usCBIndex, p, fDirty);
 
                rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]); /* when fFindSector returns with true it has the semaphore requested */
                break;
@@ -434,7 +434,7 @@ USHORT usIndex;
    if (!fFindSector(ulSector, pVolInfo->bDrive, &usIndex))
       return FALSE;
    f32Parms.ulTotalHits++;
-   vGetSectorFromCache(usIndex, pbSector);
+   vGetSectorFromCache(pVolInfo, usIndex, pbSector);
 
    rc2 = FSH_SEMCLEAR(&ulLockSem[usIndex]); /* when fFindSector returns with true it has the semaphore requested */
 
@@ -444,7 +444,7 @@ USHORT usIndex;
 /******************************************************************
 *
 ******************************************************************/
-VOID vGetSectorFromCache(USHORT usCBIndex, PBYTE pbSector)
+VOID vGetSectorFromCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector)
 {
 PCACHEBASE pBase;
 PCACHE pCache;
@@ -452,7 +452,7 @@ PCACHE pCache;
    pBase = pCacheBase + usCBIndex;
 
    pCache = GetAddress(usCBIndex);
-   memcpy(pbSector, pCache->bSector, 512);
+   memcpy(pbSector, pCache->bSector, pVolInfo->BootSect.bpb.BytesPerSector);
 
    pBase->ulAccessTime = GetCurTime();
    UpdateChain(usCBIndex);
@@ -536,7 +536,7 @@ PCACHEBASE2 pBase2;
       pBase->ulSector = ulSector;
       pBase->bDrive = pVolInfo->bDrive;
 
-      vReplaceSectorInCache(usCBIndex, pbSector, fDirty);
+      vReplaceSectorInCache(pVolInfo, usCBIndex, pbSector, fDirty);
 
       rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
       }
@@ -624,7 +624,7 @@ PCACHEBASE2 pBase2;
                     pBase->ulSector = ulSector;
                     pBase->bDrive = pVolInfo->bDrive;
 
-                    vReplaceSectorInCache(usCBIndex, pbSector, fDirty);
+                    vReplaceSectorInCache(pVolInfo, usCBIndex, pbSector, fDirty);
 
                     leaveFlag = TRUE;
                     rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
@@ -646,7 +646,7 @@ PCACHEBASE2 pBase2;
 /******************************************************************
 *
 ******************************************************************/
-VOID vReplaceSectorInCache(USHORT usCBIndex, PBYTE pbSector, BOOL fDirty)
+VOID vReplaceSectorInCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector, BOOL fDirty)
 {
 PCACHEBASE pBase;
 PCACHE     pCache;
@@ -665,7 +665,7 @@ PCACHE     pCache;
          }
       rgfDirty[usCBIndex] = fDirty;
       pCache = GetAddress(usCBIndex);
-      memcpy(pCache->bSector, pbSector, SECTOR_SIZE);
+      memcpy(pCache->bSector, pbSector, pVolInfo->BootSect.bpb.BytesPerSector);
       pBase->ulAccessTime = GetCurTime();
       UpdateChain(usCBIndex);
       return;
@@ -719,7 +719,7 @@ USHORT    usCBIndex,usCBIndexNew;
 
    while (usCBIndex != FREE_SLOT)
       {
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L); //// hang!
+      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
       pBase = pCacheBase + usCBIndex;
       if (pBase->ulSector == ulSector && pBase->bDrive == bDrive)
          {
