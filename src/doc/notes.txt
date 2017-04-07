@@ -1,0 +1,38 @@
+Notes.
+
+1. Mounting FAT12/FAT16 volumes on boot.
+ 
+The kernel FAT driver is usually services all FAT12/FAT16 partitions found
+on the disk. So, it may conflict with FAT32.IFS when supporting FAT drives.
+
+When the kernel sees a new volume, it creates the Volume Parameter Block (VPB)
+structure and invokes FS_MOUNT routine of each installed IFS, until some of
+them accepts it. So, the volume gets mounted, and a drive letter is assigned.
+
+For the 1st time, the kernel creates the UNREADABLE VPB. It becomes READABLE,
+when some FS mounts it successfully. UNREADABLE VPB's are temporary, used when
+FS is not yet mounted.
+
+If volume gets autochecked on an IFS init, the UNREADABLE VPB is created first,
+which is used for CHKDSK to check the corresponding drive letter for errors. At
+this time, IFS is not yet initted, did not yet mounted, so it is missing from
+the kernel list of available IFS'es. So, if no IFS claims the volume to be its
+own one, the kernel FAT is invoked, as a result. So, if we'll add the FAT drive 
+letter to autocheck list of some filesystem, it gets mounted by the kernel FAT
+driver.
+
+So, for a FAT filesystem to be automatically mounted by FAT32.IFS, we need one of
+three solutions:
+
+a) Remove this drive from autocheck lists of all filesystems (instead of "/autocheck:*",
+use explicit list of drive letters, like "/autocheck:cde"). Then no mount attempts occur
+until FAT32.IFS gets initialized, and everything will be ok.
+
+b) Make IFS=FAT32.IFS the very 1st IFS=... statement in config.sys and remove FAT drives
+from FAT32.IFS /autocheck statement only. Then on FAT32.IFS init, no mount attempt occur,
+it occurs only when the next IFS does its autocheck. At that time, FAT32.IFS is already
+in kernel's available IFS's list, so it gets mounted successfully, with FAT32.IFS.
+
+c) force a remount after FAT kernel driver is mounted the FAT drive. Then, FAT32.IFS will
+mount it before the kernel FAT driver gets called. We can try do a remount on cachef32.exe
+start in the future.
