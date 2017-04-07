@@ -52,18 +52,36 @@ USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
 // disk file open handle
 extern char msg;
 
-DWORD get_fat_size_sectors ( DWORD DskSize, DWORD ReservedSecCnt, DWORD SecPerClus, DWORD NumFATs, DWORD BytesPerSect )
+DWORD get_fat_size_sectors ( format_params *params, DWORD DskSize,
+                             DWORD ReservedSecCnt, DWORD SecPerClus,
+                             DWORD NumFATs, DWORD BytesPerSect )
 {
     ULONGLONG   Numerator, Denominator;
-    ULONGLONG   FatElementSize = 4;
+    ULONGLONG   FatElementSize2;
     ULONGLONG   FatSz;
+
+    switch (params->bFatType)
+    {
+        case FAT_TYPE_FAT12:
+            FatElementSize2 = 3;
+            break;
+
+        case FAT_TYPE_FAT16:
+            FatElementSize2 = 4;
+            break;
+
+        case FAT_TYPE_FAT32:
+        case FAT_TYPE_EXFAT:
+            FatElementSize2 = 8;
+    }
 
     // This is based on 
     // http://hjem.get2net.dk/rune_moeller_barnkob/filesystems/fat.html
     // I've made the obvious changes for FAT32
-    Numerator = FatElementSize * ( DskSize - ReservedSecCnt );
-    Denominator = ( SecPerClus * BytesPerSect ) + ( FatElementSize * NumFATs );
+    Numerator = FatElementSize2 * ( DskSize - ReservedSecCnt ) / 2;
+    Denominator = ( SecPerClus * BytesPerSect ) + ( FatElementSize2 * NumFATs ) / 2;
     FatSz = Numerator / Denominator;
+
     // round up
     FatSz += 1;
 
@@ -77,29 +95,117 @@ BYTE get_spc ( DWORD ClusterSizeKB, DWORD BytesPerSect )
     return( (BYTE) spc );
 }
 
-BYTE get_sectors_per_cluster ( LONGLONG DiskSizeBytes, DWORD BytesPerSect )
+BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DWORD BytesPerSect )
 {
     BYTE ret = 0x01; // 1 sector per cluster
     LONGLONG DiskSizeMB = DiskSizeBytes / ( 1024*1024 );
 
-    // 512 MB to 8,191 MB 4 KB
-    if ( DiskSizeMB > 512 )
-        ret = get_spc( 4, BytesPerSect );  // ret = 0x8;
-        
-    // 8,192 MB to 16,383 MB 8 KB 
-    if ( DiskSizeMB > 8192 )
-        ret = get_spc( 8, BytesPerSect ); // ret = 0x10;
+    switch (params->bFatType)
+    {
+    case FAT_TYPE_FAT12:
+        // 2 MB to 4 MB - 1 KB
+        if ( DiskSizeMB > 2 )
+            ret = get_spc( 1, BytesPerSect );  // ret = 0x2;
 
-    // 16,384 MB to 32,767 MB 16 KB 
-    if ( DiskSizeMB > 16384 )
-        ret = get_spc( 16, BytesPerSect ); // ret = 0x20;
+        // 4 MB to 8 MB - 2 KB
+        if ( DiskSizeMB > 4 )
+            ret = get_spc( 2, BytesPerSect );  // ret = 0x4;
 
-    // Larger than 32,768 MB 32 KB
-    if ( DiskSizeMB > 32768 )
-        ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+        // 8 MB to 16 MB - 4 KB
+        if ( DiskSizeMB > 8 )
+            ret = get_spc( 4, BytesPerSect );  // ret = 0x8;
+
+        // 16 MB to 32 MB - 8 KB
+        if ( DiskSizeMB > 16 )
+            ret = get_spc( 8, BytesPerSect );  // ret = 0x10;
+
+        // 32 MB to 64 MB - 16 KB
+        if ( DiskSizeMB > 32 )
+            ret = get_spc( 16, BytesPerSect );  // ret = 0x20;
+
+        // 64 MB to 128 MB - 32 KB
+        if ( DiskSizeMB > 64 )
+            ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+
+        // 128 MB to 256 MB - 64 KB
+        if ( DiskSizeMB > 128 )
+            ret = get_spc( 64, BytesPerSect );  // ret = 0x80;
+
+        break;
+
+    case FAT_TYPE_FAT16:
+        // 32 MB to 64 MB - 1 KB
+        if ( DiskSizeMB > 32 )
+            ret = get_spc( 1, BytesPerSect );  // ret = 0x2;
+
+        // 64 MB to 128 MB - 2 KB 
+        if ( DiskSizeMB > 64 )
+            ret = get_spc( 2, BytesPerSect ); // ret = 0x4;
+
+        // 128 MB to 256 MB - 4 KB 
+        if ( DiskSizeMB > 128 )
+            ret = get_spc( 4, BytesPerSect ); // ret = 0x8;
+
+        // Larger than 256 MB - 8 KB
+        if ( DiskSizeMB > 256 )
+            ret = get_spc( 8, BytesPerSect );  // ret = 0x10;
+
+        // Larger than 512 MB - 16 KB
+        if ( DiskSizeMB > 512 )
+            ret = get_spc( 16, BytesPerSect );  // ret = 0x20;
+
+        // Larger than 1,024 MB - 32 KB
+        if ( DiskSizeMB > 1024 )
+            ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+
+        // Larger than 2,048 MB - 64 KB
+        if ( DiskSizeMB > 2048 )
+            ret = get_spc( 64, BytesPerSect );  // ret = 0x80;
+
+        break;
+
+    case FAT_TYPE_FAT32:
+        // 64 MB to 128 MB - 1 KB
+        if ( DiskSizeMB > 64 )
+            ret = get_spc( 1, BytesPerSect );  // ret = 0x2;
+
+        // 128 MB to 256 MB - 2 KB
+        if ( DiskSizeMB > 128 )
+            ret = get_spc( 2, BytesPerSect );  // ret = 0x4;
+
+        // 512 MB to 8,191 MB - 4 KB
+        if ( DiskSizeMB > 256 )
+            ret = get_spc( 4, BytesPerSect );  // ret = 0x8;
+
+        // 8,192 MB to 16,383 MB - 8 KB 
+        if ( DiskSizeMB > 8192 )
+            ret = get_spc( 8, BytesPerSect ); // ret = 0x10;
+
+        // 16,384 MB to 32,767 MB 16 KB 
+        if ( DiskSizeMB > 16384 )
+            ret = get_spc( 16, BytesPerSect ); // ret = 0x20;
+
+        // Larger than 32,768 MB 32 KB
+        if ( DiskSizeMB > 32768 )
+            ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+
+        break;
+
+    case FAT_TYPE_EXFAT:
+        // 7 MB to 256 MB - 4 KB
+        if ( DiskSizeMB > 7 )
+            ret = get_spc( 4, BytesPerSect );  // ret = 0x8;
+
+        // 256 MB to 1,024 MB - 32 KB
+        if ( DiskSizeMB > 256 )
+            ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+
+        // Larger than 32,784 MB - 128 KB
+        if ( DiskSizeMB > 32784 )
+            ret = get_spc( 128, BytesPerSect );  // ret = 0x80;
+    }
     
     return( ret );
-
 }
 
 void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumSects) //, DISK_GEOMETRY* pdgDrive  )
@@ -199,6 +305,7 @@ int format_volume (char *path, format_params *params)
     //DWORD NumFATs = 2;
     DWORD BackupBootSect = 6;
     DWORD VolumeId=0; // calculated before format
+    DWORD FatSz;
     
     // // Calculated later
     //DWORD FatSize=0; 
@@ -211,6 +318,7 @@ int format_volume (char *path, format_params *params)
 
     // structures to be written to the disk
     FAT_BOOTSECTOR32 *pFAT32BootSect;
+    FAT_BOOTSECTOR16 *pFATBootSect;
     FAT_FSINFO *pFAT32FsInfo;
     
     DWORD *pFirstSectOfFat;
@@ -221,9 +329,6 @@ int format_volume (char *path, format_params *params)
 
     static char volId[12] = {0};
     char *vol = volId;
-
-    if (params->reserved_sectors)
-        dp.ReservedSectCount = params->reserved_sectors;
 
     VolumeId = get_vol_id( );
 
@@ -237,11 +342,133 @@ int format_volume (char *path, format_params *params)
     begin_format(hDevice);
     //sectorio(hDevice);
 
+    // Specify volume label
+    if (!*vol)
+        vol = get_vol_label(path, vol);
+
+    vol = strupr(vol);
+
+    if ( params->reserved_sectors )
+        dp.ReservedSectCount = params->reserved_sectors;
+    else
+    {
+        switch (params->bFatType)
+        {
+        case FAT_TYPE_FAT12:
+        case FAT_TYPE_FAT16:
+            dp.ReservedSectCount = 1;
+            break;
+
+        case FAT_TYPE_FAT32:
+        case FAT_TYPE_EXFAT:
+            dp.ReservedSectCount = 32;
+        }
+    }
+
     // Checks on Disk Size
     // qTotalSectors = dp.PartitionLength / dp.BytesPerSect;
     qTotalSectors = dp.TotalSectors;
+
+    if ( params->sectors_per_cluster )
+        dp.SectorsPerCluster = params->sectors_per_cluster;
+    else
+        dp.SectorsPerCluster = get_sectors_per_cluster( params, ((LONGLONG)dp.TotalSectors) * dp.BytesPerSect, dp.BytesPerSect );
+
+    dp.FatSize = get_fat_size_sectors ( params, dp.TotalSectors, 
+        dp.ReservedSectCount, dp.SectorsPerCluster,
+        dp.NumFATs, dp.BytesPerSect );
+
+    UserAreaSize = dp.TotalSectors - dp.ReservedSectCount - (dp.NumFATs*dp.FatSize);
+
+    if (params->bFatType < FAT_TYPE_FAT32)
+        // root dir is excluded from user area on FAT12/FAT16
+        UserAreaSize -= dp.SectorsPerCluster;
+
+    ClusterCount = UserAreaSize / dp.SectorsPerCluster;
+
+    if ( (ClusterCount >= FAT12_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT12) ||
+         (ClusterCount >= FAT16_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT16) ||
+         (ClusterCount >= FAT32_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT32) ||
+         (ClusterCount >= EXFAT_BAD_CLUSTER && params->bFatType == FAT_TYPE_EXFAT) )
+    {
+        die ( "The specified file system does not support the current volume size!", -2 );
+    }
+
+    // Sanity check for a cluster count of >2^28, since the upper 4 bits of the cluster values in 
+    // the FAT are reserved.
+    if ( params->bFatType == FAT_TYPE_FAT12 && ClusterCount > 0xFFF )
+    {
+        die ( "This drive has more than 2^12 clusters, \n"
+              "try to specify a larger cluster size or use \n"
+              "the default (i.e. don't use -cXX)\n", -3 );
+    }
+    else if ( params->bFatType == FAT_TYPE_FAT16 && ClusterCount > 0xFFFF )
+    {
+        die ( "This drive has more than 2^16 clusters, \n"
+              "try to specify a larger cluster size or use \n"
+              "the default (i.e. don't use -cXX)\n", -3 );
+    }
+    else if ( params->bFatType == FAT_TYPE_FAT32 && ClusterCount > 0x0FFFFFFF )
+    {
+        die ( "This drive has more than 2^28 clusters, \n"
+              "try to specify a larger cluster size or use \n"
+              "the default (i.e. don't use -cXX)\n", -3 );
+    }
+
+    // Sanity check - < 64K clusters means that the volume will be misdetected as FAT16
+    if ( params->bFatType == FAT_TYPE_FAT32 && ClusterCount < 65536 )
+    {
+        die ( "FAT32 must have at least 65536 clusters, \n"
+              "try to specify a smaller cluster size or \n"
+              "use the default (i.e. don't use -cXX)\n", -4  );
+    }
+
+    // Sanity check, make sure the fat is big enough
+    // Convert the cluster count into a Fat sector count, and check the fat size value we calculated 
+    // earlier is OK.
+    switch (params->bFatType)
+    {
+        case FAT_TYPE_FAT12:
+            FatNeeded = ClusterCount * 3 / 2;
+            break;
+
+        case FAT_TYPE_FAT16:
+            FatNeeded = ClusterCount * 2;
+            break;
+
+        case FAT_TYPE_FAT32:
+        case FAT_TYPE_EXFAT:
+            FatNeeded = ClusterCount * 4;
+    }
+
+    FatNeeded += (dp.BytesPerSect-1);
+    FatNeeded /= dp.BytesPerSect;
+
+    if ( FatNeeded > dp.FatSize )
+    {
+        die ( "This drive is too big for this version\n"
+              "of fat32format, check for an upgrade.\n", -5 );
+    }
+
+    if (params->bFatType == FAT_TYPE_NONE)
+    {
+        // FS type is not specified
+        if (ClusterCount < FAT12_BAD_CLUSTER)
+            params->bFatType = FAT_TYPE_FAT12;
+        else if (ClusterCount < FAT16_BAD_CLUSTER)
+            params->bFatType = FAT_TYPE_FAT16;
+        else if (ClusterCount < FAT32_BAD_CLUSTER)
+            params->bFatType = FAT_TYPE_FAT32;
+        else if (ClusterCount < EXFAT_BAD_CLUSTER)
+            params->bFatType = FAT_TYPE_EXFAT;
+        else
+        {
+            die ( "Cluster count is too big for exFAT filesystem.\n", -6 );
+        }
+    }
+
     // low end limit - 65536 sectors
-    if ( qTotalSectors < 65536 )
+    if ( (params->bFatType == FAT_TYPE_FAT32) && (qTotalSectors < 65536) )
     {
         // I suspect that most FAT32 implementations would mount this volume just fine, but the
         // spec says that we shouldn't do this, so we won't
@@ -251,94 +478,166 @@ int format_volume (char *path, format_params *params)
     if ( qTotalSectors >= 0xffffffff )
     {
         // This is a more fundamental limitation on FAT32 - the total sector count in the root dir
-        // ís 32bit. With a bit of creativity, FAT32 could be extended to handle at least 2^28 clusters
+        // is 32bit. With a bit of creativity, FAT32 could be extended to handle at least 2^28 clusters
         // There would need to be an extra field in the FSInfo sector, and the old sector count could
         // be set to 0xffffffff. This is non standard though, the Windows FAT driver FASTFAT.SYS won't
         // understand this. Perhaps a future version of FAT32 and FASTFAT will handle this.
         die ( "This drive is too big for FAT32 - max 2TB supported\n", -1);
     }
 
-    mem_alloc ( (void **)&pFAT32BootSect, dp.BytesPerSect );
+    if (params->bFatType < FAT_TYPE_FAT32)
+    {
+        mem_alloc ( (void **)&pFATBootSect, dp.BytesPerSect );
+
+        if ( !pFATBootSect )
+            die ( "Failed to allocate memory", -2 );
+    }
+    else if (params->bFatType == FAT_TYPE_FAT32)
+    {
+        mem_alloc ( (void **)&pFAT32BootSect, dp.BytesPerSect );
+
+        if ( !pFAT32BootSect )
+            die ( "Failed to allocate memory", -2 );
+    }
+
     mem_alloc ( (void **)&pFAT32FsInfo, dp.BytesPerSect );
     mem_alloc ( (void **)&pFirstSectOfFat, dp.BytesPerSect );
 
-    if ( !pFAT32BootSect || !pFAT32FsInfo || !pFirstSectOfFat )
+    if ( !pFAT32FsInfo || !pFirstSectOfFat )
         die ( "Failed to allocate memory", -2 );
 
-    // fill out the boot sector and fs info
-    pFAT32BootSect->sJmpBoot[0]=0xEB;
-    pFAT32BootSect->sJmpBoot[1]=0x5A;
-    pFAT32BootSect->sJmpBoot[2]=0x90;
-    strcpy( pFAT32BootSect->sOEMName, "MSWIN4.1" );
-    pFAT32BootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
+    if (params->bFatType < FAT_TYPE_FAT32)
+    {
+        // fill out the boot sector and fs info
+        pFATBootSect->sJmpBoot[0]=0xEB;
+        pFATBootSect->sJmpBoot[1]=0x3C;
+        pFATBootSect->sJmpBoot[2]=0x90;
+        strcpy( pFATBootSect->sOEMName, "MSWIN4.1" );
+        pFATBootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
 
-    if ( params->sectors_per_cluster )
-        dp.SectorsPerCluster = params->sectors_per_cluster;
-    else
-        dp.SectorsPerCluster = get_sectors_per_cluster( ((LONGLONG)dp.TotalSectors) * dp.BytesPerSect, dp.BytesPerSect );
+        pFATBootSect->bSecPerClus = (BYTE) dp.SectorsPerCluster;
+        pFATBootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
+        pFATBootSect->bNumFATs = (BYTE) dp.NumFATs;
+        pFATBootSect->wRootEntCnt = (dp.SectorsPerCluster * dp.BytesPerSect) /
+            sizeof(DIRENTRY); // number of dir entries per cluster
 
-    pFAT32BootSect->bSecPerClus = (BYTE) dp.SectorsPerCluster ;
-    pFAT32BootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
-    pFAT32BootSect->bNumFATs = (BYTE) dp.NumFATs;
-    pFAT32BootSect->wRootEntCnt = 0;
-    pFAT32BootSect->wTotSec16 = 0;
-    pFAT32BootSect->bMedia = 0xF8;
-    pFAT32BootSect->wFATSz16 = 0;
-    pFAT32BootSect->wSecPerTrk = (WORD) dp.SectorsPerTrack;
-    pFAT32BootSect->wNumHeads = (WORD) dp.TracksPerCylinder;
-    pFAT32BootSect->dHiddSec = (DWORD) dp.HiddenSectors;
-    //dp.TotalSectors = (DWORD)  (dp.PartitionLength / dp.BytesPerSect);
-    pFAT32BootSect->dTotSec32 = dp.TotalSectors;
+        if (dp.TotalSectors < 65536L)
+            pFATBootSect->wTotSec16 = dp.TotalSectors;
+        else
+            pFATBootSect->wTotSec16 = 0;
+
+        pFATBootSect->bMedia = 0xF8;
+        pFATBootSect->wFATSz16 = dp.FatSize;
+        pFATBootSect->wSecPerTrk = (WORD) dp.SectorsPerTrack;
+        pFATBootSect->wNumHeads = (WORD) dp.TracksPerCylinder;
+        pFATBootSect->dHiddSec = (DWORD) dp.HiddenSectors;
+        //dp.TotalSectors = (DWORD)  (dp.PartitionLength / dp.BytesPerSect);
+
+        if (dp.TotalSectors >= 65536L)
+            pFATBootSect->dTotSec32 = dp.TotalSectors;
+        else
+            pFATBootSect->dTotSec32 = 0;
+
+        pFAT32BootSect->bDrvNum = 0x80;
+        pFAT32BootSect->Reserved1 = 0;
+        pFAT32BootSect->bBootSig = 0x29;
+
+        pFATBootSect->dBS_VolID = VolumeId;
+        strncpy ( pFATBootSect->sVolLab, vol, 11 );
+
+        if (params->bFatType == FAT_TYPE_FAT12)
+            strncpy ( pFATBootSect->sBS_FilSysType, "FAT12   ", 8 );
+        else
+            strncpy ( pFATBootSect->sBS_FilSysType, "FAT16   ", 8 );
+
+        ((BYTE*)pFATBootSect)[510] = 0x55;
+        ((BYTE*)pFATBootSect)[511] = 0xaa;
+    }
+    else if (params->bFatType == FAT_TYPE_FAT32)
+    {
+        // fill out the boot sector and fs info
+        pFAT32BootSect->sJmpBoot[0]=0xEB;
+        pFAT32BootSect->sJmpBoot[1]=0x5A;
+        pFAT32BootSect->sJmpBoot[2]=0x90;
+        strcpy( pFAT32BootSect->sOEMName, "MSWIN4.1" );
+        pFAT32BootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
+
+        pFAT32BootSect->bSecPerClus = (BYTE) dp.SectorsPerCluster ;
+        pFAT32BootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
+        pFAT32BootSect->bNumFATs = (BYTE) dp.NumFATs;
+        pFAT32BootSect->wRootEntCnt = 0;
+        pFAT32BootSect->wTotSec16 = 0;
+        pFAT32BootSect->bMedia = 0xF8;
+        pFAT32BootSect->wFATSz16 = 0;
+        pFAT32BootSect->wSecPerTrk = (WORD) dp.SectorsPerTrack;
+        pFAT32BootSect->wNumHeads = (WORD) dp.TracksPerCylinder;
+        pFAT32BootSect->dHiddSec = (DWORD) dp.HiddenSectors;
+        //dp.TotalSectors = (DWORD)  (dp.PartitionLength / dp.BytesPerSect);
+        pFAT32BootSect->dTotSec32 = dp.TotalSectors;
     
-    dp.FatSize = get_fat_size_sectors ( pFAT32BootSect->dTotSec32, pFAT32BootSect->wRsvdSecCnt, pFAT32BootSect->bSecPerClus, pFAT32BootSect->bNumFATs, dp.BytesPerSect );
-    
-    pFAT32BootSect->dFATSz32 = dp.FatSize;
-    pFAT32BootSect->wExtFlags = 0;
-    pFAT32BootSect->wFSVer = 0;
-    pFAT32BootSect->dRootClus = 2;
-    pFAT32BootSect->wFSInfo = 1;
-    pFAT32BootSect->wBkBootSec = (WORD) BackupBootSect;
-    pFAT32BootSect->bDrvNum = 0x80;
-    pFAT32BootSect->Reserved1 = 0;
-    pFAT32BootSect->bBootSig = 0x29;
+        pFAT32BootSect->dFATSz32 = dp.FatSize;
+        pFAT32BootSect->wExtFlags = 0;
+        pFAT32BootSect->wFSVer = 0;
+        pFAT32BootSect->dRootClus = 2;
+        pFAT32BootSect->wFSInfo = 1;
+        pFAT32BootSect->wBkBootSec = (WORD) BackupBootSect;
+        pFAT32BootSect->bDrvNum = 0x80;
+        pFAT32BootSect->Reserved1 = 0;
+        pFAT32BootSect->bBootSig = 0x29;
 
-    // Specify volume label
-    if (!*vol)
-        vol = get_vol_label(path, vol);
+        pFAT32BootSect->dBS_VolID = VolumeId;
+        strncpy ( pFAT32BootSect->sVolLab, vol, 11 );
+        strncpy ( pFAT32BootSect->sBS_FilSysType, "FAT32   ", 8 );
 
-    vol = strupr(vol);
+        ((BYTE*)pFAT32BootSect)[510] = 0x55;
+        ((BYTE*)pFAT32BootSect)[511] = 0xaa;
+    }
 
-    pFAT32BootSect->dBS_VolID = VolumeId;
-    strncpy ( pFAT32BootSect->sVolLab, vol, 11 );
-    strncpy ( pFAT32BootSect->sBS_FilSysType, "FAT32   ", 8 );
-    ((BYTE*)pFAT32BootSect)[510] = 0x55;
-    ((BYTE*)pFAT32BootSect)[511] = 0xaa;
+    /* FATGEN103.DOC says "NOTE: Many FAT documents mistakenly say that this 0xAA55 signature occupies the "last 2 bytes of 
+    the boot sector". This statement is correct if - and only if - BPB_BytsPerSec is 512. If BPB_BytsPerSec is greater than 
+    512, the offsets of these signature bytes do not change (although it is perfectly OK for the last two bytes at the end 
+    of the boot sector to also contain this signature)." 
 
-	/* FATGEN103.DOC says "NOTE: Many FAT documents mistakenly say that this 0xAA55 signature occupies the "last 2 bytes of 
-	the boot sector". This statement is correct if - and only if - BPB_BytsPerSec is 512. If BPB_BytsPerSec is greater than 
-	512, the offsets of these signature bytes do not change (although it is perfectly OK for the last two bytes at the end 
-	of the boot sector to also contain this signature)." 
-	
-	Windows seems to only check the bytes at offsets 510 and 511. Other OSs might check the ones at the end of the sector,
-	so we'll put them there too.
-	*/
-	if ( dp.BytesPerSect != 512 )
-		{
-		((BYTE*)pFAT32BootSect)[dp.BytesPerSect-2] = 0x55;
-		((BYTE*)pFAT32BootSect)[dp.BytesPerSect-1] = 0xaa;
-		}
+    Windows seems to only check the bytes at offsets 510 and 511. Other OSs might check the ones at the end of the sector,
+    so we'll put them there too.
+    */
+    if ( dp.BytesPerSect != 512 )
+    {
+        ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-2] = 0x55;
+        ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-1] = 0xaa;
+    }
 
-    // FSInfo sect
-    pFAT32FsInfo->dLeadSig = 0x41615252;
-    pFAT32FsInfo->dStrucSig = 0x61417272;
-    pFAT32FsInfo->dFree_Count = (DWORD) -1;
-    pFAT32FsInfo->dNxt_Free = (DWORD) -1;
-    pFAT32FsInfo->dTrailSig = 0xaa550000;
+    if (params->bFatType == FAT_TYPE_FAT32)
+    {
+        // FSInfo sect
+        pFAT32FsInfo->dLeadSig = 0x41615252;
+        pFAT32FsInfo->dStrucSig = 0x61417272;
+        pFAT32FsInfo->dFree_Count = (DWORD) -1;
+        pFAT32FsInfo->dNxt_Free = (DWORD) -1;
+        pFAT32FsInfo->dTrailSig = 0xaa550000;
+    }
 
     // First FAT Sector
-    pFirstSectOfFat[0] = 0x0ffffff8;  // Reserved cluster 1 media id in low byte
-    pFirstSectOfFat[1] = 0x0fffffff;  // Reserved cluster 2 EOC
-    pFirstSectOfFat[2] = 0x0fffffff;  // end of cluster chain for root dir
+    if (params->bFatType == FAT_TYPE_FAT12)
+    {
+        pFirstSectOfFat[0] = 0x00fffff8;  // two first FAT entries, no root dir
+    }
+    else if (params->bFatType == FAT_TYPE_FAT16)
+    {
+        pFirstSectOfFat[0] = 0xfffffff8;  // two first FAT entries, no root dir
+    }
+    else if (params->bFatType == FAT_TYPE_FAT32)
+    {
+        pFirstSectOfFat[0] = 0x0ffffff8;  // Reserved cluster 1 media id in low byte
+        pFirstSectOfFat[1] = 0x0fffffff;  // Reserved cluster 2 EOC
+        pFirstSectOfFat[2] = 0x0fffffff;  // end of cluster chain for root dir
+    }
+    else if (params->bFatType == FAT_TYPE_EXFAT)
+    {
+        pFirstSectOfFat[0] = 0xfffffff8;  // Reserved cluster 1 media id in low byte
+        pFirstSectOfFat[1] = 0xffffffff;  // Reserved cluster 2 EOC
+        pFirstSectOfFat[2] = 0xffffffff;  // end of cluster chain for root dir
+    }
 
     // Write boot sector, fats
     // Sector 0 Boot Sector
@@ -355,39 +654,6 @@ int format_volume (char *path, format_params *params)
     // ...
     // FATn  ReservedSectCount to ReservedSectCount + FatSize
     // RootDir - allocated to cluster2
-
-    UserAreaSize = dp.TotalSectors - dp.ReservedSectCount - (dp.NumFATs*dp.FatSize);    
-    ClusterCount = UserAreaSize / dp.SectorsPerCluster;
-
-    // Sanity check for a cluster count of >2^28, since the upper 4 bits of the cluster values in 
-    // the FAT are reserved.
-    if (  ClusterCount > 0x0FFFFFFF )
-        {
-        die ( "This drive has more than 2^28 clusters, \n"
-              "try to specify a larger cluster size or use \n"
-              "the default (i.e. don't use -cXX)\n", -3 );
-        }
-
-	// Sanity check - < 64K clusters means that the volume will be misdetected as FAT16
-	if ( ClusterCount < 65536 )
-		{
-		die ( "FAT32 must have at least 65536 clusters, \n"
-                      "try to specify a smaller cluster size or \n"
-                      "use the default (i.e. don't use -cXX)\n", -4  );
-		}
-
-    // Sanity check, make sure the fat is big enough
-    // Convert the cluster count into a Fat sector count, and check the fat size value we calculated 
-    // earlier is OK.
-    FatNeeded = ClusterCount * 4;
-    FatNeeded += (dp.BytesPerSect-1);
-    FatNeeded /= dp.BytesPerSect;
-
-    if ( FatNeeded > dp.FatSize )
-        {
-        die ( "This drive is too big for this version\n"
-              "of fat32format, check for an upgrade.\n", -5 );
-        }
 
     // Now we're commited - print some info first
     show_message ( "Size: %g MB %u sectors.\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
@@ -420,23 +686,33 @@ int format_volume (char *path, format_params *params)
 
     // First zero out ReservedSect + FatSize * NumFats + SectorsPerCluster
     SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
-    zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize); // &dgDrive);
+    zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize);
 
     show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster.\n", 0, 0, 1, SystemAreaSize );
     show_message ( "Initialising reserved sectors and FATs.\n", 0, 0, 0 );
-    // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot sect position
-    for ( i=0; i<2; i++ )
+
+    if (params->bFatType < FAT_TYPE_FAT32)
+    {
+        // write the boot sector
+        write_sect ( hDevice, 0, dp.BytesPerSect, pFATBootSect, 1 );
+    }
+    else if (params->bFatType == FAT_TYPE_FAT32)
+    {
+        // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot sect position
+        for ( i=0; i<2; i++ )
         {
-        int SectorStart = (i==0) ? 0 : BackupBootSect;
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFAT32BootSect, 1 );
-        write_sect ( hDevice, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
+            int SectorStart = (i==0) ? 0 : BackupBootSect;
+            write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFAT32BootSect, 1 );
+            write_sect ( hDevice, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
         }
+    }
+
     // Write the first fat sector in the right places
     for ( i=0; i<dp.NumFATs; i++ )
-        {
+    {
         int SectorStart = dp.ReservedSectCount + (i * dp.FatSize );
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
-        }
+    }
 
     // The filesystem recogniser in Windows XP doesn't use the partition type - in can be 
     // set to pretty much anything other Os's like Dos (still useful for Norton Ghost!) and Windows ME might, 
@@ -452,11 +728,34 @@ int format_volume (char *path, format_params *params)
     //    see http://www.48bitlba.com/win98.htm for instructions
 
     if ( !bGPTMode )
-       {
-       set_part_type (hDevice, &dp, 0xc);
-       }
+    {
+        BYTE type;
 
-    remount_media ( hDevice );
+        switch (params->bFatType)
+        {
+        case FAT_TYPE_FAT12:
+            type = 0x1;
+            break;
+
+        case FAT_TYPE_FAT16:
+            if (pFATBootSect->dTotSec32)
+                type = 0x6;
+            else
+                type = 0x4;
+            break;
+
+        case FAT_TYPE_FAT32:
+            type = 0xc;
+            break;
+
+        case FAT_TYPE_EXFAT:
+            type = 0x7;
+        }
+
+        set_part_type (hDevice, &dp, type);
+    }
+
+    remount_media ( hDevice ); ////
     unlock_drive ( hDevice );
     close_drive ( hDevice );
     fflush(stdout);
@@ -466,7 +765,11 @@ int format_volume (char *path, format_params *params)
     // free memory
     mem_free ( (void *)pFirstSectOfFat, dp.BytesPerSect );
     mem_free ( (void *)pFAT32FsInfo, dp.BytesPerSect );
-    mem_free ( (void *)pFAT32BootSect, dp.BytesPerSect );
+
+    if (params->bFatType < FAT_TYPE_FAT32)
+        mem_free ( (void *)pFATBootSect, dp.BytesPerSect );
+    else if (params->bFatType == FAT_TYPE_FAT32)
+        mem_free ( (void *)pFAT32BootSect, dp.BytesPerSect );
 
     return( TRUE );
 }
@@ -599,9 +902,52 @@ int format(int argc, char *argv[], char *envp[])
             }
         }
 
-        // skip /fs:... parameter
         if (!stricmp(key, "FS"))
+        {
+            if (!strcmp(strupr(val), "FAT12"))
+                p.bFatType = FAT_TYPE_FAT12;
+            else if (!strcmp(strupr(val), "FAT16"))
+                p.bFatType = FAT_TYPE_FAT16;
+            else if (!strcmp(strupr(val), "FAT32"))
+                p.bFatType = FAT_TYPE_FAT32;
+            else if (!strcmp(strupr(val), "EXFAT"))
+                p.bFatType = FAT_TYPE_EXFAT;
+            else
+                p.bFatType = FAT_TYPE_NONE;
+
+            switch (p.bFatType)
+            {
+                case FAT_TYPE_FAT12:
+                    p.ulFatEof  = FAT12_EOF;
+                    p.ulFatEof2 = FAT12_EOF2;
+                    p.ulFatBad  = FAT12_BAD_CLUSTER;
+                    break;
+
+                case FAT_TYPE_FAT16:
+                    p.ulFatEof  = FAT16_EOF;
+                    p.ulFatEof2 = FAT16_EOF2;
+                    p.ulFatBad  = FAT16_BAD_CLUSTER;
+                    break;
+
+                case FAT_TYPE_FAT32:
+                    p.ulFatEof  = FAT32_EOF;
+                    p.ulFatEof2 = FAT32_EOF2;
+                    p.ulFatBad  = FAT32_BAD_CLUSTER;
+                    break;
+
+                case FAT_TYPE_EXFAT:
+                    p.ulFatEof  = EXFAT_EOF;
+                    p.ulFatEof2 = EXFAT_EOF2;
+                    p.ulFatBad  = EXFAT_BAD_CLUSTER;
+                    break;
+
+                case FAT_TYPE_NONE:
+                    ;
+            }
+
+            // skip /fs:... parameter
             continue;
+        }
 
         switch ( toupper(argv[i][1]) )
         {

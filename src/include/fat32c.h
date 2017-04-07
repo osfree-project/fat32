@@ -86,6 +86,32 @@ INT cdecl iShowMessage2(PCDINFO pCD, USHORT usNr, USHORT usNumFields, va_list va
 #define TYPE_DOUBLE2 5
 
 #pragma pack(push, 1)
+typedef struct tagFAT_BOOTSECTOR16
+{
+    // Common fields.
+    BYTE sJmpBoot[3];
+    BYTE sOEMName[8];
+    WORD wBytsPerSec;
+    BYTE bSecPerClus;
+    WORD wRsvdSecCnt;
+    BYTE bNumFATs;
+    WORD wRootEntCnt;
+    WORD wTotSec16; // if zero, use dTotSec32 instead
+    BYTE bMedia;
+    WORD wFATSz16;
+    WORD wSecPerTrk;
+    WORD wNumHeads;
+    DWORD dHiddSec;
+    DWORD dTotSec32;
+    // Fat 12/16 only
+    BYTE bDrvNum;
+    BYTE Reserved1;
+    BYTE bBootSig; // == 0x29 if next three fields are ok
+    DWORD dBS_VolID;
+    BYTE sVolLab[11];
+    BYTE sBS_FilSysType[8];
+} FAT_BOOTSECTOR16;
+
 typedef struct tagFAT_BOOTSECTOR32
 {
     // Common fields.
@@ -103,7 +129,7 @@ typedef struct tagFAT_BOOTSECTOR32
     WORD wNumHeads;
     DWORD dHiddSec;
     DWORD dTotSec32;
-    // Fat 32/16 only
+    // Fat 32 only
     DWORD dFATSz32;
     WORD wExtFlags;
     WORD wFSVer;
@@ -131,6 +157,10 @@ typedef struct {
 
 typedef struct 
     {
+    BYTE  bFatType;
+    DWORD ulFatEof;
+    DWORD ulFatEof2;
+    DWORD ulFatBad;
     int sectors_per_cluster;        // can be zero for default or 1,2,4,8,16,32 or 64
     char volume_label[12];
     int reserved_sectors;

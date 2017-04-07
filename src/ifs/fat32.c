@@ -5346,6 +5346,11 @@ ULONG  ulReturn = 0;
 
       if (ulCluster >= pVolInfo->ulFatEof2 && ulCluster <= pVolInfo->ulFatEof)
          break;
+      if (! ulCluster)
+         {
+         Message("The file ends with NULL FAT entry!");
+         break;
+         }
       }
    ReleaseFat(pVolInfo);
    return ulReturn;
