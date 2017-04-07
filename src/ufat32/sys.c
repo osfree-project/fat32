@@ -48,6 +48,16 @@ struct _fat32buf
     CHAR Data4[8192-(60+1024)];
 } fat32buf;
 
+struct _fatbuf
+{
+    // Bootsector (sector 0 = 512 bytes)
+    CHAR jmp1[3];
+    CHAR Oem_Id[8];
+    CHAR Bpb[51];
+    CHAR Boot_Code[448];
+    USHORT Boot_End;
+} fatbuf;
+
 // preldr0 header
 struct _ldr0hdr
 {
@@ -62,6 +72,8 @@ struct _ldr0hdr
     UCHAR  zero1;
     CHAR   FS[16];
 } ldr0hdr;
+
+CHAR fs_type = 0;
 
 #pragma pack()
 
@@ -110,45 +122,71 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
     return;
   }
 
-  // copy bootsector to buffer (skipping JMP, OEM ID and BPB)
-  memcpy(&fat32buf.Boot_Code, (char *)bootsec + 11 + 79, sizeof(bootsec) - 11 - 79);
-  // copy OEM ID
-  strncpy(&fat32buf.Oem_Id, "[osFree]", 8);
-  // FSD load segment
-  fat32buf.FSD_LoadSeg = 0x0800;
-  // FSD entry point
-  fat32buf.FSD_Entry = 0;
-  // FSD length in sectors
-  fat32buf.FSD_Len = (8192 - 1024) / 512;
-  // FSD offset in sectors
-  fat32buf.FSD_Addr = 2; 
-  // copy the mini pre-loader
-  memcpy((char *)&fat32buf.jmp2, preldr_mini, sizeof(preldr_mini));
-  // copy FSD
-  memcpy((char *)&fat32buf.jmp2 + sizeof(preldr_mini), fat_mdl, sizeof(fat_mdl));
-  // FSD length
-  fat32buf.FS_Len = sizeof(fat_mdl);
-  // pre-loader length
-  fat32buf.Preldr_Len = sizeof(preldr_mini);
-  // FSD and pre-loaded are bundled
-  fat32buf.Bundle = 0x80;
-  // partition number (not used ATM)
-  fat32buf.PartitionNr = 0;
-  // FS name
-  strncpy(&fat32buf.FS, "fat", 3);
-  fat32buf.FS[3] = 0;
+  if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->FileSystem), "FAT32   ", 8))
+    fs_type = FAT_TYPE_FAT32;
+
+  if (fs_type == FAT_TYPE_FAT32)
+  {
+    /* FAT32 */
+    // copy bootsector to buffer (skipping JMP, OEM ID and BPB)
+    memcpy(&fat32buf.Boot_Code, (char *)bootsec + 11 + 79, sizeof(bootsec) - 11 - 79);
+    // copy OEM ID
+    strncpy(&fat32buf.Oem_Id, "[osFree]", 8);
+    // FSD load segment
+    fat32buf.FSD_LoadSeg = 0x0800;
+    // FSD entry point
+    fat32buf.FSD_Entry = 0;
+    // FSD length in sectors
+    fat32buf.FSD_Len = (8192 - 1024) / 512;
+    // FSD offset in sectors
+    fat32buf.FSD_Addr = 2; 
+    // copy the mini pre-loader
+    memcpy((char *)&fat32buf.jmp2, preldr_mini, sizeof(preldr_mini));
+    // copy FSD
+    memcpy((char *)&fat32buf.jmp2 + sizeof(preldr_mini), fat_mdl, sizeof(fat_mdl));
+    // FSD length
+    fat32buf.FS_Len = sizeof(fat_mdl);
+    // pre-loader length
+    fat32buf.Preldr_Len = sizeof(preldr_mini);
+    // FSD and pre-loaded are bundled
+    fat32buf.Bundle = 0x80;
+    // partition number (not used ATM)
+    fat32buf.PartitionNr = 0;
+    // FS name
+    strncpy(&fat32buf.FS, "fat", 3);
+    fat32buf.FS[3] = 0;
+
+    rc = WriteSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
+
+    if (rc)
+    {
+      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      show_message("%s\n", 0, 0, 1, get_error(rc));
+      return;
+    }
+  }
+  else
+  {
+    /* FAT12/FAT16 */
+    // copy bootsector to fatbuf
+    memcpy(&fatbuf, &fat32buf, sizeof(fatbuf));
+    // copy bootsector to buffer (skipping JMP, OEM ID and BPB)
+    memcpy(&fatbuf.Boot_Code, (char *)bootsec16 + 11 + 51, sizeof(bootsec16) - 11 - 51);
+    // copy OEM ID
+    strncpy(&fatbuf.Oem_Id, "[osFree]", 8);
+
+    rc = WriteSect(hf, 0, sizeof(fatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fatbuf);
+
+    if (rc)
+    {
+      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      show_message("%s\n", 0, 0, 1, get_error(rc));
+      return;
+    }
+  }
 
   //sectorio(hf);
   //stoplw(hf);
-
-  rc = WriteSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
-
-  if (rc)
-  {
-    show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
-    show_message("%s\n", 0, 0, 1, get_error(rc));
-    return;
-  }
 
   unlock_drive(hf);
   close_drive(hf);
@@ -312,6 +350,32 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   }
 
   fclose(fd);
+
+  if (fs_type < FAT_TYPE_FAT32)
+  {
+    /* copy boot sector config file */
+    memset(file, 0, sizeof(file));
+    file[0] = drive[0];
+    strcat(file, ":\\boot\\bootsec.cfg");
+
+    fd = fopen(file, "wb");
+
+    if (! fd)
+    {
+      show_message("Cannot create %s file, rc=%lu.\n", 0, 0, 1, file);
+      return;
+    }
+  
+    cbActual = fwrite(bootsec16cfg, sizeof(bootsec16cfg), 1, fd);
+
+    if (! cbActual)
+    {
+      show_message("Cannot write to %s file.\n", 0, 0, 1, file);
+      return;
+    }
+
+    fclose(fd);
+  }
 
   // The system files have been transferred.
   show_message("The system files have been transferred.\n", 0, 1272, 0);
