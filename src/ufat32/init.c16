@@ -36,10 +36,10 @@ USHORT _far _pascal _loadds GETSHRSEG(PVOID *p)
    USHORT rc;
    SEL    sel;
 
-  rc = DosGetShrSeg(pszSharedMem, &sel);
+   rc = DosGetShrSeg(pszSharedMem, &sel);
 
-  if (rc)
-    return FALSE;
+   if (rc)
+      return FALSE;
 
    *p = MAKEP(sel, 0);
    return TRUE;

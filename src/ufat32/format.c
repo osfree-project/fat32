@@ -391,7 +391,7 @@ int format_volume (char *path, format_params *params)
          (ClusterCount >= FAT32_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT32) ||
          (ClusterCount >= EXFAT_BAD_CLUSTER && params->bFatType == FAT_TYPE_EXFAT) )
     {
-        die ( "The specified file system does not support the current volume size!", -2 );
+        die ( "The specified file system does not support the current volume size.\n", -2 );
     }
 
     // Sanity check for a cluster count of >2^28, since the upper 4 bits of the cluster values in 

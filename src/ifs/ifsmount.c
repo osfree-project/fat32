@@ -506,13 +506,16 @@ P_VolChars   pVolChars;
             goto FS_MOUNT_EXIT;
             }
 
-         usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
-         UpdateFSInfo(pVolInfo);
-
-         if (! pVolInfo->fRemovable)
+         if (! pVolInfo->fFormatInProgress)
             {
-            // ignore dirty status on floppies
-            MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
+            UpdateFSInfo(pVolInfo);
+
+            if (! pVolInfo->fRemovable)
+               {
+               // ignore dirty status on floppies
+               MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+               }
             }
 
          // delete pVolInfo from the list

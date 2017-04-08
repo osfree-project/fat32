@@ -464,6 +464,13 @@ void remount_media (HANDLE hDevice)
 
 void cleanup ( void )
 {
+    static int num_called = 0;
+
+    num_called++;
+
+    if (num_called > 1)
+        return;
+
     if (hDev == 0)
         return;
 
