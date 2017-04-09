@@ -9,7 +9,7 @@ DESC="Fat32 utilities, Henk Kelder & Netlabs"
 COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
-OBJS2=$(PROJ_BLD)\cachef32.obj
+OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj
 OBJS3=$(PROJ_BLD)\monitor.obj
 OBJS4=$(PROJ_BLD)\diskinf0.obj $(PROJ_BLD)\diskinf1.obj $(PROJ_BLD)\diskinf2.obj
 OBJS5=$(PROJ_BLD)\diskdump.obj

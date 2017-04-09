@@ -43,6 +43,8 @@ PRIVATE VOID ShowRASectors(VOID);
 PRIVATE BOOL SetRASectors(PSZ pszArg);
 PRIVATE void WriteLogMessage(PSZ pszMessage);
 
+int remount_all(void);
+
 BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource);
 
 HMODULE   hMod = 0;
@@ -91,6 +93,12 @@ BYTE  bPrevPrio;
 		 StartMe(rgArgv[0]);
 	  DosExit(EXIT_PROCESS, 0);
 	  }
+   else
+          {
+          // remount all FAT disks on cachef32.exe start
+          // (they may be mounted previously by the in-kernel FAT driver)
+          remount_all();
+          }
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 				 NULL, 0, &ulParmSize,
