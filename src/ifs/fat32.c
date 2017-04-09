@@ -3784,7 +3784,11 @@ PBYTE bSector;
 ******************************************************************/
 BOOL MarkDiskStatus(PVOLINFO pVolInfo, BOOL fClean)
 {
+static BYTE bSector[SECTOR_SIZE * 8] = {0};
 ULONG ulNextCluster = 0;
+ULONG ulSector;
+USHORT usFat;
+PBYTE pbSector;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("MarkDiskStatus, %d", fClean);
@@ -3797,12 +3801,17 @@ ULONG ulNextCluster = 0;
 
    if (pVolInfo->ulCurFatSector != 0)
       {
-      if (ReadFatSector(pVolInfo, 0))
+      if (ReadSector(pVolInfo, pVolInfo->ulActiveFatStart, 1,
+         bSector, DVIO_OPNCACHE))
          return FALSE;
-      pVolInfo->ulCurFatSector = 0;
+      pbSector = bSector;
+      }
+   else
+      {
+      pbSector = pVolInfo->pbFatSector;
       }
 
-   ulNextCluster = GetFatEntry(pVolInfo, 1);
+   GetFatEntryEx(pVolInfo, pbSector, 1, pVolInfo->BootSect.bpb.BytesPerSector);
 
    if (fClean)
       {
@@ -3813,7 +3822,7 @@ ULONG ulNextCluster = 0;
       ulNextCluster  &= ~pVolInfo->ulFatClean;
       }
 
-   SetFatEntry(pVolInfo, 1, ulNextCluster);
+   SetFatEntryEx(pVolInfo, pbSector, 1, ulNextCluster, pVolInfo->BootSect.bpb.BytesPerSector);
 
    /*
       Trick, set fDiskClean to FALSE, so WriteSector
@@ -3821,8 +3830,19 @@ ULONG ulNextCluster = 0;
    */
    pVolInfo->fDiskClean = FALSE;
 
-   if (WriteFatSector(pVolInfo, 0))
-      return FALSE;
+   ulSector = 0L;
+   for (usFat = 0; usFat < pVolInfo->BootSect.bpb.NumberOfFATs; usFat++)
+      {
+      if (WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSector, 1,
+         pbSector, DVIO_OPWRTHRU | DVIO_OPNCACHE))
+         {
+         ReleaseFat(pVolInfo);
+         return FALSE;
+         }
+      if (pVolInfo->BootSect.bpb.ExtFlags & 0x0080)
+         break;
+      ulSector += pVolInfo->BootSect.bpb.BigSectorsPerFat;
+      }
 
    pVolInfo->fDiskClean = fClean;
 
