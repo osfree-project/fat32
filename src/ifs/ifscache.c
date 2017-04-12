@@ -192,10 +192,10 @@ ULONG ulSize;
 
 
 #define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
-                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster ))
+                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->SectorsPerCluster ))
 
 #define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
-                                         pVolInfo->BootSect.bpb.SectorsPerCluster + 2 ))
+                                         pVolInfo->SectorsPerCluster + 2 ))
 
 /******************************************************************
 *
@@ -243,7 +243,7 @@ char far *p;
       {
       if (ulSector > pVolInfo->ulStartOfData)
          Message("Cluster %lu not found in cache!",
-            (ulSector - pVolInfo->ulStartOfData) / pVolInfo->BootSect.bpb.SectorsPerCluster + 2);
+            (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
       }
 #endif
    pbSectors = NULL;

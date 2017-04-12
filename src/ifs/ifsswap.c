@@ -314,7 +314,7 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
        return ERROR_SECTOR_NOT_FOUND;
 
    *pulBlkNo = pVolInfo->BootSect.bpb.HiddenSectors + pVolInfo->ulStartOfData +
-      (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
+      (ulCluster - 2) * pVolInfo->SectorsPerCluster;
 
    return NO_ERROR;
 }

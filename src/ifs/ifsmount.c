@@ -195,13 +195,25 @@ P_VolChars   pVolChars;
                   }
                pNext->pNextVolInfo = pVolInfo;
                }
-               pvpfsi->vpi_vid    = pSect->ulVolSerial;
-               pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
-               pvpfsi->vpi_totsec = pSect->bpb.BigTotalSectors;
-               pvpfsi->vpi_trksec = pSect->bpb.SectorsPerTrack;
-               pvpfsi->vpi_nhead  = pSect->bpb.Heads;
-               memset(pvpfsi->vpi_text, 0, sizeof pvpfsi->vpi_text);
-               memcpy(pvpfsi->vpi_text, pSect->VolumeLabel, sizeof pSect->VolumeLabel);
+               if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+                  {
+                  pvpfsi->vpi_vid    = pSect->ulVolSerial;
+                  pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
+                  pvpfsi->vpi_totsec = pSect->bpb.BigTotalSectors;
+                  pvpfsi->vpi_trksec = pSect->bpb.SectorsPerTrack;
+                  pvpfsi->vpi_nhead  = pSect->bpb.Heads;
+                  memset(pvpfsi->vpi_text, 0, sizeof pvpfsi->vpi_text);
+                  memcpy(pvpfsi->vpi_text, pSect->VolumeLabel, sizeof pSect->VolumeLabel);
+                  }
+               else
+                  {
+                  pvpfsi->vpi_vid    = ((PBOOTSECT1)pSect)->ulVolSerial;
+                  pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
+                  pvpfsi->vpi_totsec = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+                  pvpfsi->vpi_trksec = 63;  // dummy
+                  pvpfsi->vpi_nhead  = 255; // dummy
+                  memset(pvpfsi->vpi_text, 0, sizeof pvpfsi->vpi_text);
+                  }
             }
          else  /* remount of volume */
             {
@@ -217,8 +229,16 @@ P_VolChars   pVolChars;
          */
          memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
 
-         pVolInfo->ulActiveFatStart = pSect->bpb.ReservedSectors;
-         if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            pVolInfo->ulActiveFatStart = pSect->bpb.ReservedSectors;
+         else
+            pVolInfo->ulActiveFatStart = ((PBOOTSECT1)pSect)->ulFatOffset;
+
+         if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+            {
+            pVolInfo->ulStartOfData    = ((PBOOTSECT1)pSect)->ulClusterHeapOffset;
+            }
+         else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
             {
             pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
                   pSect->bpb.BigSectorsPerFat * pSect->bpb.NumberOfFATs;
@@ -233,8 +253,28 @@ P_VolChars   pVolChars;
          pVolInfo->pBootFSInfo = (PBOOTFSINFO)(pVolInfo + 1);
          pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
          pVolInfo->ulCurFatSector = -1L;
-         pVolInfo->ulClusterSize = (ULONG)pSect->bpb.BytesPerSector;
-         pVolInfo->ulClusterSize *= pSect->bpb.SectorsPerCluster;
+         
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            {
+            pVolInfo->ulClusterSize = (ULONG)pSect->bpb.BytesPerSector;
+            pVolInfo->ulClusterSize *= pSect->bpb.SectorsPerCluster;
+            pVolInfo->SectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            }
+         else
+            {
+            pVolInfo->ulClusterSize =  1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
+            pVolInfo->ulClusterSize *= 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
+            pVolInfo->BootSect.bpb.BytesPerSector = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
+            pVolInfo->SectorsPerCluster = 1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
+            pVolInfo->BootSect.bpb.ReservedSectors = ((PBOOTSECT1)pSect)->ulFatOffset;
+            pVolInfo->BootSect.bpb.RootDirStrtClus = ((PBOOTSECT1)pSect)->RootDirStrtClus;
+            pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
+            pVolInfo->BootSect.bpb.SectorsPerFat = (USHORT)((PBOOTSECT1)pSect)->ulFatLength;
+            pVolInfo->BootSect.bpb.NumberOfFATs = ((PBOOTSECT1)pSect)->bNumFats;
+            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+            pVolInfo->BootSect.bpb.HiddenSectors = (ULONG)((PBOOTSECT1)pSect)->ullPartitionOffset;
+            }
+
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
 
          pVolInfo->hVBP    = hVBP;
@@ -286,13 +326,23 @@ P_VolChars   pVolChars;
             // force calculating the free space
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
+         else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+            {
+            // create FAT32-type extended BPB for exFAT
+            pVolInfo->BootSect.ulVolSerial = ((PBOOTSECT1)pSect)->ulVolSerial;
+            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+            pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
+            pVolInfo->BootSect.bpb.ExtFlags = 0;
+            // force calculating the free space
+            pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
+            }
 
          if (! pVolInfo->BootSect.bpb.BigSectorsPerFat)
             // if partition is small
             pVolInfo->BootSect.bpb.BigSectorsPerFat = pVolInfo->BootSect.bpb.SectorsPerFat;
 
          pVolInfo->ulTotalClusters =
-            (pVolInfo->BootSect.bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pSect->bpb.SectorsPerCluster;
+            (pVolInfo->BootSect.bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster;
 
          if (pVolInfo->bFatType == FAT_TYPE_FAT32)
             {
@@ -300,6 +350,13 @@ P_VolChars   pVolChars;
                {
                pVolInfo->ulActiveFatStart +=
                   pSect->bpb.BigSectorsPerFat * (pSect->bpb.ExtFlags & 0x000F);
+               }
+            }
+         else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+            {
+            if (((PBOOTSECT1)pSect)->usVolumeFlags & VOL_FLAG_ACTIVEFAT)
+               {
+               pVolInfo->ulActiveFatStart += ((PBOOTSECT1)pSect)->ulFatLength;
                }
             }
 
@@ -604,6 +661,11 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG NonDataSec;
    ULONG DataSec;
    ULONG CountOfClusters;
+
+   if (!memcmp(pSect->oemID, "EXFAT   ", 8))
+      {
+      return FAT_TYPE_EXFAT;
+      } /* endif */
 
    if (!pSect)
       {

@@ -42,10 +42,18 @@
 #include <os2.h>
 typedef ULONG   DWORD;
 #elif defined(__16BITS__)
+typedef unsigned long long ULONGLONG;
+typedef long long LONGLONG;
+typedef unsigned long long *PULONGLONG;
+typedef long long *PLONGLONG;
 typedef unsigned long   ULONG;
 typedef ULONG *         PULONG;
 typedef unsigned short  APIRET;
 #elif defined(_WIN32)
+typedef unsigned long long ULONGLONG;
+typedef long long LONGLONG;
+typedef unsigned long long *PULONGLONG;
+typedef long long *PLONGLONG;
 typedef unsigned long   APIRET;
 #endif
 

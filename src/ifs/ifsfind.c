@@ -208,9 +208,9 @@ USHORT usSectorsPerBlock;
       {
       // FAT12/FAT16 root directory size (contiguous)
       USHORT usRootDirSize = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
-         (pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
+         (pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
       usNumClusters = (pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
-         (pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
+         (pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
          usRootDirSize + 1 : usRootDirSize;
       }
    else
@@ -546,8 +546,9 @@ FS_FINDNEXTEXIT:
 /******************************************************************
 *
 ******************************************************************/
-USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel)
+USHORT FillDirEntry0(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel)
 {
+// FAT12/FAT16/FAT32 case
 BYTE szLongName[FAT32MAXPATHCOMP];
 BYTE szUpperName[FAT32MAXPATHCOMP];
 BYTE szShortName[14];
@@ -923,6 +924,421 @@ USHORT usBlockIndex;
    return ERROR_NO_MORE_FILES;
 }
 
+/******************************************************************
+*
+******************************************************************/
+USHORT FillDirEntry1(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel)
+{
+// exFAT case
+BYTE szLongName[FAT32MAXPATHCOMP];
+BYTE szUpperName[FAT32MAXPATHCOMP];
+PBYTE pStart = *ppData;
+USHORT rc;
+DIRENTRY1 _huge * pDir;
+USHORT usNameLen;
+USHORT usNameHash;
+USHORT usBlockIndex;
+USHORT usNumSecondary;
+ULONGLONG cbFile;
+ULONGLONG cbFileAlloc;
+
+   memset(szLongName, 0, sizeof szLongName);
+   pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
+   while (pFindInfo->ulCurEntry < pFindInfo->ulMaxEntry)
+      {
+      usBlockIndex = (USHORT)(pFindInfo->ulCurEntry / pFindInfo->usEntriesPerBlock);
+      if (usBlockIndex != pFindInfo->usBlockIndex)
+         {
+         if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
+            return ERROR_SYS_INTERNAL;
+         pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
+         }
+
+      if (pDir->bEntryType == ENTRY_TYPE_EOD)
+         {
+         // end of directory reached
+         pFindInfo->ulMaxEntry = pFindInfo->ulCurEntry;
+         return ERROR_NO_MORE_FILES;
+         }
+      else if (pDir->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
+         {
+         if (pDir->bEntryType == ENTRY_TYPE_FILE_NAME)
+            {
+            usNumSecondary--;
+            fGetLongName1(pDir, szLongName, sizeof szLongName);
+
+            if (!usNumSecondary)
+               {
+               // last file name entry
+               strcpy(szUpperName, szLongName);
+               FSH_UPPERCASE(szUpperName, sizeof szUpperName, szUpperName);
+
+               //if (!rc && strlen(pFindInfo->pInfo->szSearch))
+               if (strlen(pFindInfo->pInfo->szSearch))
+                  {
+                  rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szUpperName);
+                  //if (rc && stricmp(szShortName, szUpperName))
+                  //   rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
+                  }
+
+               if (!rc && usLevel == FIL_STANDARD)
+                  {
+                  PFILEFNDBUF pfFind = (PFILEFNDBUF)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->cchName = (BYTE)usNameLen;
+                  strncpy(pfFind->achName, szLongName, usNameLen);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
+               else if (!rc && usLevel == FIL_STANDARDL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF3L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->cchName = (BYTE)usNameLen;
+                  strncpy(pfFind->achName, szLongName, usNameLen);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASIZE)
+                  {
+                  PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF2) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->cchName = (BYTE)usNameLen;
+                  strncpy(pfFind->achName, szLongName, usNameLen);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASIZEL)
+                  {
+                  PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
+
+                  if (*pcbData < sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  pfFind->cchName = (BYTE)usNameLen;
+                  strncpy(pfFind->achName, szLongName, usNameLen);
+                  *ppData = pfFind->achName + pfFind->cchName + 1;
+                  (*pcbData) -= *ppData - pStart;
+                  pFindInfo->ulCurEntry++;
+                  return 0;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASFROMLIST)
+                  {
+                  PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
+                  ULONG ulFeaSize;
+
+                  if (*pcbData < sizeof (FILEFNDBUF3) + sizeof (ULONG) + strlen(szLongName) + 2)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  *ppData = (PBYTE)(pfFind + 1);
+                  (*pcbData) -= *ppData - pStart;
+                  *(*ppData)++ = (BYTE)usNameLen;
+                  (*pcbData)--;
+                  strncpy(*ppData, szLongName, usNameLen);
+
+                  (*ppData) += usNameLen + 1;
+                  (*pcbData) -= (usNameLen + 1);
+
+                  pFindInfo->ulCurEntry++;
+                  return rc;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+                  ULONG ulFeaSize;
+
+                  if (*pcbData < sizeof (FILEFNDBUF3L) + sizeof (ULONG) + strlen(szLongName) + 2)
+                     return ERROR_BUFFER_OVERFLOW;
+
+                  *ppData = (PBYTE)(pfFind + 1);
+                  (*pcbData) -= *ppData - pStart;
+                  *(*ppData)++ = (BYTE)usNameLen;
+                  (*pcbData)--;
+                  strncpy(*ppData, szLongName, usNameLen);
+
+                  (*ppData) += usNameLen + 1;
+                  (*pcbData) -= (usNameLen + 1);
+
+                  pFindInfo->ulCurEntry++;
+                  return rc;
+                  }
+               }
+            }
+         else if (pDir->bEntryType == ENTRY_TYPE_STREAM_EXT)
+            {
+            usNumSecondary--;
+            usNameLen = pDir->u.Stream.bNameLen;
+            usNameHash = pDir->u.Stream.usNameHash;
+
+            if (!rc && usLevel == FIL_STANDARD)
+               {
+               PFILEFNDBUF pfFind = (PFILEFNDBUF)*ppData;
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+               }
+            else if (!rc && usLevel == FIL_STANDARDL)
+               {
+               PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+               }
+            else if (!rc && usLevel == FIL_QUERYEASIZE)
+               {
+               PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+               }
+            else if (!rc && usLevel == FIL_QUERYEASIZEL)
+               {
+               PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+               }
+            else if (!rc && usLevel == FIL_QUERYEASFROMLIST)
+               {
+               PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+               }
+            else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
+               {
+               PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+               pfFind->cbFile = cbFile;
+               pfFind->cbFileAlloc = cbFileAlloc;
+               }
+            }
+         else if (pDir->bEntryType == ENTRY_TYPE_FILE)
+            {
+            usNumSecondary = pDir->u.File.bSecondaryCount;
+            if (!(pDir->u.File.usFileAttr & pFindInfo->bAttr))
+               {
+               rc = 0;
+
+               //if (f32Parms.fEAS && bCheck2 == bCheck1 && strlen(szLongName))
+               if (f32Parms.fEAS && strlen(szLongName))
+                  if (IsEASFile(szLongName))
+                     rc = 1;
+
+               if (f32Parms.fEAS && IsEASFile(szLongName))
+                  rc = 1;
+
+               /*
+                  Check for MUST HAVE attributes
+               */
+               if (!rc && pFindInfo->bMustAttr)
+                  {
+                  if ((pDir->u.File.usFileAttr & pFindInfo->bMustAttr) != pFindInfo->bMustAttr)
+                     rc = 1;
+                  }
+
+               if (!rc && usLevel == FIL_STANDARD)
+                  {
+                  PFILEFNDBUF pfFind = (PFILEFNDBUF)*ppData;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+                  }
+               else if (!rc && usLevel == FIL_STANDARDL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASIZE)
+                  {
+                  PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+#if 0
+                  if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
+                     pfFind->cbList = sizeof pfFind->cbList;
+                  else
+                     {
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pfFind->cbList);
+                     if (rc)
+                        pfFind->cbList = 4;
+                     rc = 0;
+                     }
+#endif
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASIZEL)
+                  {
+                  PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+#if 0
+                  if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
+                     pfFind->cbList = sizeof pfFind->cbList;
+                  else
+                     {
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pfFind->cbList);
+                     if (rc)
+                        pfFind->cbList = 4;
+                     rc = 0;
+                     }
+#endif
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASFROMLIST)
+                  {
+                  PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
+                  ULONG ulFeaSize;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+#if 0
+                  if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
+                        pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pFindInfo->pInfo->EAOP);
+                     if (rc && rc != ERROR_BUFFER_OVERFLOW)
+                        return rc;
+                     if (rc)
+                        {
+                        rc = ERROR_EAS_DIDNT_FIT;
+                        ulFeaSize = sizeof (ULONG);
+                        }
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  else
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);
+
+                     if (rc && (rc != ERROR_EAS_DIDNT_FIT))
+                        return rc;
+                     else if (rc == ERROR_EAS_DIDNT_FIT)
+                        ulFeaSize = sizeof(pFindInfo->pInfo->EAOP.fpFEAList->cbList);
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  (*ppData) += ulFeaSize;
+                  (*pcbData) -= ulFeaSize;
+#endif
+                  }
+               else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
+                  {
+                  PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+                  ULONG ulFeaSize;
+
+                  pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
+                  pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
+                  pfFind->fdateLastAccess = GetDate1(pDir->u.File.ulLastAccessedTimestp);
+                  pfFind->fdateLastWrite = GetDate1(pDir->u.File.ulLastModifiedTimestp);
+                  pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
+
+                  pfFind->attrFile = pDir->u.File.usFileAttr;
+#if 0
+                  if (f32Parms.fEAS && HAS_EAS( pDir->fEAS ))
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
+                        pFindInfo->pInfo->rgClusters[0],
+                        szLongName, &pFindInfo->pInfo->EAOP);
+                     if (rc && rc != ERROR_BUFFER_OVERFLOW)
+                        return rc;
+                     if (rc)
+                        {
+                        rc = ERROR_EAS_DIDNT_FIT;
+                        ulFeaSize = sizeof (ULONG);
+                        }
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  else
+                     {
+                     pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
+                     pFindInfo->pInfo->EAOP.fpFEAList->cbList =
+                        *pcbData - (strlen(szLongName) + 2);
+
+                     rc = usGetEmptyEAS(szLongName,&pFindInfo->pInfo->EAOP);
+
+                     if (rc && (rc != ERROR_EAS_DIDNT_FIT))
+                        return rc;
+                     else if (rc == ERROR_EAS_DIDNT_FIT)
+                        ulFeaSize = sizeof(pFindInfo->pInfo->EAOP.fpFEAList->cbList);
+                     else
+                        ulFeaSize = pFindInfo->pInfo->EAOP.fpFEAList->cbList;
+                     }
+                  (*ppData) += ulFeaSize;
+                  (*pcbData) -= ulFeaSize;
+#endif
+                  }
+               }
+            memset(szLongName, 0, sizeof szLongName);
+            }
+         }
+      pFindInfo->ulCurEntry++;
+      pDir++;
+      }
+   return ERROR_NO_MORE_FILES;
+}
+
+/******************************************************************
+*
+******************************************************************/
+USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel)
+{
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      return FillDirEntry0(pVolInfo, ppData, pcbData, pFindInfo, usLevel);
+   else
+      return FillDirEntry1(pVolInfo, ppData, pcbData, pFindInfo, usLevel);
+}
+
 VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax)
 {
 PSZ p;
@@ -992,6 +1408,55 @@ PLNENTRY pLN = (PLNENTRY)pDir;
    memmove(pszName + wNameSize, pszName, strlen(pszName) + 1);
    memcpy(pszName, szLongName, wNameSize);
    return TRUE;
+}
+
+BOOL fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax)
+{
+BYTE szLongName[30] = {0};
+USHORT uniName[15] = {0};
+USHORT wNameSize;
+USHORT usIndex;
+
+   memset(szLongName, 0, sizeof szLongName);
+   memset(uniName, 0, sizeof uniName);
+
+   wNameSize = 0;
+
+   for (usIndex = 0; (usIndex < 15) && pDir->u.FileName.bFileName[usIndex]; usIndex ++)
+      {
+      uniName[wNameSize++] = pDir->u.FileName.bFileName[usIndex];
+      }
+
+   Translate2OS2(uniName, szLongName, sizeof(szLongName) / 2);
+
+   wNameSize = min(15, strlen( szLongName ));
+   if (strlen(pszName) + wNameSize > wMax)
+      return FALSE;
+
+   strncpy(pszName + strlen(pszName), szLongName, wNameSize);
+   return TRUE;
+}
+
+FDATE GetDate1(TIMESTAMP ts)
+{
+   FDATE date = {0};
+
+   date.day = ts.day;
+   date.month = ts.month;
+   date.year = ts.year;
+
+   return date;
+}
+
+FTIME GetTime1(TIMESTAMP ts)
+{
+   FTIME time = {0};
+
+   time.twosecs = ts.seconds / 2;
+   time.minutes = ts.minutes;
+   time.hours = ts.hour;
+
+   return time;
 }
 
 
@@ -1074,7 +1539,7 @@ USHORT usIndex;
 USHORT usBlocksPerCluster = pVolInfo->ulClusterSize / pVolInfo->ulBlockSize;
 USHORT usClusterIndex = usBlockIndex / usBlocksPerCluster;
 ULONG  ulBlock = usBlockIndex % usBlocksPerCluster;
-USHORT usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+USHORT usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
 USHORT usSectorsRead;
 ULONG  ulSector;
@@ -1096,16 +1561,16 @@ CHAR   fRootDir = FALSE;
          usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster;
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
-            usIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
-         usSectorsRead = usIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usIndex * pVolInfo->SectorsPerCluster;
+         usSectorsRead = usIndex * pVolInfo->SectorsPerCluster;
          }
       for (usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
          if (fRootDir)
             {
             // reading the root directory in case of FAT12/FAT16
-            ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-            usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+            ulSector += pVolInfo->SectorsPerCluster;
+            usSectorsRead += pVolInfo->SectorsPerCluster;
             // put sector numbers instead of cluster numbers in case of FAT root dir
             if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
                 pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
@@ -1138,7 +1603,7 @@ CHAR   fRootDir = FALSE;
       // FAT12/FAT16 root directory, special case
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
-         usClusterIndex * pVolInfo->BootSect.bpb.SectorsPerCluster;
+         usClusterIndex * pVolInfo->SectorsPerCluster;
       // use sector read instead, in case of FAT12/FAT16 root directory
       // (because it is not associated with any cluster in this case)
       if (ReadSector( pVolInfo,

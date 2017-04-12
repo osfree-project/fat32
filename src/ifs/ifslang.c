@@ -264,13 +264,14 @@ VOID Translate2OS2(PUSHORT pusUni, PSZ pszName, USHORT usLen)
 USHORT usPage;
 USHORT usChar;
 USHORT usCode;
+int iCnt = (int)usLen;
 
    if (!f32Parms.fTranslateNames)
       {
-      while (*pusUni && usLen)
+      while (*pusUni && (iCnt > 0))
          {
          *pszName++ = (BYTE)*pusUni++;
-         usLen--;
+         iCnt--;
          }
 
       return;
@@ -280,7 +281,7 @@ USHORT usCode;
    GetCurrentCodePage();
 */
 
-   while (*pusUni && usLen)
+   while (*pusUni && (iCnt > 0))
       {
       usPage = ((*pusUni) >> 8) & 0x00FF;
       usChar = (*pusUni) & 0x00FF;
@@ -290,11 +291,11 @@ USHORT usCode;
       if( usCode & 0xFF00 )
          {
          *pszName++ = ( BYTE )(( usCode >> 8 ) & 0x00FF );
-         usLen--;
+         iCnt--;
          }
 
       pusUni++;
-      usLen--;
+      iCnt--;
       }
 }
 

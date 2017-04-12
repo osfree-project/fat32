@@ -964,7 +964,7 @@ ULONGLONG size;
             USHORT  usSectorsPerCluster;
             USHORT  usSectorsPerBlock;
 
-            usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             usSectorsPerBlock = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
             usSectorsToRead = usSectorsPerBlock;
 
@@ -1019,7 +1019,7 @@ ULONGLONG size;
             ULONG   ulCurrCluster       = pOpenInfo->ulCurCluster;
             ULONG   ulNextCluster       = ulCurrCluster;
             ULONG   ulCurrBytesToRead   = 0;
-            USHORT  usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            USHORT  usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             USHORT  usSectorsPerBlock   = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
             USHORT  usClustersToProcess = 0;
             USHORT  usBlocksToProcess   = 0;
@@ -1146,7 +1146,7 @@ ULONGLONG size;
             USHORT usSectorsPerBlock;
 
             usSectorsToRead = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
-            usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             usSectorsPerBlock = usSectorsToRead;
 
             ulCurrBytesToRead = (ULONG)min((ULONGLONG)usBytesToRead,size - pos);
@@ -1537,7 +1537,7 @@ ULONGLONG size;
             USHORT  usSectorsPerCluster;
             USHORT  usSectorsPerBlock;
 
-            usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             usSectorsPerBlock = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
             usSectorsToWrite    = usSectorsPerBlock;
 
@@ -1597,7 +1597,7 @@ ULONGLONG size;
             ULONG   ulCurrCluster       = pOpenInfo->ulCurCluster;
             ULONG   ulNextCluster       = ulCurrCluster;
             ULONG   ulCurrBytesToWrite  = 0;
-            USHORT  usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            USHORT  usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             USHORT  usSectorsPerBlock   = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
             USHORT  usClustersToProcess = 0;
             USHORT  usBlocksToProcess   = 0;
@@ -1725,7 +1725,7 @@ ULONGLONG size;
             USHORT usSectorsPerBlock;
 
             usSectorsToWrite = ulBytesPerBlock / pVolInfo->BootSect.bpb.BytesPerSector;
-            usSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+            usSectorsPerCluster = pVolInfo->SectorsPerCluster;
             usSectorsPerBlock = usSectorsToWrite;
 
             ulCurrBytesToWrite = (ULONG)min((ULONGLONG)usBytesToWrite,size - pos);

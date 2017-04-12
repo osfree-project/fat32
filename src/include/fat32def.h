@@ -2,6 +2,7 @@
 #define FAT32DEF_H
 
 #include "portable.h"
+#include "exfatdef.h"
 
 #if (defined(_WIN32) && !defined(OS2DEF_INCLUDED)) || defined(__RING3__)
 
@@ -316,6 +317,8 @@ BYTE bUnknown[3];
 ULONG ulVolSerial;
 BYTE VolumeLabel[11];
 BYTE FileSystem[8];
+BYTE bBootCode[420];                // Boot code
+USHORT usBootSig;                   // 0xaa55
 } BOOTSECT, *PBOOTSECT;
 
 typedef struct _BootSector0

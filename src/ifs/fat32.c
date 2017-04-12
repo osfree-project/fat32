@@ -1118,8 +1118,8 @@ USHORT rc;
 
             if (IsDosSession()) /* Dos Session */
                {
-               ULONG ulTotalSectors = pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->ulTotalClusters;
-               ULONG ulFreeSectors  = pVolInfo->BootSect.bpb.SectorsPerCluster * pVolInfo->pBootFSInfo->ulFreeClusters;
+               ULONG ulTotalSectors = pVolInfo->SectorsPerCluster * pVolInfo->ulTotalClusters;
+               ULONG ulFreeSectors  = pVolInfo->SectorsPerCluster * pVolInfo->pBootFSInfo->ulFreeClusters;
 
                if (ulTotalSectors > 32L * 65526L)
                   pAlloc->cSectorUnit = 64;
@@ -1130,8 +1130,8 @@ USHORT rc;
                else
                   pAlloc->cSectorUnit = 8;
 
-               if ((ULONG)pVolInfo->BootSect.bpb.SectorsPerCluster > pAlloc->cSectorUnit)
-                  pAlloc->cSectorUnit = (USHORT)pVolInfo->BootSect.bpb.SectorsPerCluster;
+               if ((ULONG)pVolInfo->SectorsPerCluster > pAlloc->cSectorUnit)
+                  pAlloc->cSectorUnit = (USHORT)pVolInfo->SectorsPerCluster;
 
                pAlloc->cUnit = min(65526L, ulTotalSectors / pAlloc->cSectorUnit);
                pAlloc->cUnitAvail = min(65526L, ulFreeSectors / pAlloc->cSectorUnit);
@@ -1142,7 +1142,7 @@ USHORT rc;
                }
             else
                {
-               pAlloc->cSectorUnit = pVolInfo->BootSect.bpb.SectorsPerCluster;
+               pAlloc->cSectorUnit = pVolInfo->SectorsPerCluster;
                pAlloc->cUnit = pVolInfo->ulTotalClusters;
                pAlloc->cUnitAvail = pVolInfo->pBootFSInfo->ulFreeClusters;
                }
@@ -1166,7 +1166,14 @@ USHORT rc;
             else if (pVolInfo->bFatType < FAT_TYPE_FAT32)
                pInfo->ulVSN = ((PBOOTSECT0)&pVolInfo->BootSect)->ulVolSerial;
 #else
-            if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+            if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+               {
+               // low word (aka fdateCreation)
+               *((PUSHORT)(pInfo))     = (((PBOOTSECT1)&pVolInfo->BootSect)->ulVolSerial & 0xffff);
+               // high word (aka ftimeCreation)
+               *((PUSHORT)(pInfo) + 1) = (((PBOOTSECT1)&pVolInfo->BootSect)->ulVolSerial >> 16);
+               }
+            else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
                {
                // low word (aka fdateCreation)
                *((PUSHORT)(pInfo))     = (pVolInfo->BootSect.ulVolSerial & 0xffff);
@@ -1272,7 +1279,7 @@ ULONG  ulDirEntries = 0;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+      usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
@@ -1287,18 +1294,36 @@ ULONG  ulDirEntries = 0;
             ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
-         while (pDir < pDirEnd)
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
-            if ((pDir->bAttr & 0x0F) == FILE_VOLID && pDir->bFileName[0] != DELETED_ENTRY)
+            while (pDir < pDirEnd)
                {
-               fFound = TRUE;
-               memcpy(&DirEntry, pDir, sizeof (DIRENTRY));
-               break;
+               if ((pDir->bAttr & 0x0F) == FILE_VOLID && pDir->bFileName[0] != DELETED_ENTRY)
+                  {
+                  fFound = TRUE;
+                  memcpy(&DirEntry, pDir, sizeof (DIRENTRY));
+                  break;
+                  }
+               pDir++;
+               ulDirEntries++;
+               if (ulCluster == 1 && ulDirEntries > pVolInfo->BootSect.bpb.RootDirEntries)
+                  break;
                }
-            pDir++;
-            ulDirEntries++;
-            if (ulCluster == 1 && ulDirEntries > pVolInfo->BootSect.bpb.RootDirEntries)
-               break;
+            }
+         else
+            {
+            // exFAT case
+            while (pDir < pDirEnd)
+               {
+               if (((PDIRENTRY1)pDir)->bEntryType == ENTRY_TYPE_VOLUME_LABEL)
+                  {
+                  fFound = TRUE;
+                  memcpy(&DirEntry, pDir, sizeof (DIRENTRY));
+                  break;
+                  }
+               pDir++;
+               ulDirEntries++;
+               }
             }
          if (fFound)
             break;
@@ -1307,8 +1332,8 @@ ULONG  ulDirEntries = 0;
             if (ulCluster == 1)
                {
                // reading the root directory in case of FAT12/FAT16
-               ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-               usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+               ulSector += pVolInfo->SectorsPerCluster;
+               usSectorsRead += pVolInfo->SectorsPerCluster;
                if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
                    pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
                   // root directory ended
@@ -1341,7 +1366,17 @@ ULONG  ulDirEntries = 0;
          return 0;
          }
       *pusSize = 11;
-      memcpy(pszVolLabel, DirEntry.bFileName, 11);
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+         memcpy(pszVolLabel, DirEntry.bFileName, 11);
+      else
+         {
+         // exFAT case
+         USHORT pVolLabel[11];
+         memcpy(pVolLabel, ((PDIRENTRY1)&DirEntry)->u.VolLbl.usChars,
+            ((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount * sizeof(USHORT));
+         pVolLabel[((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount] = 0;
+         Translate2OS2(pVolLabel, pszVolLabel, ((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount);
+         }
       while (*pusSize > 0 && pszVolLabel[(*pusSize)-1] == 0x20)
          {
          (*pusSize)--;
@@ -1361,9 +1396,23 @@ ULONG  ulDirEntries = 0;
       }
 
    memset(&DirEntry, 0, sizeof DirEntry);
-   memset(DirEntry.bFileName, 0x20, 11);
-   memcpy(DirEntry.bFileName, pszVolLabel, min(11, *pusSize));
-   DirEntry.bAttr = bAttr;
+
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      {
+      memset(DirEntry.bFileName, 0x20, 11);
+      memcpy(DirEntry.bFileName, pszVolLabel, min(11, *pusSize));
+      DirEntry.bAttr = bAttr;
+      }
+   else
+      {
+      // exFAT case
+      USHORT pVolLabel[11];
+      USHORT usChars = min(11, *pusSize);
+      Translate2Win(pszVolLabel, pVolLabel, usChars);
+      ((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount = usChars;
+      memcpy(((PDIRENTRY1)&DirEntry)->u.VolLbl.usChars, pVolLabel, usChars * sizeof(USHORT));
+      ((PDIRENTRY1)&DirEntry)->bEntryType = ENTRY_TYPE_VOLUME_LABEL;
+      }
 
    if (fFound)
       {
@@ -1385,14 +1434,17 @@ ULONG  ulDirEntries = 0;
       return rc;
       }
 
-   rc = ReadSector(pVolInfo, 0L, 1, (PBYTE)pDirStart, DVIO_OPNCACHE);
-   if (!rc)
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
-      pBootSect = (PBOOTSECT)pDirStart;
-      memcpy(pBootSect->VolumeLabel, DirEntry.bFileName, 11);
-      rc = WriteSector(pVolInfo, 0L, 1, (PBYTE)pBootSect, DVIO_OPWRTHRU | DVIO_OPNCACHE);
+      rc = ReadSector(pVolInfo, 0L, 1, (PBYTE)pDirStart, DVIO_OPNCACHE);
+      if (!rc)
+         {
+         pBootSect = (PBOOTSECT)pDirStart;
+         memcpy(pBootSect->VolumeLabel, DirEntry.bFileName, 11);
+         rc = WriteSector(pVolInfo, 0L, 1, (PBYTE)pBootSect, DVIO_OPWRTHRU | DVIO_OPNCACHE);
+         }
+      free(pDirStart);
       }
-   free(pDirStart);
 
    if (!rc)
       {
@@ -2017,7 +2069,7 @@ PBIOSPARAMETERBLOCK pBPB;
 
                   pBPB = (PBIOSPARAMETERBLOCK)pData;
 
-                  pBPB->bSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+                  pBPB->bSectorsPerCluster = pVolInfo->SectorsPerCluster;
                   pBPB->usReservedSectors = pVolInfo->BootSect.bpb.ReservedSectors;
                   pBPB->cFATs = pVolInfo->BootSect.bpb.NumberOfFATs;
                   if (pVolInfo->bFatType >= FAT_TYPE_FAT32)
@@ -2363,6 +2415,7 @@ USHORT   usNr;
             usNum /= 10;
             iPos--;
             }
+
          if (FindPathCluster(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus,
             szFileName, NULL, NULL) == pVolInfo->ulFatEof)
             break;
@@ -3100,7 +3153,7 @@ USHORT rc;
       }
 
    ulSector = pVolInfo->ulStartOfData +
-      (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
+      (ulCluster - 2) * pVolInfo->SectorsPerCluster;
 
    rc = ReadSector(pVolInfo, ulSector + ulBlock * ulSectorsPerBlock,
       ulSectorsPerBlock,
@@ -3136,7 +3189,7 @@ USHORT rc;
       }
 
    ulSector = pVolInfo->ulStartOfData +
-      (ulCluster - 2) * pVolInfo->BootSect.bpb.SectorsPerCluster;
+      (ulCluster - 2) * pVolInfo->SectorsPerCluster;
 
    rc = WriteSector(pVolInfo, ulSector + ulBlock * ulSectorsPerBlock,
       ulSectorsPerBlock,
@@ -4113,6 +4166,7 @@ PSZ    p;
 
    if (pDirEnd)
       *pDirEnd = pDir;
+
    ulCluster = FindPathCluster(pVolInfo, ulCluster, szDir, &DirEntry, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
@@ -4120,7 +4174,9 @@ PSZ    p;
          Message("FindDirCluster for '%s', not found", szDir);
       return pVolInfo->ulFatEof;
       }
-   if (ulCluster != pVolInfo->ulFatEof && !(DirEntry.bAttr & FILE_DIRECTORY))
+   if (ulCluster != pVolInfo->ulFatEof &&
+       ( ( (pVolInfo->bFatType < FAT_TYPE_EXFAT)  && !(DirEntry.bAttr & FILE_DIRECTORY) ) ||
+         ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) && !(((PDIRENTRY1)&DirEntry)->u.File.usFileAttr & FILE_DIRECTORY) ) ) )
       {
       if (f32Parms.fMessageActive & LOG_FUNCS)
          Message("FindDirCluster for '%s', not a directory", szDir);
@@ -4132,7 +4188,9 @@ PSZ    p;
       if (usAttrWanted != RETURN_PARENT_DIR && !strpbrk(pDir, "?*"))
          {
          ulCluster2 = FindPathCluster(pVolInfo, ulCluster, pDir, &DirEntry, NULL);
-         if (ulCluster2 != pVolInfo->ulFatEof && (DirEntry.bAttr & usAttrWanted) == usAttrWanted)
+         if (ulCluster2 != pVolInfo->ulFatEof &&
+             ( (pVolInfo->bFatType < FAT_TYPE_EXFAT)  && ((DirEntry.bAttr & usAttrWanted) == usAttrWanted) ) ||
+               ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) && ((((PDIRENTRY1)&DirEntry)->u.File.usFileAttr & usAttrWanted) == usAttrWanted) ) )
             {
             if (pDirEnd)
                *pDirEnd = pDir + strlen(pDir);
@@ -4151,8 +4209,9 @@ PSZ    p;
 /******************************************************************
 *
 ******************************************************************/
-ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName)
+ULONG FindPathCluster0(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName)
 {
+// FAT12/FAT16/FAT32 case
 BYTE szShortName[13];
 PSZ  pszLongName;
 PSZ  pszPart;
@@ -4177,7 +4236,7 @@ ULONG  ulDirEntries = 0;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+      usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
@@ -4357,8 +4416,8 @@ ULONG  ulDirEntries = 0;
          if (ulCluster == 1)
             {
             // reading the root directory in case of FAT12/FAT16
-            ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-            usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+            ulSector += pVolInfo->SectorsPerCluster;
+            usSectorsRead += pVolInfo->SectorsPerCluster;
             if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
                 pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
                // root directory ended
@@ -4382,6 +4441,257 @@ ULONG  ulDirEntries = 0;
    return ulCluster;
 }
 
+
+/******************************************************************
+*
+******************************************************************/
+ULONG FindPathCluster1(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTRY1 pDirEntry, PSZ pszFullName)
+{
+// exFAT case
+//BYTE szShortName[13];
+PSZ  pszLongName;
+PSZ  pszPart;
+PSZ  p;
+DIRENTRY1  Dir;
+PDIRENTRY1 pDir;
+PDIRENTRY1 pDirStart;
+PDIRENTRY1 pDirEnd;
+BOOL fFound;
+USHORT usMode;
+BYTE   bCheck;
+PROCINFO ProcInfo;
+ULONG  ulSector;
+USHORT usSectorsRead;
+USHORT usSectorsPerBlock;
+ULONG  ulDirEntries = 0;
+USHORT usNumSecondary;
+USHORT usFileAttr;
+
+   if (f32Parms.fMessageActive & LOG_FUNCS)
+      Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
+
+   //if (ulCluster == 1)
+   //   {
+   //   // root directory starting sector
+   //   ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
+   //      pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
+   //   usSectorsPerBlock = pVolInfo->SectorsPerCluster /
+   //      (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+   //   usSectorsRead = 0;
+   //   }
+
+   if (pDirEntry)
+      {
+      memset(pDirEntry, 0, sizeof (DIRENTRY1));
+      pDirEntry->u.File.usFileAttr = FILE_DIRECTORY;
+      }
+   if (pszFullName)
+      {
+      memset(pszFullName, 0, FAT32MAXPATH);
+      if (ulCluster == pVolInfo->BootSect.bpb.RootDirStrtClus)
+         {
+         pszFullName[0] = (BYTE)(pVolInfo->bDrive + 'A');
+         pszFullName[1] = ':';
+         pszFullName[2] = '\\';
+         }
+      }
+
+   if (strlen(pszPath) >= 2)
+      {
+      if (pszPath[1] == ':')
+         pszPath += 2;
+      }
+
+   pDirStart = malloc(pVolInfo->ulBlockSize);
+   if (!pDirStart)
+      {
+      Message("FAT32: Not enough memory for cluster in FindPathCluster");
+      return pVolInfo->ulFatEof;
+      }
+   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
+   if (!pszLongName)
+      {
+      Message("FAT32: Not enough memory for buffers in FindPathCluster");
+      free(pDirStart);
+      return pVolInfo->ulFatEof;
+      }
+   memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
+   pszPart = pszLongName + FAT32MAXPATHCOMP;
+
+   usMode = MODE_SCAN;
+   GetProcInfo(&ProcInfo, sizeof ProcInfo);
+   /*
+      Allow EA files to be found!
+   */
+   if (ProcInfo.usPdb && f32Parms.fEAS && IsEASFile(pszPath))
+      ProcInfo.usPdb = 0;
+
+   while (usMode != MODE_RETURN && ulCluster != pVolInfo->ulFatEof)
+      {
+      usMode = MODE_SCAN;
+
+      if (*pszPath == '\\')
+         pszPath++;
+
+      if (!strlen(pszPath))
+         break;
+
+      p = strchr(pszPath, '\\');
+      if (!p)
+         p = pszPath + strlen(pszPath);
+
+      memset(pszPart, 0, FAT32MAXPATHCOMP);
+      if (p - pszPath > FAT32MAXPATHCOMP - 1)
+         {
+         free(pDirStart);
+         free(pszLongName);
+         return pVolInfo->ulFatEof;
+         }
+
+      memcpy(pszPart, pszPath, p - pszPath);
+      pszPath = p;
+
+      memset(pszLongName, 0, FAT32MAXPATHCOMP);
+
+      fFound = FALSE;
+      while (usMode == MODE_SCAN && ulCluster != pVolInfo->ulFatEof)
+         {
+         ULONG ulBlock;
+         for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
+            {
+            ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
+            pDir    = pDirStart;
+            pDirEnd = (PDIRENTRY1)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
+
+#ifdef CALL_YIELD
+            Yield();
+#endif
+
+            while (usMode == MODE_SCAN && pDir < pDirEnd)
+               {
+               if (pDir->bEntryType == ENTRY_TYPE_EOD)
+                  {
+                  ulCluster = pVolInfo->ulFatEof;
+                  usMode = MODE_RETURN;
+                  break;
+                  }
+               else if (pDir->bEntryType == ENTRY_TYPE_FILE_NAME)
+                  {
+                  usNumSecondary--;
+                  fGetLongName1(pDir, pszLongName, FAT32MAXPATHCOMP);
+
+                  if (!usNumSecondary)
+                     {
+                     //MakeName(pDir, szShortName, sizeof szShortName);
+                     //FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
+                     //if (strlen(pszLongName) && bCheck != GetVFATCheckSum(pDir))
+                     //   memset(pszLongName, 0, FAT32MAXPATHCOMP);
+#if 0
+                      /* support for the FAT32 variation of WinNT family */
+                      if( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
+                      {
+                          PBYTE pDot;
+
+                          MakeName( pDir, pszLongName, sizeof( pszLongName ));
+                          pDot = strchr( pszLongName, '.' );
+
+                          if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                          {
+                              if( pDot )
+                                  *pDot = 0;
+
+                              strlwr( pszLongName );
+
+                              if( pDot )
+                                  *pDot = '.';
+                          }
+
+                          if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                              strlwr( pDot + 1 );
+                      }
+#endif
+                     //if (!strlen(pszLongName))
+                     //   strcpy(pszLongName, szShortName);
+
+                     if (( strlen(pszLongName) && !stricmp(pszPart, pszLongName))) //||
+                         //!stricmp( pszPart, szShortName ))
+                        {
+                          if( pszFullName )
+                              strcat( pszFullName, pszLongName );
+                          fFound = TRUE;
+                        }
+
+                     if (fFound)
+                        {
+                        //ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                        if (strlen(pszPath))
+                           {
+                           if (usFileAttr & FILE_DIRECTORY)
+                              {
+                              if (pszFullName)
+                                 strcat(pszFullName, "\\");
+                              usMode = MODE_START;
+                              break;
+                              }
+                           ulCluster = pVolInfo->ulFatEof;
+                           }
+                        else
+                           {
+                           if (pDirEntry)
+                              memcpy(pDirEntry, &Dir, sizeof (DIRENTRY1));
+                           }
+                        usMode = MODE_RETURN;
+                        break;
+                        }
+                     }
+                  }
+               else if (pDir->bEntryType == ENTRY_TYPE_STREAM_EXT)
+                  {
+                  usNumSecondary--;
+                  ulCluster = pDir->u.Stream.ulFirstClus;
+                  }
+               else if (pDir->bEntryType == ENTRY_TYPE_FILE)
+                  {
+                  usNumSecondary = pDir->u.File.bSecondaryCount;
+                  usFileAttr = pDir->u.File.usFileAttr;
+                  memcpy(&Dir, pDir, sizeof (DIRENTRY1));
+                  memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                  }
+               pDir++;
+               ulDirEntries++;
+               }
+            if (usMode != MODE_SCAN)
+               break;
+            }
+         if (usMode != MODE_SCAN)
+            break;
+         ulCluster = GetNextCluster(pVolInfo, ulCluster);
+         if (!ulCluster)
+            ulCluster = pVolInfo->ulFatEof;
+         }
+      }
+   free(pDirStart);
+   free(pszLongName);
+   if (f32Parms.fMessageActive & LOG_FUNCS)
+      {
+      if (ulCluster != pVolInfo->ulFatEof)
+         Message("FindPathCluster for %s found cluster %ld", pszPath, ulCluster);
+      else
+         Message("FindPathCluster for %s returned EOF", pszPath);
+      }
+   return ulCluster;
+}
+
+/******************************************************************
+*
+******************************************************************/
+ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName)
+{
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      return FindPathCluster0(pVolInfo, ulCluster, pszPath, pDirEntry, pszFullName);
+   else
+      return FindPathCluster1(pVolInfo, ulCluster, pszPath, (PDIRENTRY1)pDirEntry, pszFullName);
+}
 
 USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
 {
@@ -4455,7 +4765,7 @@ ULONG  ulDirEntries = 0;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+      usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
@@ -4599,8 +4909,8 @@ ULONG  ulDirEntries = 0;
          if (ulCluster == 1)
             {
             // reading the root directory in case of FAT12/FAT16
-            ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-            usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+            ulSector += pVolInfo->SectorsPerCluster;
+            usSectorsRead += pVolInfo->SectorsPerCluster;
             if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
                 pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
                // root directory ended
@@ -5473,7 +5783,7 @@ USHORT usSectorsPerBlock;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+      usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
@@ -5488,8 +5798,8 @@ USHORT usSectorsPerBlock;
       if (ulCluster == 1)
          {
          // reading the root directory in case of FAT12/FAT16
-         ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-         usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+         ulSector += pVolInfo->SectorsPerCluster;
+         usSectorsRead += pVolInfo->SectorsPerCluster;
          if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
             pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
             // root directory ended
@@ -5602,7 +5912,7 @@ ULONG     ulBytesRemained;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = pVolInfo->BootSect.bpb.SectorsPerCluster /
+      usSectorsPerBlock = pVolInfo->SectorsPerCluster /
          (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
@@ -5875,8 +6185,8 @@ ULONG     ulBytesRemained;
             if (ulCluster == 1)
                {
                // reading the root directory in case of FAT12/FAT16
-               ulSector += pVolInfo->BootSect.bpb.SectorsPerCluster;
-               usSectorsRead += pVolInfo->BootSect.bpb.SectorsPerCluster;
+               ulSector += pVolInfo->SectorsPerCluster;
+               usSectorsRead += pVolInfo->SectorsPerCluster;
                if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
                    pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
                   // root directory ended

@@ -151,6 +151,7 @@ PBYTE    pbFatSector;
 ULONG    ulTotalClusters;
 ULONG    ulClusterSize;
 ULONG    ulBlockSize;
+ULONG    SectorsPerCluster;
 USHORT   hVBP;
 PVOID    pFindInfo;
 BYTE     bDrive;
@@ -333,6 +334,9 @@ IMPORT USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PC
 IMPORT PVOLINFO GetVolInfo(USHORT hVBP);
 IMPORT VOID   MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 IMPORT BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
+IMPORT BOOL   fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax);
+FDATE GetDate1(TIMESTAMP ts);
+FTIME GetTime1(TIMESTAMP ts);
 IMPORT ULONG FindDirCluster(PVOLINFO pVolInfo,
    struct cdfsi far * pcdfsi,       /* pcdfsi   */
    struct cdfsd far * pcdfsd,       /* pcdfsd   */
