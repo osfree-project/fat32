@@ -348,6 +348,23 @@ int format_volume (char *path, format_params *params)
 
     vol = strupr(vol);
 
+    if (params->bFatType == FAT_TYPE_NONE)
+    {
+        ULONGLONG VolSizeMB;
+
+        // FS type is not specified
+        VolSizeMB = dp.TotalSectors;
+        VolSizeMB *= dp.BytesPerSect;
+        VolSizeMB /= 1024*1024;
+
+        if (VolSizeMB < 4)
+            params->bFatType = FAT_TYPE_FAT12;
+        else if (VolSizeMB < 2048)
+            params->bFatType = FAT_TYPE_FAT16;
+        else
+            params->bFatType = FAT_TYPE_FAT32;
+    }
+
     if ( params->reserved_sectors )
         dp.ReservedSectCount = params->reserved_sectors;
     else
@@ -448,23 +465,6 @@ int format_volume (char *path, format_params *params)
     {
         die ( "This drive is too big for this version\n"
               "of fat32format, check for an upgrade.\n", -5 );
-    }
-
-    if (params->bFatType == FAT_TYPE_NONE)
-    {
-        // FS type is not specified
-        if (ClusterCount < FAT12_BAD_CLUSTER)
-            params->bFatType = FAT_TYPE_FAT12;
-        else if (ClusterCount < FAT16_BAD_CLUSTER)
-            params->bFatType = FAT_TYPE_FAT16;
-        else if (ClusterCount < FAT32_BAD_CLUSTER)
-            params->bFatType = FAT_TYPE_FAT32;
-        else if (ClusterCount < EXFAT_BAD_CLUSTER)
-            params->bFatType = FAT_TYPE_EXFAT;
-        else
-        {
-            die ( "Cluster count is too big for exFAT filesystem.\n", -6 );
-        }
     }
 
     // low end limit - 65536 sectors
@@ -755,7 +755,7 @@ int format_volume (char *path, format_params *params)
         set_part_type (hDevice, &dp, type);
     }
 
-    remount_media ( hDevice ); ////
+    remount_media ( hDevice );
     unlock_drive ( hDevice );
     close_drive ( hDevice );
     fflush(stdout);
