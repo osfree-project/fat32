@@ -1477,10 +1477,24 @@ unlimited, theoretically&per. This switch defines, whether to use the support fo
 specified, but large file API is unavailable, the large file support forced to be disabled. This prevents trying to use
 the missing 64-bit fields for file size and position on older systems&per.
 
+:p.:hp2./FAT[&colon.<drive letter list>] :ehp2.Enable FAT12/FAT16 support&per. You can optionally specify the drive
+letters which are needed to mount&per. (Like /fat&colon.abcd or /fat&colon.*)&per. 
+
+:p.:hp2./EXFAT[&colon.<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
+letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*)&per. There is an early support for exFAT
+filesystems&per. So far, only displaying the directory listing, and walking dirs work&per. Reading/writing files
+still doesn't work because no allocation bitmap support, yet&per.
+
+:p.:hp2.Note&colon.  :ehp2.If /FAT or /EXFAT switches are not specified, only FAT32 disks are mounted
+by default&per. FAT12/FAT16 should work on any media&per. Floppies can be mounted too&per. Also, so far, we tested
+a CD with FAT16 filesystem burned on it, it works too&per. We just created the test filesystem with QSINIT, with 
+2048 bytes per sector (QSINIT supports such an option), then saved it as an image and burned it as a standard
+ISO image&per.
+
 .br 
 
 :p.:hp2.Note&colon.  :ehp2.Cache memory is allocated as FIXED memory, so if you have less 
-than 16MB a setting of 512KB or less for this option is suggested&per. 
+than 16MB a setting of 512KB or less for this option is suggested&per.
 
 :p.:hp2./MONITOR :ehp2.Set F32MON ON by default&per. If omitted F32MON is OFF&per. See :link reftype=hd refid=49.
 F32MON&per.EXE :elink.for more information&per. 
@@ -1652,6 +1666,12 @@ was in an inconsistent state at boot (No questions asked)&per.
 :p.:hp2./V&colon.1 :ehp2.Causes CHKDSK to show fragmented files&per. 
 
 :p.:hp2./V[&colon.2] :ehp2.Causes CHKDSK to show details on all files checked&per.(default) 
+
+:p.:hp2./P :ehp2.Serves for using with a PM frontend, like pmchkdsk.exe&per. If specified, it writes
+additional messages to stdout, then a PM frontend parses them and updates its controls&per.
+
+:p.:hp2.Note&colon. :ehp2.At the moment, CHKDSK supports checking FAT12/FAT16/FAT32 filesystems&per.
+
 .br 
   
 :p.:link reftype=launch object='cmd.exe' data='cmd.exe  '.:hp3.START COMMAND PROMPT :ehp3.
@@ -1709,8 +1729,12 @@ handling of FAT32&per.IFS&per. See the description of :link reftype=hd refid=50.
 :p.The UFAT32&per.DLL FORMAT routine is called by format.com whenever it is issued 
 for a FAT32 drive&per. 
 
-:p.The FORMAT routine was ported to OS/2 from Windows platform. The Fat32Format program was
-used as a base&per. (see http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm)
+:p.Also, there are UFAT12&per.DLL, UFAT16&per.DLL, UEXFAT&per.DLL, which are forwarders to UFAT32&per.DLL&per. They
+are needed to support formatting with "/fs&colon.fat12", "/fs&colon.fat16", "/fs&colon.exfat" switches&per. All functionality
+is implemented in the main DLL, and is redirected to it&per.
+
+:p.The FORMAT routine was ported to OS/2 from Windows platform and extended to support FAT12 and FAT16 filesystems&per.
+The Fat32Format program was used as a base, see http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm &per.
 
 :p.For CHKDSK the following options are implemented&colon.
 
@@ -1724,24 +1748,81 @@ used as a base&per. (see http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/
 
 :p.:hp2./V&colon.<volume label> :ehp2.Set volume label (Max&per. 11 characters)&per.
 
+:p.:hp2./P :ehp2.Serves for using with a PM frontend, like pmformat.exe&per. If specified, it writes
+additional messages to stdout, then a PM frontend parses them and updates its controls&per.
+
 :p.:hp2./C&colon.<number> :ehp2.Cluster size&per. The following cluster sizes are
 supported&colon.
+
+:p.:hp2.FAT12 :ehp2.
 
 :cgraphic.
  <number>  Max. size
  ____________________
- 1         137GB
- 2         274GB
- 4         549GB
- 8         1TB.
- ...
- 128       up to 2 TB
+ 1         4MB
+ 2         8MB
+ 4         16MB
+ 8         32MB
+ 16        64MB
+ 32        128MB
+ 64        256MB
 :ecgraphic.
 
-:p.Maximum is 128 sectors per cluster -- 64K clusters&per. More than 64K per cluster is
-not allowed by FAT32 spec&per.
+:p.:hp2.FAT16 :ehp2.
+
+:cgraphic.
+ <number>  Max. size
+ ____________________
+ 1         64MB
+ 2         128MB
+ 4         256MB
+ 8         512MB
+ 16        1024MB
+ 32        2048MB
+ 64        4096MB
+:ecgraphic.
+
+:p.:hp2.FAT32 :ehp2.
+
+:cgraphic.
+ <number>  Max. size
+ ____________________
+ 1         128GB
+ 2         256GB
+ 4         8192GB
+ 8         16GB
+ 16        32GB
+ 32        >32GB
+ 64        >32GB
+:ecgraphic.
+
+:p.:hp2.exFAT :ehp2.
+
+:cgraphic.
+ <number>  Max. size
+ ____________________
+ 4         256MB
+ 32       1024MB
+ 128       >32GB
+:ecgraphic.
+
+:p.For FAT32, maximum is 128 sectors per cluster -- 64K clusters&per. More than 64K per cluster is
+not allowed by FAT32 spec&per. Clusters, larger than 64KB, are supported by exFAT&per. Up to 32 MB clusters
+are supported&per. For FAT12/FAT16/FAT32, clusters should be, generally, less than or equal to 32 KB,
+but WinNT supported a FAT32 variant with 64 KB per cluster&per. Fat32&per.ifs supports large clusters, too,
+by splitting clusters, larger than 32 KB to 32 KB or lesser blocks&per. (There is a limitation of a 16-bit
+driver, which is the case for fat32&per.ifs, that we cannot allocate more than 64 KB of memory at once, so,
+we need to split to smaller blocks)&per.
 
 :p. FAT32 supports 2 TB max&per. volume size &per.
+
+:p.:hp2./FS&colon.FAT12|FAT16|FAT32|EXFAT :ehp2.FAT12/FAT16 disks can be formatted using FORMAT or checked using CHKDSK too&per.
+For FORMAT, "/fs&colon.fat12" or "/fs&colon.fat16" needs to be specified too&per. "format d: /fs&colon.fat" still invokes
+the standard IBM's FAT format routine&per. So, if you want our new FORMAT routine, just specify "/fs&colon.fat12"
+or "/fs&colon.fat16" instead of "/fs&colon.fat"&per. Also, "/fs&colon.fat32" is supported for formatting into FAT32&per.
+If the "/fs" switch is not specified, the filesystem FAT12/FAT16/FAT32/exFAT is chosen based on the volume size&per. If it is
+less than 4 MB, it is FAT12&per. If it is less than 2 GB, it is FAT16&per. If it is less than 32 GB, it is FAT32&per.
+And if it is larger than 32 GB, exFAT is chosen by default&per. But formatting to exFAT is not supported at the moment&per.
 
 :h3 id=30049 res=31047.SYS
 
@@ -1753,6 +1834,8 @@ for a FAT32 drive&per.
 :p.The SYS command has no parameters. At this time, it only writes the bootblock
 and several FreeLDR main files&per. No OS2BOOT is installed at this moment as it is not yet
 implemented&per. You can add more files from standard FreeLDR installation, if you need&per.
+
+:p.The SYS command is supported for FAT12/FAT16/FAT32 at the moment&per.
 
 :p.
 :h2 id=20047 res=30044.F32CHK.EXE
