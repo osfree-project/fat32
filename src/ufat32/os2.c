@@ -380,6 +380,14 @@ BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp)
                       &p, parmlen, &parmlen,
                       &d, datalen, &datalen);
 
+  if (rc)
+     {
+     p.command = 0; // try recommended BPB for the 2nd time
+     rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                       &p, parmlen, &parmlen,
+                       &d, datalen, &datalen);
+     }
+
   if ( rc )
       die( "Failed to get device geometry", rc );
 
