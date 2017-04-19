@@ -86,7 +86,7 @@ ULONG FindDirCluster(PCDINFO pCD, PSZ pDir, USHORT usCurDirEnd, USHORT usAttrWan
 ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
-ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
+ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fNoFatChain, BOOL fAllowBad);
 BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);
@@ -797,7 +797,7 @@ ULONG dummy = 0;
    for (ulCluster = 0; ulCluster < pCD->ulTotalClusters; ulCluster++)
       {
       USHORT usNew  = (USHORT)(ulCluster * 100 / pCD->ulTotalClusters);
-      ULONG ulNext = GetNextCluster(pCD, ulCluster + 2, TRUE);
+      ULONG ulNext = GetNextCluster(pCD, ulCluster + 2, FALSE, TRUE);
 
       if (!pCD->fPM && !fToFile && usNew != usPerc)
          {
@@ -1016,7 +1016,7 @@ USHORT usSectorsRead;
       else
          {
          ReadCluster(pCD, ulCluster, p);
-         ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+         ulCluster = GetNextCluster(pCD, ulCluster, FALSE, FALSE);
          }
       if (!ulCluster)
          ulCluster = pCD->ulFatEof;
@@ -1518,7 +1518,7 @@ USHORT usSectorsRead;
          else
             {
             WriteCluster(pCD, ulCluster, p);
-            ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+            ulCluster = GetNextCluster(pCD, ulCluster, FALSE, FALSE);
             }
          if (!ulCluster)
             ulCluster = pCD->ulFatEof;
@@ -1564,7 +1564,7 @@ BOOL  fShown = FALSE;
 
    while (ulCluster != pCD->ulFatEof)
       {
-      ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE);
+      ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE, FALSE);
       if (!MarkCluster(pCD, ulCluster, pszFile))
          return ulCount;
       ulCount++;
@@ -1719,7 +1719,7 @@ ULONG  ulDirEntries = 0;
                ulCluster = 0;
             }
          else
-            ulCluster = GetNextCluster(pCD, ulCluster, FALSE);
+            ulCluster = GetNextCluster(pCD, ulCluster, FALSE, FALSE);
          if (!ulCluster)
             ulCluster = pCD->ulFatEof;
          }
@@ -1781,7 +1781,7 @@ PLNENTRY pLN = (PLNENTRY)pDir;
 
 
 
-ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad)
+ULONG GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fNoFatChain, BOOL fAllowBad)
 {
 ULONG  ulSector = 0;
 ULONG  ulRet = 0;
@@ -1855,7 +1855,7 @@ USHORT usIndex;
             MarkCluster(pCD, ulNext, "Lost cluster");
             pCD->rgulSize[usIndex]++;
             pCD->ulLostClusters++;
-            ulNext = GetNextCluster(pCD, ulNext, FALSE);
+            ulNext = GetNextCluster(pCD, ulNext, FALSE, FALSE);
             }
          pCD->rgulLost[usIndex] = ulCluster;
          return TRUE;
@@ -1879,7 +1879,7 @@ BOOL ClusterInChain(PCDINFO pCD, ULONG ulStart, ULONG ulCluster)
       {
       if (ulStart == ulCluster)
          return TRUE;
-      ulStart = GetNextCluster(pCD, ulStart, FALSE);
+      ulStart = GetNextCluster(pCD, ulStart, FALSE, FALSE);
       }
    return FALSE;
 }

@@ -100,7 +100,8 @@ BYTE     szDirLongName[ FAT32MAXPATH ];
             pDir,
             usCurDirEnd,
             FILE_DIRECTORY,
-            &pszFile);
+            &pszFile,
+            NULL);
 
          if (ulCluster == pVolInfo->ulFatEof || *pszFile)
             {
@@ -169,6 +170,10 @@ ULONG    ulDirCluster;
 PSZ      pszFile;
 DIRENTRY DirEntry;
 PDIRENTRY pDir;
+PDIRENTRY1 pDir1;
+DIRENTRY1 DirStream;
+SHOPENINFO DirSHInfo;
+PSHOPENINFO pDirSHInfo = NULL;
 USHORT   rc;
 PBYTE    pbCluster;
 ULONG    ulBlock;
@@ -222,14 +227,22 @@ ULONG    ulBlock;
       pName,
       usCurDirEnd,
       RETURN_PARENT_DIR,
-      &pszFile);
+      &pszFile,
+      &DirStream);
+
    if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_MKDIREXIT;
       }
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pDirSHInfo = &DirSHInfo;
+      SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
+      }
+
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, NULL, NULL);
    if (ulCluster != pVolInfo->ulFatEof)
       {
       rc = ERROR_ACCESS_DENIED;
@@ -253,36 +266,53 @@ ULONG    ulBlock;
 
    memset(pbCluster, 0, pVolInfo->ulBlockSize);
 
-   pDir = (PDIRENTRY)pbCluster;
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
+      {
+      pDir = (PDIRENTRY)pbCluster;
 
-   pDir->wCluster = LOUSHORT(ulCluster);
-   pDir->wClusterHigh = HIUSHORT(ulCluster);
-   pDir->bAttr = FILE_DIRECTORY;
+      pDir->wCluster = LOUSHORT(ulCluster);
+      pDir->wClusterHigh = HIUSHORT(ulCluster);
+      pDir->bAttr = FILE_DIRECTORY;
+      }
+   else
+      {
+      pDir1 = (PDIRENTRY1)pbCluster;
 
-   rc = MakeDirEntry(pVolInfo, ulDirCluster, (PDIRENTRY)pbCluster, pszFile);
+      pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+      (pDir1+1)->u.Stream.ulFirstClus = ulCluster;
+      }
+
+   //rc = MakeDirEntry(pVolInfo, ulDirCluster, (PDIRENTRY)pbCluster, NULL, pszFile);
+   rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, (PDIRENTRY)pbCluster,
+                     (PDIRENTRY1)((PBYTE)pbCluster+sizeof(DIRENTRY1)), pszFile);
+
    if (rc)
       {
       free(pbCluster);
       goto FS_MKDIREXIT;
       }
-   memset(pDir->bFileName, 0x20, 11);
-   memcpy(pDir->bFileName, ".", 1);
 
-   memcpy(pDir + 1, pDir, sizeof (DIRENTRY));
-   pDir++;
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
+      {
+      memset(pDir->bFileName, 0x20, 11);
+      memcpy(pDir->bFileName, ".", 1);
 
-   memcpy(pDir->bFileName, "..", 2);
-   if (ulDirCluster == pVolInfo->BootSect.bpb.RootDirStrtClus)
-      {
-      pDir->wCluster = 0;
-      pDir->wClusterHigh = 0;
+      memcpy(pDir + 1, pDir, sizeof (DIRENTRY));
+      pDir++;
+
+      memcpy(pDir->bFileName, "..", 2);
+      if (ulDirCluster == pVolInfo->BootSect.bpb.RootDirStrtClus)
+         {
+         pDir->wCluster = 0;
+         pDir->wClusterHigh = 0;
+         }
+      else
+         {
+         pDir->wCluster = LOUSHORT(ulDirCluster);
+         pDir->wClusterHigh = HIUSHORT(ulDirCluster);
+         }
+      pDir->bAttr = FILE_DIRECTORY;
       }
-   else
-      {
-      pDir->wCluster = LOUSHORT(ulDirCluster);
-      pDir->wClusterHigh = HIUSHORT(ulDirCluster);
-      }
-   pDir->bAttr = FILE_DIRECTORY;
 
    rc = WriteBlock( pVolInfo, ulCluster, 0, pbCluster, DVIO_OPWRTHRU);
 
@@ -301,7 +331,7 @@ ULONG    ulBlock;
    free(pbCluster);
 
    if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
-      rc = usModifyEAS(pVolInfo, ulDirCluster, pszFile, (PEAOP)pEABuf);
+      rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf);
 
 FS_MKDIREXIT:
    if (f32Parms.fMessageActive & LOG_FS)
@@ -325,11 +355,17 @@ ULONG    ulNextCluster;
 ULONG    ulDirCluster;
 PSZ      pszFile;
 DIRENTRY DirEntry;
+PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
 PDIRENTRY pDir;
 PDIRENTRY pWork, pMax;
 USHORT   rc;
 USHORT   usFileCount;
 BYTE     szLongName[ FAT32MAXPATH ];
+DIRENTRY1 StreamEntry, DirStream;
+SHOPENINFO DirSHInfo;
+PSHOPENINFO pDirSHInfo = NULL;
+SHOPENINFO SHInfo;
+PSHOPENINFO pSHInfo = NULL;
 
    _asm push es;
 
@@ -394,21 +430,30 @@ BYTE     szLongName[ FAT32MAXPATH ];
       pName,
       usCurDirEnd,
       RETURN_PARENT_DIR,
-      &pszFile);
+      &pszFile,
+      &DirStream);
+
    if (ulDirCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
       }
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pDirSHInfo = &DirSHInfo;
+      SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
+      }
+
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &StreamEntry, NULL);
    if (ulCluster == pVolInfo->ulFatEof || !(DirEntry.bAttr & FILE_DIRECTORY))
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
       }
 
-   if (DirEntry.bAttr & FILE_READONLY)
+   if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_READONLY)) ||
+        ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_READONLY)) )
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_RMDIREXIT;
@@ -421,6 +466,11 @@ BYTE     szLongName[ FAT32MAXPATH ];
       goto FS_RMDIREXIT;
       }
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pSHInfo = &SHInfo;
+      SetSHInfo1(pVolInfo, &StreamEntry, pSHInfo);
+      }
 
    ulNextCluster = ulCluster;
    usFileCount = 0;
@@ -436,21 +486,50 @@ BYTE     szLongName[ FAT32MAXPATH ];
             goto FS_RMDIREXIT;
             }
 
-         pWork = pDir;
-         pMax = (PDIRENTRY)((PBYTE)pDir + pVolInfo->ulBlockSize);
-         while (pWork < pMax)
+         if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
             {
-            if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY &&
-                pWork->bAttr != FILE_LONGNAME)
+            pWork = pDir;
+            pMax = (PDIRENTRY)((PBYTE)pDir + pVolInfo->ulBlockSize);
+            while (pWork < pMax)
                {
-               if (memcmp(pWork->bFileName, ".       ", 8) &&
-                   memcmp(pWork->bFileName, "..      ", 8))
-                  usFileCount++;
+               if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY &&
+                   pWork->bAttr != FILE_LONGNAME)
+                  {
+                  if (memcmp(pWork->bFileName, ".       ", 8) &&
+                      memcmp(pWork->bFileName, "..      ", 8))
+                     usFileCount++;
+                  }
+               pWork++;
                }
-            pWork++;
+            }
+         else
+            {
+            PDIRENTRY1 pWork1 = (PDIRENTRY1)pDir;
+            PDIRENTRY1 pMax1 = (PDIRENTRY1)((PBYTE)pDir + pVolInfo->ulBlockSize);
+            BYTE bSecondaryCount;
+            while (pWork1 < pMax1)
+               {
+               if (pWork1->bEntryType == ENTRY_TYPE_EOD)
+                  {
+                  break;
+                  }
+               else if (pWork1->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
+                  {
+                  if (pWork1->bEntryType == ENTRY_TYPE_FILE)
+                     {
+                     bSecondaryCount = pWork1->u.File.bSecondaryCount;
+                     usFileCount++;
+                     }
+                  else
+                     {
+                     continue;
+                     }
+                  }
+               pWork++;
+               }
             }
          }
-      ulNextCluster = GetNextCluster( pVolInfo, ulNextCluster);
+      ulNextCluster = GetNextCluster(pVolInfo, pSHInfo, ulNextCluster);
       if (!ulNextCluster)
          ulNextCluster = pVolInfo->ulFatEof;
       }
@@ -464,7 +543,7 @@ BYTE     szLongName[ FAT32MAXPATH ];
 
    if (f32Parms.fEAS)
       {
-      rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFile);
+      rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile);
       if (rc)
          goto FS_RMDIREXIT;
 #if 0
@@ -473,8 +552,8 @@ BYTE     szLongName[ FAT32MAXPATH ];
 #endif
       }
 
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_DELETE,
-      &DirEntry, NULL, NULL, DVIO_OPWRTHRU);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
+      &DirEntry, NULL, NULL, NULL, NULL, DVIO_OPWRTHRU);
    if (rc)
       goto FS_RMDIREXIT;
 

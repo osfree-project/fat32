@@ -173,7 +173,7 @@ ULONG ulCluster;
    ulTotalFree = 0;
    for (ulCluster = 2; ulCluster < pDrive->ulTotalClusters + 2; ulCluster++)
       {
-      ULONG ulNext = GetNextCluster(pDrive, ulCluster);
+      ULONG ulNext = GetNextCluster(pDrive, ulCluster, 0);
       if (!(ulNext & pDrive->ulFatEof))
          {
          MarkCluster(pDrive, ulCluster);

@@ -174,31 +174,14 @@ ULONG     ulFatEof;
 ULONG     ulFatEof2;
 ULONG     ulFatBad;
 ULONG     ulFatClean;
+ULONG     ulAllocBmpCluster;
+ULONG     ulAllocBmpLen;
+ULONG     ulUpcaseTblCluster;
+ULONG     ulUpcaseTblLen;
+PBYTE     pbFatBits;
+ULONG     ulCurBmpSector;
+ULONG     ulBmpStartSector;
 } VOLINFO, *PVOLINFO; // FAR ?
-
-
-typedef struct _FindInfo2
-{
-PVOID     pNextEntry;
-BYTE      szSearch[CCHMAXPATHCOMP];
-EAOP      EAOP;
-PROCINFO  ProcInfo;
-PDIRENTRY pDirEntries;
-ULONG     rgClusters[1];
-} FINFO, *PFINFO;
-
-typedef struct _FindInfo /* MAX 24 BYTES ! */
-{
-PFINFO    pInfo;
-ULONG     ulCurEntry;
-ULONG     ulMaxEntry;
-USHORT    usEntriesPerBlock;
-USHORT    usBlockIndex;
-USHORT    usTotalBlocks;
-BOOL      fLongNames;
-BYTE      bAttr;
-BYTE      bMustAttr;
-} FINDINFO, *PFINDINFO;
 
 #pragma pack(1)
 typedef struct _ShOpenInfo
@@ -213,12 +196,14 @@ BYTE   fMustCommit;
 PVOID  pNext;
 PVOID  pChild;
 BOOL   fLock;
+BOOL   fNoFatChain;
 } SHOPENINFO, *PSHOPENINFO;
 #pragma pack()
 
 typedef struct _OpenInfo /* 30 bytes maximaal ! */
 {
 PSHOPENINFO pSHInfo;
+PSHOPENINFO pDirSHInfo;
 PVOID       pNext;
 BOOL        fSectorMode;
 BOOL        fCommitAttr;
@@ -226,6 +211,30 @@ ULONG       ulCurCluster;
 ULONG       ulCurBlock;
 BOOL        fLargeVolume;
 } OPENINFO, *POPENINFO;
+
+typedef struct _FindInfo2
+{
+PVOID     pNextEntry;
+BYTE      szSearch[CCHMAXPATHCOMP];
+EAOP      EAOP;
+PROCINFO  ProcInfo;
+PDIRENTRY pDirEntries;
+ULONG     rgClusters[1];
+} FINFO, *PFINFO;
+
+typedef struct _FindInfo /* MAX 24 BYTES ! */
+{
+PFINFO    pInfo;
+PSHOPENINFO pSHInfo;
+ULONG     ulCurEntry;
+ULONG     ulMaxEntry;
+USHORT    usEntriesPerBlock;
+USHORT    usBlockIndex;
+USHORT    usTotalBlocks;
+BOOL      fLongNames;
+BYTE      bAttr;
+BYTE      bMustAttr;
+} FINDINFO, *PFINDINFO;
 
 typedef struct _EASizeBuf
 {
@@ -327,7 +336,7 @@ IMPORT F32PARMS   f32Parms;
 IMPORT VOID PutMessage(PSZ pszMsg);
 IMPORT USHORT ReadBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode);
 IMPORT USHORT WriteBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode);
-IMPORT ULONG GetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster);
+IMPORT ULONG GetNextCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 IMPORT ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
 IMPORT USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 IMPORT USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
@@ -337,14 +346,17 @@ IMPORT BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbChe
 IMPORT BOOL   fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax);
 FDATE GetDate1(TIMESTAMP ts);
 FTIME GetTime1(TIMESTAMP ts);
+TIMESTAMP SetTimeStamp(FDATE date, FTIME time);
 IMPORT ULONG FindDirCluster(PVOLINFO pVolInfo,
    struct cdfsi far * pcdfsi,       /* pcdfsi   */
    struct cdfsd far * pcdfsd,       /* pcdfsd   */
    PSZ pDir,
    USHORT usCurDirEnd,
    USHORT usAttrWanted,
-   PSZ *pDirEnd);
-IMPORT ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTRY pDirEntry, PSZ pszFullName);
+   PSZ *pDirEnd,
+   PDIRENTRY1 pStreamEntry);
+IMPORT ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PSHOPENINFO pSHInfo,
+                             PDIRENTRY pDirEntry, PDIRENTRY1 pDirEntryStream, PSZ pszFullName);
 IMPORT BOOL RemoveFindEntry(PVOLINFO pVolInfo, PFINFO pFindInfo);
 IMPORT USHORT GetProcInfo(PPROCINFO pProcInfo, USHORT usSize);
 IMPORT VOID cdecl _loadds Message(PSZ pszMessage, ...);
@@ -360,8 +372,12 @@ IMPORT void *gdtAlloc(ULONG tSize, BOOL fSwap);
 IMPORT void *ldtAlloc(ULONG tSize);
 IMPORT void freeseg(void *p);
 
-IMPORT USHORT ModifyDirectory(PVOLINFO pVolInfo, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName, USHORT usIOMode);
-IMPORT USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PDIRENTRY pNew, PSZ pszName);
+IMPORT USHORT ModifyDirectory(PVOLINFO pVolInfo, ULONG ulDirCluster,
+                              PSHOPENINFO pDirSHInfo, USHORT usMode,
+                              PDIRENTRY pOld, PDIRENTRY pNew,
+                              PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew,
+                              PSZ pszLongName, USHORT usIOMode);
+IMPORT USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PDIRENTRY pNew, PDIRENTRY1 pNewStream, PSZ pszName);
 IMPORT USHORT MakeShortName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
 IMPORT BOOL   DeleteFatChain(PVOLINFO pVolInfo, ULONG ulCluster);
 IMPORT BYTE   GetVFATCheckSum(PDIRENTRY pDir);
@@ -371,28 +387,35 @@ IMPORT USHORT SemRequest(void far * hSem, ULONG ulTimeOut, PSZ pszTest);
 IMPORT ULONG GetFreeSpace(PVOLINFO pVolInfo);
 IMPORT BOOL UpdateFSInfo(PVOLINFO pVolInfo);
 IMPORT BOOL IsDriveLocked(PVOLINFO pVolInfo);
-IMPORT ULONG GetLastCluster(PVOLINFO pVolInfo, ULONG ulCluster);
-IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONGLONG ullPosition);
+IMPORT ULONG GetLastCluster(PVOLINFO pVolInfo, ULONG ulCluster, PDIRENTRY1 pDirEntryStream);
+IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, ULONGLONG ullPosition);
 IMPORT USHORT usFlushAll(VOID);
 IMPORT USHORT usFlushVolume(PVOLINFO, USHORT, BOOL, BYTE);
 IMPORT BOOL MarkDiskStatus(PVOLINFO pVolInfo, BOOL fClean);
 IMPORT BOOL GetDiskStatus(PVOLINFO pVolInfo);
 IMPORT USHORT fGetSetVolLabel(PVOLINFO pVolInfo, USHORT usFlag, PSZ pszVolLabel, PUSHORT pusSize);
+IMPORT USHORT fGetAllocBitmap(PVOLINFO pVolInfo, PULONG pulFirstCluster, PULONGLONG pullLen);
+IMPORT USHORT fGetUpCaseTbl(PVOLINFO pVolInfo, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum);
+IMPORT void SetSHInfo1(PVOLINFO pVolInfo, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
 IMPORT USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usMode);
 IMPORT VOID DoLW(PVOLINFO pVolInfo, PLWOPTS pOptions);
 IMPORT VOID DoEmergencyFlush(PLWOPTS pOptions);
 IMPORT VOID Yield(void);
 IMPORT VOID TriggerLW(VOID);
 IMPORT BOOL IsDosSession(VOID);
-IMPORT USHORT usModifyEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PEAOP pEAOP);
-IMPORT USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PULONG pulSize);
-IMPORT USHORT usGetEAS(PVOLINFO pVolInfo, USHORT usLevel, ULONG ulDirCluster, PSZ pszFileName, PEAOP pEAOP);
-IMPORT USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName);
+IMPORT USHORT usModifyEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PEAOP pEAOP);
+IMPORT USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PULONG pulSize);
+IMPORT USHORT usGetEAS(PVOLINFO pVolInfo, USHORT usLevel, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PEAOP pEAOP);
+IMPORT USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName);
 IMPORT BOOL   IsEASFile(PSZ pszFileName);
-IMPORT USHORT usCopyEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, ULONG ulTarDirCluster, PSZ pszTarFile);
-IMPORT USHORT usMoveEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, ULONG ulTarDirCluster, PSZ pszTarFile);
+IMPORT USHORT usCopyEAS(PVOLINFO pVolInfo,
+                        ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
+                        ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo);
+IMPORT USHORT usMoveEAS(PVOLINFO pVolInfo,
+                        ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
+                        ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo);
 IMPORT USHORT CopyChain(PVOLINFO pVolInfo, ULONG ulCluster, PULONG pulNew);
-IMPORT USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS);
+IMPORT USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS);
 IMPORT VOID   TranslateInitDBCSEnv( VOID );
 IMPORT BOOL   IsDBCSLead( UCHAR uch );
 IMPORT VOID   TranslateAllocBuffer( VOID );
@@ -415,7 +438,7 @@ IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 #define GetCurTime() (*pGITicks)
 
 
-#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + 10000)
+#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + SECTOR_SIZE * 8 + 10000)
 
 
 #endif

@@ -209,7 +209,7 @@ P_VolChars   pVolChars;
                   {
                   pvpfsi->vpi_vid    = ((PBOOTSECT1)pSect)->ulVolSerial;
                   pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
-                  pvpfsi->vpi_totsec = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+                  pvpfsi->vpi_totsec = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength; ////
                   pvpfsi->vpi_trksec = 63;  // dummy
                   pvpfsi->vpi_nhead  = 255; // dummy
                   memset(pvpfsi->vpi_text, 0, sizeof pvpfsi->vpi_text);
@@ -253,6 +253,7 @@ P_VolChars   pVolChars;
          pVolInfo->pBootFSInfo = (PBOOTFSINFO)(pVolInfo + 1);
          pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
          pVolInfo->ulCurFatSector = -1L;
+         pVolInfo->pbFatBits = (PBYTE)pVolInfo->pbFatSector + SECTOR_SIZE * 8 * 3;
          
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
@@ -262,6 +263,7 @@ P_VolChars   pVolChars;
             }
          else
             {
+            // exFAT case
             pVolInfo->ulClusterSize =  1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
             pVolInfo->ulClusterSize *= 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
             pVolInfo->BootSect.bpb.BytesPerSector = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
@@ -271,10 +273,11 @@ P_VolChars   pVolChars;
             pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.SectorsPerFat = (USHORT)((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.NumberOfFATs = ((PBOOTSECT1)pSect)->bNumFats;
-            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
-            pVolInfo->BootSect.bpb.HiddenSectors = (ULONG)((PBOOTSECT1)pSect)->ullPartitionOffset;
+            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;  ////
+            pVolInfo->BootSect.bpb.HiddenSectors = (ULONG)((PBOOTSECT1)pSect)->ullPartitionOffset; ////
             }
 
+         // size of a subcluster block
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
 
          pVolInfo->hVBP    = hVBP;
@@ -330,7 +333,7 @@ P_VolChars   pVolChars;
             {
             // create FAT32-type extended BPB for exFAT
             pVolInfo->BootSect.ulVolSerial = ((PBOOTSECT1)pSect)->ulVolSerial;
-            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+            pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength; ////
             pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.ExtFlags = 0;
             // force calculating the free space
@@ -354,10 +357,28 @@ P_VolChars   pVolChars;
             }
          else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
+            // exFAT case
+            ULONGLONG ullLen;
+            ULONG ulChecksum;
+            ULONG ulAllocBmpCluster;
+            USHORT usSize;
+            char pszVolLabel[11];
+
             if (((PBOOTSECT1)pSect)->usVolumeFlags & VOL_FLAG_ACTIVEFAT)
                {
-               pVolInfo->ulActiveFatStart += ((PBOOTSECT1)pSect)->ulFatLength;
+               pVolInfo->ulActiveFatStart += ((PBOOTSECT1)pSect)->ulFatLength; ////
                }
+
+            fGetAllocBitmap(pVolInfo, &pVolInfo->ulAllocBmpCluster, &ullLen);
+            pVolInfo->ulAllocBmpLen = (ULONG)ullLen;
+            Message("pVolInfo->ulAllocBmpLen=%lx", pVolInfo->ulAllocBmpLen);
+            pVolInfo->ulBmpStartSector = pVolInfo->ulStartOfData +
+               (pVolInfo->ulAllocBmpCluster - 2) * pVolInfo->SectorsPerCluster;
+            pVolInfo->ulCurBmpSector = 0xffffffff;
+            fGetUpCaseTbl(pVolInfo, &pVolInfo->ulUpcaseTblCluster, &ullLen, &ulChecksum);
+            pVolInfo->ulUpcaseTblLen = (ULONG)ullLen;
+            fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
+            memcpy(pvpfsi->vpi_text, pszVolLabel, usSize);
             }
 
          rc = CheckWriteProtect(pVolInfo);

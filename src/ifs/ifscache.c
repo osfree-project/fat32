@@ -53,6 +53,9 @@ PRIVATE VOID   LockBuffer(PCACHEBASE pBase);
 PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE USHORT usEmergencyFlush(VOID);
 PRIVATE USHORT VerifyOn(VOID);
+USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseFat(PVOLINFO pVolInfo);
+ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 
 PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 
@@ -200,7 +203,7 @@ ULONG ulSize;
 /******************************************************************
 *
 ******************************************************************/
-USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
+USHORT ReadSector2(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
 APIRET rc,rc2;
 USHORT usSectors;
@@ -261,8 +264,8 @@ char far *p;
       usSectors = nSectors;
       }
 
-   /* check bad cluster */
-   if( ulSector >= pVolInfo->ulStartOfData )
+   /* check bad cluster (moved to ReadBlock) */
+   /* if( ulSector >= pVolInfo->ulStartOfData )
    {
         ULONG ulStartCluster = Sector2Cluster( ulSector );
         ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
@@ -271,7 +274,7 @@ char far *p;
 
         for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
         {
-            ulNextCluster = GetNextCluster( pVolInfo, ulCluster );
+            ulNextCluster = GetNextCluster2( pVolInfo, NULL, ulCluster );
             if( ulNextCluster == pVolInfo->ulFatBad )
                 break;
         }
@@ -281,7 +284,7 @@ char far *p;
             usSectors = ( ulStartCluster != ulCluster ) ?
                 ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
         }
-   }
+   } */
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();
@@ -340,6 +343,22 @@ char far *p;
 
    if (pbSectors != pbData)
       free(pbSectors);
+
+   return rc;
+}
+
+/******************************************************************
+*
+******************************************************************/
+USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
+{
+USHORT rc;
+
+   if (!GetFatAccess(pVolInfo, "ReadSector"))
+      {
+      rc = ReadSector2(pVolInfo, ulSector, nSectors, pbData, usIOMode);
+      ReleaseFat(pVolInfo);
+      }
 
    return rc;
 }

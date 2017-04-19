@@ -17,15 +17,15 @@
 
 
 PRIVATE PFEA   FindEA(PFEALIST pFeal, PSZ pszName, USHORT usMaxName);
-PRIVATE USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate);
-PRIVATE USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PFEALIST pFEAL);
+PRIVATE USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate);
+PRIVATE USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST pFEAL);
 PRIVATE USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PSZ * pszEASName);
 
 
 /************************************************************************
 *
 ************************************************************************/
-USHORT usModifyEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PEAOP pEAOP)
+USHORT usModifyEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PEAOP pEAOP)
 {
 USHORT rc;
 PFEALIST pTarFeal;
@@ -65,7 +65,7 @@ PFEA pTarFea;
    if (pSrcFeal->cbList <= sizeof (ULONG))
       return 0;
 
-   rc = usReadEAS(pVolInfo, ulDirCluster, pszFileName, &pTarFeal, TRUE);
+   rc = usReadEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pTarFeal, TRUE);
    if (rc)
       return rc;
 
@@ -150,9 +150,9 @@ PFEA pTarFea;
       Message("cbList after = %lu", pTarFeal->cbList);
 
    if (pTarFeal->cbList > 4)
-      rc = usWriteEAS(pVolInfo, ulDirCluster, pszFileName, pTarFeal);
+      rc = usWriteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, pTarFeal);
    else
-      rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFileName);
+      rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName);
 
 usStoreEASExit:
    free(pTarFeal);
@@ -167,11 +167,12 @@ usStoreEASExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PULONG pulSize)
+USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PULONG pulSize)
 {
 PSZ pszEAName;
 USHORT rc;
 DIRENTRY DirEntry;
+DIRENTRY1 DirEntryStream;
 ULONG    ulCluster;
 
    if (f32Parms.fMessageActive & LOG_EAS)
@@ -183,13 +184,17 @@ ULONG    ulCluster;
    if (rc)
       return rc;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName,
+      pDirSHInfo, &DirEntry, &DirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof || !ulCluster)
       {
       rc = 0;
       goto usGetEASizeExit;
       }
-   *pulSize = DirEntry.ulFileSize;
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      *pulSize = DirEntry.ulFileSize;
+   else
+      *pulSize = DirEntryStream.u.Stream.ullValidDataLen;
 
    rc = 0;
 
@@ -206,7 +211,7 @@ usGetEASizeExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT usGetEAS(PVOLINFO pVolInfo, USHORT usLevel, ULONG ulDirCluster, PSZ pszFileName, PEAOP pEAOP)
+USHORT usGetEAS(PVOLINFO pVolInfo, USHORT usLevel, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PEAOP pEAOP)
 {
 USHORT rc;
 PFEALIST pTarFeal;
@@ -276,7 +281,7 @@ USHORT   usMaxSize;
       Does the EA Exist?
    */
 
-   rc = usReadEAS(pVolInfo, ulDirCluster, pszFileName, &pSrcFeal, FALSE);
+   rc = usReadEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pSrcFeal, FALSE);
    if (rc)
       goto usGetEASExit;
 
@@ -385,13 +390,15 @@ usGetEASExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT usCopyEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, ULONG ulTarDirCluster, PSZ pszTarFile)
+USHORT usCopyEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
+                 ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo)
 {
 USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
 DIRENTRY SrcEntry, TarEntry;
+DIRENTRY1 SrcStreamEntry;
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
    if (rc)
@@ -400,11 +407,11 @@ DIRENTRY SrcEntry, TarEntry;
    if (rc)
       goto usCopyEASExit;
 
-   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, &SrcEntry, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, &TarEntry, NULL);
+   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, &SrcStreamEntry, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, NULL, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, NULL, NULL, 0);
       if (rc)
          goto usCopyEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -417,13 +424,20 @@ DIRENTRY SrcEntry, TarEntry;
    if (rc)
       goto usCopyEASExit;
 
-   SrcEntry.wCluster = LOUSHORT(ulTarCluster);
-   SrcEntry.wClusterHigh = HIUSHORT(ulTarCluster);
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      {
+      SrcEntry.wCluster = LOUSHORT(ulTarCluster);
+      SrcEntry.wClusterHigh = HIUSHORT(ulTarCluster);
+      }
+   else
+      {
+      SrcStreamEntry.u.Stream.ulFirstClus = ulTarCluster;
+      }
 
    /*
       Make new direntry
    */
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_INSERT, NULL, &SrcEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, &SrcStreamEntry, pszTarEAName, 0);
 
 
 usCopyEASExit:
@@ -441,7 +455,8 @@ usCopyEASExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT usMoveEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, ULONG ulTarDirCluster, PSZ pszTarFile)
+USHORT usMoveEAS(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
+                 ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo)
 {
 USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
@@ -457,11 +472,11 @@ DIRENTRY SrcEntry, TarEntry;
       goto usMoveEASExit;
 
 
-   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, &SrcEntry, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, &TarEntry, NULL);
+   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, NULL, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, NULL, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof && ulTarCluster != ulSrcCluster)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, NULL, NULL, 0);
       if (rc)
          goto usMoveEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -473,16 +488,16 @@ DIRENTRY SrcEntry, TarEntry;
    if (ulSrcDirCluster == ulTarDirCluster)
       {
       memmove(&TarEntry, &SrcEntry, sizeof TarEntry);
-      rc = ModifyDirectory(pVolInfo, ulSrcDirCluster,
-         MODIFY_DIR_RENAME, &SrcEntry, &TarEntry, pszTarEAName, 0);
+      rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
+         MODIFY_DIR_RENAME, &SrcEntry, &TarEntry, NULL, NULL, pszTarEAName, 0);
       goto usMoveEASExit;
       }
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, MODIFY_DIR_DELETE, &SrcEntry, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &SrcEntry, NULL, NULL, NULL, NULL, 0);
    if (rc)
       goto usMoveEASExit;
 
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, MODIFY_DIR_INSERT, NULL, &SrcEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, NULL, pszTarEAName, 0);
 
 usMoveEASExit:
    if (pszSrcEAName)
@@ -499,29 +514,39 @@ usMoveEASExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, BYTE fEAS)
+USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS)
 {
 ULONG ulCluster;
 DIRENTRY OldEntry, NewEntry;
+PDIRENTRY1 pNewEntry = (PDIRENTRY1)&NewEntry;
 USHORT rc;
 
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, &OldEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, NULL, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       CritMessage("FAT32: MarkfileEAS : %s not found!", pszFileName);
       return ERROR_FILE_NOT_FOUND;
       }
    memcpy(&NewEntry, &OldEntry, sizeof (DIRENTRY));
-   if( HAS_OLD_EAS( NewEntry.fEAS ))
-        NewEntry.fEAS = FILE_HAS_NO_EAS;
-   NewEntry.fEAS = ( BYTE )(( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+      {
+      if( HAS_OLD_EAS( NewEntry.fEAS ))
+           NewEntry.fEAS = FILE_HAS_NO_EAS;
+      NewEntry.fEAS = ( BYTE )(( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+      }
+   else
+      {
+      if( HAS_OLD_EAS( pNewEntry->u.File.fEAS ))
+           pNewEntry->u.File.fEAS = FILE_HAS_NO_EAS;
+      pNewEntry->u.File.fEAS = ( BYTE )(( pNewEntry->u.File.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+      }
 
    if (!memcmp(&NewEntry, &OldEntry, sizeof (DIRENTRY)))
       return 0;
 
-   rc = ModifyDirectory(pVolInfo, ulDirCluster,
-      MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
+      MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, NULL, NULL, NULL, 0);
 
    return rc;
 }
@@ -529,13 +554,16 @@ USHORT rc;
 /************************************************************************
 *
 ************************************************************************/
-USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate)
+USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate)
 {
 PFEALIST pFEAL;
 ULONG ulCluster;
 PBYTE  pszEAName;
 PBYTE pRead;
 USHORT rc;
+DIRENTRY1 StreamEntry;
+SHOPENINFO SHInfo;
+PSHOPENINFO pSHInfo = NULL;
 USHORT usClustersUsed;
 USHORT usBlocksUsed;
 BOOL fFirst = TRUE;
@@ -546,7 +574,7 @@ BOOL fFirst = TRUE;
    if (rc)
       return rc;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, NULL, &StreamEntry, NULL);
    free(pszEAName);
 
    if ((ulCluster && ulCluster != pVolInfo->ulFatEof) || fCreate)
@@ -600,12 +628,18 @@ BOOL fFirst = TRUE;
    usBlocksUsed--;
    pRead += pVolInfo->ulBlockSize;
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pSHInfo = &SHInfo;
+      SetSHInfo1(pVolInfo, &StreamEntry, pSHInfo);
+      }
+
    while (usClustersUsed)
       {
       ULONG ulBlock;
       if (!fFirst)
          {
-         ulCluster = GetNextCluster(pVolInfo, ulCluster);
+         ulCluster = GetNextCluster(pVolInfo, pSHInfo, ulCluster);
          if (!ulCluster)
             ulCluster = pVolInfo->ulFatEof;
          if (ulCluster == pVolInfo->ulFatEof)
@@ -652,7 +686,7 @@ BOOL fFirst = TRUE;
 /************************************************************************
 *
 ************************************************************************/
-USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName)
+USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName)
 {
 PSZ pszEAName;
 USHORT rc;
@@ -663,20 +697,20 @@ ULONG    ulCluster;
    if (rc)
       return rc;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, NULL, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, NULL, NULL, 0);
    if (rc)
       goto usDeleteEASExit;
 
    if (ulCluster)
       DeleteFatChain(pVolInfo, ulCluster);
 
-   rc = MarkFileEAS(pVolInfo, ulDirCluster, pszFileName, FILE_HAS_NO_EAS);
+   rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_NO_EAS);
 
 usDeleteEASExit:
    free(pszEAName);
@@ -691,7 +725,7 @@ usDeleteEASExit:
 /************************************************************************
 *
 ************************************************************************/
-USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PFEALIST pFEAL)
+USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST pFEAL)
 {
 ULONG ulCluster, ulNextCluster;
 PBYTE  pszEAName;
@@ -701,9 +735,14 @@ USHORT usClustersNeeded;
 USHORT usBlocksNeeded;
 DIRENTRY DirEntry;
 DIRENTRY DirNew;
+PDIRENTRY1 pDirNew = (PDIRENTRY1)&DirNew;
+DIRENTRY1 DirStream;
+DIRENTRY1 DirStreamNew;
 BOOL     fCritical;
 PFEA     pFea, pFeaEnd;
 BOOL fFirst = TRUE;
+SHOPENINFO SHInfo;
+PSHOPENINFO pSHInfo = NULL;
 
    if (pFEAL->cbList > MAX_EA_SIZE)
       return ERROR_EA_LIST_TOO_LONG;
@@ -720,7 +759,7 @@ BOOL fFirst = TRUE;
    if (pFEAL->cbList % pVolInfo->ulBlockSize)
       usBlocksNeeded++;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, &DirEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, &DirStream, NULL);
    if (!ulCluster || ulCluster == pVolInfo->ulFatEof)
       {
       BOOL fNew = FALSE;
@@ -729,12 +768,27 @@ BOOL fFirst = TRUE;
          {
          fNew = TRUE;
          memset(&DirNew, 0, sizeof DirNew);
+         memset(&DirStreamNew, 0, sizeof DirStreamNew);
          }
       else
+         {
          memcpy(&DirNew, &DirEntry, sizeof DirEntry);
+         memcpy(&DirStreamNew, &DirStream, sizeof DirStream);
+         }
 
-      DirNew.bAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
-      DirNew.ulFileSize = pFEAL->cbList;
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+         {
+         DirNew.bAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
+         DirNew.ulFileSize = pFEAL->cbList;
+         }
+      else
+         {
+         pDirNew->u.File.usFileAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
+         DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
+         DirStreamNew.u.Stream.ullDataLen =
+            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+         }
 
 
       ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, (ULONG)usClustersNeeded, NULL);
@@ -744,14 +798,21 @@ BOOL fFirst = TRUE;
          return ERROR_DISK_FULL;
          }
 
-      DirNew.wCluster = LOUSHORT(ulCluster);
-      DirNew.wClusterHigh = HIUSHORT(ulCluster);
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+         {
+         DirNew.wCluster = LOUSHORT(ulCluster);
+         DirNew.wClusterHigh = HIUSHORT(ulCluster);
+         }
+      else
+         {
+         DirStreamNew.u.Stream.ulFirstClus = ulCluster;
+         }
 
       if (fNew)
-         rc = MakeDirEntry(pVolInfo, ulDirCluster, &DirNew, pszEAName);
+         rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, &DirNew, &DirStreamNew, pszEAName);
       else
-         rc = ModifyDirectory(pVolInfo, ulDirCluster,
-            MODIFY_DIR_UPDATE, &DirEntry, &DirNew, NULL, 0);
+         rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
+            MODIFY_DIR_UPDATE, &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL, 0);
       if (rc)
          {
          free(pszEAName);
@@ -761,9 +822,18 @@ BOOL fFirst = TRUE;
    else
       {
       memcpy(&DirNew, &DirEntry, sizeof (DIRENTRY));
-      DirNew.ulFileSize = pFEAL->cbList;
-      rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_UPDATE,
-           &DirEntry, &DirNew, NULL, 0);
+      memcpy(&DirStreamNew, &DirStream, sizeof (DIRENTRY1));
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+         DirNew.ulFileSize = pFEAL->cbList;
+      else
+         {
+         DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
+         DirStreamNew.u.Stream.ullDataLen =
+            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+         }
+      rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+           &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL, 0);
       if (rc)
          {
          free(pszEAName);
@@ -773,12 +843,18 @@ BOOL fFirst = TRUE;
 
    free(pszEAName);
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pSHInfo = &SHInfo;
+      SetSHInfo1(pVolInfo, (PDIRENTRY1)&DirStreamNew, pSHInfo);
+      }
+
    pWrite = (PBYTE)pFEAL;
    ulNextCluster = pVolInfo->ulFatEof;
    while (usClustersNeeded)
       {
       ULONG ulBlock;
-      ulNextCluster = GetNextCluster(pVolInfo, ulCluster);
+      ulNextCluster = GetNextCluster(pVolInfo, pSHInfo, ulCluster);
       if (!ulNextCluster)
          ulNextCluster = pVolInfo->ulFatEof;
       for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
@@ -818,9 +894,9 @@ BOOL fFirst = TRUE;
 
 
    if (fCritical)
-      rc = MarkFileEAS(pVolInfo, ulDirCluster, pszFileName, FILE_HAS_CRITICAL_EAS);
+      rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_CRITICAL_EAS);
    else
-      rc = MarkFileEAS(pVolInfo, ulDirCluster, pszFileName, FILE_HAS_EAS);
+      rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_EAS);
 
    return rc;
 }
@@ -999,4 +1075,3 @@ USHORT usGetEmptyEAS(PSZ pszFileName, PEAOP pEAOP)
        }
    return rc;
 }
-

@@ -92,7 +92,7 @@ static BYTE szShortName[13];
       {
       ReadCluster(pDrive, ulCluster);
       memcpy((void *)p, pDrive->pbCluster, pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector);
-      ulCluster = GetNextCluster(pDrive, ulCluster);
+      ulCluster = GetNextCluster(pDrive, ulCluster, 0);
       p += pDrive->bpb.SectorsPerCluster * pDrive->bpb.BytesPerSector;
       }
 
@@ -318,7 +318,7 @@ ULONG ulNextCluster;
    while (ulNextCluster && ulNextCluster != pDrive->ulFatEof)
       {
       MarkCluster(pDrive, ulNextCluster);
-      ulNextCluster = GetNextCluster(pDrive, ulNextCluster);
+      ulNextCluster = GetNextCluster(pDrive, ulNextCluster, 0);
       if (ulNextCluster != pDrive->ulFatEof && ulNextCluster >= pDrive->ulTotalClusters + 2)
          {
          printf("ERROR: FAT Appears damaged!! (FAT Sector %ld contains %8.8lX)\n",
@@ -432,7 +432,7 @@ APIRET rc;
    return TRUE;
 }
 
-ULONG GetNextCluster(PDRIVEINFO pDrive, ULONG ulCluster)
+ULONG GetNextCluster(PDRIVEINFO pDrive, ULONG ulCluster, BOOL fNoFatChain)
 {
    if (!ReadFATSector(pDrive, GetFatEntrySec(pDrive, ulCluster)))
       {

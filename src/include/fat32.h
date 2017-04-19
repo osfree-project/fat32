@@ -48,4 +48,4 @@ IMPORT BOOL   DumpDirectory(PDRIVEINFO pDrive, ULONG ulCluster, PSZ pszDrive);
 IMPORT APIRET OpenDisk(WORD wDiskNum, PHFILE phFile);
 IMPORT APIRET CloseDisk(HFILE hFile);
 IMPORT VOID   MarkCluster(PDRIVEINFO pDrive, ULONG ulCluster);
-IMPORT ULONG GetNextCluster(PDRIVEINFO pDrive, ULONG ulCluster);
+IMPORT ULONG GetNextCluster(PDRIVEINFO pDrive, ULONG ulCluster, BOOL fNoFatChain);

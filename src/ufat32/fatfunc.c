@@ -25,7 +25,7 @@ ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);
-ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fAllowBad);
+ULONG  GetNextCluster(PCDINFO pCD, ULONG ulCluster, BOOL fNoFatChain, BOOL fAllowBad);
 BOOL  GetDiskStatus(PCDINFO pCD);
 ULONG GetFreeSpace(PCDINFO pCD);
 BOOL  MarkDiskStatus(PCDINFO pCD, BOOL fClean);
@@ -526,7 +526,7 @@ ULONG  ulDirEntries = 0;
                ulCluster = 0;
             }
          else
-            ulCluster = GetNextCluster(pCD, ulCluster, TRUE);
+            ulCluster = GetNextCluster(pCD, ulCluster, FALSE, TRUE);
          if (!ulCluster)
             ulCluster = pCD->ulFatEof;
          }
@@ -942,7 +942,7 @@ APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY
                ulNextCluster = 1;
             }
          else
-            ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
+            ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE, TRUE);
          if (!ulNextCluster)
             ulNextCluster = pCD->ulFatEof;
          if (ulNextCluster == pCD->ulFatEof)
@@ -1617,7 +1617,7 @@ ULONG GetFreeCluster(PCDINFO pCD)
       ulStartCluster = ulCluster;
       }
 
-   while (GetNextCluster(pCD, ulCluster, TRUE))
+   while (GetNextCluster(pCD, ulCluster, FALSE, TRUE))
       {
       ulCluster++;
       if (fStartAt2 && ulCluster >= ulStartCluster)
@@ -1677,7 +1677,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
       ulClustersUsed = 1;
       while (ulClustersUsed < ulClustersNeeded)
          {
-         ULONG ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
+         ULONG ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE, TRUE);
          if (!ulNextCluster)
             break;
          ulCluster = ulNextCluster;
@@ -1851,7 +1851,7 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
       {
       ULONG ulNextCluster;
       DirEntry.ulFileSize += pCD->ulClusterSize;
-      ulNextCluster = GetNextCluster(pCD, ulCluster, TRUE);
+      ulNextCluster = GetNextCluster(pCD, ulCluster, FALSE, TRUE);
       if (!ulNextCluster)
          {
          SetNextCluster(pCD, ulCluster, pCD->ulFatEof);
@@ -2268,7 +2268,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSZ pszOldFile, PSZ pszFile, PB
          goto MakeFileEnd;
 
       pBuf += pCD->ulClusterSize;
-      ulCluster = GetNextCluster(pCD, ulCluster, TRUE);
+      ulCluster = GetNextCluster(pCD, ulCluster, FALSE, TRUE);
       }
 
    UpdateFSInfo(pCD);

@@ -301,7 +301,7 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
    // get cluster at the ulOffset offset
    /* for (i = 0, ulCluster = ulStartCluster;
         i < ulOffset / ulClusterSize + 1;
-        i++, ulCluster = GetNextCluster(pVolInfo, ulCluster))
+        i++, ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster))
       {
       if (ulCluster == pVolInfo->ulFatEof)
           return ERROR_SECTOR_NOT_FOUND;

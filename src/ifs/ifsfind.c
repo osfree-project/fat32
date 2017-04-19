@@ -44,6 +44,11 @@ APIRET rc = 0;
       goto FS_FINDCLOSEEXIT;
       }
 
+   if (pFindInfo->pSHInfo)
+      {
+      free(pFindInfo->pSHInfo);
+      }
+
    if (pFindInfo->pInfo)
       {
       if (RemoveFindEntry(pVolInfo, pFindInfo->pInfo))
@@ -92,6 +97,7 @@ PROCINFO ProcInfo;
 ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
+DIRENTRY1 StreamEntry;
 
    _asm push es;
 
@@ -187,6 +193,8 @@ USHORT usSectorsPerBlock;
       }
    memset(pData, 0, cbData);
 
+   pFindInfo->pSHInfo = NULL;
+
    usNumClusters = 0;
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
@@ -194,7 +202,8 @@ USHORT usSectorsPerBlock;
       pName,
       usCurDirEnd,
       RETURN_PARENT_DIR,
-      &pSearch);
+      &pSearch,
+      &StreamEntry);
 
    if (ulDirCluster == pVolInfo->ulFatEof)
       {
@@ -215,10 +224,18 @@ USHORT usSectorsPerBlock;
       }
    else
       {
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         PSHOPENINFO pSHInfo = malloc(sizeof(SHOPENINFO));
+         SetSHInfo1(pVolInfo, (PDIRENTRY1)&StreamEntry, pSHInfo);
+         pFindInfo->pSHInfo = pSHInfo;
+         }
+
       while (ulCluster && ulCluster != pVolInfo->ulFatEof)
          {
          usNumClusters++;
-         ulCluster = GetNextCluster(pVolInfo, ulCluster);
+         //ulCluster = GetNextCluster(pVolInfo, pFindInfo->pSHInfo, ulCluster);
+         ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
          }
       }
 
@@ -722,7 +739,7 @@ USHORT usBlockIndex;
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
                      {
-                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pfFind->cbList);
                      if (rc)
                         pfFind->cbList = 4;
@@ -756,7 +773,7 @@ USHORT usBlockIndex;
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
                      {
-                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pfFind->cbList);
                      if (rc)
                         pfFind->cbList = 4;
@@ -798,7 +815,7 @@ USHORT usBlockIndex;
                         *pcbData - (strlen(szLongName) + 2);
 
                      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
-                        pFindInfo->pInfo->rgClusters[0],
+                        pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
                         return rc;
@@ -870,7 +887,7 @@ USHORT usBlockIndex;
                         *pcbData - (strlen(szLongName) + 2);
 
                      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
-                        pFindInfo->pInfo->rgClusters[0],
+                        pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
                         return rc;
@@ -1184,7 +1201,7 @@ ULONGLONG cbFileAlloc;
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
                      {
-                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pfFind->cbList);
                      if (rc)
                         pfFind->cbList = 4;
@@ -1207,7 +1224,7 @@ ULONGLONG cbFileAlloc;
                      pfFind->cbList = sizeof pfFind->cbList;
                   else
                      {
-                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0],
+                     rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pfFind->cbList);
                      if (rc)
                         pfFind->cbList = 4;
@@ -1236,7 +1253,7 @@ ULONGLONG cbFileAlloc;
                         *pcbData - (strlen(szLongName) + 2);
 
                      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
-                        pFindInfo->pInfo->rgClusters[0],
+                        pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
                         return rc;
@@ -1287,7 +1304,7 @@ ULONGLONG cbFileAlloc;
                         *pcbData - (strlen(szLongName) + 2);
 
                      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
-                        pFindInfo->pInfo->rgClusters[0],
+                        pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
                         return rc;
@@ -1459,6 +1476,20 @@ FTIME GetTime1(TIMESTAMP ts)
    return time;
 }
 
+TIMESTAMP SetTimeStamp(FDATE date, FTIME time)
+{
+   TIMESTAMP ts;
+
+   ts.seconds = time.twosecs * 2;
+   ts.minutes = time.minutes;
+   ts.hour = time.hours;
+
+   ts.day = date.day;
+   ts.month = date.month;
+   ts.year = date.year;
+
+   return ts;
+}
 
 
 /******************************************************************
@@ -1584,7 +1615,8 @@ CHAR   fRootDir = FALSE;
          else
             {
             pFindInfo->pInfo->rgClusters[usIndex + 1] =
-               GetNextCluster( pVolInfo, pFindInfo->pInfo->rgClusters[usIndex]);
+               //GetNextCluster( pVolInfo, pFindInfo->pSHInfo, pFindInfo->pInfo->rgClusters[usIndex] );
+               GetNextCluster( pVolInfo, NULL, pFindInfo->pInfo->rgClusters[usIndex] );
             }
 
          if (!pFindInfo->pInfo->rgClusters[usIndex + 1])

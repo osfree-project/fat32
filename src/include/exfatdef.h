@@ -100,7 +100,8 @@ union
       BYTE      bSecondaryCount;
       USHORT    usSetCheckSum;
       USHORT    usFileAttr;
-      USHORT    usRsvd1;
+      BYTE      fEAS;
+      BYTE      bRsvd1;
       TIMESTAMP ulCreateTimestp;
       TIMESTAMP ulLastModifiedTimestp;
       TIMESTAMP ulLastAccessedTimestp;

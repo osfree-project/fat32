@@ -50,8 +50,13 @@ ULONG    ulCluster;
 ULONG    ulDirCluster;
 PSZ      pszFile;
 DIRENTRY DirEntry;
+DIRENTRY1 DirEntryStream;
 POPENINFO pOpenInfo = NULL;
+DIRENTRY1 DirStream;
+SHOPENINFO DirSHInfo;
+PSHOPENINFO pDirSHInfo = NULL;
 USHORT   usIOMode;
+BOOL fNoFatChain;
 ULONGLONG size;
 USHORT rc;
 
@@ -122,7 +127,7 @@ USHORT rc;
       {
       BYTE szLongName[ FAT32MAXPATH ];
 
-      if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
+      if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG )) ////
          strcpy( szLongName, pName );
 
       pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
@@ -137,19 +142,29 @@ USHORT rc;
          rc = ERROR_ACCESS_DENIED;
          goto FS_OPENCREATEEXIT;
          }
+
       ulDirCluster = FindDirCluster(pVolInfo,
          pcdfsi,
          pcdfsd,
          pName,
          usCurDirEnd,
          RETURN_PARENT_DIR,
-         &pszFile);
+         &pszFile,
+         &DirStream);
+
       if (ulDirCluster == pVolInfo->ulFatEof)
          {
          rc = ERROR_PATH_NOT_FOUND;
          goto FS_OPENCREATEEXIT;
          }
 
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         pDirSHInfo = &DirSHInfo;
+         SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
+         }
+
+      pOpenInfo->pDirSHInfo = pDirSHInfo;
 #if 0
       if (f32Parms.fEAS)
          {
@@ -160,8 +175,9 @@ USHORT rc;
             }
          }
 #endif
+      ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo,
+         &DirEntry, &DirEntryStream, NULL);
 
-      ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, &DirEntry, NULL);
       if (pOpenInfo->pSHInfo->sOpenCount > 1)
          {
          if (pOpenInfo->pSHInfo->bAttr & FILE_DIRECTORY)
@@ -195,10 +211,23 @@ USHORT rc;
          }
       else
          {
-         if (DirEntry.bAttr & FILE_DIRECTORY)
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
-            rc = ERROR_ACCESS_DENIED;
-            goto FS_OPENCREATEEXIT;
+            if (DirEntry.bAttr & FILE_DIRECTORY)
+               {
+               rc = ERROR_ACCESS_DENIED;
+               goto FS_OPENCREATEEXIT;
+               }
+            }
+         else
+            {
+            if (((PDIRENTRY1)&DirEntry)->u.File.usFileAttr & FILE_DIRECTORY)
+               {
+               rc = ERROR_ACCESS_DENIED;
+               goto FS_OPENCREATEEXIT;
+               }
+
+            pOpenInfo->pSHInfo->fNoFatChain = DirEntryStream.u.Stream.bNoFatChain;
             }
 
          if (!(usOpenFlag & (FILE_OPEN | FILE_TRUNCATE)))
@@ -207,9 +236,10 @@ USHORT rc;
             goto FS_OPENCREATEEXIT;
             }
 
-         if (DirEntry.bAttr & FILE_READONLY &&
-           (ulOpenMode & OPEN_ACCESS_WRITEONLY ||
-               ulOpenMode & OPEN_ACCESS_READWRITE))
+         if ( ((pVolInfo->bFatType < FAT_TYPE_EXFAT) && DirEntry.bAttr & FILE_READONLY &&
+              (ulOpenMode & OPEN_ACCESS_WRITEONLY || ulOpenMode & OPEN_ACCESS_READWRITE)) ||
+              ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && ((PDIRENTRY1)&DirEntry)->u.File.usFileAttr & FILE_READONLY &&
+              (ulOpenMode & OPEN_ACCESS_WRITEONLY || ulOpenMode & OPEN_ACCESS_READWRITE)) )
             {
             if ((psffsi->sfi_type & STYPE_FCB) && (ulOpenMode & OPEN_ACCESS_READWRITE))
                {
@@ -242,7 +272,10 @@ USHORT rc;
       if (ulCluster == pVolInfo->ulFatEof)
          {
          memset(&DirEntry, 0, sizeof (DIRENTRY));
-         DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+         else
+            ((PDIRENTRY1)&DirEntry)->u.File.usFileAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
          ulCluster = 0;
 
          if (f32Parms.fLargeFiles)
@@ -263,9 +296,20 @@ USHORT rc;
             ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, NULL);
             if (ulCluster != pVolInfo->ulFatEof)
                {
-               DirEntry.wCluster = LOUSHORT(ulCluster);
-               DirEntry.wClusterHigh = HIUSHORT(ulCluster);
-               DirEntry.ulFileSize = size;
+               if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+                  {
+                  DirEntry.wCluster = LOUSHORT(ulCluster);
+                  DirEntry.wClusterHigh = HIUSHORT(ulCluster);
+                  DirEntry.ulFileSize = size;
+                  }
+               else
+                  {
+                  DirEntryStream.u.Stream.ulFirstClus = ulCluster;
+                  DirEntryStream.u.Stream.ullValidDataLen = size;
+                  DirEntryStream.u.Stream.ullDataLen =
+                     (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  }
                }
             else
                {
@@ -274,16 +318,35 @@ USHORT rc;
                }
             }
 
-         rc = MakeDirEntry(pVolInfo, ulDirCluster, &DirEntry, pszFile);
+         rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, &DirEntry, &DirEntryStream, pszFile);
          if (rc)
             goto FS_OPENCREATEEXIT;
 
-         memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
-         psffsi->sfi_atime = 0;
-         memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            {
+            memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
+            psffsi->sfi_atime = 0;
+            memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+            }
+         else
+            {
+            PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+            FDATE date = GetDate1(pDirEntry->u.File.ulCreateTimestp);
+            FTIME time = GetTime1(pDirEntry->u.File.ulCreateTimestp);
+            memcpy(&psffsi->sfi_ctime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &date, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_adate, &date, sizeof (USHORT));
+            time = GetTime1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_atime, &time, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastModifiedTimestp);
+            time = GetTime1(pDirEntry->u.File.ulLastModifiedTimestp);
+            memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
+            }
 
          pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
@@ -292,7 +355,7 @@ USHORT rc;
          *pfGenFlag = 0;
          if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
             {
-            rc = usModifyEAS(pVolInfo, ulDirCluster, pszFile, (PEAOP)pEABuf);
+            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf);
             if (rc)
                goto FS_OPENCREATEEXIT;
             }
@@ -301,6 +364,8 @@ USHORT rc;
       else if (usOpenFlag & FILE_TRUNCATE)
          {
          DIRENTRY DirOld;
+         DIRENTRY1 DirOldStream;
+         PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
 
          if (pVolInfo->fWriteProtected)
             {
@@ -308,27 +373,41 @@ USHORT rc;
             goto FS_OPENCREATEEXIT;
             }
 
-         if ((DirEntry.bAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN))
+         if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN)) ||
+              ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN)) )
             {
             rc = ERROR_ACCESS_DENIED;
             goto FS_OPENCREATEEXIT;
             }
 
-         if ((DirEntry.bAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM))
+         if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM)) ||
+              ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM)) )
             {
             rc = ERROR_ACCESS_DENIED;
             goto FS_OPENCREATEEXIT;
             }
 
          memcpy(&DirOld, &DirEntry, sizeof (DIRENTRY));
+         memcpy(&DirOldStream, &DirEntryStream, sizeof (DIRENTRY1));
 
-         DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
-         DirEntry.wCluster     = 0;
-         DirEntry.wClusterHigh = 0;
-         DirEntry.ulFileSize   = 0;
-         DirEntry.fEAS = FILE_HAS_NO_EAS;
+         if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
+            {
+            DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+            DirEntry.wCluster     = 0;
+            DirEntry.wClusterHigh = 0;
+            DirEntry.ulFileSize   = 0;
+            DirEntry.fEAS = FILE_HAS_NO_EAS;
+            }
+         else
+            {
+            pDirEntry->u.File.usFileAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+            DirEntryStream.u.Stream.ulFirstClus = 0;
+            DirEntryStream.u.Stream.ullValidDataLen = 0;
+            DirEntryStream.u.Stream.ullDataLen = 0;
+            //DirEntryStream->u.Stream.fEAS = FILE_HAS_NO_EAS; ////
+            }
 
-         rc = usDeleteEAS(pVolInfo, ulDirCluster, pszFile);
+         rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile);
          if (rc)
             goto FS_OPENCREATEEXIT;
          DirOld.fEAS = FILE_HAS_NO_EAS;
@@ -357,31 +436,61 @@ USHORT rc;
             ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
             if (ulCluster != pVolInfo->ulFatEof)
                {
-               DirEntry.wCluster = LOUSHORT(ulCluster);
-               DirEntry.wClusterHigh = HIUSHORT(ulCluster);
-               DirEntry.ulFileSize = size;
+               if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
+                  {
+                  DirEntry.wCluster = LOUSHORT(ulCluster);
+                  DirEntry.wClusterHigh = HIUSHORT(ulCluster);
+                  DirEntry.ulFileSize = size;
+                  }
+               else
+                  {
+                  DirEntryStream.u.Stream.ulFirstClus = ulCluster;
+                  DirEntryStream.u.Stream.ullValidDataLen = size;
+                  DirEntryStream.u.Stream.ullDataLen =
+                     (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  }
                }
             else
                {
                ulCluster = 0;
-               rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_UPDATE,
-                  &DirOld, &DirEntry, NULL, usIOMode);
+               rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+                  &DirOld, &DirEntry, &DirOldStream, &DirEntryStream, NULL, usIOMode);
                if (!rc)
                   rc = ERROR_DISK_FULL;
                goto FS_OPENCREATEEXIT;
                }
             }
-         rc = ModifyDirectory(pVolInfo, ulDirCluster, MODIFY_DIR_UPDATE,
-            &DirOld, &DirEntry, NULL, usIOMode);
+         rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+            &DirOld, &DirEntry, &DirOldStream, &DirEntryStream, NULL, usIOMode);
          if (rc)
             goto FS_OPENCREATEEXIT;
 
-         memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
-         psffsi->sfi_atime = 0;
-         memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+         if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
+            {
+            memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
+            psffsi->sfi_atime = 0;
+            memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+            }
+         else
+            {
+            PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+            FDATE date = GetDate1(pDirEntry->u.File.ulCreateTimestp);
+            FTIME time = GetTime1(pDirEntry->u.File.ulCreateTimestp);
+            memcpy(&psffsi->sfi_ctime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &date, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_adate, &date, sizeof (USHORT));
+            time = GetTime1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_atime, &time, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastModifiedTimestp);
+            time = GetTime1(pDirEntry->u.File.ulLastModifiedTimestp);
+            memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
+            }
 
          pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
@@ -389,7 +498,7 @@ USHORT rc;
          *pfGenFlag = 0;
          if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
             {
-            rc = usModifyEAS(pVolInfo, ulDirCluster, pszFile, (PEAOP)pEABuf);
+            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf);
             if (rc)
                goto FS_OPENCREATEEXIT;
             }
@@ -398,12 +507,31 @@ USHORT rc;
          }
       else
          {
-         memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
-         psffsi->sfi_atime = 0;
-         memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+         if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
+            {
+            memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
+            psffsi->sfi_atime = 0;
+            memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+            }
+         else
+            {
+            PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+            FDATE date = GetDate1(pDirEntry->u.File.ulCreateTimestp);
+            FTIME time = GetTime1(pDirEntry->u.File.ulCreateTimestp);
+            memcpy(&psffsi->sfi_ctime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &date, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_adate, &date, sizeof (USHORT));
+            time = GetTime1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_atime, &time, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastModifiedTimestp);
+            time = GetTime1(pDirEntry->u.File.ulLastModifiedTimestp);
+            memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
+            }
 
          psffsi->sfi_tstamp = 0;
          *pAction = FILE_EXISTED;
@@ -422,8 +550,12 @@ USHORT rc;
 
       if (pOpenInfo->pSHInfo->sOpenCount == 1)
          {
-         pOpenInfo->pSHInfo->ulLastCluster = GetLastCluster(pVolInfo, ulCluster);
-         pOpenInfo->pSHInfo->bAttr = DirEntry.bAttr;
+         PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+         pOpenInfo->pSHInfo->ulLastCluster = GetLastCluster(pVolInfo, ulCluster, &DirEntryStream); ////
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            pOpenInfo->pSHInfo->bAttr = DirEntry.bAttr;
+         else
+            pOpenInfo->pSHInfo->bAttr = pDirEntry->u.File.usFileAttr;
          }
 
       pOpenInfo->pSHInfo->ulDirCluster = ulDirCluster;
@@ -435,8 +567,17 @@ USHORT rc;
 
       pOpenInfo->ulCurBlock = 0;
 
-      size = DirEntry.ulFileSize;
-      psffsi->sfi_DOSattr = DirEntry.bAttr;
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+         {
+         size = DirEntry.ulFileSize;
+         psffsi->sfi_DOSattr = DirEntry.bAttr;
+         }
+      else
+         {
+         PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+         size = DirEntryStream.u.Stream.ullValidDataLen;
+         psffsi->sfi_DOSattr = pDirEntry->u.File.usFileAttr;
+         }
       }
    else /* OPEN_FLAGS_DASD */
       {
@@ -996,7 +1137,7 @@ ULONGLONG size;
 
             if (((ULONG)usClusterOffset + ulCurrBytesToRead) >= ulBytesPerCluster)
             {
-                pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->ulCurCluster);
+                pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
                 {
                     pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
@@ -1039,7 +1180,7 @@ ULONGLONG size;
 
             while (usBlocks && (ulCurrCluster != pVolInfo->ulFatEof))
             {
-                ulNextCluster       = GetNextCluster(pVolInfo, ulCurrCluster);
+                ulNextCluster       = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulCurrCluster);
                 if (!ulNextCluster)
                 {
                     ulNextCluster = pVolInfo->ulFatEof;
@@ -1101,7 +1242,7 @@ ULONGLONG size;
                            if (pOpenInfo->ulCurBlock >= (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize))
                              {
                              pOpenInfo->ulCurBlock   = 0;
-                             ulCurrCluster           = GetNextCluster(pVolInfo, ulCurrCluster);
+                             ulCurrCluster           = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulCurrCluster);
                              pOpenInfo->ulCurCluster = ulCurrCluster;
                              }
 
@@ -1491,7 +1632,7 @@ ULONGLONG size;
 
             if (ulLast != pVolInfo->ulFatEof)
             {
-                pOpenInfo->ulCurCluster = GetNextCluster(pVolInfo, ulLast);
+                pOpenInfo->ulCurCluster = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulLast);
                 if (!pOpenInfo->ulCurCluster)
                     pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
 
@@ -1575,7 +1716,7 @@ ULONGLONG size;
 
             if (((ULONG)usClusterOffset + ulCurrBytesToWrite) >= ulBytesPerCluster)
             {
-                pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->ulCurCluster);
+                pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
                 {
                     pOpenInfo->ulCurCluster = pVolInfo->ulFatEof;
@@ -1617,7 +1758,7 @@ ULONGLONG size;
 
             while (usBlocks && (ulCurrCluster != pVolInfo->ulFatEof))
             {
-                ulNextCluster       = GetNextCluster(pVolInfo, ulCurrCluster);
+                ulNextCluster       = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulCurrCluster);
                 if (!ulNextCluster)
                 {
                     ulNextCluster = pVolInfo->ulFatEof;
@@ -1679,7 +1820,7 @@ ULONGLONG size;
                            if (pOpenInfo->ulCurBlock >= (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize))
                              {
                              pOpenInfo->ulCurBlock   = 0;
-                             ulCurrCluster           = GetNextCluster(pVolInfo, ulCurrCluster);
+                             ulCurrCluster           = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulCurrCluster);
                              pOpenInfo->ulCurCluster = ulCurrCluster;
                              }
 
@@ -1805,7 +1946,7 @@ ULONG ulCurCluster;
    if (ullOffset < pVolInfo->ulClusterSize)
       return ulCurCluster;
 
-   return SeekToCluster(pVolInfo, ulCurCluster, ullOffset);
+   return SeekToCluster(pVolInfo, pOpenInfo->pSHInfo, ulCurCluster, ullOffset);
 }
 
 /******************************************************************
@@ -2007,6 +2148,10 @@ USHORT rc;
          PSZ  pszFile;
          DIRENTRY DirEntry;
          DIRENTRY DirOld;
+         DIRENTRY1 DirEntryStream;
+         DIRENTRY1 DirOldStream;
+         PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+         PDIRENTRY1 pDirOld = (PDIRENTRY1)&DirOld;
          ULONG  ulCluster;
 
          pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
@@ -2052,7 +2197,8 @@ USHORT rc;
             }
          pszFile++;
 
-         ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &DirOld, NULL);
+         ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, pOpenInfo->pDirSHInfo,
+            &DirOld, &DirOldStream, NULL);
          if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
@@ -2060,36 +2206,83 @@ USHORT rc;
             }
 
          memcpy(&DirEntry, &DirOld, sizeof (DIRENTRY));
-         memcpy(&DirEntry.wCreateTime,    &psffsi->sfi_ctime, sizeof (USHORT));
-         memcpy(&DirEntry.wCreateDate,    &psffsi->sfi_cdate, sizeof (USHORT));
-         memcpy(&DirEntry.wAccessDate,    &psffsi->sfi_adate, sizeof (USHORT));
-         memcpy(&DirEntry.wLastWriteTime, &psffsi->sfi_mtime, sizeof (USHORT));
-         memcpy(&DirEntry.wLastWriteDate, &psffsi->sfi_mdate, sizeof (USHORT));
+         memcpy(&DirEntryStream, &DirOldStream, sizeof (DIRENTRY));
 
-         DirEntry.ulFileSize  = psffsi->sfi_size;
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            {
+            memcpy(&DirEntry.wCreateTime,    &psffsi->sfi_ctime, sizeof (USHORT));
+            memcpy(&DirEntry.wCreateDate,    &psffsi->sfi_cdate, sizeof (USHORT));
+            memcpy(&DirEntry.wAccessDate,    &psffsi->sfi_adate, sizeof (USHORT));
+            memcpy(&DirEntry.wLastWriteTime, &psffsi->sfi_mtime, sizeof (USHORT));
+            memcpy(&DirEntry.wLastWriteDate, &psffsi->sfi_mdate, sizeof (USHORT));
+
+            DirEntry.ulFileSize  = psffsi->sfi_size;
+            }
+         else
+            {
+            TIMESTAMP ts = SetTimeStamp(*(FDATE *)&psffsi->sfi_cdate, *(FTIME *)&psffsi->sfi_ctime);
+
+            memcpy(&pDirEntry->u.File.ulCreateTimestp, &ts, sizeof(TIMESTAMP));
+            ts = SetTimeStamp(*(FDATE *)&psffsi->sfi_adate, *(FTIME *)&psffsi->sfi_atime);
+            memcpy(&pDirEntry->u.File.ulLastAccessedTimestp, &ts, sizeof(TIMESTAMP));
+            ts = SetTimeStamp(*(FDATE *)&psffsi->sfi_mdate, *(FTIME *)&psffsi->sfi_mtime);
+            memcpy(&pDirEntry->u.File.ulLastModifiedTimestp, &ts, sizeof(TIMESTAMP));
+
+            DirEntryStream.u.Stream.ullValidDataLen = psffsi->sfi_size;
+            DirEntryStream.u.Stream.ullDataLen =
+               (psffsi->sfi_size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+               (psffsi->sfi_size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+            }
 
          if (f32Parms.fLargeFiles)
-            DirEntry.ulFileSize  = (ULONG)psffsi->sfi_sizel;
+            {
+            if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+               DirEntry.ulFileSize  = (ULONG)psffsi->sfi_sizel;
+            else
+               {
+               DirEntryStream.u.Stream.ullValidDataLen = psffsi->sfi_sizel;
+               DirEntryStream.u.Stream.ullDataLen =
+                  (psffsi->sfi_sizel / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  (psffsi->sfi_sizel % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+               }
+            }
 
          if (pOpenInfo->fCommitAttr || psffsi->sfi_DOSattr != pOpenInfo->pSHInfo->bAttr)
             {
-            DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr = psffsi->sfi_DOSattr;
+            if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+               DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr = psffsi->sfi_DOSattr;
+            else
+               pDirEntry->u.File.usFileAttr = pOpenInfo->pSHInfo->bAttr = psffsi->sfi_DOSattr;
             pOpenInfo->fCommitAttr = FALSE;
             }
 
          if (pOpenInfo->pSHInfo->ulStartCluster)
             {
-            DirEntry.wCluster     = LOUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
-            DirEntry.wClusterHigh = HIUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
+            if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+               {
+               DirEntry.wCluster     = LOUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
+               DirEntry.wClusterHigh = HIUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
+               }
+            else
+               {
+               DirEntryStream.u.Stream.ulFirstClus = pOpenInfo->pSHInfo->ulStartCluster;
+               }
             }
          else
             {
-            DirEntry.wCluster = 0;
-            DirEntry.wClusterHigh = 0;
+            if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+               {
+               DirEntry.wCluster = 0;
+               DirEntry.wClusterHigh = 0;
+               }
+            else
+               {
+               DirEntryStream.u.Stream.ulFirstClus = 0;
+               }
             }
 
-         rc = ModifyDirectory(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, MODIFY_DIR_UPDATE,
-            &DirOld, &DirEntry, NULL, usIOFlag);
+         rc = ModifyDirectory(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, MODIFY_DIR_UPDATE,
+            &DirOld, &DirEntry, &DirOldStream, &DirEntryStream, NULL, usIOFlag);
          if (!rc)
             psffsi->sfi_tstamp = 0;
          goto FS_COMMITEXIT;
@@ -2320,7 +2513,7 @@ ULONGLONG size;
       if (ulCluster == pVolInfo->ulFatEof)
          return ERROR_SECTOR_NOT_FOUND;
 
-      ulNextCluster = GetNextCluster(pVolInfo, ulCluster);
+      ulNextCluster = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, ulCluster);
       if (ulNextCluster != pVolInfo->ulFatEof)
          {
          SetNextCluster( pVolInfo, ulCluster, pVolInfo->ulFatEof);
@@ -2479,22 +2672,44 @@ ULONGLONG size;
           usLevel == FIL_STANDARDL || usLevel == FIL_QUERYEASIZEL)
          {
          DIRENTRY DirEntry;
+         PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
          ULONG ulCluster;
 
-         ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &DirEntry, NULL);
+         ulCluster = FindPathCluster(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster,
+            pszFile, pOpenInfo->pDirSHInfo, &DirEntry, NULL, NULL);
+
          if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_FILEINFOEXIT;
             }
 
-         memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
-         psffsi->sfi_atime = 0;
-         memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
-         memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
-         psffsi->sfi_DOSattr = DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            {
+            memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
+            psffsi->sfi_atime = 0;
+            memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+            psffsi->sfi_DOSattr = DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
+            }
+         else
+            {
+            FDATE date = GetDate1(pDirEntry->u.File.ulCreateTimestp);
+            FTIME time = GetTime1(pDirEntry->u.File.ulCreateTimestp);
+            memcpy(&psffsi->sfi_ctime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_cdate, &date, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastAccessedTimestp);
+            time = GetTime1(pDirEntry->u.File.ulLastAccessedTimestp);
+            memcpy(&psffsi->sfi_atime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_adate, &date, sizeof (USHORT));
+            date = GetDate1(pDirEntry->u.File.ulLastModifiedTimestp);
+            time = GetTime1(pDirEntry->u.File.ulLastModifiedTimestp);
+            memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
+            memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
+            psffsi->sfi_DOSattr = pDirEntry->u.File.usFileAttr = pOpenInfo->pSHInfo->bAttr;
+            }
          }
 
       switch (usLevel)
@@ -2506,6 +2721,7 @@ ULONGLONG size;
 
             memcpy(&pfStatus->fdateCreation, &psffsi->sfi_cdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeCreation, &psffsi->sfi_ctime, sizeof (USHORT));
+            memcpy(&pfStatus->ftimeLastAccess, &psffsi->sfi_atime, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
@@ -2525,6 +2741,7 @@ ULONGLONG size;
 
             memcpy(&pfStatus->fdateCreation, &psffsi->sfi_cdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeCreation, &psffsi->sfi_ctime, sizeof (USHORT));
+            memcpy(&pfStatus->ftimeLastAccess, &psffsi->sfi_atime, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
@@ -2544,6 +2761,7 @@ ULONGLONG size;
 
             memcpy(&pfStatus->fdateCreation, &psffsi->sfi_cdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeCreation, &psffsi->sfi_ctime, sizeof (USHORT));
+            memcpy(&pfStatus->ftimeLastAccess, &psffsi->sfi_atime, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
@@ -2560,7 +2778,7 @@ ULONGLONG size;
                rc = 0;
                }
             else
-               rc = usGetEASize(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &pfStatus->cbList);
+               rc = usGetEASize(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, &pfStatus->cbList);
             break;
             }
          case FIL_QUERYEASIZEL     :
@@ -2570,6 +2788,7 @@ ULONGLONG size;
 
             memcpy(&pfStatus->fdateCreation, &psffsi->sfi_cdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeCreation, &psffsi->sfi_ctime, sizeof (USHORT));
+            memcpy(&pfStatus->ftimeLastAccess, &psffsi->sfi_atime, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
@@ -2586,7 +2805,7 @@ ULONGLONG size;
                rc = 0;
                }
             else
-               rc = usGetEASize(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pszFile, &pfStatus->cbList);
+               rc = usGetEASize(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, &pfStatus->cbList);
             break;
             }
          case FIL_QUERYEASFROMLIST:
@@ -2612,7 +2831,7 @@ ULONGLONG size;
                rc = usGetEmptyEAS(pszFile,pEA);
                }
             else
-               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pszFile, pEA);
+               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, pEA);
             break;
             }
 
@@ -2640,7 +2859,7 @@ ULONGLONG size;
                rc = 0;
                }
             else
-               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pszFile, pEA);
+               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, pEA);
             break;
             }
          default :
@@ -2801,7 +3020,7 @@ ULONGLONG size;
                rc = 0;
             else
                {
-               rc = usModifyEAS(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster,
+               rc = usModifyEAS(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo,
                   pszFile, (PEAOP)pData);
                psffsi->sfi_tstamp = ST_SWRITE | ST_PWRITE;
                }
