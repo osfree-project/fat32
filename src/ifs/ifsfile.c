@@ -304,6 +304,9 @@ USHORT rc;
                   }
                else
                   {
+                  PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+                  pDirEntry->bEntryType = ENTRY_TYPE_FILE;
+                  DirEntryStream.bEntryType = ENTRY_TYPE_STREAM_EXT;
                   DirEntryStream.u.Stream.ulFirstClus = ulCluster;
                   DirEntryStream.u.Stream.ullValidDataLen = size;
                   DirEntryStream.u.Stream.ullDataLen =
@@ -400,11 +403,14 @@ USHORT rc;
             }
          else
             {
+            PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+            pDirEntry->bEntryType = ENTRY_TYPE_FILE;
+            DirEntryStream.bEntryType = ENTRY_TYPE_STREAM_EXT;
             pDirEntry->u.File.usFileAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+            pDirEntry->u.File.fEAS = FILE_HAS_NO_EAS;
             DirEntryStream.u.Stream.ulFirstClus = 0;
             DirEntryStream.u.Stream.ullValidDataLen = 0;
             DirEntryStream.u.Stream.ullDataLen = 0;
-            //DirEntryStream->u.Stream.fEAS = FILE_HAS_NO_EAS; ////
             }
 
          rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile);
@@ -444,6 +450,9 @@ USHORT rc;
                   }
                else
                   {
+                  PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+                  pDirEntry->bEntryType = ENTRY_TYPE_FILE;
+                  DirEntryStream.bEntryType = ENTRY_TYPE_STREAM_EXT;
                   DirEntryStream.u.Stream.ulFirstClus = ulCluster;
                   DirEntryStream.u.Stream.ullValidDataLen = size;
                   DirEntryStream.u.Stream.ullDataLen =
@@ -551,7 +560,7 @@ USHORT rc;
       if (pOpenInfo->pSHInfo->sOpenCount == 1)
          {
          PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
-         pOpenInfo->pSHInfo->ulLastCluster = GetLastCluster(pVolInfo, ulCluster, &DirEntryStream); ////
+         pOpenInfo->pSHInfo->ulLastCluster = GetLastCluster(pVolInfo, ulCluster, &DirEntryStream);
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             pOpenInfo->pSHInfo->bAttr = DirEntry.bAttr;
          else

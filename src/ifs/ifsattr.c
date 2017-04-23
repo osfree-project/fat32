@@ -30,7 +30,7 @@ ULONG ulDirCluster;
 PSZ   pszFile;
 DIRENTRY DirEntry;
 DIRENTRY DirNew;
-DIRENTRY1 DirStream;
+DIRENTRY1 DirStream, DirEntryStream, DirEntryStreamNew;
 SHOPENINFO DirSHInfo;
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT rc;
@@ -87,7 +87,7 @@ USHORT rc;
       SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
       }
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &DirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_FILE_NOT_FOUND;
@@ -151,7 +151,7 @@ USHORT rc;
             else
                DirNew1.u.File.usFileAttr = (BYTE)*pAttr;
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               &DirEntry, (PDIRENTRY)&DirNew1, NULL, NULL, NULL, 0);
+               &DirEntry, (PDIRENTRY)&DirNew1, &DirEntryStream, NULL, NULL, 0);
             }
          break;
          }
@@ -614,7 +614,7 @@ USHORT rc;
       if (usLevel == FIL_STANDARD  || usLevel == FIL_QUERYEASIZE ||
           usLevel == FIL_STANDARDL || usLevel == FIL_QUERYEASIZEL)
          {
-         ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, NULL, NULL);
+         ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &DirEntryStream, NULL);
          if (ulCluster == pVolInfo->ulFatEof)
             {
             rc = ERROR_FILE_NOT_FOUND;
@@ -711,7 +711,7 @@ USHORT rc;
                }
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               &DirEntry, &DirNew, NULL, NULL, NULL, 0);
+               &DirEntry, &DirNew, &DirEntryStream, NULL, NULL, 0);
             break;
             }
 
@@ -802,7 +802,7 @@ USHORT rc;
                }
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               &DirEntry, &DirNew, NULL, NULL, NULL, 0);
+               &DirEntry, &DirNew, &DirEntryStream, NULL, NULL, 0);
             break;
             }
 
@@ -827,7 +827,7 @@ USHORT rc;
                DirNew.wLastWriteTime.minutes = pGI->minutes;
                DirNew.wLastWriteTime.twosecs = pGI->seconds / 2;
                rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                  &DirEntry, &DirNew, NULL, NULL, NULL, 0);
+                  &DirEntry, &DirNew, &DirEntryStream, NULL, NULL, 0);
 #endif
                }
             break;

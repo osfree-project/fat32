@@ -278,7 +278,13 @@ ULONG    ulBlock;
       {
       pDir1 = (PDIRENTRY1)pbCluster;
 
+      pDir1->bEntryType = ENTRY_TYPE_FILE;
       pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+      (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+      (pDir1+1)->u.Stream.bAllocPossible = 1;
+      (pDir1+1)->u.Stream.bNoFatChain = 0;
+      (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
+      (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
       (pDir1+1)->u.Stream.ulFirstClus = ulCluster;
       }
 
@@ -313,6 +319,8 @@ ULONG    ulBlock;
          }
       pDir->bAttr = FILE_DIRECTORY;
       }
+   else
+      memset(pbCluster, 0, pVolInfo->ulBlockSize);
 
    rc = WriteBlock( pVolInfo, ulCluster, 0, pbCluster, DVIO_OPWRTHRU);
 
@@ -328,6 +336,7 @@ ULONG    ulBlock;
       if (rc)
          goto FS_MKDIREXIT;
       }
+
    free(pbCluster);
 
    if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
@@ -446,7 +455,9 @@ PSHOPENINFO pSHInfo = NULL;
       }
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &StreamEntry, NULL);
-   if (ulCluster == pVolInfo->ulFatEof || !(DirEntry.bAttr & FILE_DIRECTORY))
+   if (ulCluster == pVolInfo->ulFatEof ||
+       ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && !(DirEntry.bAttr & FILE_DIRECTORY)) ||
+       ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && !(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY)) )
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
@@ -520,12 +531,8 @@ PSHOPENINFO pSHInfo = NULL;
                      bSecondaryCount = pWork1->u.File.bSecondaryCount;
                      usFileCount++;
                      }
-                  else
-                     {
-                     continue;
-                     }
                   }
-               pWork++;
+               pWork1++;
                }
             }
          }
@@ -553,7 +560,7 @@ PSHOPENINFO pSHInfo = NULL;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-      &DirEntry, NULL, NULL, NULL, NULL, DVIO_OPWRTHRU);
+      &DirEntry, NULL, &StreamEntry, NULL, NULL, DVIO_OPWRTHRU);
    if (rc)
       goto FS_RMDIREXIT;
 

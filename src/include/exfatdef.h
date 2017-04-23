@@ -138,27 +138,4 @@ union
 
 #pragma pack()
 
-#if 0
-ULONG UpCaseTblChkSum(const UCHAR data[], int bytes)
-{
-   ULONG chksum = 0;
-
-   for (int i = 0; i < bytes; i++)
-      chksum = (chksum << 31) | (chksum >> 1) + data[i];
-
-   return chksum;
-}
-
-USHORT NameHash(USHORT *pszFilename, int NameLen)
-{
-   USHORT hash = 0;
-   UCHAR  *data = (UCHAR *)pszFileName;
-
-   for (int i = 0; i < NameLen * 2; i++)
-      hash = (hash << 15) | (hash >> 1) + data[i];
-
-   return hash;
-}
-#endif
-
 #endif

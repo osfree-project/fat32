@@ -398,7 +398,10 @@ ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
 DIRENTRY SrcEntry, TarEntry;
+DIRENTRY1 TarStreamEntry;
 DIRENTRY1 SrcStreamEntry;
+SHOPENINFO SrcSHInfo;
+PSHOPENINFO pSrcSHInfo = NULL;
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
    if (rc)
@@ -408,10 +411,10 @@ DIRENTRY1 SrcStreamEntry;
       goto usCopyEASExit;
 
    ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, &SrcStreamEntry, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, NULL, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, &TarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, &TarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usCopyEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -420,7 +423,13 @@ DIRENTRY1 SrcStreamEntry;
    if (ulSrcCluster == pVolInfo->ulFatEof)
       goto usCopyEASExit;
 
-   rc = CopyChain(pVolInfo, ulSrcCluster, &ulTarCluster);
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pSrcSHInfo = &SrcSHInfo;
+      SetSHInfo1(pVolInfo, &SrcStreamEntry, pSrcSHInfo);
+      }
+
+   rc = CopyChain(pVolInfo, pSrcSHInfo, ulSrcCluster, &ulTarCluster);
    if (rc)
       goto usCopyEASExit;
 
@@ -463,6 +472,7 @@ ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
 DIRENTRY SrcEntry, TarEntry;
+DIRENTRY1 SrcStreamEntry, TarStreamEntry;
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
    if (rc)
@@ -472,11 +482,11 @@ DIRENTRY SrcEntry, TarEntry;
       goto usMoveEASExit;
 
 
-   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, NULL, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, NULL, NULL);
+   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, &SrcStreamEntry, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, &TarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof && ulTarCluster != ulSrcCluster)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, NULL, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, &TarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usMoveEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -488,16 +498,17 @@ DIRENTRY SrcEntry, TarEntry;
    if (ulSrcDirCluster == ulTarDirCluster)
       {
       memmove(&TarEntry, &SrcEntry, sizeof TarEntry);
+      memmove(&TarStreamEntry, &SrcStreamEntry, sizeof TarEntry);
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
-         MODIFY_DIR_RENAME, &SrcEntry, &TarEntry, NULL, NULL, pszTarEAName, 0);
+         MODIFY_DIR_RENAME, &SrcEntry, &TarEntry, &SrcStreamEntry, &TarStreamEntry, pszTarEAName, 0);
       goto usMoveEASExit;
       }
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &SrcEntry, NULL, NULL, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &SrcEntry, NULL, &SrcStreamEntry, NULL, NULL, 0);
    if (rc)
       goto usMoveEASExit;
 
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, NULL, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, &SrcStreamEntry, pszTarEAName, 0);
 
 usMoveEASExit:
    if (pszSrcEAName)
@@ -518,11 +529,12 @@ USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo
 {
 ULONG ulCluster;
 DIRENTRY OldEntry, NewEntry;
+DIRENTRY1 OldEntryStream;
 PDIRENTRY1 pNewEntry = (PDIRENTRY1)&NewEntry;
 USHORT rc;
 
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, &OldEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       CritMessage("FAT32: MarkfileEAS : %s not found!", pszFileName);
@@ -546,7 +558,7 @@ USHORT rc;
       return 0;
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
-      MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, NULL, NULL, NULL, 0);
+      MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, &OldEntryStream, NULL, NULL, 0);
 
    return rc;
 }
@@ -691,19 +703,20 @@ USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo
 PSZ pszEAName;
 USHORT rc;
 DIRENTRY DirEntry;
+DIRENTRY1 StreamEntry;
 ULONG    ulCluster;
 
    rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
    if (rc)
       return rc;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, &StreamEntry, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, &StreamEntry, NULL, NULL, 0);
    if (rc)
       goto usDeleteEASExit;
 

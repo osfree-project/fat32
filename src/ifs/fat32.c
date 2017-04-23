@@ -39,10 +39,13 @@ static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
 "Made by Henk Kelder + Netlabs";
 
+static USHORT NameHash(USHORT *pszFilename, int NameLen);
+static USHORT GetChkSum16(const char *data, int bytes);
+static ULONG GetChkSum32(const char *data, int bytes);
 static BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 static PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
-static PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName);
+static PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName, PUSHORT pusNameHash);
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 USHORT ReadSector2(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 static ULONG SetNextCluster2(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
@@ -133,6 +136,8 @@ DIRENTRY1 TarStreamEntry;
 DIRENTRY1 DirSrcStream;
 DIRENTRY1 DirDstStream;
 SHOPENINFO DirSrcSHInfo, DirDstSHInfo;
+SHOPENINFO SrcSHInfo;
+PSHOPENINFO pSrcSHInfo = NULL;
 PSHOPENINFO pDirSrcSHInfo = NULL, pDirDstSHInfo = NULL;
 ULONG    ulSrcCluster;
 ULONG    ulDstCluster;
@@ -373,10 +378,16 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       memcpy(DirEntry.bFileName, TarEntry.bFileName, 11); ////
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pSrcSHInfo = &SrcSHInfo;
+      SetSHInfo1(pVolInfo, &DirStreamEntry, pSrcSHInfo);
+      }
+
    /*
       Do the copying
    */
-   rc = CopyChain(pVolInfo, ulSrcCluster, &ulDstCluster);
+   rc = CopyChain(pVolInfo, pSrcSHInfo, ulSrcCluster, &ulDstCluster);
 
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
@@ -457,6 +468,7 @@ ULONG    ulDirCluster;
 PSZ      pszFile;
 USHORT   rc;
 DIRENTRY DirEntry;
+DIRENTRY1 DirEntryStream;
 PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
 POPENINFO pOpenInfo = NULL;
 DIRENTRY1 DirStream;
@@ -550,7 +562,8 @@ BYTE     szLongName[ FAT32MAXPATH ];
       SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
       }
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo,
+                               &DirEntry, &DirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_FILE_NOT_FOUND;
@@ -583,7 +596,8 @@ BYTE     szLongName[ FAT32MAXPATH ];
 #endif
       }
 
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
+                        &DirEntry, NULL, &DirEntryStream, NULL, NULL, 0);
    if (rc)
       goto FS_DELETEEXIT;
 
@@ -2791,6 +2805,7 @@ ULONG ulDstDirCluster;
 PSZ   pszSrcFile;
 PSZ   pszDstFile;
 DIRENTRY DirEntry;
+DIRENTRY1 DirEntryStream, DirEntryStreamOld;
 PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
 ULONG    ulCluster;
 ULONG    ulTarCluster;
@@ -2941,7 +2956,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       SetSHInfo1(pVolInfo, (PDIRENTRY1)&DirSrcStream, pDirSrcSHInfo);
       }
 
-   ulCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcFile, pDirSrcSHInfo, &DirEntry, NULL, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcFile, pDirSrcSHInfo, &DirEntry, &DirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = ERROR_FILE_NOT_FOUND;
@@ -3041,9 +3056,10 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       DIRENTRY DirOld;
 
       memcpy(&DirOld, &DirEntry, sizeof DirEntry);
+      memcpy(&DirEntryStreamOld, &DirEntryStream, sizeof DirEntry);
 
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
-         MODIFY_DIR_RENAME, &DirOld, &DirEntry, NULL, NULL, pszDstFile, 0);
+         MODIFY_DIR_RENAME, &DirOld, &DirEntry, &DirEntryStream, &DirEntryStreamOld, pszDstFile, 0);
       goto FS_MOVEEXIT;
       }
 
@@ -3051,7 +3067,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       First delete old
    */
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, NULL, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, &DirEntryStream, NULL, NULL, 0);
    if (rc)
       goto FS_MOVEEXIT;
 
@@ -3059,7 +3075,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
       Then insert new
    */
 
-   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, &DirEntry, NULL, NULL, pszDstFile, 0);
+   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, &DirEntry, NULL, &DirEntryStream, pszDstFile, 0);
    if (rc)
       goto FS_MOVEEXIT;
 
@@ -3070,7 +3086,7 @@ BYTE     szDstLongName[ FAT32MAXPATH ];
    if ( (pVolInfo->bFatType < FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_DIRECTORY) )
       {
       ULONG ulTmp;
-      ulTmp = FindPathCluster(pVolInfo, ulCluster, "..", NULL, &DirEntry, NULL, NULL); ////
+      ulTmp = FindPathCluster(pVolInfo, ulCluster, "..", NULL, &DirEntry, &DirEntryStream, NULL); ////
       if (ulTmp != pVolInfo->ulFatEof)
          {
          DIRENTRY DirNew;
@@ -3591,7 +3607,8 @@ USHORT rc;
    if (pVolInfo->ulCurBmpSector == ulSector)
       return 0;
 
-   if (ulSector >= pVolInfo->ulAllocBmpLen / pVolInfo->BootSect.bpb.BytesPerSector)
+   if (ulSector >= (pVolInfo->ulAllocBmpLen + pVolInfo->BootSect.bpb.BytesPerSector - 1)
+         / pVolInfo->BootSect.bpb.BytesPerSector)
       {
       CritMessage("ERROR: ReadBmpSector: Sector %lu too high", ulSector);
       Message("ERROR: ReadBmpSector: Sector %lu too high", ulSector);
@@ -3627,7 +3644,8 @@ USHORT rc;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   if (ulSector >= pVolInfo->ulAllocBmpLen / pVolInfo->BootSect.bpb.BytesPerSector)
+   if (ulSector >= (pVolInfo->ulAllocBmpLen + pVolInfo->BootSect.bpb.BytesPerSector - 1)
+         / pVolInfo->BootSect.bpb.BytesPerSector)
       {
       CritMessage("ERROR: WriteBmpSector: Sector %ld too high", ulSector);
       Message("ERROR: WriteBmpSector: Sector %ld too high", ulSector);
@@ -3844,7 +3862,6 @@ ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
 {
 ULONG ulSector;
 
-   //Message("gnc: 000: ulCluster=%lx", ulCluster);
    if ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) &&
        pSHInfo && (pSHInfo->fNoFatChain & 1) )
       {
@@ -3854,21 +3871,16 @@ ULONG ulSector;
          return pVolInfo->ulFatEof;
       }
 
-   //Message("gnc: 001");
    ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-   //Message("gnc: 002: ulSector=%lx", ulSector);
    if (ReadFatSector(pVolInfo, ulSector))
       {
       Message("GetNextCluster for %ld failed", ulCluster);
       return pVolInfo->ulFatEof;
       }
 
-   //Message("gnc: 003");
    ulCluster = GetFatEntry(pVolInfo, ulCluster);
-   //Message("gnc: 004: ulCluster=%lx", ulCluster);
    if (ulCluster >= pVolInfo->ulFatEof2 && ulCluster <= pVolInfo->ulFatEof)
       return pVolInfo->ulFatEof;
-   //Message("gnc: 005");
    return ulCluster;
 }
 
@@ -3885,15 +3897,48 @@ ULONG ulOffset;
    return ulOffset / pVolInfo->BootSect.bpb.BytesPerSector;
 }
 
+BOOL GetBmpEntry(PVOLINFO pVolInfo, ULONG ulCluster)
+{
+ULONG ulOffset;
+USHORT usShift;
+BYTE bMask;
+
+   ulCluster -= 2;
+   ulOffset = (ulCluster / 8) % pVolInfo->BootSect.bpb.BytesPerSector;
+   usShift = (USHORT)(ulCluster % 8);
+   //bMask = (BYTE)(0x80 >> usShift);
+   bMask = (BYTE)(1 << usShift);
+
+   if (pVolInfo->pbFatBits[ulOffset] & bMask)
+      return TRUE;
+   else
+      return FALSE;
+}
+
+VOID SetBmpEntry(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
+{
+ULONG ulOffset;
+USHORT usShift;
+BYTE bMask;
+
+   ulCluster -= 2;
+   ulOffset = (ulCluster / 8) % pVolInfo->BootSect.bpb.BytesPerSector;
+   usShift = (USHORT)(ulCluster % 8);
+   //bMask = (BYTE)(0x80 >> usShift);
+   bMask = (BYTE)(1 << usShift);
+
+   if (fState)
+      pVolInfo->pbFatBits[ulOffset] |= bMask;
+   else
+      pVolInfo->pbFatBits[ulOffset] &= ~bMask;
+}
+
 /******************************************************************
 *
 ******************************************************************/
 BOOL ClusterInUse2(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-ULONG ulOffset;
 ULONG ulBmpSector;
-USHORT usShift;
-BYTE bMask;
 
    if (ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
@@ -3916,15 +3961,7 @@ BYTE bMask;
    if (pVolInfo->ulCurBmpSector != ulBmpSector)
       ReadBmpSector(pVolInfo, ulBmpSector);
 
-   ulCluster -= 2;
-   ulOffset = (ulCluster / 8) % pVolInfo->BootSect.bpb.BytesPerSector;
-   usShift = (USHORT)(ulCluster % 8);
-   bMask = (BYTE)(0x80 >> usShift);
-
-   if (pVolInfo->pbFatBits[ulOffset] & bMask)
-      return TRUE;
-   else
-      return FALSE;
+   return GetBmpEntry(pVolInfo, ulCluster);
 }
 
 /******************************************************************
@@ -3948,29 +3985,21 @@ BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster)
 /******************************************************************
 *
 ******************************************************************/
-BOOL MarkCluster2(PVOLINFO pVolInfo, ULONG ulCluster)
+BOOL MarkCluster2(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
 {
-ULONG ulOffset;
 ULONG ulBmpSector;
-USHORT usShift;
-BYTE bMask;
 
-   if (ClusterInUse2(pVolInfo, ulCluster))
-      {
-      return FALSE;
-      }
+   //if (ClusterInUse2(pVolInfo, ulCluster) && fState)
+   //   {
+   //   return FALSE;
+   //   }
 
    ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
 
    if (pVolInfo->ulCurBmpSector != ulBmpSector)
       ReadBmpSector(pVolInfo, ulBmpSector);
 
-   ulCluster -= 2;
-   ulOffset = (ulCluster / 8) % pVolInfo->BootSect.bpb.BytesPerSector;
-   usShift = (USHORT)(ulCluster % 8);
-   bMask = (BYTE)(0x80 >> usShift);
-   pVolInfo->pbFatBits[ulOffset] |= bMask;
-
+   SetBmpEntry(pVolInfo, ulCluster, fState);
    WriteBmpSector(pVolInfo, ulBmpSector);
 
    return TRUE;
@@ -3979,14 +4008,14 @@ BYTE bMask;
 /******************************************************************
 *
 ******************************************************************/
-BOOL MarkCluster(PVOLINFO pVolInfo, ULONG ulCluster)
+BOOL MarkCluster(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
 {
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("MarkCluster for %lu", ulCluster);
 
    if (!GetFatAccess(pVolInfo, "MarkCluster"))
       {
-      ulCluster = MarkCluster2(pVolInfo, ulCluster);
+      ulCluster = MarkCluster2(pVolInfo, ulCluster, fState);
       ReleaseFat(pVolInfo);
       return TRUE;
       }
@@ -4022,9 +4051,11 @@ ULONG ulTotalFree;
       //ulNextCluster = GetFatEntry(pVolInfo, ulCluster);
       //if (ulNextCluster == 0)
       if (!ClusterInUse2(pVolInfo, ulCluster))
+         {
          ulTotalFree++;
-      if (!ulNextFree)
-         ulNextFree = ulCluster;
+         if (!ulNextFree)
+            ulNextFree = ulCluster;
+         }
       }
 
    if (pVolInfo->pBootFSInfo->ulFreeClusters != ulTotalFree)
@@ -4073,14 +4104,24 @@ ULONG  ulLargestChain;
 ULONG  ulLargestSize;
 ULONG  ulReturn = 0;
 ULONG  ulSector = 0;
+ULONG  ulBmpSector = 0;
 BOOL   fStartAt2;
 BOOL   fContiguous;
+BOOL   fStatus;
+BOOL   fClean;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("MakeFatChain, %lu clusters", ulClustersRequested);
 
    if (!ulClustersRequested)
       return pVolInfo->ulFatEof;
+
+   /*
+      Trick, set fDiskClean to FALSE, so WriteSector
+      won't set is back to dirty again
+    */
+   fClean = pVolInfo->fDiskClean;
+   pVolInfo->fDiskClean = FALSE;
 
    if (GetFatAccess(pVolInfo, "MakeFatChain"))
       return pVolInfo->ulFatEof;
@@ -4098,7 +4139,8 @@ BOOL   fContiguous;
       ulLargestChain = pVolInfo->ulFatEof;
       ulLargestSize = 0;
 
-      ulFirstCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster + 1;
+      //ulFirstCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster + 1;
+      ulFirstCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster;
       if (ulFirstCluster < 2 || ulFirstCluster >= pVolInfo->ulTotalClusters + 2)
          {
          fStartAt2 = TRUE;
@@ -4119,17 +4161,35 @@ BOOL   fContiguous;
          /*
             Find first free cluster
          */
-         while (ulFirstCluster < pVolInfo->ulTotalClusters + 2)
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
-            ulSector  = GetFatEntrySec(pVolInfo, ulFirstCluster);
-            ulNextCluster = GetFatEntry(pVolInfo, ulFirstCluster);
+            while (ulFirstCluster < pVolInfo->ulTotalClusters + 2)
+               {
+               ulSector  = GetFatEntrySec(pVolInfo, ulFirstCluster);
+               ulNextCluster = GetFatEntry(pVolInfo, ulFirstCluster);
 
-            if (ulSector != pVolInfo->ulCurFatSector)
-               ReadFatSector(pVolInfo, ulSector);
+               if (ulSector != pVolInfo->ulCurFatSector)
+                  ReadFatSector(pVolInfo, ulSector);
 
-            if (!ulNextCluster)
-               break;
-            ulFirstCluster++;
+               if (!ulNextCluster)
+                  break;
+               ulFirstCluster++;
+               }
+            }
+         else
+            {
+            while (ulFirstCluster < pVolInfo->ulTotalClusters + 2)
+               {
+               ulBmpSector = GetAllocBitmapSec(pVolInfo, ulFirstCluster);
+               fStatus = GetBmpEntry(pVolInfo, ulFirstCluster);
+
+               if (ulBmpSector != pVolInfo->ulCurBmpSector)
+                  ReadBmpSector(pVolInfo, ulBmpSector);
+
+               if (!fStatus)
+                  break;
+               ulFirstCluster++;
+               }
             }
 
          if (fStartAt2 && ulFirstCluster >= ulStartCluster)
@@ -4151,18 +4211,37 @@ BOOL   fContiguous;
             Check if chain is long enough
          */
 
-         for (ulCluster = ulFirstCluster ;
-                  ulCluster < ulFirstCluster + ulClustersRequested &&
-                  ulCluster < pVolInfo->ulTotalClusters + 2;
-                        ulCluster++)
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
-            ULONG ulNewCluster = 0;
-            ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-            ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
-            if (ulSector != pVolInfo->ulCurFatSector)
-               ReadFatSector(pVolInfo, ulSector);
-            if (ulNewCluster)
-               break;
+            for (ulCluster = ulFirstCluster ;
+                     ulCluster < ulFirstCluster + ulClustersRequested &&
+                     ulCluster < pVolInfo->ulTotalClusters + 2;
+                           ulCluster++)
+               {
+               ULONG ulNewCluster = 0;
+               ulSector = GetFatEntrySec(pVolInfo, ulCluster);
+               ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
+               if (ulSector != pVolInfo->ulCurFatSector)
+                  ReadFatSector(pVolInfo, ulSector);
+               if (ulNewCluster)
+                  break;
+               }
+            }
+         else
+            {
+            for (ulCluster = ulFirstCluster ;
+                     ulCluster < ulFirstCluster + ulClustersRequested &&
+                     ulCluster < pVolInfo->ulTotalClusters + 2;
+                           ulCluster++)
+               {
+               BOOL fStatus1;
+               ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+               fStatus1 = GetBmpEntry(pVolInfo, ulCluster);
+               if (ulBmpSector != pVolInfo->ulCurBmpSector)
+                  ReadBmpSector(pVolInfo, ulBmpSector);
+               if (fStatus1)
+                  break;
+               }
             }
 
          if (ulCluster != ulFirstCluster + ulClustersRequested)
@@ -4185,7 +4264,7 @@ BOOL   fContiguous;
          if (ulReturn == pVolInfo->ulFatEof)
             ulReturn = ulFirstCluster;
 
-         if (MakeChain(pVolInfo, ulFirstCluster, ulClustersRequested))
+         if (MakeChain(pVolInfo, ulFirstCluster, ulClustersRequested)) ////
             goto MakeFatChain_Error;
 
          if (ulPrevCluster != pVolInfo->ulFatEof)
@@ -4242,6 +4321,8 @@ MakeFatChain_Error:
    if (ulReturn != pVolInfo->ulFatEof)
       DeleteFatChain(pVolInfo, ulReturn);
 
+   pVolInfo->fDiskClean = fClean;
+
    return pVolInfo->ulFatEof;
 }
 
@@ -4251,9 +4332,11 @@ MakeFatChain_Error:
 USHORT MakeChain(PVOLINFO pVolInfo, ULONG ulFirstCluster, ULONG ulSize)
 {
 ULONG ulSector = 0;
+ULONG ulBmpSector = 0;
 ULONG ulLastCluster = 0;
 ULONG  ulCluster = 0;
 ULONG ulNewCluster = 0;
+BOOL fStatus;
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -4265,6 +4348,13 @@ USHORT rc;
    if (ulSector != pVolInfo->ulCurFatSector)
       ReadFatSector(pVolInfo, ulSector);
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulFirstCluster);
+      if (ulBmpSector != pVolInfo->ulCurBmpSector)
+         ReadBmpSector(pVolInfo, ulBmpSector);
+      }
+
    for (ulCluster = ulFirstCluster; ulCluster < ulLastCluster; ulCluster++)
       {
       ulSector = GetFatEntrySec(pVolInfo, ulCluster);
@@ -4275,6 +4365,17 @@ USHORT rc;
             return rc;
          ReadFatSector(pVolInfo, ulSector);
          }
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+            {
+            rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+            if (rc)
+               return rc;
+            ReadBmpSector(pVolInfo, ulBmpSector);
+            }
+         }
       ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
       if (ulNewCluster)
          {
@@ -4283,6 +4384,17 @@ USHORT rc;
          return ERROR_SECTOR_NOT_FOUND;
          }
       SetFatEntry(pVolInfo, ulCluster, ulCluster + 1);
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         fStatus = GetBmpEntry(pVolInfo, ulCluster);
+         if (fStatus)
+            {
+            CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
+            Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
+            return ERROR_SECTOR_NOT_FOUND;
+            }
+         SetBmpEntry(pVolInfo, ulCluster, 1);
+         }
       }
 
    ulSector = GetFatEntrySec(pVolInfo, ulCluster);
@@ -4306,7 +4418,32 @@ USHORT rc;
    if (rc)
       return rc;
 
-   pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster;
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+      if (ulBmpSector != pVolInfo->ulCurBmpSector)
+         {
+         rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+         if (rc)
+            return rc;
+         ReadBmpSector(pVolInfo, ulBmpSector);
+         }
+      fStatus = GetBmpEntry(pVolInfo, ulCluster);
+      if (fStatus)
+         {
+         CritMessage("FAT32:MakeChain:Cluster %lu is not free!", ulCluster);
+         Message("ERROR:MakeChain:Cluster %lu is not free!", ulCluster);
+         return ERROR_SECTOR_NOT_FOUND;
+         }
+
+      SetBmpEntry(pVolInfo, ulCluster, 1);
+      rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+      if (rc)
+         return rc;
+      }
+
+   //pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster;
+   pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster + 1;
    pVolInfo->pBootFSInfo->ulFreeClusters   -= ulSize;
 
    return 0;
@@ -4373,6 +4510,38 @@ PBYTE pbSector;
    if (pVolInfo->fWriteProtected)
       return TRUE;
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      // set dirty flag in volume flags of boot sector
+      USHORT usVolFlags;
+      PBOOTSECT1 pbBoot = (PBOOTSECT1)malloc(pVolInfo->BootSect.bpb.BytesPerSector);
+
+      /*
+         Trick, set fDiskClean to FALSE, so WriteSector
+         won't set is back to dirty again
+      */
+      pVolInfo->fDiskClean = FALSE;
+
+      if (ReadSector(pVolInfo, 0, 1, (PBYTE)pbBoot, DVIO_OPNCACHE))
+         return FALSE;
+
+      usVolFlags = pbBoot->usVolumeFlags;
+
+      if (fClean)
+         usVolFlags &= ~VOL_FLAG_VOLDIRTY;
+      else
+         usVolFlags |= VOL_FLAG_VOLDIRTY;
+
+      pbBoot->usVolumeFlags = usVolFlags;
+
+      if (WriteSector(pVolInfo, 0, 1, (PBYTE)pbBoot, DVIO_OPNCACHE))
+         return FALSE;
+
+      pVolInfo->fDiskClean = fClean;
+
+      free(pbBoot);
+      }
+
    if (pVolInfo->ulCurFatSector != 0)
       {
       if (ReadSector(pVolInfo, pVolInfo->ulActiveFatStart, 1,
@@ -4431,19 +4600,34 @@ BOOL GetDiskStatus(PVOLINFO pVolInfo)
 ULONG ulStatus = 0;
 BOOL  fStatus;
 
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      PBOOTSECT1 pbBoot = (PBOOTSECT1)malloc(pVolInfo->BootSect.bpb.BytesPerSector);
+
+      if (ReadSector(pVolInfo, 0, 1, (PBYTE)pbBoot, DVIO_OPNCACHE))
+         return FALSE;
+
+      fStatus = ! (pbBoot->usVolumeFlags & VOL_FLAG_VOLDIRTY);
+      free(pbBoot);
+      return fStatus;
+      }
+
    if (GetFatAccess(pVolInfo, "GetDiskStatus"))
       return FALSE;
+
    if (ReadFatSector(pVolInfo, 0L))
       {
       ReleaseFat(pVolInfo);
       return FALSE;
       }
+
    ulStatus = GetFatEntry(pVolInfo, 1);
 
    if (ulStatus & pVolInfo->ulFatClean)
       fStatus = TRUE;
    else
       fStatus = FALSE;
+
    ReleaseFat(pVolInfo);
 
    return fStatus;
@@ -4472,7 +4656,7 @@ ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext)
 ULONG SetNextCluster2(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext)
 {
 ULONG ulNewCluster = 0;
-BOOL fUpdateFSInfo;
+BOOL fUpdateFSInfo, fClean;
 ULONG ulReturn = 0;
 USHORT rc;
 
@@ -4500,6 +4684,16 @@ USHORT rc;
       ulReturn = ulNext;
       }
 
+   /* Trick to avoid deadlock in WriteSector */
+   fClean = pVolInfo->fDiskClean;
+   pVolInfo->fDiskClean = FALSE;
+
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      // mark cluster in exFAT allocation bitmap
+      MarkCluster2(pVolInfo, ulCluster, ulNext);
+      }
+
    if (ReadFatSector(pVolInfo, GetFatEntrySec(pVolInfo, ulCluster)))
       return pVolInfo->ulFatEof;
 
@@ -4513,13 +4707,14 @@ USHORT rc;
    if (ulNewCluster == 0 && ulNext)
       {
       fUpdateFSInfo = TRUE;
-      pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster;
+      //pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster;
+      pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster + 1;
       pVolInfo->pBootFSInfo->ulFreeClusters--;
       }
-
    SetFatEntry(pVolInfo, ulCluster, ulNext);
 
    rc = WriteFatSector(pVolInfo, GetFatEntrySec(pVolInfo, ulCluster));
+   pVolInfo->fDiskClean = fClean;
    if (rc)
       return pVolInfo->ulFatEof;
 
@@ -4544,17 +4739,12 @@ BOOL fStartAt2;
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("GetFreeCluster");
 
-   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-      {
-      // Use exFAT allocation bitmap
-      
-      }
-
    if (pVolInfo->pBootFSInfo->ulFreeClusters == 0L)
       return pVolInfo->ulFatEof;
 
    fStartAt2 = FALSE;
-   ulCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster + 1;
+   //ulCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster + 1;
+   ulCluster = pVolInfo->pBootFSInfo->ulNextFreeCluster;
    if (!ulCluster || ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
       fStartAt2 = TRUE;
@@ -4564,7 +4754,8 @@ BOOL fStartAt2;
    else
       ulStartCluster = ulCluster;
 
-   while (GetNextCluster2(pVolInfo, NULL, ulCluster))
+   //while (GetNextCluster2(pVolInfo, NULL, ulCluster))
+   while (ClusterInUse2(pVolInfo, ulCluster))
       {
       ulCluster++;
       if (fStartAt2 && ulCluster >= ulStartCluster)
@@ -4672,6 +4863,16 @@ PSZ    p;
    else
       {
       ulCluster = pVolInfo->BootSect.bpb.RootDirStrtClus;
+      if (pStreamEntry)
+         {
+         // fill the Stream entry for root directory
+         memset(pStreamEntry, 0, sizeof(DIRENTRY1));
+         if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+            {
+            pStreamEntry->u.Stream.bNoFatChain = 0;
+            pStreamEntry->u.Stream.ulFirstClus = ulCluster;
+            }
+         }
       if (strlen(pDir) >= 2)
          {
          if (pDir[1] == ':')
@@ -5727,6 +5928,7 @@ INT  iIndex;
 ******************************************************************/
 PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck)
 {
+// FAT12/FAT16/FAT32 case
 USHORT usNeededEntries;
 PDIRENTRY pRet;
 BYTE bCurEntry;
@@ -5813,105 +6015,64 @@ PUSHORT p;
 /******************************************************************
 *
 ******************************************************************/
-PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName)
+PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName, PUSHORT pusNameHash)
 {
+// exFAT case
 USHORT usNeededEntries;
 PDIRENTRY1 pRet;
 BYTE bCurEntry;
-//PLNENTRY pLN;
 PDIRENTRY1 pLN;
 USHORT usIndex;
-USHORT uniName[15]; // 13
-//USHORT uniEnd[15];  // 13
-PUSHORT p;
+PUSHORT pusUniName;
+USHORT uniName[15];
+PUSHORT p, q;
+PSZ     r;
 
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
-#if 0
-   usNeededEntries = strlen(pszLongName) / 13 +
-      (strlen(pszLongName) % 13 ? 1 : 0);
-#else
-   //usNeededEntries = ( DBCSStrlen( pszLongName ) + 14 ) / 15;
+   pusUniName = malloc(256 * sizeof(USHORT));
+
    usNeededEntries = ( DBCSStrlen( pszLongName ) + 14 ) / 15;
-#endif
 
    if (!usNeededEntries)
       return pDir;
 
-   //pDir += (usNeededEntries - 1);
-   //pRet = pDir + 1;
-   pRet = pDir;
-   pDir += 2;
-   //pLN = (PLNENTRY)pDir;
    pLN = (PDIRENTRY1)pDir;
+   q = pusUniName;
+   r = pszLongName;
 
    bCurEntry = 1;
    while (*pszLongName)
       {
-#if 0
-      USHORT usLen;
-#endif
-      //pLN->bNumber = bCurEntry;
-      //if (DBCSStrlen(pszLongName) <= 13)
-      //   pLN->bNumber += 0x40;
-      //pLN->wCluster = 0L;
-      //pLN->bAttr = FILE_LONGNAME;
-      //pLN->bReserved = 0;
+      pLN->bEntryType = ENTRY_TYPE_FILE_NAME;
       pLN->u.FileName.bAllocPossible = 0;
       pLN->u.FileName.bNoFatChain = 0;
       pLN->u.FileName.bCustomDefined1 = 0;
-      //pLN->bVFATCheckSum = bCheck;
 
-#if 0
-      usLen = strlen(pszLongName);
-      if (usLen > 13)
-         usLen = 13;
-#endif
-
-      //memset(uniEnd, 0xFF, sizeof uniEnd);
       memset(uniName, 0, sizeof uniName);
 
-      //pszLongName += Translate2Win(pszLongName, uniName, 13);
       pszLongName += Translate2Win(pszLongName, uniName, 15);
 
       p = uniName;
-      //for (usIndex = 0; usIndex < 5; usIndex ++)
-      //   {
-      //   pLN->usChar1[usIndex] = *p;
-      //   if (*p == 0)
-      //      p = uniEnd;
-      //   p++;
-      //   }
-
-      //for (usIndex = 0; usIndex < 6; usIndex ++)
-      //   {
-      //   pLN->usChar2[usIndex] = *p;
-      //   if (*p == 0)
-      //      p = uniEnd;
-      //   p++;
-      //   }
-
-      //for (usIndex = 0; usIndex < 2; usIndex ++)
-      //   {
-      //   pLN->usChar3[usIndex] = *p;
-      //   if (*p == 0)
-      //      p = uniEnd;
-      //   p++;
-      //   }
 
       for (usIndex = 0; usIndex < 15; usIndex ++)
          {
          pLN->u.FileName.bFileName[usIndex] = *p;
+         *q++ = *p;
          p++;
          }
 
-      //pLN--;
       pLN++;
       bCurEntry++;
       }
 
-   return pRet;
+   if (pusNameHash)
+      *pusNameHash = NameHash(pusUniName, strlen(r));
+
+   free(pusUniName);
+
+   return pLN;
 }
 
 
@@ -6215,6 +6376,7 @@ BOOL DeleteFatChain(PVOLINFO pVolInfo, ULONG ulCluster)
 {
 ULONG ulNextCluster = 0;
 ULONG ulSector = 0;
+ULONG ulBmpSector = 0;
 ULONG ulClustersFreed;
 USHORT rc;
 
@@ -6237,6 +6399,13 @@ USHORT rc;
 
    ulSector = GetFatEntrySec(pVolInfo, ulCluster);
    ReadFatSector(pVolInfo, ulSector);
+
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+      ReadBmpSector(pVolInfo, ulSector);
+      }
+
    ulClustersFreed = 0;
    while (!(ulCluster >= pVolInfo->ulFatEof2 && ulCluster <= pVolInfo->ulFatEof))
       {
@@ -6262,16 +6431,45 @@ USHORT rc;
          ReadFatSector(pVolInfo, ulSector);
          }
       ulNextCluster = GetFatEntry(pVolInfo, ulCluster);
-
       SetFatEntry(pVolInfo, ulCluster, 0L);
+
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         // modify exFAT allocation bitmap as well
+         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+            {
+            rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+            if (rc)
+               {
+               ReleaseFat(pVolInfo);
+               return FALSE;
+               }
+            ReadBmpSector(pVolInfo, ulBmpSector);
+            }
+         SetBmpEntry(pVolInfo, ulCluster, 0);
+         }
+
       ulClustersFreed++;
       ulCluster = ulNextCluster;
       }
    rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
+
    if (rc)
       {
       ReleaseFat(pVolInfo);
       return FALSE;
+      }
+
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+
+      if (rc)
+         {
+         ReleaseFat(pVolInfo);
+         return FALSE;
+         }
       }
 
    pVolInfo->pBootFSInfo->ulFreeClusters += ulClustersFreed;
@@ -6348,9 +6546,9 @@ ULONG  ulReturn = 0;
 
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      if (pDirEntryStream->u.Stream.bNoFatChain)
+      if (pDirEntryStream->u.Stream.bNoFatChain & 1)
          {
-         return ulCluster + pDirEntryStream->u.Stream.ullDataLen / pVolInfo->ulClusterSize;
+         return ulCluster + pDirEntryStream->u.Stream.ullDataLen / pVolInfo->ulClusterSize - 1;
          }
       }
 
@@ -6381,7 +6579,7 @@ ULONG  ulReturn = 0;
    return ulReturn;
 }
 
-USHORT CopyChain(PVOLINFO pVolInfo, ULONG ulCluster, PULONG pulNew)
+USHORT CopyChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, PULONG pulNew)
 {
 USHORT rc;
 ULONG  ulNext;
@@ -6407,11 +6605,11 @@ ULONG  tStart = GetCurTime();
    if (!pbCluster)
       return ERROR_NOT_ENOUGH_MEMORY;
 
-   ulCount = GetChainSize(pVolInfo, NULL, ulCluster); ////
+   ulCount = GetChainSize(pVolInfo, pSHInfo, ulCluster);
    if (!ulCount)
       return 1340;
 
-   *pulNew = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulCount, NULL);
+   *pulNew = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulCount, NULL); //// should we pass pSHInfo to it too?
    if (*pulNew == pVolInfo->ulFatEof)
       {
       free(pbCluster);
@@ -6440,14 +6638,14 @@ ULONG  tStart = GetCurTime();
          }
       if (rc)
          break;
-      ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
+      ulCluster = GetNextCluster(pVolInfo, pSHInfo, ulCluster);
       if (!ulCluster)
          ulCluster = pVolInfo->ulFatEof;
       if (ulCluster == pVolInfo->ulFatEof)
          break;
-      ulNext2 = GetNextCluster(pVolInfo, NULL, ulNext);
+      ulNext2 = GetNextCluster(pVolInfo, pSHInfo, ulNext);
       if (ulNext2 == pVolInfo->ulFatEof)
-         ulNext2 = SetNextCluster(pVolInfo, ulNext, FAT_ASSIGN_NEW);
+         ulNext2 = SetNextCluster(pVolInfo, ulNext, FAT_ASSIGN_NEW); //// should we pass pSHInfo to it too?
       ulNext = ulNext2;
       }
    if (ulCluster != pVolInfo->ulFatEof)
@@ -6460,7 +6658,6 @@ ULONG  tStart = GetCurTime();
       *pulNew = pVolInfo->ulFatEof;
       }
    return rc;
-
 }
 
 ULONG GetChainSize(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
@@ -6965,6 +7162,47 @@ ULONG     ulBytesRemained;
    return 0;
 }
 
+USHORT GetChkSum16(const char *data, int bytes)
+{
+   USHORT chksum = 0;
+   int i;
+
+   for (i = 0; i < bytes; i++)
+      {
+      if (i == 2)
+         // skip checksum field
+         i++;
+      else
+         //chksum = ((chksum & 1) ? 0x8000 : 0) + (chksum >> 1) + data[i];
+         chksum = (chksum << 15) | (chksum >> 1) + data[i];
+      }
+
+   return chksum;
+}
+
+ULONG GetChkSum32(const char *data, int bytes)
+{
+   ULONG chksum = 0;
+   int i;
+
+   for (i = 0; i < bytes; i++)
+      chksum = (chksum << 31) | (chksum >> 1) + data[i];
+
+   return chksum;
+}
+
+USHORT NameHash(USHORT *pszFilename, int NameLen)
+{
+   USHORT hash = 0;
+   UCHAR  *data = (UCHAR *)pszFilename;
+   int i;
+
+   for (i = 0; i < NameLen * 2; i++)
+      hash = (hash << 15) | (hash >> 1) + data[i];
+
+   return hash;
+}
+
 
 USHORT ModifyDirectory1(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY1 pOld, PDIRENTRY1 pNew,
@@ -6995,6 +7233,7 @@ ULONG     ulPrevBytesToRead = 0;
 ULONG     ulBytesRemained;
 USHORT    usNumSecondary;
 USHORT    usFileName, usIndex;
+USHORT    usNameHash;
 BOOL      fFound;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -7148,13 +7387,13 @@ BOOL      fFound;
                      if (pWork->bEntryType == ENTRY_TYPE_FILE_NAME)
                         {
                         //usNumSecondary--;
-                        usFileName++;
                         //fGetLongName1(pDir, szLongName, sizeof szLongName);
                         if (!pLNStart && !usFileName && fFound)
                            {
                            pLNStart = pWork;
                            break;
                            }
+                        usFileName++;
                         }
                      else if (pWork->bEntryType == ENTRY_TYPE_FILE)
                         {
@@ -7192,7 +7431,12 @@ BOOL      fFound;
                         if (f32Parms.fMessageActive & LOG_FUNCS)
                            Message(" Updating cluster");
                         memcpy(pWorkFile, pNew, sizeof (DIRENTRY1));
-                        memcpy(pWorkStream, pStreamNew, sizeof (DIRENTRY1));
+                        pWorkFile->u.File.usSetCheckSum = GetChkSum16((char *)pWorkFile,
+                           sizeof(DIRENTRY1) * (pWorkFile->u.File.bSecondaryCount + 1));
+                        if (pStreamNew)
+                           {
+                           memcpy(pWorkStream, pStreamNew, sizeof (DIRENTRY1));
+                           }
                         //if (ulCluster == 1)
                         //   // reading root directory on FAT12/FAT16
                         //   rc = WriteSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDir2, usIOMode);
@@ -7212,7 +7456,7 @@ BOOL      fFound;
                            Message(" Removing entry from cluster");
                         pWork2 = pLNStart;
                         //while (pWork2 < pWork)
-                        for (usIndex = 0; usIndex < usNumSecondary; usIndex++)
+                        for (usIndex = 0; usIndex < usNumSecondary - 1; usIndex++)
                            {
                            if (f32Parms.fMessageActive & LOG_FUNCS)
                               Message("Deleting Longname entry.");
@@ -7262,7 +7506,7 @@ BOOL      fFound;
                            {
                            usMode = MODIFY_DIR_INSERT;
                            ulCluster = ulDirCluster;
-                           ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY); //// ?
+                           ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                            ulPrevCluster = pVolInfo->ulFatEof;
                            ulPrevSector = 0;
                            ulPrevBlock = 0;
@@ -7279,6 +7523,7 @@ BOOL      fFound;
             case MODIFY_DIR_INSERT:
                if (ulPrevCluster != pVolInfo->ulFatEof && GetFreeEntries((PDIRENTRY)pDirectory, ulPrevBytesToRead + ulBytesToRead) >= usEntriesNeeded)
                   {
+                  PDIRENTRY1 pWork3;
                   //BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                   if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -7287,9 +7532,17 @@ BOOL      fFound;
                   pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
                   //pWork = fSetLongName(pWork, pszLongName, bCheck);
                   //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
+                  pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);
+                  pNew->u.File.bSecondaryCount = pWork3 - pWork - 1;
+                  memcpy(pWork++, pNew, sizeof (DIRENTRY1));
+                  pStreamNew->u.Stream.usNameHash = usNameHash;
+                  pStreamNew->u.Stream.bNameLen = strlen(pszLongName);
+                  memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
+                  (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
+                     sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
+
                   memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                   memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                  pWork = fSetLongName1(pWork, pszLongName);
 
                   //if (ulPrevCluster == 1)
                   //   // reading root directory on FAT12/FAT16
@@ -7319,6 +7572,7 @@ BOOL      fFound;
                usFreeEntries = GetFreeEntries((PDIRENTRY)pDir2, ulBytesToRead);
                if (usFreeEntries >= usEntriesNeeded)
                   {
+                  PDIRENTRY1 pWork3;
                   //BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                   if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -7327,9 +7581,14 @@ BOOL      fFound;
                   pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
                   //pWork = fSetLongName(pWork, pszLongName, bCheck);
                   //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
+                  pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);
+                  pNew->u.File.bSecondaryCount = pWork3 - pWork - 1;
                   memcpy(pWork++, pNew, sizeof (DIRENTRY1));
+                  pStreamNew->u.Stream.usNameHash = usNameHash;
+                  pStreamNew->u.Stream.bNameLen = strlen(pszLongName);
                   memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                  pWork = fSetLongName1(pWork, pszLongName);
+                  (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
+                     sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
                   //if (ulCluster == 1)
                   //   // reading root directory on FAT12/FAT16
                   //   rc = WriteSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDir2, usIOMode);
@@ -7414,7 +7673,7 @@ BOOL      fFound;
                   //   ulNextCluster = pVolInfo->ulFatEof;
                   //   }
                   //else
-                     ulNextCluster = SetNextCluster(pVolInfo, ulCluster, FAT_ASSIGN_NEW); ////
+                     ulNextCluster = SetNextCluster(pVolInfo, ulCluster, FAT_ASSIGN_NEW);
                   if (ulNextCluster == pVolInfo->ulFatEof)
                      {
                      free(pDirectory);
@@ -7520,6 +7779,7 @@ BOOL bLoop;
 
 USHORT GetFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize)
 {
+// GetFreeEntries version for exFAT
 USHORT usCount;
 PDIRENTRY1 pMax, pDirBlock2 = pDirBlock;
 BOOL bLoop;
@@ -7749,6 +8009,7 @@ USHORT rc;
 
    pVolInfo = pVolInfo;
 
+   Message("GetFatAccess: %s", pszName);
    rc = SemRequest(&ulSemRWFat, TO_INFINITE, pszName);
    if (rc)
       {
@@ -7763,6 +8024,7 @@ USHORT rc;
 VOID ReleaseFat(PVOLINFO pVolInfo)
 {
    pVolInfo = pVolInfo;
+   Message("ReleaseFat");
    FSH_SEMCLEAR(&ulSemRWFat);
 }
 

@@ -414,7 +414,7 @@ IMPORT USHORT usCopyEAS(PVOLINFO pVolInfo,
 IMPORT USHORT usMoveEAS(PVOLINFO pVolInfo,
                         ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
                         ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo);
-IMPORT USHORT CopyChain(PVOLINFO pVolInfo, ULONG ulCluster, PULONG pulNew);
+IMPORT USHORT CopyChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, PULONG pulNew);
 IMPORT USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS);
 IMPORT VOID   TranslateInitDBCSEnv( VOID );
 IMPORT BOOL   IsDBCSLead( UCHAR uch );
