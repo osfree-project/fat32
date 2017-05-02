@@ -145,6 +145,31 @@ typedef struct tagFAT_BOOTSECTOR32
     BYTE sBS_FilSysType[8];
 } FAT_BOOTSECTOR32;
 
+typedef struct tagEXFAT_BOOTSECTOR
+{
+    BYTE sJmpBoot[3];                      // jump over BPB
+    BYTE sOEMName[8];                      // 'EXFAT   '
+    char bpb[53];                          // BPB (zeroes)
+    ULONGLONG ullPartitionOffset;          // Partition Offset
+    ULONGLONG ullVolumeLength;             // Volume Length
+    ULONG     ulFatOffset;                 // FAT offset, in sectors
+    ULONG     ulFatLength;                 // FAT length, in sectors
+    ULONG     ulClusterHeapOffset;         // Cluster Heap offset, in sectors
+    ULONG     ulClusterCount;              // Total number of clusters
+    ULONG     RootDirStrtClus;             // Root dir cluster
+    ULONG     ulVolSerial;                 // Volume serial number
+    USHORT    usFsRev;                     // As Major.minor, major rev. is high byte
+    USHORT    usVolumeFlags;               // Volume Flags
+    BYTE      bBytesPerSectorShift;        // Bytes per sector shift
+    BYTE      bSectorsPerClusterShift;     // Sector per cluster shift
+    BYTE      bNumFats;                    // Number of FATs
+    BYTE      bDrive;                      // int 13h drive select (usually 0x80)
+    BYTE      bPercentInUse;               // Percent of disk space in use
+    BYTE      bReserved[7];                // Reserved
+    BYTE      bBootCode[390];              // Boot code
+    USHORT    usBootSig;                   // 0xaa55
+} EXFAT_BOOTSECTOR;
+
 typedef struct {
     DWORD dLeadSig;         // 0x41615252
     BYTE sReserved1[480];   // zeros

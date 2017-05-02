@@ -1917,6 +1917,11 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG DataSec;
    ULONG CountOfClusters;
 
+   if (!memcmp(pSect->oemID, "EXFAT   ", 8))
+      {
+      return FAT_TYPE_EXFAT;
+      } /* endif */
+
    if (!pSect)
       {
       return FAT_TYPE_NONE;
@@ -1980,6 +1985,16 @@ UCHAR GetFatType(PBOOTSECT pSect)
    if ((CountOfClusters >= 65525UL) && !memcmp(pSect->FileSystem, "FAT32   ", 8))
       {
       return FAT_TYPE_FAT32;
+      } /* endif */
+
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT12   ", 8))
+      {
+      return FAT_TYPE_FAT12;
+      } /* endif */
+
+   if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT16   ", 8))
+      {
+      return FAT_TYPE_FAT16;
       } /* endif */
 
    if (!memcmp(((PBOOTSECT0)pSect)->FileSystem, "FAT", 3))

@@ -76,7 +76,7 @@ union
    struct _UpCaseTbl
       {
       BYTE      bRsvd1[3];
-      ULONG     usTblCheckSum;
+      ULONG     ulTblCheckSum;
       BYTE      bRsvd2[12];
       ULONG     ulFirstCluster;
       ULONGLONG ullDataLength;
@@ -95,6 +95,14 @@ union
       {
       BYTE      bRsvd[31];
       } WinCEAct;
+   struct _VolGUID // All values are valid except null GUID
+      {            // {00000000-0000-0000-0000-000000000000}
+      BYTE      bSecondaryCount;     // must be 00
+      USHORT    usSetCheckSum;
+      USHORT    usResvd1;            // must be 00
+      BYTE      bVolumeGUID[16];
+      BYTE      bResvd2[10];
+      } VolGUID;
    struct _File
       {
       BYTE      bSecondaryCount;
