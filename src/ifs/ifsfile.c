@@ -293,7 +293,7 @@ USHORT rc;
             {
             ULONG ulClustersNeeded = size / pVolInfo->ulClusterSize +
                   (size % pVolInfo->ulClusterSize ? 1:0);
-            ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, NULL);
+            ulCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, pVolInfo->ulFatEof, ulClustersNeeded, NULL);
             if (ulCluster != pVolInfo->ulFatEof)
                {
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
@@ -312,6 +312,7 @@ USHORT rc;
                   DirEntryStream.u.Stream.ullDataLen =
                      (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain;
                   }
                }
             else
@@ -411,6 +412,7 @@ USHORT rc;
             DirEntryStream.u.Stream.ulFirstClus = 0;
             DirEntryStream.u.Stream.ullValidDataLen = 0;
             DirEntryStream.u.Stream.ullDataLen = 0;
+            DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain;
             }
 
          rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile);
@@ -439,7 +441,7 @@ USHORT rc;
             {
             ULONG ulClustersNeeded = size / pVolInfo->ulClusterSize +
                   (size % pVolInfo->ulClusterSize ? 1:0);
-            ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
+            ulCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
             if (ulCluster != pVolInfo->ulFatEof)
                {
                if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
@@ -458,6 +460,7 @@ USHORT rc;
                   DirEntryStream.u.Stream.ullDataLen =
                      (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain;
                   }
                }
             else
@@ -2241,6 +2244,7 @@ USHORT rc;
             DirEntryStream.u.Stream.ullDataLen =
                (psffsi->sfi_size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                (psffsi->sfi_size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+            DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain & 1;
             }
 
          if (f32Parms.fLargeFiles)
@@ -2502,7 +2506,7 @@ ULONGLONG size;
 
    if (!pOpenInfo->pSHInfo->ulStartCluster)
       {
-      ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
+      ulCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
       if (ulCluster == pVolInfo->ulFatEof)
          return ERROR_DISK_FULL;
       pOpenInfo->pSHInfo->ulStartCluster = ulCluster;
@@ -2552,7 +2556,7 @@ ULONGLONG size;
 
       if (ulClustersNeeded > ulClusterCount)
          {
-         ulNextCluster = MakeFatChain(pVolInfo, ulCluster, ulClustersNeeded - ulClusterCount, &pOpenInfo->pSHInfo->ulLastCluster);
+         ulNextCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, ulCluster, ulClustersNeeded - ulClusterCount, &pOpenInfo->pSHInfo->ulLastCluster);
          if (ulNextCluster == pVolInfo->ulFatEof)
             return ERROR_DISK_FULL;
          }

@@ -1249,34 +1249,11 @@ USHORT rc;
 
 #ifndef __WATCOMC__
             // no such field in Toolkit or Watcom headers
-            if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-               pInfo->ulVSN = ((PBOOTSECT1)&pVolInfo->BootSect)->ulVolSerial;
-            if (pVolInfo->bFatType == FAT_TYPE_FAT32)
-               pInfo->ulVSN = pVolInfo->BootSect.ulVolSerial;
-            else if (pVolInfo->bFatType < FAT_TYPE_FAT32)
-               pInfo->ulVSN = ((PBOOTSECT0)&pVolInfo->BootSect)->ulVolSerial;
+            pInfo->ulVSN = pVolInfo->BootSect.ulVolSerial;
 #else
-            if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-               {
-               // low word (aka fdateCreation)
-               *((PUSHORT)(pInfo))     = (((PBOOTSECT1)&pVolInfo->BootSect)->ulVolSerial & 0xffff);
-               // high word (aka ftimeCreation)
-               *((PUSHORT)(pInfo) + 1) = (((PBOOTSECT1)&pVolInfo->BootSect)->ulVolSerial >> 16);
-               }
-            else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
-               {
-               // low word (aka fdateCreation)
-               *((PUSHORT)(pInfo))     = (pVolInfo->BootSect.ulVolSerial & 0xffff);
-               // high word (aka ftimeCreation)
-               *((PUSHORT)(pInfo) + 1) = (pVolInfo->BootSect.ulVolSerial >> 16);
-               }
-            else if (pVolInfo->bFatType < FAT_TYPE_FAT32)
-               {
-               // low word (aka fdateCreation)
-               *((PUSHORT)(pInfo))     = (((PBOOTSECT0)&pVolInfo->BootSect)->ulVolSerial & 0xffff);
-               // high word (aka ftimeCreation)
-               *((PUSHORT)(pInfo) + 1) = (((PBOOTSECT0)&pVolInfo->BootSect)->ulVolSerial >> 16);
-               }
+            // low word (aka fdateCreation)
+            *((PUSHORT)(pInfo))     = (pVolInfo->BootSect.ulVolSerial & 0xffff);
+            *((PUSHORT)(pInfo) + 1) = (pVolInfo->BootSect.ulVolSerial >> 16);
 #endif
 
             memset(pInfo->vol.szVolLabel, 0, sizeof pInfo->vol.szVolLabel);
@@ -1308,11 +1285,15 @@ USHORT rc;
             if (pVol->cch < (BYTE)12)
                {
                usSize = (USHORT) pVol->cch;
+               while (pVol->szVolLabel[usSize - 1] == ' ')
+                  usSize --;
                rc = fGetSetVolLabel(pVolInfo, usFlag, pVol->szVolLabel, &usSize);
                }
             else
                {
                usSize = 11;
+               while (pVol->szVolLabel[usSize - 1] == ' ')
+                  usSize --;
                rc = fGetSetVolLabel(pVolInfo, usFlag, pVol->szVolLabel, &usSize);
                if (!rc)
                   rc = ERROR_LABEL_TOO_LONG;
@@ -1651,7 +1632,7 @@ BOOL fFound;
 
    *pulFirstCluster = DirEntry.u.UpCaseTbl.ulFirstCluster;
    *pullLen = DirEntry.u.UpCaseTbl.ullDataLength;
-   *pulChecksum = DirEntry.u.UpCaseTbl.usTblCheckSum;
+   *pulChecksum = DirEntry.u.UpCaseTbl.ulTblCheckSum;
    return 0;
 }
 
@@ -2279,6 +2260,41 @@ PBIOSPARAMETERBLOCK pBPB;
                      pBPB->usSectorsPerFAT = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
                   else
                      pBPB->usSectorsPerFAT = 0xFFFF; // ??? vs!
+               }
+
+               break;
+
+            case DSK_SETDEVICEPARAMS :
+               if (pcbData)
+                  *pcbData = sizeof (BIOSPARAMETERBLOCK);
+               hDEV = GetVolDevice(pVolInfo);
+
+               pBPB = (PBIOSPARAMETERBLOCK)pData;
+
+               pVolInfo->SectorsPerCluster = pBPB->bSectorsPerCluster;
+               pVolInfo->BootSect.bpb.ReservedSectors = pBPB->usReservedSectors;
+               pVolInfo->BootSect.bpb.NumberOfFATs = pBPB->cFATs;
+               if (pVolInfo->bFatType < FAT_TYPE_FAT32)
+                  {
+                  pVolInfo->BootSect.bpb.RootDirEntries = pBPB->cRootEntries;
+                  pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBPB0)pBPB)->SectorsPerFat;
+                  }
+               else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+                  {
+                     pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBPB)pBPB)->BigSectorsPerFat;
+                  }
+
+               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (!rc) {
+
+                  if (pcbData) {
+                    *pcbData = sizeof (BIOSPARAMETERBLOCK);
+                  }
+
+                  if (pcbParm) {
+                    *pcbParm = cbParm;
+                  }
                }
 
                break;
@@ -4094,7 +4110,7 @@ ULONG rc;
 /******************************************************************
 *
 ******************************************************************/
-ULONG MakeFatChain(PVOLINFO pVolInfo, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast)
+ULONG MakeFatChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast)
 {
 ULONG  ulCluster = 0;
 ULONG  ulFirstCluster = 0;
@@ -4514,7 +4530,7 @@ PBYTE pbSector;
       {
       // set dirty flag in volume flags of boot sector
       USHORT usVolFlags;
-      PBOOTSECT1 pbBoot = (PBOOTSECT1)malloc(pVolInfo->BootSect.bpb.BytesPerSector);
+      PBOOTSECT1 pbBoot = (PBOOTSECT1)bSector;
 
       /*
          Trick, set fDiskClean to FALSE, so WriteSector
@@ -4539,7 +4555,7 @@ PBYTE pbSector;
 
       pVolInfo->fDiskClean = fClean;
 
-      free(pbBoot);
+      return TRUE;
       }
 
    if (pVolInfo->ulCurFatSector != 0)
@@ -4554,7 +4570,7 @@ PBYTE pbSector;
       pbSector = pVolInfo->pbFatSector;
       }
 
-   GetFatEntryEx(pVolInfo, pbSector, 1, pVolInfo->BootSect.bpb.BytesPerSector);
+   ulNextCluster = GetFatEntryEx(pVolInfo, pbSector, 1, pVolInfo->BootSect.bpb.BytesPerSector);
 
    if (fClean)
       {
@@ -4942,11 +4958,13 @@ ULONG FindPathCluster0(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTR
 {
 // FAT12/FAT16/FAT32 case
 BYTE szShortName[13];
-PSZ  pszLongName;
+static BYTE szLongName[FAT32MAXPATHCOMP * 2];
+PSZ  pszLongName = szLongName;
 PSZ  pszPart;
 PSZ  p;
+static BYTE pDirBuf[0x8000];
 PDIRENTRY pDir;
-PDIRENTRY pDirStart;
+PDIRENTRY pDirStart = (PDIRENTRY)pDirBuf;
 PDIRENTRY pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -4955,7 +4973,8 @@ PROCINFO ProcInfo;
 ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
-ULONG  ulDirEntries = 0;
+USHORT usDirEntries = 0;
+USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
@@ -4992,19 +5011,6 @@ ULONG  ulDirEntries = 0;
          pszPath += 2;
       }
 
-   pDirStart = malloc(pVolInfo->ulBlockSize);
-   if (!pDirStart)
-      {
-      Message("FAT32: Not enough memory for cluster in FindPathCluster");
-      return pVolInfo->ulFatEof;
-      }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
-   if (!pszLongName)
-      {
-      Message("FAT32: Not enough memory for buffers in FindPathCluster");
-      free(pDirStart);
-      return pVolInfo->ulFatEof;
-      }
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
    pszPart = pszLongName + FAT32MAXPATHCOMP;
 
@@ -5033,8 +5039,6 @@ ULONG  ulDirEntries = 0;
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         free(pDirStart);
-         free(pszLongName);
          return pVolInfo->ulFatEof;
          }
 
@@ -5053,7 +5057,7 @@ ULONG  ulDirEntries = 0;
                // reading root directory on FAT12/FAT16
                ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
             else
-               ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
+               ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0); ////
             pDir    = pDirStart;
             pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
 
@@ -5061,7 +5065,9 @@ ULONG  ulDirEntries = 0;
             Yield();
 #endif
 
-            while (usMode == MODE_SCAN && pDir < pDirEnd)
+            usDirEntries = 0;
+            //while (usMode == MODE_SCAN && pDir < pDirEnd)
+            while (usMode == MODE_SCAN && usDirEntries < usMaxDirEntries)
                {
                if (pDir->bAttr == FILE_LONGNAME)
                   {
@@ -5133,8 +5139,8 @@ ULONG  ulDirEntries = 0;
                   memset(pszLongName, 0, FAT32MAXPATHCOMP);
                   }
                pDir++;
-               ulDirEntries++;
-               if (ulCluster == 1 && ulDirEntries > pVolInfo->BootSect.bpb.RootDirEntries)
+               usDirEntries++;
+               if (ulCluster == 1 && usDirEntries > pVolInfo->BootSect.bpb.RootDirEntries)
                   break;
                }
             if (usMode != MODE_SCAN)
@@ -5158,8 +5164,6 @@ ULONG  ulDirEntries = 0;
             ulCluster = pVolInfo->ulFatEof;
          }
       }
-   free(pDirStart);
-   free(pszLongName);
    if (f32Parms.fMessageActive & LOG_FUNCS)
       {
       if (ulCluster != pVolInfo->ulFatEof)
@@ -5179,13 +5183,14 @@ ULONG FindPathCluster1(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PSHOPENI
                        PSZ pszFullName)
 {
 // exFAT case
-//BYTE szShortName[13];
-PSZ  pszLongName;
+static BYTE szLongName[FAT32MAXPATHCOMP * 2];
+PSZ  pszLongName = szLongName;
 PSZ  pszPart;
 PSZ  p;
+static BYTE pDirBuf[0x8000];
 DIRENTRY1  Dir;
 PDIRENTRY1 pDir;
-PDIRENTRY1 pDirStart;
+PDIRENTRY1 pDirStart = (PDIRENTRY1)pDirBuf;
 PDIRENTRY1 pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -5194,23 +5199,14 @@ PROCINFO ProcInfo;
 ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
-ULONG  ulDirEntries = 0;
+USHORT usDirEntries = 0;
+USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY1));
 ULONG  ulRet;
 USHORT usNumSecondary;
 USHORT usFileAttr;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
-
-   //if (ulCluster == 1)
-   //   {
-   //   // root directory starting sector
-   //   ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
-   //      pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-   //   usSectorsPerBlock = pVolInfo->SectorsPerCluster /
-   //      (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
-   //   usSectorsRead = 0;
-   //   }
 
    if (pDirEntry)
       {
@@ -5234,19 +5230,6 @@ USHORT usFileAttr;
          pszPath += 2;
       }
 
-   pDirStart = malloc(pVolInfo->ulBlockSize);
-   if (!pDirStart)
-      {
-      Message("FAT32: Not enough memory for cluster in FindPathCluster");
-      return pVolInfo->ulFatEof;
-      }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
-   if (!pszLongName)
-      {
-      Message("FAT32: Not enough memory for buffers in FindPathCluster");
-      free(pDirStart);
-      return pVolInfo->ulFatEof;
-      }
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
    pszPart = pszLongName + FAT32MAXPATHCOMP;
 
@@ -5275,8 +5258,6 @@ USHORT usFileAttr;
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         free(pDirStart);
-         free(pszLongName);
          return pVolInfo->ulFatEof;
          }
 
@@ -5299,7 +5280,9 @@ USHORT usFileAttr;
             Yield();
 #endif
 
-            while (usMode == MODE_SCAN && pDir < pDirEnd)
+            usDirEntries = 0;
+            //while (usMode == MODE_SCAN && pDir < pDirEnd)
+            while (usMode == MODE_SCAN && usDirEntries < usMaxDirEntries)
                {
                if (pDir->bEntryType == ENTRY_TYPE_EOD)
                   {
@@ -5396,7 +5379,7 @@ USHORT usFileAttr;
                      }
                   }
                pDir++;
-               ulDirEntries++;
+               usDirEntries++;
                }
             if (usMode != MODE_SCAN)
                break;
@@ -5408,8 +5391,6 @@ USHORT usFileAttr;
             ulCluster = pVolInfo->ulFatEof;
          }
       }
-   free(pDirStart);
-   free(pszLongName);
    if (f32Parms.fMessageActive & LOG_FUNCS)
       {
       if (ulCluster != pVolInfo->ulFatEof)
@@ -5437,14 +5418,16 @@ ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PSHOPENIN
 USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
 {
 BYTE szShortName[13];
-PSZ  pszLongName;
+static BYTE szLongName[FAT32MAXPATHCOMP * 4];
+PSZ  pszLongName = szLongName;
 PSZ  pszUpperName;
 PSZ  pszUpperPart;
 PSZ  pszPart;
 PSZ  p;
 /* PSZ  pTar = pszTarget; */
+static BYTE pbDirBuf[0x8000];
 PDIRENTRY pDir;
-PDIRENTRY pDirStart;
+PDIRENTRY pDirStart = (PDIRENTRY)pbDirBuf;
 PDIRENTRY pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -5469,19 +5452,6 @@ ULONG  ulDirEntries = 0;
          }
       }
 
-   pDirStart = malloc(pVolInfo->ulBlockSize);
-   if (!pDirStart)
-      {
-      Message("FAT32: Not enough memory for cluster in TranslateName");
-      return ERROR_NOT_ENOUGH_MEMORY;
-      }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 4);
-   if (!pszLongName)
-      {
-      Message("FAT32: Not enough memory for buffers in TranslateName");
-      free(pDirStart);
-      return ERROR_NOT_ENOUGH_MEMORY;
-      }
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 4);
 
    pszPart      = pszLongName + FAT32MAXPATHCOMP;
@@ -5528,8 +5498,6 @@ ULONG  ulDirEntries = 0;
 
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         free(pDirStart);
-         free(pszLongName);
          return ERROR_BUFFER_OVERFLOW;
          }
 
@@ -5666,8 +5634,6 @@ ULONG  ulDirEntries = 0;
          }
       }
 
-   free(pDirStart);
-   free(pszLongName);
    if (ulCluster == pVolInfo->ulFatEof)
       strcat(pszTarget, pszPath);
    return 0;
@@ -6023,7 +5989,7 @@ PDIRENTRY1 pRet;
 BYTE bCurEntry;
 PDIRENTRY1 pLN;
 USHORT usIndex;
-PUSHORT pusUniName;
+USHORT pusUniName[256];
 USHORT uniName[15];
 PUSHORT p, q;
 PSZ     r;
@@ -6031,7 +5997,7 @@ PSZ     r;
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
-   pusUniName = malloc(256 * sizeof(USHORT));
+   //pusUniName = malloc(256 * sizeof(USHORT));
 
    usNeededEntries = ( DBCSStrlen( pszLongName ) + 14 ) / 15;
 
@@ -6070,7 +6036,7 @@ PSZ     r;
    if (pusNameHash)
       *pusNameHash = NameHash(pusUniName, strlen(r));
 
-   free(pusUniName);
+   //free(pusUniName);
 
    return pLN;
 }
@@ -6609,7 +6575,7 @@ ULONG  tStart = GetCurTime();
    if (!ulCount)
       return 1340;
 
-   *pulNew = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, ulCount, NULL); //// should we pass pSHInfo to it too?
+   *pulNew = MakeFatChain(pVolInfo, pSHInfo, pVolInfo->ulFatEof, ulCount, NULL);
    if (*pulNew == pVolInfo->ulFatEof)
       {
       free(pbCluster);

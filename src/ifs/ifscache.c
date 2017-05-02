@@ -209,9 +209,11 @@ APIRET rc,rc2;
 USHORT usSectors;
 USHORT usIndex;
 PBYTE pbSectors;
+static BYTE pbSect[0x10000];
 BOOL fFromCache;
 BOOL fSectorInCache;
 USHORT usCBIndex;
+BOOL fRASectors = FALSE;
 char far *p;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
@@ -249,16 +251,19 @@ char far *p;
             (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
       }
 #endif
-   pbSectors = NULL;
+   //pbSectors = NULL;
    if (( ulSector >= pVolInfo->ulStartOfData ) &&
        !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
+      //pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
+      fRASectors = TRUE;
+      pbSectors = pbSect;
       }
-   if (!pbSectors)
+   //if (!pbSectors)
+   if (!fRASectors)
       {
       pbSectors = pbData;
       usSectors = nSectors;
@@ -335,14 +340,15 @@ char far *p;
           }
        }
 
-    if (!rc && pbSectors != pbData)
+    //if (!rc && pbSectors != pbData)
+    if (!rc && fRASectors)
        {
        f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
        memcpy(pbData, pbSectors, min( usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
        }
 
-   if (pbSectors != pbData)
-      free(pbSectors);
+   //if (pbSectors != pbData)
+   //   free(pbSectors);
 
    return rc;
 }

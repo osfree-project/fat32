@@ -803,8 +803,13 @@ PSHOPENINFO pSHInfo = NULL;
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
          }
 
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         pSHInfo = &SHInfo;
+         SetSHInfo1(pVolInfo, &DirStream, pSHInfo);
+         }
 
-      ulCluster = MakeFatChain(pVolInfo, pVolInfo->ulFatEof, (ULONG)usClustersNeeded, NULL);
+      ulCluster = MakeFatChain(pVolInfo, pSHInfo, pVolInfo->ulFatEof, (ULONG)usClustersNeeded, NULL);
       if (ulCluster == pVolInfo->ulFatEof)
          {
          free(pszEAName);
@@ -882,7 +887,7 @@ PSHOPENINFO pSHInfo = NULL;
       if (usClustersNeeded)
          {
          if (ulNextCluster == pVolInfo->ulFatEof)
-            ulCluster = MakeFatChain(pVolInfo, ulCluster, (ULONG)usClustersNeeded, NULL);
+            ulCluster = MakeFatChain(pVolInfo, pSHInfo, ulCluster, (ULONG)usClustersNeeded, NULL);
          else
             ulCluster = ulNextCluster;
          if (ulCluster == pVolInfo->ulFatEof)
