@@ -514,6 +514,7 @@ P_VolChars   pVolChars;
          pVolInfo->ulStartOfData = 0;
 
          *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
+         *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
 
          if (!pGlobVolInfo)
             {
@@ -583,6 +584,13 @@ P_VolChars   pVolChars;
 
       case MOUNT_VOL_REMOVED:
       case MOUNT_RELEASE:
+         if ( *((ULONG *)pvpfsd->vpd_work + 1) != FAT32_VPB_MAGIC )
+            {
+            /* VPB magic is invalid, so it is not the VPB
+               created by fat32.ifs */
+            return 0;
+            }
+
          pVolInfo = GetVolInfo(hVBP);
 
          if (!pVolInfo)
@@ -599,9 +607,9 @@ P_VolChars   pVolChars;
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
             UpdateFSInfo(pVolInfo);
 
-            if (! pVolInfo->fRemovable)
+            if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
                {
-               // ignore dirty status on floppies
+               // ignore dirty status on floppies (and FAT12)
                MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
                }
             }
@@ -609,6 +617,7 @@ P_VolChars   pVolChars;
          // delete pVolInfo from the list
          RemoveVolume(pVolInfo);
          *(PVOLINFO *)(pvpfsd->vpd_work) = NULL;
+         *((ULONG *)pvpfsd->vpd_work + 1) = 0;
          free(pVolInfo);
          rc = NO_ERROR;
          break;
