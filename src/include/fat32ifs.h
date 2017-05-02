@@ -382,7 +382,7 @@ IMPORT USHORT MakeShortName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszLongNa
 IMPORT BOOL   DeleteFatChain(PVOLINFO pVolInfo, ULONG ulCluster);
 IMPORT BYTE   GetVFATCheckSum(PDIRENTRY pDir);
 IMPORT USHORT usHeapInit(VOID);
-IMPORT ULONG MakeFatChain(PVOLINFO pVolInfo, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
+IMPORT ULONG MakeFatChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast);
 IMPORT USHORT SemRequest(void far * hSem, ULONG ulTimeOut, PSZ pszTest);
 IMPORT ULONG GetFreeSpace(PVOLINFO pVolInfo);
 IMPORT BOOL UpdateFSInfo(PVOLINFO pVolInfo);
