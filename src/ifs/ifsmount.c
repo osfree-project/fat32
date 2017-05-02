@@ -98,6 +98,23 @@ P_VolChars   pVolChars;
          if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
             hDupVBP = 0;
 
+         if (hDupVBP)  /* remount of volume */
+            {
+            if ( *((ULONG *)pvpfsd->vpd_work + 1) == FAT32_VPB_MAGIC )
+               {
+               /* good VPB magic, valid VPB - retrieve VOLINFO from it */
+               FSH_GETVOLPARM(hDupVBP,&pvpfsi,&pvpfsd);       /* Get the volume dependent/independent structure from the original volume block */
+               pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
+               hVBP = hDupVBP;                                /* indicate that the old duplicate will become the remaining block */
+                                                              /* since the new VPB will be discarded if there already is an old one according to IFS.INF */
+               }
+            else
+               {
+               /* bad VPB magic, do an initial mount then too */
+               hDupVBP = 0;
+               }
+            }
+
          if (!hDupVBP)   /* initial mounting of the volume */
             {
             pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
@@ -214,13 +231,6 @@ P_VolChars   pVolChars;
                   pvpfsi->vpi_nhead  = 255; // dummy
                   memset(pvpfsi->vpi_text, 0, sizeof pvpfsi->vpi_text);
                   }
-            }
-         else  /* remount of volume */
-            {
-            FSH_GETVOLPARM(hDupVBP,&pvpfsi,&pvpfsd);       /* Get the volume dependent/independent structure from the original volume block */
-            pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
-            hVBP = hDupVBP;                                /* indicate that the old duplicate will become the remaining block */
-                                                           /* since the new VPB will be discarded if there already is an old one according to IFS.INF */
             }
 
          /* continue mount in both cases:

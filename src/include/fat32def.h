@@ -181,6 +181,9 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define EXFAT_CLEAN_SHUTDOWN  0x80000000
 #define EXFAT_NO_DISK_ERROR   0x40000000
 
+/* magic indicating this is our valid VPB */
+#define FAT32_VPB_MAGIC 0xf00dbeef
+
 /* FSCTL function numbers */
 #define FAT32_GETLOGDATA        0x8000
 #define FAT32_SETMESSAGE        0x8001
@@ -313,7 +316,9 @@ typedef struct _BootSector
 BYTE bJmp[3];
 BYTE oemID[8];
 BPB  bpb;
-BYTE bUnknown[3];
+BYTE bPhysDiskNo;                   // 0x80
+BYTE bDrvLetter;                    // 0x00
+BYTE bBootSig;                      // 0x29 or 0x28
 ULONG ulVolSerial;
 BYTE VolumeLabel[11];
 BYTE FileSystem[8];
@@ -326,7 +331,9 @@ typedef struct _BootSector0
 BYTE bJmp[3];
 BYTE oemID[8];
 BPB0  bpb;
-BYTE bUnknown[3];
+BYTE bPhysDiskNo;                   // 0x80
+BYTE bDrvLetter;                    // 0x00
+BYTE bBootSig;                      // 0x29 or 0x28
 ULONG ulVolSerial;
 BYTE VolumeLabel[11];
 BYTE FileSystem[8];
