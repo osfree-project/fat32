@@ -3,13 +3,14 @@ ROOT=..
 PROJ=ufat32
 PATH=..\..\$(PROJ)
 
-DESC="UFAT32 Helper DLL, Henk Kelder & Netlabs"
+DESC="UUNIFAT Helper DLL, Henk Kelder & Netlabs"
 DESC2="FORMAT, standalone version"
 DESC3="CHKDSK, standalone version"
 DESC4="SYS, standalone version"
 DESC5="UFAT16 Forwarder DLL, Henk Kelder & Netlabs"
 DESC6="UFAT12 Forwarder DLL, Henk Kelder & Netlabs"
 DESC7="UEXFAT Forwarder DLL, Henk Kelder & Netlabs"
+DESC8="UFAT32 Forwarder DLL, Henk Kelder & Netlabs"
 
 # create OS/2 binaries
 OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
@@ -28,14 +29,16 @@ C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -
 TARGETS=$(BINROOT)\os2\fat32fmt.sym &
         $(BINROOT)\os2\fat32chk.sym &
         $(BINROOT)\os2\fat32sys.sym &
-        $(BINROOT)\os2\dll\ufat32.sym &
+        $(BINROOT)\os2\dll\uunifat.sym &
         $(BINROOT)\os2\dll\ufat16.dll $(BINROOT)\os2\dll\ufat12.dll &
-        $(BINROOT)\os2\dll\uexfat.dll
+        $(BINROOT)\os2\dll\uexfat.dll $(BINROOT)\os2\dll\ufat32.dll
 SYS=os2v2
 
 !include ..\makefile.mk
 
 DIRS=..\include win32
+
+$(BINROOT)\os2\dll\uunifat.dll:
 
 $(BINROOT)\os2\dll\ufat32.dll:
 
@@ -51,7 +54,7 @@ $(BINROOT)\os2\fat32chk.exe:
 
 $(BINROOT)\os2\fat32sys.exe:
 
-$(BINROOT)\os2\dll\ufat32.sym: $(BINROOT)\os2\dll\ufat32.dll
+$(BINROOT)\os2\dll\uunifat.sym: $(BINROOT)\os2\dll\uunifat.dll
 
 $(BINROOT)\os2\fat32fmt.sym: $(BINROOT)\os2\fat32fmt.exe
 
@@ -59,7 +62,7 @@ $(BINROOT)\os2\fat32chk.sym: $(BINROOT)\os2\fat32chk.exe
 
 $(BINROOT)\os2\fat32sys.sym: $(BINROOT)\os2\fat32sys.exe
 
-$(PROJ_BLD)\ufat32.ols: $(OBJS1) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)\uunifat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS1)) do @%append $^@ FILE %e
 
@@ -75,6 +78,10 @@ $(PROJ_BLD)\uexfat.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
+$(PROJ_BLD)\ufat32.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS5)) do @%append $^@ FILE %e
+
 $(PROJ_BLD)\fat32fmt.ols: $(OBJS2) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS2)) do @%append $^@ FILE %e
@@ -87,7 +94,7 @@ $(PROJ_BLD)\fat32sys.ols: $(OBJS4) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS4)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
+$(PROJ_BLD)\uunifat.lnk: $(PROJ_BLD)\uunifat.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
@@ -129,16 +136,16 @@ $(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
  @%append $@ segment type DATA shared
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ IMPORT &
-     CHKDSK   ufat32.CHKDSK,  &
-     FORMAT   ufat32.FORMAT,  &
-     RECOVER  ufat32.RECOVER, &
-     SYS      ufat32.SYS,     &
-     LOADTRANSTBL ufat32.LOADTRANSTBL, &
-     chkdsk   ufat32.chkdsk,  &
-     format   ufat32.format,  &
-     recover  ufat32.recover, &
-     sys      ufat32.sys,     &
-     LoadTranslateTable ufat32.LoadTranslateTable
+     CHKDSK   uunifat.CHKDSK,  &
+     FORMAT   uunifat.FORMAT,  &
+     RECOVER  uunifat.RECOVER, &
+     SYS      uunifat.SYS,     &
+     LOADTRANSTBL uunifat.LOADTRANSTBL, &
+     chkdsk   uunifat.chkdsk,  &
+     format   uunifat.format,  &
+     recover  uunifat.recover, &
+     sys      uunifat.sys,     &
+     LoadTranslateTable uunifat.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
@@ -161,16 +168,16 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
  @%append $@ segment type DATA shared
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ IMPORT &
-     CHKDSK   ufat32.CHKDSK,  &
-     FORMAT   ufat32.FORMAT,  &
-     RECOVER  ufat32.RECOVER, &
-     SYS      ufat32.SYS,     &
-     LOADTRANSTBL ufat32.LOADTRANSTBL, &
-     chkdsk   ufat32.chkdsk,  &
-     format   ufat32.format,  &
-     recover  ufat32.recover, &
-     sys      ufat32.sys,     &
-     LoadTranslateTable ufat32.LoadTranslateTable
+     CHKDSK   uunifat.CHKDSK,  &
+     FORMAT   uunifat.FORMAT,  &
+     RECOVER  uunifat.RECOVER, &
+     SYS      uunifat.SYS,     &
+     LOADTRANSTBL uunifat.LOADTRANSTBL, &
+     chkdsk   uunifat.chkdsk,  &
+     format   uunifat.format,  &
+     recover  uunifat.recover, &
+     sys      uunifat.sys,     &
+     LoadTranslateTable uunifat.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &
@@ -193,16 +200,48 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
  @%append $@ segment type DATA shared
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ IMPORT &
-     CHKDSK   ufat32.CHKDSK,  &
-     FORMAT   ufat32.FORMAT,  &
-     RECOVER  ufat32.RECOVER, &
-     SYS      ufat32.SYS,     &
-     LOADTRANSTBL ufat32.LOADTRANSTBL, &
-     chkdsk   ufat32.chkdsk,  &
-     format   ufat32.format,  &
-     recover  ufat32.recover, &
-     sys      ufat32.sys,     &
-     LoadTranslateTable ufat32.LoadTranslateTable
+     CHKDSK   uunifat.CHKDSK,  &
+     FORMAT   uunifat.FORMAT,  &
+     RECOVER  uunifat.RECOVER, &
+     SYS      uunifat.SYS,     &
+     LOADTRANSTBL uunifat.LOADTRANSTBL, &
+     chkdsk   uunifat.chkdsk,  &
+     format   uunifat.format,  &
+     recover  uunifat.recover, &
+     sys      uunifat.sys,     &
+     LoadTranslateTable uunifat.LoadTranslateTable
+ @%append $@ EXPORT &
+     CHKDSK,  &
+     FORMAT,  &
+     RECOVER, &
+     SYS,     &
+     LOADTRANSTBL, &
+     chkdsk,  &
+     format,  &
+     recover, &
+     sys,     &
+     LoadTranslateTable
+ @%append $@ @$[@
+
+$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
+ @%create $@
+ @%append $@ SYSTEM $(SYS) dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC8)'
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT
+ @%append $@ segment type DATA shared
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ IMPORT &
+     CHKDSK   uunifat.CHKDSK,  &
+     FORMAT   uunifat.FORMAT,  &
+     RECOVER  uunifat.RECOVER, &
+     SYS      uunifat.SYS,     &
+     LOADTRANSTBL uunifat.LOADTRANSTBL, &
+     chkdsk   uunifat.chkdsk,  &
+     format   uunifat.format,  &
+     recover  uunifat.recover, &
+     sys      uunifat.sys,     &
+     LoadTranslateTable uunifat.LoadTranslateTable
  @%append $@ EXPORT &
      CHKDSK,  &
      FORMAT,  &

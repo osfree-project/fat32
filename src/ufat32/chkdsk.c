@@ -1234,7 +1234,7 @@ USHORT usSectorsRead;
                {
                ulClustersNeeded = pDir->ulFileSize / pCD->ulClusterSize +
                   (pDir->ulFileSize % pCD->ulClusterSize ? 1:0);
-               ulClustersUsed = GetClusterCount(pCD,(ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster, pbPath);
+               ulClustersUsed = GetClusterCount(pCD,((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof, pbPath);
                pEA = strstr(pbPath, EA_EXTENTION);
                if (f32Parms.fEAS && pEA && pDir->ulFileSize)
                   {
@@ -1405,7 +1405,7 @@ USHORT usSectorsRead;
             if (pDir->bAttr & FILE_DIRECTORY &&
                   !(pDir->bAttr & FILE_VOLID))
                {
-               ulCluster = (ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster;
+               ulCluster = ((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof;
                bCheckSum = 0;
                for (iIndex = 0; iIndex < 11; iIndex++)
                   {
@@ -1479,7 +1479,7 @@ USHORT usSectorsRead;
 
                   memset(szLongName, 0, sizeof(szLongName));
                   CheckDir(pCD,
-                     (ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster,
+                     ((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof,
                      pbPath, (ulDirCluster == pCD->BootSect.bpb.RootDirStrtClus ? 0L : ulDirCluster));
                   }
                }
@@ -1917,10 +1917,10 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG DataSec;
    ULONG CountOfClusters;
 
-   if (!memcmp(pSect->oemID, "EXFAT   ", 8))
-      {
-      return FAT_TYPE_EXFAT;
-      } /* endif */
+   //if (!memcmp(pSect->oemID, "EXFAT   ", 8))
+   //   {
+   //   return FAT_TYPE_EXFAT;
+   //   } /* endif */
 
    if (!pSect)
       {

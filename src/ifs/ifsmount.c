@@ -81,6 +81,7 @@ USHORT usVolCount;
 P_DriverCaps pDevCaps;
 P_VolChars   pVolChars;
 BOOL fValidBoot = TRUE;
+BOOL fNewBoot = TRUE;
 int i;
 
    /*
@@ -253,29 +254,27 @@ int i;
                      {
                      case FAT_TYPE_FAT12:
                      case FAT_TYPE_FAT16:
-                        if ( ((PBOOTSECT0)pSect)->bBootSig == 0x29 ||
-                             ((PBOOTSECT0)pSect)->bBootSig == 0x28 )
-                           fValidBoot = TRUE;
-                        else
-                           fValidBoot = FALSE;
+                        if ( ((PBOOTSECT0)pSect)->bBootSig != 0x29 &&
+                             ((PBOOTSECT0)pSect)->bBootSig != 0x28 )
+                           fNewBoot = FALSE;
                         break;
 
                      case FAT_TYPE_FAT32:
-                        if ( pSect->bBootSig == 0x29 ||
-                             pSect->bBootSig == 0x28 )
-                           fValidBoot = TRUE;
-                        else
-                           fValidBoot = FALSE;
-                        break;
-
-                     case FAT_TYPE_EXFAT:
-                        fValidBoot = TRUE;
+                        if ( pSect->bBootSig != 0x29 &&
+                             pSect->bBootSig != 0x28 )
+                           fNewBoot = FALSE;
                      }
                   }
 
                if (! fValidBoot)
                   {
                   // construct the Serial No and Volume label
+                  memcpy(pvpfsi->vpi_text, "UNREADABLE ", sizeof(pSect->VolumeLabel));
+                  pvpfsi->vpi_vid = GetVolId();
+                  }
+
+               if (! fNewBoot)
+                  {
                   memcpy(pvpfsi->vpi_text, "UNLABELED  ", sizeof(pSect->VolumeLabel));
                   pvpfsi->vpi_vid = GetVolId();
                   }
@@ -292,19 +291,21 @@ int i;
 
                   // Media type byte:
                   // Byte   Capacity   Media Size and Type
-                  // F0     2.88 MB    3.5-inch, 2-sided, 36-sector
-                  // F0     1.84 MB    3.5-inch  2-sided, 23-sector
-                  // F0     1.44 MB    3.5-inch, 2-sided, 18-sector
-                  // F9     1.2 MB     5.25-inch, 2-sided, 15-sector
-                  // F9     720 KB     3.5-inch, 2-sided, 9-sector
-                  // FC     180 KB     5.25-inch, 1-sided, 9-sector
-                  // FD     360 KB     5.25-inch, 2-sided, 9-sector
-                  // FE     160 KB     5.25-inch, 1-sided, 8-sector
-                  // FF     320 KB     5.25-inch, 2-sided, 8-sector
+                  // F0     2.88 MB    3.5-inch, 2-sided, 36-sector DS?ED
+                  // F0     1.84 MB    3.5-inch  2-sided, 23-sector DS/HD
+                  // F0     1.44 MB    3.5-inch, 2-sided, 18-sector DS/HD
+                  // F9     1.2 MB     5.25-inch, 2-sided, 15-sector DS/HD
+                  // F9     720 KB     3.5-inch, 2-sided, 9-sector DS/DHD
+                  // FA     RAM disk   (not all ramdisks use this)
+                  // FC     180 KB     5.25-inch, 1-sided, 9-sector SS/DD
+                  // FD     360 KB     5.25-inch, 2-sided, 9-sector DS/DD
+                  // FE     160 KB     5.25-inch, 1-sided, 8-sector SS/DD
+                  // FF     320 KB     5.25-inch, 2-sided, 8-sector DS/DD
                   // F8     -----      Fixed disk
+                  // F8     1.44 MB    3.5-inch, 2-sided, 9-sector DS/QD PS/2 diskette
 
                   // predefined floppy formats, no BPB
-                  if (*pBoot != 0xeb && *pBoot != 0x00 && *pBoot != 0xf6)
+                  if (*pBoot != 0xeb && fValidBoot)
                      {
                      pSect0->bpb.BytesPerSector = 0x200;
                      pSect0->bpb.SectorsPerCluster = 1;
@@ -320,9 +321,9 @@ int i;
                      {
                      case 0xf0:
                         pSect0->bpb.MediaDescriptor = 0xf0;
-                        if (pvpfsi->vpi_totsec == 2880) // +
+                        if (pvpfsi->vpi_totsec == 2880)
                            {
-                           // 1.44 MB, 80t/16s/2h, 3.5"
+                           // 1.44 MB, 80t/16s/2h, 3.5" // +
                            pSect0->bpb.SectorsPerFat = 9;
                            pSect0->bpb.SectorsPerCluster = 1;
                            pSect0->bpb.RootDirEntries = 0xe0;
@@ -330,7 +331,7 @@ int i;
                            pSect0->bpb.SectorsPerTrack = 18;
                            pSect0->bpb.Heads = 2;
                            }
-                        else if (pvpfsi->vpi_totsec == 3680) // +
+                        else if (pvpfsi->vpi_totsec == 3680)
                            {
                            // 1.84 MB, 80t/23s/2h, 3.5" // +
                            pSect0->bpb.SectorsPerFat = 11;
@@ -354,9 +355,9 @@ int i;
                         
                      case 0xf9:
                         pSect0->bpb.MediaDescriptor = 0xf9;
-                        if (pvpfsi->vpi_totsec == 1440) // +
+                        if (pvpfsi->vpi_totsec == 1440)
                            {
-                           // 720 KB, 80t/9s/2h, 3.5"
+                           // 720 KB, 80t/9s/2h, 3.5" // +
                            pSect0->bpb.SectorsPerFat = 3;
                            pSect0->bpb.SectorsPerCluster = 2;
                            pSect0->bpb.RootDirEntries = 0x70;
@@ -420,7 +421,6 @@ int i;
 
                      if (fValidBoot)
                         {
-                        pvpfsi->vpi_vid    = ((PBOOTSECT0)pSect)->ulVolSerial;
                         pvpfsi->vpi_bsize  = ((PBOOTSECT0)pSect)->bpb.BytesPerSector;
                         pvpfsi->vpi_totsec = ((PBOOTSECT0)pSect)->bpb.BigTotalSectors;
                         pvpfsi->vpi_trksec = ((PBOOTSECT0)pSect)->bpb.SectorsPerTrack;
@@ -431,7 +431,6 @@ int i;
                   {
                      if (fValidBoot)
                         {
-                        pvpfsi->vpi_vid    = pSect->ulVolSerial;
                         pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
                         pvpfsi->vpi_totsec = pSect->bpb.BigTotalSectors;
                         pvpfsi->vpi_trksec = pSect->bpb.SectorsPerTrack;
@@ -442,7 +441,6 @@ int i;
                   {
                      if (fValidBoot)
                         {
-                        pvpfsi->vpi_vid    = ((PBOOTSECT1)pSect)->ulVolSerial;
                         pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
                         pvpfsi->vpi_totsec = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
                         }
@@ -538,9 +536,9 @@ int i;
 
          if (pVolInfo->bFatType < FAT_TYPE_FAT32)
             {
-            if (fValidBoot)
+            if (fNewBoot)
                {
-               pVolInfo->BootSect.ulVolSerial = ((PBOOTSECT0)pSect)->ulVolSerial;
+               pvpfsi->vpi_vid = ((PBOOTSECT0)pSect)->ulVolSerial;
                memcpy(pVolInfo->BootSect.FileSystem, "FAT     ", 8);
                }
 
@@ -557,12 +555,20 @@ int i;
             // force calculating the free space
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
+         if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+            {
+            if (fNewBoot)
+               {
+               pvpfsi->vpi_vid = pSect->ulVolSerial;
+               memcpy(pVolInfo->BootSect.FileSystem, "FAT32   ", 8);
+               }
+            }
          else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             // create FAT32-type extended BPB for exFAT
             if (fValidBoot)
                {
-               pVolInfo->BootSect.ulVolSerial = ((PBOOTSECT1)pSect)->ulVolSerial;
+               pvpfsi->vpi_vid = ((PBOOTSECT1)pSect)->ulVolSerial;
                memcpy(pVolInfo->BootSect.FileSystem, "EXFAT   ", 8);
                }
 
@@ -572,6 +578,8 @@ int i;
             // force calculating the free space
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
+
+         pVolInfo->BootSect.ulVolSerial = pvpfsi->vpi_vid;
 
          if (! pVolInfo->BootSect.bpb.BigSectorsPerFat)
             // if partition is small
@@ -612,16 +620,24 @@ int i;
          if (fValidBoot)
             {
             char pszVolLabel[11];
-            USHORT usSize;
+            USHORT usSize = 11;
+
+            memset(pszVolLabel, 0, sizeof(pszVolLabel));
+            memset(pvpfsi->vpi_text, 0, sizeof(pvpfsi->vpi_text));
 
             fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
+            // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
+            // over 0 zector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
+            // (see MarkDiskStatus)
+            pVolInfo->ulCurFatSector = 0xffff;
 
             if (! pszVolLabel || ! *pszVolLabel)
-               memcpy(pVolInfo->BootSect.VolumeLabel, "UNLABELED  ", sizeof(pVolInfo->BootSect.VolumeLabel));
+               strcpy(pvpfsi->vpi_text, "UNLABELED  ");
             else
-               memcpy(pVolInfo->BootSect.VolumeLabel, pszVolLabel, sizeof(pVolInfo->BootSect.VolumeLabel));
-
-            memcpy(pvpfsi->vpi_text, pVolInfo->BootSect.VolumeLabel, sizeof(pVolInfo->BootSect.VolumeLabel));
+               strcpy(pvpfsi->vpi_text, pszVolLabel);
+            
+            memset(pVolInfo->BootSect.VolumeLabel, 0, sizeof(pVolInfo->BootSect.VolumeLabel));
+            memcpy(pVolInfo->BootSect.VolumeLabel, pvpfsi->vpi_text, sizeof(pVolInfo->BootSect.VolumeLabel));
             }
 
          rc = CheckWriteProtect(pVolInfo);
@@ -632,13 +648,6 @@ int i;
             }
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
-
-         //pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
-
-         if (!pVolInfo->fDiskCleanOnMount && f32Parms.fMessageActive & LOG_FS)
-            Message("DISK IS DIRTY!");
-         if (pVolInfo->fWriteProtected)
-            pVolInfo->fDiskCleanOnMount = TRUE;
 
          if (f32Parms.fCalcFree ||
             pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
@@ -665,6 +674,12 @@ int i;
          else
             // ignore disk status on floppies
             pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = TRUE;
+
+         if (!pVolInfo->fDiskCleanOnMount && f32Parms.fMessageActive & LOG_FS)
+            Message("DISK IS DIRTY!");
+
+         if (pVolInfo->fWriteProtected)
+            pVolInfo->fDiskCleanOnMount = TRUE;
 
          if (f32Parms.fMessageActive & LOG_FS)
             {
@@ -937,6 +952,11 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG CountOfClusters;
    BYTE bLeadByte;
 
+   if (! pSect)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
    // BPB/FAT leading byte
    bLeadByte = *(PBYTE)pSect;
 
@@ -950,14 +970,16 @@ UCHAR GetFatType(PBOOTSECT pSect)
        bLeadByte == 0xff)
       return FAT_TYPE_FAT12;
 
+   // a two-byte JMP instruction (opcode 0xeb) and one-byte
+   // NOP instruction (opcode 0x90) are mandatory before the BPB
+   if (pSect->bJmp[0] != 0xeb || pSect->bJmp[2] != 0x90)
+      {
+      return FAT_TYPE_NONE;
+      } /* endif */
+
    if (!memcmp(pSect->oemID, "EXFAT   ", 8))
       {
       return FAT_TYPE_EXFAT;
-      } /* endif */
-
-   if (!pSect)
-      {
-      return FAT_TYPE_NONE;
       } /* endif */
 
    pbpb = &pSect->bpb;
@@ -1040,18 +1062,9 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_FAT16;
       }
 
-   // a two-byte JMP instruction (opcode 0xeb) and one-byte
-   // NOP instruction (opcode 0x90) are mandatory before the BPB
-   if (pSect->bJmp[0] != 0xeb || pSect->bJmp[2] != 0x90)
+   if (pSect->bBootSig != 0x29 && pSect->bBootSig != 0x28)
       {
-      return FAT_TYPE_NONE;
-      } /* endif */
-
-   // a trick to get the VDISK.SYS virtual floppy mounted:
-   // there is the BPB, but no filesystem name and vol. label
-   if (pSect->bJmp[1] < 0x29)
-      {
-      // jump length is less than 0x29: no FS name and vol. label
+      // old-style pre-DOS 4.0 BPB
       if (TotClus < 0xff6)
          return FAT_TYPE_FAT12;
 

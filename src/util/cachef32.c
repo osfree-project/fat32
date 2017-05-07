@@ -68,6 +68,8 @@ static PLWOPTS	 pOptions = NULL;
 static BOOL 	 fForeGround;
 static ULONG	 ulDriveMap = 0;
 
+char FS_NAME[8] = "FAT32";
+
 /******************************************************************
 *
 ******************************************************************/
@@ -77,8 +79,18 @@ APIRET rc;
 ULONG ulParmSize;
 ULONG ulDataSize;
 BYTE  bPrevPrio;
-
+UCHAR rgFirstInfo[256];
    //DoCheckDisk(FALSE);
+
+   rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
+                  NULL, 0, &ulParmSize,
+                  FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
+
+   if (rc != ERROR_INVALID_FSD_NAME)
+      {
+      // use "UNIFAT" instead of "FAT32" as FS name
+      strcpy(FS_NAME, "UNIFAT");
+      }
 
    InitProg(iArgc, rgArgv);
    if (fActive)
@@ -102,11 +114,11 @@ BYTE  bPrevPrio;
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 				 NULL, 0, &ulParmSize,
-	  FAT32_STOPLW, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_STOPLW, FS_NAME, -1, FSCTL_FSDNAME);
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 				 NULL, 0, &ulParmSize,
-	  FAT32_STARTLW, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_STARTLW, FS_NAME, -1, FSCTL_FSDNAME);
    if (rc)
 	  {
 	  printf("Starting LW failed, rc = %d\n", rc);
@@ -138,7 +150,7 @@ BYTE  bPrevPrio;
    rc = DosFSCtl(
 	  NULL, 0, &ulDataSize,
 	  (PVOID)&f32Parms, ulParmSize, &ulParmSize,
-	  FAT32_SETPARMS, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_SETPARMS, FS_NAME, -1, FSCTL_FSDNAME);
 
    bPrevPrio = pOptions->bLWPrio;
    while (!pOptions->fTerminate)
@@ -174,7 +186,7 @@ ULONG  ulDataSize;
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 	  (PVOID)pOptions, ulParmSize, &ulParmSize,
-	  FAT32_DOLW, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_DOLW, FS_NAME, -1, FSCTL_FSDNAME);
 
    pOptions->fTerminate = TRUE;
 
@@ -201,7 +213,7 @@ ULONG  ulDataSize;
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 	  (PVOID)pOptions, ulParmSize, &ulParmSize,
-	  FAT32_EMERGTHREAD, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_EMERGTHREAD, FS_NAME, -1, FSCTL_FSDNAME);
    if (rc)
 	  printf("EMThread: rc = %u\n", rc);
 
@@ -299,7 +311,7 @@ ULONG	  ulParm;
    rc = DosFSCtl(
 	  (PVOID)&f32Parms, ulDataSize, &ulDataSize,
 	  NULL, 0, &ulParmSize,
-	  FAT32_GETPARMS, "FAT32", -1, FSCTL_FSDNAME);
+	  FAT32_GETPARMS, FS_NAME, -1, FSCTL_FSDNAME);
    if (rc)
 	  {
 	  printf("DosFSCtl, FAT32_GETPARMS failed, rc = %d\n", rc);
@@ -454,7 +466,7 @@ ULONG	  ulParm;
 				  {
 				  rc = DosFSCtl(NULL, 0, NULL,
 							  NULL, 0, NULL,
-					 FAT32_STARTLW, "FAT32", -1, FSCTL_FSDNAME);
+					 FAT32_STARTLW, FS_NAME, -1, FSCTL_FSDNAME);
 				  if (rc)
 					 printf("Warning: Lazy writing is already active or cachesize is 0!\n");
 				  }
@@ -462,7 +474,7 @@ ULONG	  ulParm;
 				  {
 				  rc = DosFSCtl(NULL, 0, NULL,
 							  NULL, 0, NULL,
-					 FAT32_STOPLW, "FAT32", -1, FSCTL_FSDNAME);
+					 FAT32_STOPLW, FS_NAME, -1, FSCTL_FSDNAME);
 				  if (rc)
 					 printf("Warning: Lazy writing is not active!\n");
 				  }
@@ -521,7 +533,7 @@ ULONG	  ulParm;
 	  rc = DosFSCtl(
 		 NULL, 0, &ulDataSize,
 		 (PVOID)&f32Parms, ulParmSize, &ulParmSize,
-		 FAT32_SETPARMS, "FAT32", -1, FSCTL_FSDNAME);
+		 FAT32_SETPARMS, FS_NAME, -1, FSCTL_FSDNAME);
 
 	  if (rc)
 		 {
@@ -929,7 +941,7 @@ ULONG ulCurDisk;
 BOOL IsDiskFat32(PSZ pszDisk)
 {
    strupr(pszDisk);
-   if (!stricmp(GetFSName(pszDisk), "FAT32"))
+   if (!stricmp(GetFSName(pszDisk), FS_NAME))
 	  {
 	  return TRUE;
 	  }

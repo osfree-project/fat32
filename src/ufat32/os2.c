@@ -21,6 +21,8 @@ HANDLE hDev;
 
 char msg = FALSE;
 
+char FS_NAME[8] = "FAT32";
+
 PSZ GetOS2Error(USHORT rc);
 
 void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
@@ -437,12 +439,24 @@ void begin_format (HANDLE hDevice)
   // and attach to the new one
   unsigned char  cmdinfo     = 0;
   unsigned long  parmlen     = sizeof(cmdinfo);
-  unsigned char  datainfo[]  = "FAT32"; // FSD name
+  unsigned char  *datainfo   = FS_NAME; // FSD name
   unsigned long  datalen     = sizeof(datainfo); 
+  unsigned char  rgFirstInfo[256];
+  unsigned long  ulParmSize, ulDataSize;
   APIRET rc;
 
+   rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
+                  NULL, 0, &ulParmSize,
+                  FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
+
+   if (rc != ERROR_INVALID_FSD_NAME)
+      {
+      // use "UNIFAT" instead of "FAT32" as FS name
+      strcpy(FS_NAME, "UNIFAT");
+      }
+
   rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &cmdinfo, 
-                    parmlen, &parmlen, &datainfo,
+                    parmlen, &parmlen, datainfo,
                     datalen, &datalen);
 
   if ( rc )
@@ -497,7 +511,7 @@ void startlw(HANDLE hDevice)
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
                  NULL, 0, &ulParmSize,
-                 FAT32_STARTLW, "FAT32", -1,
+                 FAT32_STARTLW, FS_NAME, -1,
                  FSCTL_FSDNAME);
 
    if (rc)
@@ -516,7 +530,7 @@ void stoplw(HANDLE hDevice)
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
                  NULL, 0, &ulParmSize,
-                 FAT32_STOPLW, "FAT32", -1,
+                 FAT32_STOPLW, FS_NAME, -1,
                  FSCTL_FSDNAME);
 
    if (rc)

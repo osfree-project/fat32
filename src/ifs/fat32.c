@@ -15,7 +15,7 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-PUBLIC BYTE  pascal FS_NAME[]    ="FAT32";
+PUBLIC BYTE  pascal FS_NAME[8]    ="FAT32";
 PUBLIC ULONG pascal FS_ATTRIBUTE = FSA_LVL7;
 
 PUBLIC ULONG     Device_Help = 0L;
@@ -1986,6 +1986,13 @@ APIRET rc = 0;
       {
       // Support for files > 2 GB
       FS_ATTRIBUTE |= FSA_LARGEFILE;
+      }
+
+   if (f32Parms.fFat || f32Parms.fExFat)
+      {
+      // report itself as "UNIFAT" driver, instead of "FAT32"
+      // (to avoid confusion, when FAT16 drives are shown as FAT32)
+      strcpy(FS_NAME, "UNIFAT");
       }
 
 //FS_INITEXIT:
@@ -5117,6 +5124,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
                   if (fFound)
                      {
                      ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                     ulCluster &= pVolInfo->ulFatEof;
                      if (strlen(pszPath))
                         {
                         if (pDir->bAttr & FILE_DIRECTORY)
@@ -5591,6 +5599,7 @@ ULONG  ulDirEntries = 0;
                   if (fFound)
                      {
                      ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                     ulCluster &= pVolInfo->ulFatEof;
                      if (strlen(pszPath))
                         {
                         if (pDir->bAttr & FILE_DIRECTORY)

@@ -554,7 +554,6 @@ USHORT rc;
       rc = FSH_UPPERCASE(pName, sizeof pOpenInfo->pSHInfo->szFileName, pOpenInfo->pSHInfo->szFileName);
       if (rc || !strlen(pOpenInfo->pSHInfo->szFileName))
          {
-         Message("OpenCreate: FSH_UPPERCASE failed!, rc = %d", rc);
          strncpy(pOpenInfo->pSHInfo->szFileName, pName, sizeof pOpenInfo->pSHInfo->szFileName);
          rc = 0;
          }
@@ -2661,7 +2660,8 @@ ULONGLONG size;
             usNeededSize = sizeof (FILESTATUS4L);
             break;
          case FIL_QUERYEASFROMLIST :
-         case 4:
+         case FIL_QUERYEASFROMLISTL:
+         case FIL_QUERYALLEAS:
             usNeededSize = sizeof (EAOP);
             break;
          default                   :
@@ -2822,6 +2822,7 @@ ULONGLONG size;
             break;
             }
          case FIL_QUERYEASFROMLIST:
+         case FIL_QUERYEASFROMLISTL:
             {
             PEAOP pEA = (PEAOP)pData;
             PFEALIST pFEA = pEA->fpFEAList;
@@ -2848,7 +2849,7 @@ ULONGLONG size;
             break;
             }
 
-         case 4:
+         case FIL_QUERYALLEAS:
             {
             PEAOP pEA = (PEAOP)pData;
             PFEALIST pFEA = pEA->fpFEAList;

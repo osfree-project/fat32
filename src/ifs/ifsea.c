@@ -288,7 +288,7 @@ USHORT   usMaxSize;
    /*
       If not, return
    */
-   if (usLevel == FIL_QUERYEASFROMLIST)
+   if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
       PBYTE    pGeaMax;
       PGEA     pGea;

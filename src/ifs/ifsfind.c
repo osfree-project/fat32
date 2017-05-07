@@ -886,7 +886,7 @@ USHORT usBlockIndex;
                      pFindInfo->pInfo->EAOP.fpFEAList->cbList =
                         *pcbData - (strlen(szLongName) + 2);
 
-                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
+                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLISTL,
                         pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)
@@ -1303,7 +1303,7 @@ ULONGLONG cbFileAlloc;
                      pFindInfo->pInfo->EAOP.fpFEAList->cbList =
                         *pcbData - (strlen(szLongName) + 2);
 
-                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLIST,
+                     rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLISTL,
                         pFindInfo->pInfo->rgClusters[0], NULL,
                         szLongName, &pFindInfo->pInfo->EAOP);
                      if (rc && rc != ERROR_BUFFER_OVERFLOW)

@@ -172,7 +172,7 @@ static BYTE szShortName[13];
 
                ulClustersNeeded = pDir->ulFileSize / pDrive->ulClusterSize +
                   (pDir->ulFileSize % pDrive->ulClusterSize ? 1:0);
-               ulClustersUsed = GetClusterCount(pDrive,(ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster);
+               ulClustersUsed = GetClusterCount(pDrive,((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pDrive->ulFatEof);
                ulTotalClusters += ulClustersUsed;
                if (ulClustersNeeded != ulClustersUsed)
                   {
@@ -242,7 +242,7 @@ static BYTE szShortName[13];
 
             memset(szLongName, 0, sizeof szLongName);
             DumpDirectory(pDrive,
-               (ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster,
+               ((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pDrive->ulFatEof,
                pbPath);
             }
          }

@@ -19,6 +19,7 @@ char szBuffer[16348];
 void CtrlCHandler(int signal);
 
 F32PARMS f32Parms;
+char FS_NAME[8] = "FAT32";
 
 int main(INT iArgc, PSZ Argv[])
 {
@@ -30,11 +31,22 @@ FILE *fLog;
 BOOL fActive;
 BOOL fSilent = FALSE;
 BOOL fForce = FALSE;
+UCHAR rgFirstInfo[256];
 INT  iArg;
 
    signal(SIGINT, CtrlCHandler);
    signal(SIGTERM, CtrlCHandler);
    signal(SIGBREAK, CtrlCHandler);
+
+   rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
+                  NULL, 0, &ulParmSize,
+                  FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
+
+   if (rc != ERROR_INVALID_FSD_NAME)
+      {
+      // use "UNIFAT" instead of "FAT32" as FS name
+      strcpy(FS_NAME, "UNIFAT");
+      }
 
    fActive = 1;
    for (iArg = 1; iArg < iArgc; iArg++)
@@ -57,7 +69,7 @@ INT  iArg;
    rc = DosFSCtl(
       NULL, 0, &ulDataSize,
      (PVOID)&fActive, ulParmSize, &ulParmSize,
-      FAT32_SETMESSAGE, "FAT32", -1, FSCTL_FSDNAME);
+      FAT32_SETMESSAGE, FS_NAME, -1, FSCTL_FSDNAME);
 
    if (!fActive)
       return 0;
@@ -76,7 +88,7 @@ INT  iArg;
       rc = DosFSCtl(
          (PVOID)szBuffer, ulDataSize, &ulDataSize,
          (PVOID)&ulTimeOut, ulParmSize, &ulParmSize,
-         FAT32_GETLOGDATA, "FAT32", -1, FSCTL_FSDNAME);
+         FAT32_GETLOGDATA, FS_NAME, -1, FSCTL_FSDNAME);
 
       if (rc == ERROR_NOT_SUPPORTED)
          {
@@ -114,7 +126,7 @@ INT  iArg;
    rc = DosFSCtl(
       NULL, 0, &ulDataSize,
      (PVOID)&fActive, ulParmSize, &ulParmSize,
-      FAT32_SETMESSAGE, "FAT32", -1, FSCTL_FSDNAME);
+      FAT32_SETMESSAGE, FS_NAME, -1, FSCTL_FSDNAME);
 
    fclose(fLog);
    return 0;
@@ -134,7 +146,7 @@ APIRET rc;
    rc = DosFSCtl(
       NULL, 0, &ulDataSize,
      (PVOID)&fActive, ulParmSize, &ulParmSize,
-      FAT32_SETMESSAGE, "FAT32", -1, FSCTL_FSDNAME);
+      FAT32_SETMESSAGE, FS_NAME, -1, FSCTL_FSDNAME);
 
    printf("\nprogram aborted! rc = %ld\n", rc);
    exit(1);

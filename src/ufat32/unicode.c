@@ -25,6 +25,8 @@ VOID SetUni2NLS( USHORT usPage, USHORT usChar, USHORT usCode );
 VOID TranslateAllocBuffer( VOID );
 
 extern F32PARMS f32Parms;
+extern char FS_NAME[8];
+
 
 USHORT _Far16 _Pascal _loadds GETSHRSEG(PVOID16 *p);
 
@@ -181,6 +183,7 @@ BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource)
 {
     APIRET rc;
     ULONG ulParmSize;
+    ULONG ulDataSize;
     BYTE   rgData[ 256 ];
     // Extra space for DBCS lead info and case conversion
     UniChar *rgTranslate[ MAX_TRANS_TABLE + EXTRA_ELEMENT ] = { NULL, };
@@ -200,6 +203,16 @@ BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource)
     USHORT usCode;
     UniChar ucsCp[ 12 ];
     UniChar rgUniBuffer[ ARRAY_TRANS_TABLE ];
+
+   rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
+                  NULL, 0, &ulParmSize,
+                  FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
+
+   if (rc != ERROR_INVALID_FSD_NAME)
+      {
+      // use "UNIFAT" instead of "FAT32" as FS name
+      strcpy(FS_NAME, "UNIFAT");
+      }
 
    rc = DosLoadModule(rgData, sizeof rgData, "UCONV.DLL", &hModConv);
    if (rc)
@@ -454,7 +467,7 @@ BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource)
          ulParmSize = sizeof rgTransTable;
          rc = DosFSCtl(NULL, 0, NULL,
                      ( PVOID )rgTransTable, ulParmSize, &ulParmSize,
-                     FAT32_SETTRANSTABLE, "FAT32", -1, FSCTL_FSDNAME);
+                     FAT32_SETTRANSTABLE, FS_NAME, -1, FSCTL_FSDNAME);
       }
       break;
 #ifdef __DLL__

@@ -285,7 +285,7 @@ USHORT rc;
             usNeededSize = sizeof (FILESTATUS4L);
             break;
          case FIL_QUERYEASFROMLIST :
-         case 4:
+         case FIL_QUERYALLEAS:
             usNeededSize = sizeof (EAOP);
             break;
          case FIL_NAMEISVALID:
@@ -517,6 +517,7 @@ USHORT rc;
             }
 
          case FIL_QUERYEASFROMLIST:
+         case FIL_QUERYEASFROMLISTL:
             {
             PEAOP pEA = (PEAOP)pData;
             PFEALIST pFEA = pEA->fpFEAList;
@@ -544,7 +545,7 @@ USHORT rc;
             break;
             }
 
-         case 4:
+         case FIL_QUERYALLEAS:
             {
             PEAOP pEA = (PEAOP)pData;
             PFEALIST pFEA = pEA->fpFEAList;

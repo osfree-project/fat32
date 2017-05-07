@@ -486,7 +486,7 @@ ULONG  ulDirEntries = 0;
 
                if (fFound)
                   {
-                  ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                  ulCluster = ((ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster) & pCD->ulFatEof;
                   if (strlen(pszPath))
                      {
                      if (pDir->bAttr & FILE_DIRECTORY)
