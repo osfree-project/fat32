@@ -254,7 +254,8 @@ typedef struct _FILEFNDBUF {    /* findbuf */
     ULONG   cbFileAlloc;
     USHORT  attrFile;
     UCHAR   cchName;
-    CHAR    achName[CCHMAXPATHCOMP];
+    //CHAR    achName[CCHMAXPATHCOMP];
+    CHAR    achName[1]; /* initial room for zero terminator */
 } FILEFNDBUF;
 typedef FILEFNDBUF FAR *PFILEFNDBUF;
 
@@ -268,6 +269,8 @@ typedef struct _FILEFNDBUF3 {   /* findbuf3 */
     ULONG   cbFile;
     ULONG   cbFileAlloc;
     USHORT  attrFile;
+    UCHAR   cchName;
+    CHAR    achName[1]; /* initial room for zero terminator */
 } FILEFNDBUF3;
 typedef FILEFNDBUF3 FAR *PFILEFNDBUF3;
 
@@ -283,7 +286,8 @@ typedef struct _FILEFNDBUF2 {   /* findbuf2 */
     USHORT  attrFile;
     ULONG   cbList;
     UCHAR   cchName;
-    CHAR    achName[CCHMAXPATHCOMP];
+    //CHAR    achName[CCHMAXPATHCOMP];
+    CHAR    achName[1]; /* initial room for zero terminator */
 } FILEFNDBUF2;
 
 
@@ -300,7 +304,8 @@ typedef struct _FILEFNDBUF3L {
     LONGLONG cbFileAlloc;
     ULONG    attrFile;
     UCHAR    cchName;
-    CHAR     achName[CCHMAXPATHCOMP];
+    //CHAR     achName[CCHMAXPATHCOMP];
+    CHAR     achName[1]; /* initial room for zero terminator */
 } FILEFNDBUF3L;
 
 typedef FILEFNDBUF3L FAR *PFILEFNDBUF3L;
@@ -317,7 +322,8 @@ typedef struct _FILEFNDBUF4L {
     ULONG    attrFile;
     ULONG    cbList;
     UCHAR    cchName;
-    CHAR     achName[CCHMAXPATHCOMP];
+    //CHAR     achName[CCHMAXPATHCOMP];
+    CHAR     achName[1]; /* initial room for zero terminator */
 } FILEFNDBUF4L;
 
 typedef  FILEFNDBUF4L FAR *PFILEFNDBUF4L;

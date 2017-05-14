@@ -285,6 +285,7 @@ USHORT rc;
             usNeededSize = sizeof (FILESTATUS4L);
             break;
          case FIL_QUERYEASFROMLIST :
+         case FIL_QUERYEASFROMLISTL :
          case FIL_QUERYALLEAS:
             usNeededSize = sizeof (EAOP);
             break;

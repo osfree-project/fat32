@@ -5313,14 +5313,14 @@ USHORT usFileAttr;
                         //   memset(pszLongName, 0, FAT32MAXPATHCOMP);
 #if 0
                         /* support for the FAT32 variation of WinNT family */
-                        if( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
+                        if( !*pszLongName && HAS_WINNT_EXT( pDir->u.File.fEAS ))
                            {
                            PBYTE pDot;
 
                            MakeName( pDir, pszLongName, sizeof( pszLongName ));
                            pDot = strchr( pszLongName, '.' );
 
-                           if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
+                           if( HAS_WINNT_EXT_NAME( pDir->u.File.fEAS )) /* name part is lower case */
                               {
                               if( pDot )
                                  *pDot = 0;
@@ -5331,7 +5331,7 @@ USHORT usFileAttr;
                                  *pDot = '.';
                               }
 
-                           if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                           if( pDot && HAS_WINNT_EXT_EXT( pDir->u.File.fEAS )) /* ext part is lower case */
                               strlwr( pDot + 1 );
                            }
 #endif

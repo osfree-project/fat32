@@ -198,7 +198,7 @@ USHORT rc;
          {
          if (!(usOpenFlag & FILE_CREATE))
             {
-            rc = ERROR_OPEN_FAILED;
+            rc = ERROR_OPEN_FAILED; ////
             goto FS_OPENCREATEEXIT;
             }
 
