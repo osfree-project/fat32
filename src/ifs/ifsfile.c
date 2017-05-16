@@ -2589,16 +2589,10 @@ POPENINFO pOpenInfo;
 USHORT usNeededSize;
 USHORT rc;
 PSZ  pszFile;
-ULONGLONG size;
 
    _asm push es;
 
    pOpenInfo = GetOpenInfo(psffsd);
-
-   size = (ULONGLONG)psffsi->sfi_size;
-
-   if (f32Parms.fLargeFiles)
-      size = psffsi->sfi_sizel;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FILEINFO for %s, usFlag = %X, level %d",
@@ -2738,7 +2732,7 @@ ULONGLONG size;
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
-            pfStatus->cbFile = size;
+            pfStatus->cbFile = psffsi->sfi_size;
             pfStatus->cbFileAlloc =
                (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -2758,7 +2752,7 @@ ULONGLONG size;
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
-            pfStatus->cbFile = size;
+            pfStatus->cbFile = psffsi->sfi_sizel;
             pfStatus->cbFileAlloc =
                (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -2778,7 +2772,7 @@ ULONGLONG size;
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
-            pfStatus->cbFile = size;
+            pfStatus->cbFile = psffsi->sfi_size;
             pfStatus->cbFileAlloc =
                (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -2805,7 +2799,7 @@ ULONGLONG size;
             memcpy(&pfStatus->fdateLastAccess, &psffsi->sfi_adate, sizeof (USHORT));
             memcpy(&pfStatus->fdateLastWrite, &psffsi->sfi_mdate, sizeof (USHORT));
             memcpy(&pfStatus->ftimeLastWrite, &psffsi->sfi_mtime, sizeof (USHORT));
-            pfStatus->cbFile = size;
+            pfStatus->cbFile = psffsi->sfi_sizel;
             pfStatus->cbFileAlloc =
                (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
