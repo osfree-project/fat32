@@ -1062,9 +1062,10 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_FAT16;
       }
 
-   if (pSect->bBootSig != 0x29 && pSect->bBootSig != 0x28)
+   if (pSect->bJmp[1] < 0x29)
       {
-      // old-style pre-DOS 4.0 BPB
+      // old-style pre-DOS 4.0 BPB (jump offset < 0x29, which
+      // means that FS name and Serial No. are missing)
       if (TotClus < 0xff6)
          return FAT_TYPE_FAT12;
 
