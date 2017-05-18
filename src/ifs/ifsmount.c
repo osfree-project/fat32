@@ -627,7 +627,7 @@ int i;
 
             fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
             // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
-            // over 0 zector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
+            // over 0 sector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
             // (see MarkDiskStatus)
             pVolInfo->ulCurFatSector = 0xffff;
 

@@ -796,6 +796,8 @@ PSHOPENINFO pSHInfo = NULL;
          }
       else
          {
+         pDirNew->bEntryType = ENTRY_TYPE_FILE;
+         DirStreamNew.bEntryType = ENTRY_TYPE_STREAM_EXT;
          pDirNew->u.File.usFileAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
          DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
          DirStreamNew.u.Stream.ullDataLen =
@@ -845,6 +847,8 @@ PSHOPENINFO pSHInfo = NULL;
          DirNew.ulFileSize = pFEAL->cbList;
       else
          {
+         pDirNew->bEntryType = ENTRY_TYPE_FILE;
+         DirStreamNew.bEntryType = ENTRY_TYPE_STREAM_EXT;
          DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
          DirStreamNew.u.Stream.ullDataLen =
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +

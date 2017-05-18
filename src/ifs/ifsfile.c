@@ -198,7 +198,7 @@ USHORT rc;
          {
          if (!(usOpenFlag & FILE_CREATE))
             {
-            rc = ERROR_OPEN_FAILED; ////
+            rc = ERROR_OPEN_FAILED;
             goto FS_OPENCREATEEXIT;
             }
 
@@ -289,6 +289,18 @@ USHORT rc;
                size = (ULONGLONG)LONG_MAX;
             }
 
+         if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+            {
+            PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+            pDirEntry->bEntryType = ENTRY_TYPE_FILE;
+            DirEntryStream.u.Stream.bAllocPossible = 1;
+            DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain;
+            DirEntryStream.bEntryType = ENTRY_TYPE_STREAM_EXT;
+            DirEntryStream.u.Stream.ulFirstClus = ulCluster;
+            DirEntryStream.u.Stream.ullValidDataLen = 0;
+            DirEntryStream.u.Stream.ullDataLen = 0;
+            }
+
          if (size > 0)
             {
             ULONG ulClustersNeeded = size / pVolInfo->ulClusterSize +
@@ -312,6 +324,7 @@ USHORT rc;
                   DirEntryStream.u.Stream.ullDataLen =
                      (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  DirEntryStream.u.Stream.bAllocPossible = 1;
                   DirEntryStream.u.Stream.bNoFatChain = pOpenInfo->pSHInfo->fNoFatChain;
                   }
                }

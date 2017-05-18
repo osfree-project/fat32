@@ -6087,8 +6087,6 @@ USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInf
 
          pNew1->u.File.ulCreateTimestp = pNew1->u.File.ulLastModifiedTimestp;
          pNew1->u.File.ulLastAccessedTimestp = pNew1->u.File.ulLastModifiedTimestp;
-
-         
          }
       }
 
@@ -7220,7 +7218,6 @@ BOOL      fFound;
       {
       if (!pNew || !pszLongName)
          {
-         Message("Modify directory: Invalid parameters 1");
          return ERROR_INVALID_PARAMETER;
          }
 
@@ -7259,7 +7256,6 @@ BOOL      fFound;
       {
       if (!pOld)
          {
-         Message("Modify directory: Invalid parameter 2 ");
          return ERROR_INVALID_PARAMETER;
          }
       }
@@ -7267,7 +7263,6 @@ BOOL      fFound;
    pDirectory = (PDIRENTRY1)malloc(2 * pVolInfo->ulBlockSize);
    if (!pDirectory)
       {
-      Message("Modify directory: Not enough memory");
       return ERROR_NOT_ENOUGH_MEMORY;
       }
 
@@ -7516,9 +7511,6 @@ BOOL      fFound;
                   (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
                      sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
 
-                  memcpy(pWork++, pNew, sizeof (DIRENTRY1));
-                  memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-
                   //if (ulPrevCluster == 1)
                   //   // reading root directory on FAT12/FAT16
                   //   rc = WriteSector(pVolInfo, ulPrevSector + ulPrevBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirectory, usIOMode);
@@ -7554,8 +7546,6 @@ BOOL      fFound;
                      Message(" Inserting entry into 1 cluster");
 
                   pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
-                  //pWork = fSetLongName(pWork, pszLongName, bCheck);
-                  //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                   pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);
                   pNew->u.File.bSecondaryCount = pWork3 - pWork - 1;
                   memcpy(pWork++, pNew, sizeof (DIRENTRY1));
@@ -7619,7 +7609,7 @@ BOOL      fFound;
             //      ulNextCluster = 1;
             //   }
             //else
-               ulNextCluster = GetNextCluster(pVolInfo, pDirSHInfo, ulCluster); ////
+               ulNextCluster = GetNextCluster(pVolInfo, pDirSHInfo, ulCluster);
             if (!ulNextCluster)
                ulNextCluster = pVolInfo->ulFatEof;
             if (ulNextCluster == pVolInfo->ulFatEof)
@@ -7652,7 +7642,6 @@ BOOL      fFound;
                   if (ulNextCluster == pVolInfo->ulFatEof)
                      {
                      free(pDirectory);
-                     Message("Modify Directory: Disk Full!");
                      return ERROR_DISK_FULL;
                      }
                   fNewCluster = TRUE;
