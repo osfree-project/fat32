@@ -133,7 +133,7 @@ CC=wcc
 .SUFFIXES: .flt .ifs .dll .exe .lib .lnk .ols .obc .obd .obj .cpp .c .c16 .h .asm .sym .map .wmp .inf .ipf .bmp
 
 all: $(BLDROOT)\bld.flg $(PROJ_BLD)\makefile.wcc dirs copy targets &
-     $(BINROOT)\zip-os2.flg $(BINROOT)\zip-win32.flg $(BINROOT)\wpi.flg .symbolic
+     $(BINROOT)\zip-os2.flg $(BINROOT)\wpi.flg .symbolic
 
 targets: .symbolic
  @for %t in ($(TARGETS)) do @wmake -h -f makefile.wcc %t

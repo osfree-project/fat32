@@ -36,7 +36,7 @@ SYS=os2v2
 
 !include ..\makefile.mk
 
-DIRS=..\include win32
+DIRS=..\include
 
 $(BINROOT)\os2\dll\uunifat.dll:
 
