@@ -627,7 +627,7 @@ int i;
 
             fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
             // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
-            // over 0 zector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
+            // over 0 sector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
             // (see MarkDiskStatus)
             pVolInfo->ulCurFatSector = 0xffff;
 
@@ -1062,9 +1062,10 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_FAT16;
       }
 
-   if (pSect->bBootSig != 0x29 && pSect->bBootSig != 0x28)
+   if (pSect->bJmp[1] < 0x29)
       {
-      // old-style pre-DOS 4.0 BPB
+      // old-style pre-DOS 4.0 BPB (jump offset < 0x29, which
+      // means that FS name and Serial No. are missing)
       if (TotClus < 0xff6)
          return FAT_TYPE_FAT12;
 

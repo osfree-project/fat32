@@ -279,10 +279,10 @@ DIRENTRY1 StreamEntry;
       }
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
-   pFindInfo->usEntriesPerBlock = pVolInfo->ulBlockSize / sizeof (DIRENTRY);
-   pFindInfo->usBlockIndex = 0;
+   pFindInfo->pInfo->usEntriesPerBlock = pVolInfo->ulBlockSize / sizeof (DIRENTRY);
+   pFindInfo->pInfo->usBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
-   pFindInfo->usTotalBlocks = usNumBlocks;
+   pFindInfo->pInfo->usTotalBlocks = usNumBlocks;
    pFindInfo->pInfo->pDirEntries =
       (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
 
@@ -298,9 +298,9 @@ DIRENTRY1 StreamEntry;
 
    if (ulDirCluster == 1)
       // FAT12/FAT16 root directory case
-      pFindInfo->ulMaxEntry = pVolInfo->BootSect.bpb.RootDirEntries;
+      pFindInfo->pInfo->ulMaxEntry = pVolInfo->BootSect.bpb.RootDirEntries;
    else
-      pFindInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+      pFindInfo->pInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
 
    if (!GetBlock(pVolInfo, pFindInfo, 0))
       {
@@ -308,20 +308,20 @@ DIRENTRY1 StreamEntry;
       goto FS_FINDFIRSTEXIT;
       }
 
-   pFindInfo->ulCurEntry = 0;
+   pFindInfo->pInfo->ulCurEntry = 0;
 
    if (usAttr & 0x0040)
       {
-      pFindInfo->fLongNames = TRUE;
+      pFindInfo->pInfo->fLongNames = TRUE;
       usAttr &= ~0x0040;
       }
    else
-      pFindInfo->fLongNames = FALSE;
+      pFindInfo->pInfo->fLongNames = FALSE;
 
-   pFindInfo->bMustAttr = (BYTE)(usAttr >> 8);
+   pFindInfo->pInfo->bMustAttr = (BYTE)(usAttr >> 8);
    usAttr |= (FILE_READONLY | FILE_ARCHIVED);
    usAttr &= (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_DIRECTORY | FILE_ARCHIVED);
-   pFindInfo->bAttr = (BYTE)~usAttr;
+   pFindInfo->pInfo->bAttr = (BYTE)~usAttr;
 
    if (usLevel == FIL_QUERYEASFROMLIST || usLevel == FIL_QUERYEASFROMLISTL)
       {
@@ -355,7 +355,7 @@ DIRENTRY1 StreamEntry;
       if (!rc || (rc == ERROR_EAS_DIDNT_FIT && usIndex == 0))
          {
          if (usFlags == FF_GETPOS)
-            *pulOrdinal = pFindInfo->ulCurEntry - 1;
+            *pulOrdinal = pFindInfo->pInfo->ulCurEntry - 1;
          }
       if (rc)
          break;
@@ -412,9 +412,9 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_FINDFROMNAME, curpos = %lu, requested %lu",
-         pFindInfo->ulCurEntry, ulPosition);
+         pFindInfo->pInfo->ulCurEntry, ulPosition);
 
-   pFindInfo->ulCurEntry = ulPosition + 1;
+   pFindInfo->pInfo->ulCurEntry = ulPosition + 1;
    return FS_FINDNEXT(pfsfsi, pfsfsd, pData, cbData, pcMatch, usLevel, usFlags);
 }
 
@@ -564,7 +564,7 @@ USHORT usEntriesWanted;
       if (!rc || (rc == ERROR_EAS_DIDNT_FIT && usIndex == 0))
          {
          if (usFlags == FF_GETPOS)
-            *pulOrdinal = pFindInfo->ulCurEntry - 1;
+            *pulOrdinal = pFindInfo->pInfo->ulCurEntry - 1;
          }
       if (rc)
          break;
@@ -609,18 +609,18 @@ BYTE bCheck1;
 USHORT usBlockIndex;
 
    memset(szLongName, 0, sizeof szLongName);
-   pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
+   pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
    bCheck1 = 0;
-   while (pFindInfo->ulCurEntry < pFindInfo->ulMaxEntry)
+   while (pFindInfo->pInfo->ulCurEntry < pFindInfo->pInfo->ulMaxEntry)
       {
       memset(szShortName, 0, sizeof(szShortName)); // vs
 
-      usBlockIndex = (USHORT)(pFindInfo->ulCurEntry / pFindInfo->usEntriesPerBlock);
-      if (usBlockIndex != pFindInfo->usBlockIndex)
+      usBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+      if (usBlockIndex != pFindInfo->pInfo->usBlockIndex)
          {
          if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
             return ERROR_SYS_INTERNAL;
-         pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
+         pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
          }
 
       if (pDir->bFileName[0] && pDir->bFileName[0] != DELETED_ENTRY)
@@ -631,7 +631,7 @@ USHORT usBlockIndex;
             }
          else if ((pDir->bAttr & FILE_VOLID) != FILE_VOLID)
             {
-            if (!(pDir->bAttr & pFindInfo->bAttr))
+            if (!(pDir->bAttr & pFindInfo->pInfo->bAttr))
                {
                BYTE bCheck2 = GetVFATCheckSum(pDir);
                MakeName(pDir, szShortName, sizeof szShortName);
@@ -681,15 +681,15 @@ USHORT usBlockIndex;
                strcpy(szUpperName, szLongName);
                FSH_UPPERCASE(szUpperName, sizeof szUpperName, szUpperName);
 
-               if( !pFindInfo->fLongNames )
+               if( !pFindInfo->pInfo->fLongNames )
                   strcpy( szLongName, szShortName );
 
                /*
                   Check for MUST HAVE attributes
                */
-               if (!rc && pFindInfo->bMustAttr)
+               if (!rc && pFindInfo->pInfo->bMustAttr)
                   {
-                  if ((pDir->bAttr & pFindInfo->bMustAttr) != pFindInfo->bMustAttr)
+                  if ((pDir->bAttr & pFindInfo->pInfo->bMustAttr) != pFindInfo->pInfo->bMustAttr)
                      rc = 1;
                   }
 
@@ -700,7 +700,7 @@ USHORT usBlockIndex;
                      rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                   }
                if (!rc && f32Parms.fMessageActive & LOG_FIND)
-                  Message("%lu : %s, %s", pFindInfo->ulCurEntry, szLongName, szShortName );
+                  Message("%lu : %s, %s", pFindInfo->pInfo->ulCurEntry, szLongName, szShortName );
 
                if (!rc && usLevel == FIL_STANDARD)
                   {
@@ -725,7 +725,7 @@ USHORT usBlockIndex;
                   strcpy(pfFind->achName, szLongName);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_STANDARDL)
@@ -751,7 +751,7 @@ USHORT usBlockIndex;
                   strcpy(pfFind->achName, szLongName);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASIZE)
@@ -800,7 +800,7 @@ USHORT usBlockIndex;
                   strcpy(pfFind->achName, szLongName);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASIZEL)
@@ -849,7 +849,7 @@ USHORT usBlockIndex;
                   strcpy(pfFind->achName, szLongName);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASFROMLIST)
@@ -934,7 +934,7 @@ USHORT usBlockIndex;
                   (*ppData) += strlen(szLongName) + 1;
                   (*pcbData) -= (strlen(szLongName) + 1);
 
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return rc;
                   }
                else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
@@ -1019,14 +1019,14 @@ USHORT usBlockIndex;
                   (*ppData) += strlen(szLongName) + 1;
                   (*pcbData) -= (strlen(szLongName) + 1);
 
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return rc;
                   }
                }
             memset(szLongName, 0, sizeof szLongName);
             }
          }
-      pFindInfo->ulCurEntry++;
+      pFindInfo->pInfo->ulCurEntry++;
       pDir++;
       }
    return ERROR_NO_MORE_FILES;
@@ -1053,21 +1053,21 @@ BYTE fEAS;
 USHORT attrFile;
 
    memset(szLongName, 0, sizeof szLongName);
-   pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
-   while (pFindInfo->ulCurEntry < pFindInfo->ulMaxEntry)
+   pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
+   while (pFindInfo->pInfo->ulCurEntry < pFindInfo->pInfo->ulMaxEntry)
       {
-      usBlockIndex = (USHORT)(pFindInfo->ulCurEntry / pFindInfo->usEntriesPerBlock);
-      if (usBlockIndex != pFindInfo->usBlockIndex)
+      usBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+      if (usBlockIndex != pFindInfo->pInfo->usBlockIndex)
          {
          if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
             return ERROR_SYS_INTERNAL;
-         pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->ulCurEntry % pFindInfo->usEntriesPerBlock];
+         pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
          }
 
       if (pDir->bEntryType == ENTRY_TYPE_EOD)
          {
          // end of directory reached
-         pFindInfo->ulMaxEntry = pFindInfo->ulCurEntry;
+         pFindInfo->pInfo->ulMaxEntry = pFindInfo->pInfo->ulCurEntry;
          return ERROR_NO_MORE_FILES;
          }
       else if (pDir->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
@@ -1103,9 +1103,9 @@ USHORT attrFile;
                /*
                   Check for MUST HAVE attributes
                */
-               if (!rc && pFindInfo->bMustAttr)
+               if (!rc && pFindInfo->pInfo->bMustAttr)
                   {
-                  if ((attrFile & pFindInfo->bMustAttr) != pFindInfo->bMustAttr)
+                  if ((attrFile & pFindInfo->pInfo->bMustAttr) != pFindInfo->pInfo->bMustAttr)
                      rc = 1;
                   }
 
@@ -1121,7 +1121,7 @@ USHORT attrFile;
                   strncpy(pfFind->achName, szLongName, usNameLen);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_STANDARDL)
@@ -1136,7 +1136,7 @@ USHORT attrFile;
                   strncpy(pfFind->achName, szLongName, usNameLen);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASIZE)
@@ -1176,7 +1176,7 @@ USHORT attrFile;
                   strncpy(pfFind->achName, szLongName, usNameLen);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASIZEL)
@@ -1215,7 +1215,7 @@ USHORT attrFile;
                   strncpy(pfFind->achName, szLongName, usNameLen);
                   *ppData = pfFind->achName + pfFind->cchName + 1;
                   (*pcbData) -= *ppData - pStart;
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return 0;
                   }
                else if (!rc && usLevel == FIL_QUERYEASFROMLIST)
@@ -1287,7 +1287,7 @@ USHORT attrFile;
                   (*ppData) += usNameLen + 1;
                   (*pcbData) -= (usNameLen + 1);
 
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return rc;
                   }
                else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
@@ -1359,7 +1359,7 @@ USHORT attrFile;
                   (*ppData) += usNameLen + 1;
                   (*pcbData) -= (usNameLen + 1);
 
-                  pFindInfo->ulCurEntry++;
+                  pFindInfo->pInfo->ulCurEntry++;
                   return rc;
                   }
                }
@@ -1414,7 +1414,7 @@ USHORT attrFile;
             usNumSecondary = pDir->u.File.bSecondaryCount;
             fEAS = pDir->u.File.fEAS;
 
-            if (!(pDir->u.File.usFileAttr & pFindInfo->bAttr))
+            if (!(pDir->u.File.usFileAttr & pFindInfo->pInfo->bAttr))
                {
                if (usLevel == FIL_STANDARD)
                   {
@@ -1500,7 +1500,7 @@ USHORT attrFile;
             memset(szLongName, 0, sizeof szLongName);
             }
          }
-      pFindInfo->ulCurEntry++;
+      pFindInfo->pInfo->ulCurEntry++;
       pDir++;
       }
    return ERROR_NO_MORE_FILES;
@@ -1743,20 +1743,20 @@ CHAR   fRootDir = FALSE;
       fRootDir = TRUE;
       }
 
-   if (usBlockIndex >= pFindInfo->usTotalBlocks)
+   if (usBlockIndex >= pFindInfo->pInfo->usTotalBlocks)
       return FALSE;
 
    if (!pFindInfo->pInfo->rgClusters[usClusterIndex])
       {
       if (fRootDir)
          {
-         usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster;
+         usIndex = pFindInfo->pInfo->usBlockIndex / usBlocksPerCluster;
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
             usIndex * pVolInfo->SectorsPerCluster;
          usSectorsRead = usIndex * pVolInfo->SectorsPerCluster;
          }
-      for (usIndex = pFindInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
+      for (usIndex = pFindInfo->pInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
          if (fRootDir)
             {
@@ -1813,6 +1813,6 @@ CHAR   fRootDir = FALSE;
    if (fRootDir)
       pFindInfo->pInfo->rgClusters[0] = 1;
 
-   pFindInfo->usBlockIndex = usBlockIndex;
+   pFindInfo->pInfo->usBlockIndex = usBlockIndex;
    return TRUE;
 }

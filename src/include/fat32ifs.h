@@ -219,13 +219,6 @@ BYTE      szSearch[CCHMAXPATHCOMP];
 EAOP      EAOP;
 PROCINFO  ProcInfo;
 PDIRENTRY pDirEntries;
-ULONG     rgClusters[1];
-} FINFO, *PFINFO;
-
-typedef struct _FindInfo /* MAX 24 BYTES ! */
-{
-PFINFO    pInfo;
-PSHOPENINFO pSHInfo;
 ULONG     ulCurEntry;
 ULONG     ulMaxEntry;
 USHORT    usEntriesPerBlock;
@@ -234,6 +227,13 @@ USHORT    usTotalBlocks;
 BOOL      fLongNames;
 BYTE      bAttr;
 BYTE      bMustAttr;
+ULONG     rgClusters[1];
+} FINFO, *PFINFO;
+
+typedef struct _FindInfo /* MAX 24 BYTES ! */
+{
+PFINFO    pInfo;
+PSHOPENINFO pSHInfo;
 } FINDINFO, *PFINDINFO;
 
 typedef struct _EASizeBuf
