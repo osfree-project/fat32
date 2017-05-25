@@ -63,7 +63,8 @@ _BSS  ends
 
 DGROUP group CONST, CONST2, _DATA, _BSS
 
-.586p
+.686p
+.xmm2
 _TEXT segment word public 'CODE' use16
 ASSUME ds:DGROUP
 
@@ -90,8 +91,8 @@ AcquireLightLock PROC FAR PASCAL USES esi edi,ControlVar:DWORD
    cmp ecx,esi                   ; ecx (eax) was not zero, is it our own thread ?
    jz short @F                   ; nested call: we again grabbed the sem
 
-   ;pause                        ; was introduced with SSE2 but will not trap on any processor !
-   db 0f3h,090h                  ; this pauses the CPU which is more CPU friendly
+   pause                         ; was introduced with SSE2 but will not trap on any processor !
+                                 ; this pauses the CPU which is more CPU friendly
 
    jmp short @B                  ; else, go back and try to claim RAM semaphore
 
