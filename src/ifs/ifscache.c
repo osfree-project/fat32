@@ -53,8 +53,6 @@ PRIVATE VOID   LockBuffer(PCACHEBASE pBase);
 PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE USHORT usEmergencyFlush(VOID);
 PRIVATE USHORT VerifyOn(VOID);
-USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseFat(PVOLINFO pVolInfo);
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 
 PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
@@ -363,7 +361,7 @@ USHORT rc;
    if (!GetFatAccess(pVolInfo, "ReadSector"))
       {
       rc = ReadSector2(pVolInfo, ulSector, nSectors, pbData, usIOMode);
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "ReadSector");
       }
 
    return rc;

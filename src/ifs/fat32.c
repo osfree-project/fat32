@@ -31,7 +31,7 @@ PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 
 static BYTE szDiskLocked[]="The disk is in use or locked by another process.\r\n";
 static BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
-static ULONG ulSemRWFat = 0UL;
+static SPINLOCK ctrlVar = {0};
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
@@ -54,8 +54,6 @@ static PDIRENTRY1 CompactDir1(PDIRENTRY1 pStart, ULONG ulSize, USHORT usEntriesN
 static USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 static VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 static VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
-USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseFat(PVOLINFO pVolInfo);
 static USHORT RecoverChain(PVOLINFO pVolInfo, ULONG ulCluster, PBYTE pData, USHORT cbData);
 static USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector);
 static USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector);
@@ -3871,7 +3869,7 @@ ULONG GetNextCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
    if (!GetFatAccess(pVolInfo, "GetNextCluster"))
       {
       ulCluster = GetNextCluster2(pVolInfo, pSHInfo, ulCluster);
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "GetNextCluster");
       return ulCluster;
       }
    else
@@ -3998,7 +3996,7 @@ BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster)
    if (!GetFatAccess(pVolInfo, "ClusterInUse"))
       {
       ulCluster = ClusterInUse2(pVolInfo, ulCluster);
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "ClusterInUse");
       return TRUE;
       }
 
@@ -4039,7 +4037,7 @@ BOOL MarkCluster(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
    if (!GetFatAccess(pVolInfo, "MarkCluster"))
       {
       ulCluster = MarkCluster2(pVolInfo, ulCluster, fState);
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "MarkCluster");
       return TRUE;
       }
 
@@ -4108,7 +4106,7 @@ ULONG rc;
    if (!GetFatAccess(pVolInfo, "GetFreeSpace"))
       {
       rc = GetFreeSpace2(pVolInfo);
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "GetFreeSpace");
       }
 
    return rc;
@@ -4151,7 +4149,7 @@ BOOL   fClean;
 
    if (pVolInfo->pBootFSInfo->ulFreeClusters < ulClustersRequested)
       {
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "MakeFatChain");
       return pVolInfo->ulFatEof;
       }
 
@@ -4296,7 +4294,7 @@ BOOL   fClean;
                goto MakeFatChain_Error;
             }
 
-         ReleaseFat(pVolInfo);
+         ReleaseFat(pVolInfo, "MakeFatChain");
          if (f32Parms.fMessageActive & LOG_FUNCS)
             {
             if (fContiguous)
@@ -4340,7 +4338,7 @@ BOOL   fClean;
 
 MakeFatChain_Error:
 
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "MakeFatChain");
    if (ulReturn != pVolInfo->ulFatEof)
       DeleteFatChain(pVolInfo, ulReturn);
 
@@ -4602,7 +4600,7 @@ PBYTE pbSector;
       if (WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSector, 1,
          pbSector, DVIO_OPWRTHRU | DVIO_OPNCACHE))
          {
-         ReleaseFat(pVolInfo);
+         ReleaseFat(pVolInfo, "MarkDiskStatus");
          return FALSE;
          }
       if (pVolInfo->BootSect.bpb.ExtFlags & 0x0080)
@@ -4640,7 +4638,7 @@ BOOL  fStatus;
 
    if (ReadFatSector(pVolInfo, 0L))
       {
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "GetDiskStatus");
       return FALSE;
       }
 
@@ -4651,7 +4649,7 @@ BOOL  fStatus;
    else
       fStatus = FALSE;
 
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "GetDiskStatus");
 
    return fStatus;
 }
@@ -4669,7 +4667,7 @@ ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext)
       return pVolInfo->ulFatEof;
 
    ulCluster = SetNextCluster2(pVolInfo, ulCluster, ulNext);
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "SetNextCluster");
    return ulCluster;
 }
 
@@ -6398,7 +6396,7 @@ USHORT rc;
          rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
          if (rc)
             {
-            ReleaseFat(pVolInfo);
+            ReleaseFat(pVolInfo, "DeleteFatChain");
             return FALSE;
             }
          ReadFatSector(pVolInfo, ulSector);
@@ -6415,7 +6413,7 @@ USHORT rc;
             rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
             if (rc)
                {
-               ReleaseFat(pVolInfo);
+               ReleaseFat(pVolInfo, "DeleteFatChain");
                return FALSE;
                }
             ReadBmpSector(pVolInfo, ulBmpSector);
@@ -6430,7 +6428,7 @@ USHORT rc;
 
    if (rc)
       {
-      ReleaseFat(pVolInfo);
+      ReleaseFat(pVolInfo, "DeleteFatChain");
       return FALSE;
       }
 
@@ -6440,7 +6438,7 @@ USHORT rc;
 
       if (rc)
          {
-         ReleaseFat(pVolInfo);
+         ReleaseFat(pVolInfo, "DeleteFatChain");
          return FALSE;
          }
       }
@@ -6448,7 +6446,7 @@ USHORT rc;
    pVolInfo->pBootFSInfo->ulFreeClusters += ulClustersFreed;
 /*   UpdateFSInfo(pVolInfo);*/
 
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "DeleteFatChain");
 
    return TRUE;
 }
@@ -6493,7 +6491,7 @@ ULONG  ulSector = 0;
 
       ullPosition -= pVolInfo->ulClusterSize;
       }
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "SeekToCluster");
 
    return ulCluster;
 }
@@ -6653,7 +6651,7 @@ USHORT usSectorsPerBlock;
       usSectorsRead = 0;
       }
 
-   if (GetFatAccess(pVolInfo, "GetChainCount"))
+   if (GetFatAccess(pVolInfo, "GetChainSize"))
       return 0L;
 
    ulCount = 0;
@@ -6673,7 +6671,7 @@ USHORT usSectorsPerBlock;
       else
          ulCluster = GetNextCluster2(pVolInfo, pSHInfo, ulCluster);
       }
-   ReleaseFat(pVolInfo);
+   ReleaseFat(pVolInfo, "GetChainSize");
    return ulCount;
 }
 
@@ -7914,29 +7912,6 @@ BOOL bLoop;
    return pFirstFree;
 }
 
-USHORT SemRequest(void far * hSem, ULONG ulTimeOut, PSZ pszText)
-{
-USHORT rc;
-
-   if (ulTimeOut == TO_INFINITE)
-      ulTimeOut = 60000; /* 1 minute */
-   do
-      {
-      rc = FSH_SEMREQUEST(hSem, ulTimeOut);
-      if (rc == ERROR_SEM_TIMEOUT)
-         {
-         Message("ERROR: Timeout on semaphore for %s", pszText);
-         rc = CritMessage("FAT32: Timeout on semaphore for %s", pszText);
-         if (rc != CE_RETRETRY)
-            rc = ERROR_SEM_TIMEOUT;
-         else
-            rc = ERROR_INTERRUPT;
-         }
-      } while (rc == ERROR_INTERRUPT);
-
-   return rc;
-}
-
 BOOL IsDosSession(VOID)
 {
 PROCINFO pr;
@@ -7969,27 +7944,28 @@ USHORT   rc;
 
 USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName)
 {
-USHORT rc;
+   USHORT rc = NO_ERROR;
 
    pVolInfo = pVolInfo;
 
-   Message("GetFatAccess: %s", pszName);
-   rc = SemRequest(&ulSemRWFat, TO_INFINITE, pszName);
+   rc = AcquireLightLock(&ctrlVar);
    if (rc)
       {
-      Message("ERROR: SemRequest GetFatAccess Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetFatAccess Failed, rc = %d!", rc);
+      Message("ERROR: SpinLock GetFatAccess Failed, rc = %d!", rc);
+      CritMessage("FAT32: SpinLock GetFatAccess Failed, rc = %d!", rc);
       Message("GetFatAccess Failed for %s, rc = %d", pszName, rc);
       return rc;
       }
+   Message("GetFatAccess: %s", pszName);
    return 0;
 }
 
-VOID ReleaseFat(PVOLINFO pVolInfo)
+VOID ReleaseFat(PVOLINFO pVolInfo, PSZ pszName)
 {
    pVolInfo = pVolInfo;
-   Message("ReleaseFat");
-   FSH_SEMCLEAR(&ulSemRWFat);
+   Message("ReleaseFat: %s", pszName);
+
+   ReleaseLightLock(&ctrlVar);
 }
 
 VOID Yield(void)

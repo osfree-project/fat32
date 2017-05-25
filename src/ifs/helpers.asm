@@ -1,6 +1,5 @@
-.386p
+.286p
 
-;SAS_SEL equ 70h
 ERROR_NOT_SUPPORTED        equ 50
 ERROR_INVALID_PARAMETER    equ 87
 ERROR_PROTECTION_VIOLATION equ 115
@@ -8,6 +7,133 @@ ERROR_PROTECTION_VIOLATION equ 115
 DevHlp_AllocGDTSelector    equ 2dh
 DevHlp_FreeGDTSelector     equ 53h
 DevHlp_LinToGDTSelector    equ 5ch
+DevHlp_GetDOSVar           EQU 24h
+
+DHGETDOSV_LOCINFOSEG       EQU 2
+
+InfoSegLDT	STRUC
+LIS_CurProcID	DW	?
+LIS_ParProcID	DW	?
+LIS_CurThrdPri	DW	?
+LIS_CurThrdID	DW	?
+LIS_CurScrnGrp	DW	?
+LIS_ProcStatus	DB	?
+LIS_fillbyte1	DB	?
+LIS_Fgnd	DW	?
+LIS_ProcType	DB	?
+LIS_fillbyte2	DB	?
+LIS_AX	DW	?
+LIS_BX	DW	?
+LIS_CX	DW	?
+LIS_DX	DW	?
+LIS_SI	DW	?
+LIS_DI	DW	?
+LIS_DS	DW	?
+LIS_PackSel	DW	?
+LIS_PackShrSel	DW	?
+LIS_PackPckSel	DW	?
+InfoSegLDT	ENDS
+
+
+extern KernThunkStackTo16 :near
+extern KernThunkStackTo32 :near
+extern C Device_Help      :dword
+extern C TKSSBase         :dword
+extern Dos32FlatDS        :near
+
+extern FS_READ            :far
+extern FS_WRITE           :far
+extern FS_CHGFILEPTR      :far
+extern FS_CHGFILEPTRL     :far
+
+_TEXT segment word public 'CODE' use16
+_TEXT ends
+
+CONST segment word public 'DATA' use16
+CONST ends
+
+CONST2 segment word public 'DATA' use16
+CONST2 ends
+
+_DATA segment word public 'DATA' use16
+_DATA ends
+
+_BSS  segment word public 'BSS' use16
+_BSS  ends
+
+DGROUP group CONST, CONST2, _DATA, _BSS
+
+.586p
+_TEXT segment word public 'CODE' use16
+ASSUME ds:DGROUP
+
+   PUBLIC AcquireLightLock
+AcquireLightLock PROC FAR PASCAL USES esi edi,ControlVar:DWORD
+   mov al,DHGETDOSV_LOCINFOSEG
+   xor cx,cx
+   mov dl,DevHlp_GetDOSVar
+   call DWORD PTR Device_Help
+   mov es,ax
+   les bx,es:[bx]
+   mov si,es:[bx]+LIS_CurProcID
+   shl esi,010h
+   mov si,es:[bx]+LIS_CurThrdID
+   
+   les bx,ControlVar
+
+@@:
+   xor eax,eax                   ; check for eax = 0 = semaphore not yet claimed
+   lock cmpxchg es:[bx],esi
+   mov ecx,eax
+   jz short @F                   ; we grabbed the sem if eax was zero
+
+   cmp ecx,esi                   ; ecx (eax) was not zero, is it our own thread ?
+   jz short @F                   ; nested call: we again grabbed the sem
+
+   ;pause                        ; was introduced with SSE2 but will not trap on any processor !
+   db 0f3h,090h                  ; this pauses the CPU which is more CPU friendly
+
+   jmp short @B                  ; else, go back and try to claim RAM semaphore
+
+@@:
+   inc DWORD PTR es:[bx+4]       ; increase nesting count
+   xor ax,ax
+   ret
+AcquireLightLock ENDP
+
+
+
+   PUBLIC ReleaseLightLock
+ReleaseLightLock PROC FAR PASCAL USES esi,ControlVar:DWORD
+   mov al,DHGETDOSV_LOCINFOSEG
+   xor cx,cx
+   mov dl,DevHlp_GetDOSVar
+   call DWORD PTR Device_Help
+   mov es,ax
+   les bx,es:[bx]
+   mov si,es:[bx]+LIS_CurProcID
+   shl esi,010h
+   mov si,es:[bx]+LIS_CurThrdID
+   
+   les bx,ControlVar
+
+   cmp es:[bx],esi
+   jnz short @F                  ; don't do anything if we didn't claim the semaphore
+
+   dec DWORD PTR es:[bx+4]       ; decrease nesting count
+   jnz short @F                  ; we are still in a nested call, skip doing the final release
+
+   xor eax,eax
+   lock xchg es:[bx],eax         ; free the semaphore
+
+@@:
+   xor ax,ax
+   ret
+ReleaseLightLock ENDP
+
+_TEXT ends
+
+.386p
 
 SaveReg macro Which
     irp y,<Which>
@@ -35,14 +161,12 @@ endm
 ; @param   sel     selector
 ;
 AllocGdtSel macro sel
-    mov     eax, ss
+    mov     ax, ss
     mov     es, ax
     lea     edi, sel                           ; &sel in ES:DI
     mov     ecx, 1                               ; one selector
     mov     dl, DevHlp_AllocGDTSelector
-    ;mov     eax, ds:_Device_Help
-    mov     eax, offset DGROUP:_Device_Help
-    call    far ptr [eax]
+    call    dword ptr Device_Help
 endm
 
 ;;
@@ -53,9 +177,7 @@ endm
 FreeGdtSel macro sel
     mov     ax, [sel]                            ; sel
     mov     dl, DevHlp_FreeGDTSelector
-    ;mov     eax, ds:_Device_Help
-    mov     eax, offset DGROUP:_Device_Help
-    call    far ptr [eax]
+    call    dword ptr Device_Help
 endm
 
 ;;
@@ -73,46 +195,8 @@ LinToGdtSel macro sel, lin, size
     mov     ebx, lin                            ; lin
     mov     ecx, size                           ; size
     mov     dl, DevHlp_LinToGDTSelector
-    ;mov     eax, ds:_Device_Help
-    mov     eax, offset DGROUP:_Device_Help
-    call    far ptr [eax]
+    call    dword ptr Device_Help
 endm
-
-extern KernThunkStackTo16 :near
-extern KernThunkStackTo32 :near
-extern _Device_Help       :near
-extern _TKSSBase          :near
-extern Dos32FlatDS        :near
-
-extern FS_READ            :far
-extern FS_WRITE           :far
-extern FS_CHGFILEPTR      :far
-extern FS_CHGFILEPTRL     :far
-
-CONST segment word public 'DATA' use16
-CONST ends
-
-CONST2 segment word public 'DATA' use16
-CONST2 ends
-
-_DATA segment word public 'DATA' use16
-_DATA ends
-
-_BSS  segment word public 'BSS' use16
-_BSS  ends
-
-DGROUP group CONST, CONST2, _DATA, _BSS
-
-_TEXT segment word public 'CODE' use16
-
-;public _SaSSel
-
-;SaSSel PROC
-;    mov ax,SAS_SEL
-;    ret
-;SaSSel ENDP
-
-_TEXT ends
 
 _TEXT32 segment word public 'CODE' use32
 

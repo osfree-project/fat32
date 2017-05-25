@@ -437,6 +437,17 @@ IMPORT USHORT usGetEmptyEAS(PSZ pszFileName,PEAOP pEAOP);
 IMPORT USHORT MY_ISCURDIRPREFIX( PSZ pszName );
 IMPORT VOID   GetFirstInfo( PBOOL pLead );
 IMPORT VOID   GetCaseConversion( PUCHAR pCase );
+USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseFat(PVOLINFO pVolInfo, PSZ pszName);
+
+typedef struct _SPINLOCK_
+{
+   ULONG ulClaimerId;
+   ULONG ulNestingLevel;
+} SPINLOCK, far *PSPINLOCK;
+
+BOOL pascal far AcquireLightLock(PSPINLOCK ControlVar);
+BOOL pascal far ReleaseLightLock(PSPINLOCK ControlVar);
 
 /*
 #define GetCurTime() (pGI->time * 100 + pGI->hundredths)
