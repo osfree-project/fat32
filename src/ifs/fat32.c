@@ -8031,6 +8031,29 @@ BOOL bLoop;
    return pFirstFree;
 }
 
+USHORT SemRequest(void far * hSem, ULONG ulTimeOut, PSZ pszText)
+{
+USHORT rc;
+
+   if (ulTimeOut == TO_INFINITE)
+      ulTimeOut = 60000; /* 1 minute */
+   do
+      {
+      rc = FSH_SEMREQUEST(hSem, ulTimeOut);
+      if (rc == ERROR_SEM_TIMEOUT)
+         {
+         Message("ERROR: Timeout on semaphore for %s", pszText);
+         rc = CritMessage("FAT32: Timeout on semaphore for %s", pszText);
+         if (rc != CE_RETRETRY)
+            rc = ERROR_SEM_TIMEOUT;
+         else
+            rc = ERROR_INTERRUPT;
+         }
+      } while (rc == ERROR_INTERRUPT);
+
+   return rc;
+}
+
 BOOL IsDosSession(VOID)
 {
 PROCINFO pr;
