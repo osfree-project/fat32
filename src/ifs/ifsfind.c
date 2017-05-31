@@ -234,12 +234,14 @@ DIRENTRY1 StreamEntry;
       }
    else
       {
+#ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
          PSHOPENINFO pSHInfo = malloc(sizeof(SHOPENINFO));
          SetSHInfo1(pVolInfo, (PDIRENTRY1)&StreamEntry, pSHInfo);
          pFindInfo->pSHInfo = pSHInfo;
          }
+#endif
 
       while (ulCluster && ulCluster != pVolInfo->ulFatEof)
          {
@@ -1083,6 +1085,8 @@ USHORT usBlockIndex;
    return ERROR_NO_MORE_FILES;
 }
 
+#ifdef EXFAT
+
 /******************************************************************
 *
 ******************************************************************/
@@ -1583,15 +1587,21 @@ USHORT attrFile;
    return ERROR_NO_MORE_FILES;
 }
 
+#endif
+
 /******************************************************************
 *
 ******************************************************************/
 USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel)
 {
+#ifdef EXFAT
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
       return FillDirEntry0(pVolInfo, ppData, pcbData, pFindInfo, usLevel);
+#ifdef EXFAT
    else
       return FillDirEntry1(pVolInfo, ppData, pcbData, pFindInfo, usLevel);
+#endif
 }
 
 VOID MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax)
@@ -1665,6 +1675,8 @@ PLNENTRY pLN = (PLNENTRY)pDir;
    return TRUE;
 }
 
+#ifdef EXFAT
+
 BOOL fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax)
 {
 BYTE szLongName[30] = {0};
@@ -1728,6 +1740,8 @@ TIMESTAMP SetTimeStamp(FDATE date, FTIME time)
 
    return ts;
 }
+
+#endif
 
 
 /******************************************************************

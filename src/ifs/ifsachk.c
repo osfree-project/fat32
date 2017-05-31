@@ -16,7 +16,9 @@ ULONG force_mask = 0;                  /* global to be set by parse args for */
 
 extern ULONG fat_mask;
 extern ULONG fat32_mask;
+#ifdef EXFAT
 extern ULONG exfat_mask;
+#endif
 
 extern F32PARMS f32Parms;
 
@@ -85,9 +87,14 @@ void _cdecl autocheck(char *args)
       continue;  /* go to next drive */
     }
 
+#ifdef EXFAT
     if ( ! (fat_mask   & (1UL << i)) &&
          ! (fat32_mask & (1UL << i)) &&
          ! (exfat_mask & (1UL << i)) )
+#else
+    if ( ! (fat_mask   & (1UL << i)) &&
+         ! (fat32_mask & (1UL << i)) )
+#endif
     {
       // skip disabled drive letters
       continue;  /* go to next drive */
@@ -126,9 +133,14 @@ void _cdecl autocheck(char *args)
     // get FAT type
     type = GetFatType((PBOOTSECT)boot_sector);
 
+#ifdef EXFAT
     if ( (type == FAT_TYPE_NONE) ||
          (! f32Parms.fFat   && (type <  FAT_TYPE_FAT32)) ||
          (! f32Parms.fExFat && (type == FAT_TYPE_EXFAT)) )
+#else
+    if ( (type == FAT_TYPE_NONE) ||
+         (! f32Parms.fFat   && (type <  FAT_TYPE_FAT32)) )
+#endif
     {
       // skip unsupported (or disabled) FS'es
       continue;

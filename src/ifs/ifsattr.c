@@ -81,11 +81,13 @@ USHORT rc;
       goto FS_FILEATTRIBUTEEXIT;
       }
 
+#ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
       pDirSHInfo = &DirSHInfo;
       SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
       }
+#endif
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &DirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
@@ -97,13 +99,17 @@ USHORT rc;
    switch (usFlag)
       {
       case FA_RETRIEVE :
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
             *pAttr = DirEntry.bAttr;
+#ifdef EXFAT
          else
             {
             PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
             *pAttr = pDirEntry->u.File.usFileAttr;
             }
+#endif
          rc = 0;
          break;
 
@@ -130,8 +136,10 @@ USHORT rc;
             goto FS_FILEATTRIBUTEEXIT;
             }
 
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&DirNew, &DirEntry, sizeof (DIRENTRY));
 
             if (DirNew.bAttr & FILE_DIRECTORY)
@@ -140,6 +148,7 @@ USHORT rc;
                DirNew.bAttr = (BYTE)*pAttr;
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                &DirEntry, &DirNew, NULL, NULL, NULL, 0);
+#ifdef EXFAT
             }
          else
             {
@@ -153,6 +162,7 @@ USHORT rc;
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                &DirEntry, (PDIRENTRY)&DirNew1, &DirEntryStream, NULL, NULL, 0);
             }
+#endif
          break;
          }
       default:
@@ -246,11 +256,13 @@ USHORT rc;
          goto FS_PATHINFOEXIT;
          }
 
+#ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
          pDirSHInfo = &DirSHInfo;
          SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
          }
+#endif
       }
 
    if (usFlag == PI_RETRIEVE)
@@ -321,8 +333,10 @@ USHORT rc;
 
             memset(pfStatus, 0, sizeof (FILESTATUS));
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                pfStatus->fdateCreation = DirEntry.wCreateDate;
                pfStatus->ftimeCreation = DirEntry.wCreateTime;
                pfStatus->fdateLastAccess = DirEntry.wAccessDate;
@@ -338,6 +352,7 @@ USHORT rc;
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+#ifdef EXFAT
                }
             else
                {
@@ -362,6 +377,7 @@ USHORT rc;
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;
                }
+#endif
             rc = 0;
             break;
             }
@@ -372,8 +388,10 @@ USHORT rc;
 
             memset(pfStatus, 0, sizeof (FILESTATUS3L));
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                pfStatus->fdateCreation = DirEntry.wCreateDate;
                pfStatus->ftimeCreation = DirEntry.wCreateTime;
                pfStatus->fdateLastAccess = DirEntry.wAccessDate;
@@ -407,6 +425,7 @@ USHORT rc;
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+#ifdef EXFAT
                }
             else
                {
@@ -445,6 +464,7 @@ USHORT rc;
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;
                }
+#endif
             rc = 0;
             break;
             }
@@ -455,8 +475,10 @@ USHORT rc;
 
             memset(pfStatus, 0, sizeof (FILESTATUS2));
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                pfStatus->fdateCreation = DirEntry.wCreateDate;
                pfStatus->ftimeCreation = DirEntry.wCreateTime;
                pfStatus->fdateLastAccess = DirEntry.wAccessDate;
@@ -471,6 +493,7 @@ USHORT rc;
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+#ifdef EXFAT
                }
             else
                {
@@ -495,6 +518,7 @@ USHORT rc;
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;
                }
+#endif
             if (!f32Parms.fEAS)
                {
                pfStatus->cbList = sizeof pfStatus->cbList;
@@ -513,8 +537,10 @@ USHORT rc;
 
             memset(pfStatus, 0, sizeof (FILESTATUS4L));
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                pfStatus->fdateCreation = DirEntry.wCreateDate;
                pfStatus->ftimeCreation = DirEntry.wCreateTime;
                pfStatus->fdateLastAccess = DirEntry.wAccessDate;
@@ -547,6 +573,7 @@ USHORT rc;
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
+#ifdef EXFAT
                }
             else
                {
@@ -585,6 +612,7 @@ USHORT rc;
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;
                }
+#endif
             if (!f32Parms.fEAS)
                {
                pfStatus->cbList = sizeof pfStatus->cbList;
@@ -721,8 +749,12 @@ USHORT rc;
                }
 
             usMask = FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED;
+#ifdef EXFAT
             if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_DIRECTORY)) ||
                  ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_DIRECTORY)) )
+#else
+            if ( DirEntry.bAttr & FILE_DIRECTORY )
+#endif
                usMask |= FILE_DIRECTORY;
             usMask = ~usMask;
 
@@ -740,49 +772,64 @@ USHORT rc;
             if (memcmp(&pfStatus->fdateCreation, &usMask, sizeof usMask) ||
                 memcmp(&pfStatus->ftimeCreation, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wCreateDate = pfStatus->fdateCreation;
                   DirNew.wCreateTime = pfStatus->ftimeCreation;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulCreateTimestp = SetTimeStamp(pfStatus->fdateCreation, pfStatus->ftimeCreation);
                   }
+#endif
                }
 
             if (memcmp(&pfStatus->fdateLastWrite, &usMask, sizeof usMask) ||
                 memcmp(&pfStatus->ftimeLastWrite, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wLastWriteDate = pfStatus->fdateLastWrite;
                   DirNew.wLastWriteTime = pfStatus->ftimeLastWrite;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulLastModifiedTimestp = SetTimeStamp(pfStatus->fdateLastWrite, pfStatus->ftimeLastWrite);
                   }
+#endif
                }
 
             if (memcmp(&pfStatus->fdateLastAccess, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wAccessDate = pfStatus->fdateLastAccess;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulLastAccessedTimestp = SetTimeStamp(pfStatus->fdateLastAccess, pfStatus->ftimeLastAccess);
                   }
+#endif
                }
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                if (DirNew.bAttr & FILE_DIRECTORY)
                   DirNew.bAttr = (BYTE)(pfStatus->attrFile | FILE_DIRECTORY);
                else
                   DirNew.bAttr = (BYTE)pfStatus->attrFile;
+#ifdef EXFAT
                }
             else
                {
@@ -791,6 +838,7 @@ USHORT rc;
                else
                   pDirNew->u.File.usFileAttr = (BYTE)pfStatus->attrFile;
                }
+#endif
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                &DirEntry, &DirNew, &DirEntryStream, NULL, NULL, 0);
@@ -812,8 +860,12 @@ USHORT rc;
                }
 
             usMask = FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED;
+#ifdef EXFAT
             if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_DIRECTORY)) ||
                  ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_DIRECTORY)) )
+#else
+            if ( DirEntry.bAttr & FILE_DIRECTORY )
+#endif
                usMask |= FILE_DIRECTORY;
             usMask = ~usMask;
 
@@ -831,49 +883,64 @@ USHORT rc;
             if (memcmp(&pfStatus->fdateCreation, &usMask, sizeof usMask) ||
                 memcmp(&pfStatus->ftimeCreation, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wCreateDate = pfStatus->fdateCreation;
                   DirNew.wCreateTime = pfStatus->ftimeCreation;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulCreateTimestp = SetTimeStamp(pfStatus->fdateCreation, pfStatus->ftimeCreation);
                   }
+#endif
                }
 
             if (memcmp(&pfStatus->fdateLastWrite, &usMask, sizeof usMask) ||
                 memcmp(&pfStatus->ftimeLastWrite, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wLastWriteDate = pfStatus->fdateLastWrite;
                   DirNew.wLastWriteTime = pfStatus->ftimeLastWrite;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulLastModifiedTimestp = SetTimeStamp(pfStatus->fdateLastWrite, pfStatus->ftimeLastWrite);
                   }
+#endif
                }
 
             if (memcmp(&pfStatus->fdateLastAccess, &usMask, sizeof usMask))
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirNew.wAccessDate = pfStatus->fdateLastAccess;
+#ifdef EXFAT
                   }
                else
                   {
                   pDirNew->u.File.ulLastAccessedTimestp = SetTimeStamp(pfStatus->fdateLastAccess, pfStatus->ftimeLastAccess);
                   }
+#endif
                }
 
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                if (DirNew.bAttr & FILE_DIRECTORY)
                   DirNew.bAttr = (BYTE)(pfStatus->attrFile | FILE_DIRECTORY);
                else
                   DirNew.bAttr = (BYTE)pfStatus->attrFile;
+#ifdef EXFAT
                }
             else
                {
@@ -882,6 +949,7 @@ USHORT rc;
                else
                   pDirNew->u.File.usFileAttr = (BYTE)pfStatus->attrFile;
                }
+#endif
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                &DirEntry, &DirNew, &DirEntryStream, NULL, NULL, 0);

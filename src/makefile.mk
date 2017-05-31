@@ -14,11 +14,13 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BLDROOT)\ufat32 $(BLDROOT)\f32chk &
            $(BLDROOT)\ufat32\win32 $(BINROOT)\win32 $(BINROOT)\win32\dll
 
-CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
+CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.obc $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
            $(PROJ_BLD)\*.map $(PROJ_BLD)\*.ols $(PROJ_BLD)\*.err $(BLDROOT)\..\include\ver.h &
            $(BLDROOT)\lib\*.lib $(BINROOT)\zip-*.flg $(BINROOT)\wpi.flg
 # compress executables
 LXLITE   = 1
+# enable exFAT support (change it to 0 to get a build without exFAT)
+EXFAT    = 1
 
 mainifs  = &
  fat32.ifs
@@ -28,7 +30,11 @@ dll      = &
  ufat32.dll &
  ufat12.dll &
  ufat16.dll &
+!ifeq EXFAT 1
  uexfat.dll
+!else
+ #
+!endif
 
 util     = &
  cachef32.exe &
@@ -74,7 +80,10 @@ distlist = &
  $(p)os2\boot\partfilt.flt $(p)os2\boot\partfilt.sym &
  $(p)os2\dll\ufat32.dll $(p)os2\dll\uunifat.sym &
  $(p)os2\dll\ufat12.dll $(p)os2\dll\ufat16.dll &
- $(p)os2\dll\uexfat.dll $(p)os2\dll\uunifat.dll &
+ $(p)os2\dll\uunifat.dll &
+!ifeq EXFAT 1
+ $(p)os2\dll\uexfat.dll &
+!endif
  $(p)os2\cachef32.exe $(p)os2\cachef32.sym &
  $(p)os2\f32parts.exe $(p)os2\f32parts.sym &
  $(p)os2\f32mon.exe $(p)os2\f32mon.sym &
@@ -109,7 +118,13 @@ distfiles2 = $+ $(distlist2) $-
 p =
 dist2 = $+ $(distlist2) $-
 
-distname  = fat32-$(_VER)-r$(%SVNREV)
+!ifneq EXFAT 1
+suffix = -noexfat
+!else
+suffix = 
+!endif
+
+distname  = fat32-$(_VER)-r$(%SVNREV)$(suffix)
 distfile1 = $(distname)-os2.zip
 distfile2 = $(distname)-os2.wpi
 distfile3 = $(distname)-win32.zip
@@ -145,7 +160,7 @@ dirs: .symbolic
  @for %d in ($(DIRS)) do @if exist %d @cd %d && wmake -h -f makefile.wcc targets
 
 $(BLDROOT)\bld.flg:
- @for %d in ($(BLDDIRS)) do @mkdir %d
+ @for %d in ($(BLDDIRS)) do @if not exist %d @mkdir %d
  @wtouch $^@
 
 $(BINROOT)\zip-os2.flg: $(distfiles)

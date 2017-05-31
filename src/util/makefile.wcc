@@ -3,10 +3,17 @@ ROOT=..
 PROJ=util
 PATH=..\..\$(PROJ)
 
+DESC="Fat32 utilities, Henk Kelder & Netlabs"
+
 !include ..\makefile.mk
 
-DESC="Fat32 utilities, Henk Kelder & Netlabs"
-COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+!ifeq EXFAT 1
+ADD_DEFS = -dEXFAT
+!else
+ADD_DEFS =
+!endif
+
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
 OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj

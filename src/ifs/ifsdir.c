@@ -236,11 +236,13 @@ ULONG    ulBlock;
       goto FS_MKDIREXIT;
       }
 
+#ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
       pDirSHInfo = &DirSHInfo;
       SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
       }
+#endif
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, NULL, NULL);
    if (ulCluster != pVolInfo->ulFatEof)
@@ -266,13 +268,16 @@ ULONG    ulBlock;
 
    memset(pbCluster, 0, (size_t)pVolInfo->ulBlockSize);
 
+#ifdef EXFAT
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
       {
+#endif
       pDir = (PDIRENTRY)pbCluster;
 
       pDir->wCluster = LOUSHORT(ulCluster);
       pDir->wClusterHigh = HIUSHORT(ulCluster);
       pDir->bAttr = FILE_DIRECTORY;
+#ifdef EXFAT
       }
    else
       {
@@ -292,6 +297,7 @@ ULONG    ulBlock;
 #endif
       (pDir1+1)->u.Stream.ulFirstClus = ulCluster;
       }
+#endif
 
    //rc = MakeDirEntry(pVolInfo, ulDirCluster, (PDIRENTRY)pbCluster, NULL, pszFile);
    rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, (PDIRENTRY)pbCluster,
@@ -303,8 +309,10 @@ ULONG    ulBlock;
       goto FS_MKDIREXIT;
       }
 
+#ifdef EXFAT
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
       {
+#endif
       memset(pDir->bFileName, 0x20, 11);
       memcpy(pDir->bFileName, ".", 1);
 
@@ -323,9 +331,11 @@ ULONG    ulBlock;
          pDir->wClusterHigh = HIUSHORT(ulDirCluster);
          }
       pDir->bAttr = FILE_DIRECTORY;
+#ifdef EXFAT
       }
    else
       memset(pbCluster, 0, (size_t)pVolInfo->ulBlockSize);
+#endif
 
    rc = WriteBlock( pVolInfo, ulCluster, 0, pbCluster, DVIO_OPWRTHRU);
 
@@ -453,23 +463,33 @@ PSHOPENINFO pSHInfo = NULL;
       goto FS_RMDIREXIT;
       }
 
+#ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
       pDirSHInfo = &DirSHInfo;
       SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
       }
+#endif
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, &DirEntry, &StreamEntry, NULL);
-   if (ulCluster == pVolInfo->ulFatEof ||
+   if ( ulCluster == pVolInfo->ulFatEof ||
+#ifdef EXFAT
        ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && !(DirEntry.bAttr & FILE_DIRECTORY)) ||
        ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && !(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY)) )
+#else
+       !(DirEntry.bAttr & FILE_DIRECTORY) )
+#endif
       {
       rc = ERROR_PATH_NOT_FOUND;
       goto FS_RMDIREXIT;
       }
 
+#ifdef EXFAT
    if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_READONLY)) ||
         ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_READONLY)) )
+#else
+   if ( DirEntry.bAttr & FILE_READONLY )
+#endif
       {
       rc = ERROR_ACCESS_DENIED;
       goto FS_RMDIREXIT;
@@ -482,11 +502,13 @@ PSHOPENINFO pSHInfo = NULL;
       goto FS_RMDIREXIT;
       }
 
+#ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
       pSHInfo = &SHInfo;
       SetSHInfo1(pVolInfo, &StreamEntry, pSHInfo);
       }
+#endif
 
    ulNextCluster = ulCluster;
    usFileCount = 0;
@@ -502,8 +524,10 @@ PSHOPENINFO pSHInfo = NULL;
             goto FS_RMDIREXIT;
             }
 
+#ifdef EXFAT
          if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
             {
+#endif
             pWork = pDir;
             pMax = (PDIRENTRY)((PBYTE)pDir + pVolInfo->ulBlockSize);
             while (pWork < pMax)
@@ -517,6 +541,7 @@ PSHOPENINFO pSHInfo = NULL;
                   }
                pWork++;
                }
+#ifdef EXFAT
             }
          else
             {
@@ -540,6 +565,7 @@ PSHOPENINFO pSHInfo = NULL;
                pWork1++;
                }
             }
+#endif
          }
       ulNextCluster = GetNextCluster(pVolInfo, pSHInfo, ulNextCluster);
       if (!ulNextCluster)
