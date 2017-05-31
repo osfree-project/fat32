@@ -40,7 +40,6 @@ PRIVATE CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))pCacheBase2[MAX_SECTORS] = 
 ULONG          _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
 PRIVATE USHORT _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
 PRIVATE BOOL   _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
-PRIVATE BYTE _based(_segname("ifscache_sect_DATA")) pbSect[0x10000]  = {0};
 
 PRIVATE USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName);
 PRIVATE VOID   ReleaseReadBuf(PVOLINFO pVolInfo);
@@ -212,8 +211,7 @@ USHORT ReadSector2(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbD
 APIRET rc = ERROR_PROTECTION_VIOLATION,rc2 = NO_ERROR;
 USHORT usSectors;
 USHORT usIndex;
-PBYTE pbSectors;
-//static BYTE pbSect[0x10000];
+PBYTE pbSectors=NULL;
 BOOL fFromCache;
 BOOL fSectorInCache;
 USHORT usCBIndex;
@@ -224,6 +222,13 @@ char far *p;
       {
       FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
          ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
+      return ERROR_SECTOR_NOT_FOUND;
+      }
+
+   if( ulSector < pVolInfo->ulStartOfData )
+      {
+      Message("FAT32: ERROR: Sector %ld does not exist on disk %c:",
+         ulSector, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
 
@@ -247,54 +252,26 @@ char far *p;
    if (fFromCache)
       return 0;
 
-#if 0
-   if (f32Parms.fMessageActive & LOG_CACHE)
-      {
-      if (ulSector > pVolInfo->ulStartOfData)
-         Message("Cluster %lu not found in cache!",
-            (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
-      }
-#endif
-   //pbSectors = NULL;
-   if (( ulSector >= pVolInfo->ulStartOfData ) &&
-       !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
+   if (!(usIOMode & DVIO_OPNCACHE) && (nSectors < pVolInfo->usRASectors))
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      //pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
+      pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
       fRASectors = TRUE;
-      pbSectors = pbSect;
       }
-   //if (!pbSectors)
    if (!fRASectors)
       {
       pbSectors = pbData;
       usSectors = nSectors;
       }
 
-   /* check bad cluster (moved to ReadBlock) */
-   /* if( ulSector >= pVolInfo->ulStartOfData )
-   {
-        ULONG ulStartCluster = Sector2Cluster( ulSector );
-        ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
-        ULONG ulNextCluster = 0;
-        ULONG ulCluster;
-
-        for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
-        {
-            ulNextCluster = GetNextCluster2( pVolInfo, NULL, ulCluster );
-            if( ulNextCluster == pVolInfo->ulFatBad )
-                break;
-        }
-
-        if( ulNextCluster == pVolInfo->ulFatBad )
-        {
-            usSectors = ( ulStartCluster != ulCluster ) ?
-                ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
-        }
-   } */
-
+   if (!pbSectors)
+      {
+      Message("FAT32: ERROR: No Memory");
+      return ERROR_NOT_ENOUGH_MEMORY;
+      }
+      
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();
    rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
@@ -344,15 +321,14 @@ char far *p;
           }
        }
 
-    //if (!rc && pbSectors != pbData)
     if (!rc && fRASectors)
        {
        f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
        memcpy(pbData, pbSectors, min( usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
        }
 
-   //if (pbSectors != pbData)
-   //   free(pbSectors);
+   if (pbSectors != pbData)
+      free(pbSectors);
 
    return rc;
 }
