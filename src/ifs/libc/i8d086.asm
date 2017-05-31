@@ -428,10 +428,10 @@ trial           label   near
                 mov     si,ld_k[bp]
                 add     si,ld_m[bp]
                 xor     dx,dx
-                mov     ax,tr-2[si+bp]
+                mov     ax,tr[si+bp-2]
                 mov     dl,tr[si+bp]
                 mov     si,ld_m[bp]
-                div     word ptr d-2[bp+si]
+                div     word ptr d[bp+si-2]
                 test    ax,0ff00h
                 je      trial_ok
                 mov     ax,0ffh

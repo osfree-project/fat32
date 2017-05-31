@@ -74,7 +74,7 @@ INC= include
 # Names of complier, assembler and linker.
 CC = cl -c $(CC_OPT) 
 AS = ml $(AS_OPT)
-LINK = link
+LINK = d:\os2\link.exe
 
 # Implicit rules
 .c.obj:

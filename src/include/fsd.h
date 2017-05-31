@@ -97,8 +97,8 @@ struct	sffsi {
     unsigned short  sfi_type;	    /* use with STYPE_ */
     unsigned long   sfi_pPVDBFil;   /* performance counter data block pointer */
     unsigned char   sfi_DOSattr;    /* DOS file attributes  D/S/A/H/R  */
-    long long       sfi_sizel;      /* size of file */
-    long long       sfi_positionl;  /* read/write pointer */
+    LONGLONG        sfi_sizel;      /* size of file */
+    LONGLONG        sfi_positionl;  /* read/write pointer */
 };  /* sffsi */
 
 /* sfi_tstamps flags */
@@ -390,7 +390,7 @@ int far pascal _loadds
 FS_CHGFILEPTRL(
     struct sffsi far *,		/* psffsi	*/
     struct sffsd far *,		/* psffsd	*/
-    long long,			/* offset	*/
+    LONGLONG,			/* offset	*/
     unsigned short,		/* type		*/
     unsigned short		/* IOflag	*/
 );
@@ -728,7 +728,7 @@ int far pascal _loadds
 FS_NEWSIZEL(
     struct sffsi far *,		/* psffsi	*/
     struct sffsd far *,		/* psffsd	*/
-    unsigned long long,		/* len		*/
+    ULONGLONG,          	/* len		*/
     unsigned short		/* IOflag	*/
 );
 

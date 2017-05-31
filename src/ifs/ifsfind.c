@@ -94,9 +94,6 @@ ULONG ulNeededSpace;
 USHORT usEntriesWanted;
 EAOP   EAOP;
 PROCINFO ProcInfo;
-ULONG  ulSector;
-USHORT usSectorsRead;
-USHORT usSectorsPerBlock;
 DIRENTRY1 StreamEntry;
 
    _asm push es;
@@ -229,8 +226,8 @@ DIRENTRY1 StreamEntry;
    if (ulCluster == 1)
       {
       // FAT12/FAT16 root directory size (contiguous)
-      USHORT usRootDirSize = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
-         (pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
+      USHORT usRootDirSize = (USHORT)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
+         (USHORT)(pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
       usNumClusters = (pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
          (pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
          usRootDirSize + 1 : usRootDirSize;
@@ -252,7 +249,7 @@ DIRENTRY1 StreamEntry;
          }
       }
 
-   usNumBlocks = usNumClusters * (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+   usNumBlocks = usNumClusters * (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
    ulNeededSpace = sizeof (FINFO) + (usNumBlocks - 1) * sizeof (ULONG);
    ulNeededSpace += pVolInfo->ulBlockSize;
 
@@ -279,7 +276,7 @@ DIRENTRY1 StreamEntry;
       }
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
-   pFindInfo->pInfo->usEntriesPerBlock = pVolInfo->ulBlockSize / sizeof (DIRENTRY);
+   pFindInfo->pInfo->usEntriesPerBlock = (USHORT)(pVolInfo->ulBlockSize / sizeof (DIRENTRY));
    pFindInfo->pInfo->usBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
    pFindInfo->pInfo->usTotalBlocks = usNumBlocks;
@@ -741,10 +738,28 @@ USHORT usBlockIndex;
                   pfFind->fdateLastAccess = pDir->wAccessDate;
                   pfFind->fdateLastWrite = pDir->wLastWriteDate;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+#ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
                      (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                  pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+                  pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfFind->cbFileAlloc = iAdd(pfFind->cbFileAlloc, llRest);
+                  }
+#endif
 
                   pfFind->attrFile = (USHORT)pDir->bAttr;
                   pfFind->cchName = (BYTE)strlen(szLongName);
@@ -816,10 +831,28 @@ USHORT usBlockIndex;
                   pfFind->fdateLastAccess = pDir->wAccessDate;
                   pfFind->fdateLastWrite = pDir->wLastWriteDate;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+#ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
-                     (pfFind->cbFile / pVolInfo->ulClusterSize)  +
-                     (pfFind->cbFile % pVolInfo->ulClusterSize ? 1 : 0);
+                     (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                  pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+                  pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfFind->cbFileAlloc = iAdd(pfFind->cbFileAlloc, llRest);
+                  }
+#endif
                   if (!f32Parms.fEAS || !HAS_EAS( pDir->fEAS ))
                      /* HACK: what we need to return here
                         is the FEALIST size of the list
@@ -878,7 +911,7 @@ USHORT usBlockIndex;
                   //
                   if (usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                        szLongName, &ulFeaSize))
-                  if (*pcbData < (ulFeaSize + strlen(szLongName) + 2))
+                  if ((ULONG)*pcbData < (ulFeaSize + strlen(szLongName) + 2))
                      return ERROR_BUFFER_OVERFLOW;
 
                   pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
@@ -951,10 +984,28 @@ USHORT usBlockIndex;
                   pfFind->fdateLastAccess = pDir->wAccessDate;
                   pfFind->fdateLastWrite = pDir->wLastWriteDate;
                   pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+#ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->ulFileSize;
                   pfFind->cbFileAlloc =
                      (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                  pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+                  pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfFind->cbFileAlloc = iAdd(pfFind->cbFileAlloc, llRest);
+                  }
+#endif
                   pfFind->attrFile = (USHORT)pDir->bAttr;
                   //*ppData = (PBYTE)(pfFind + 1);
                   *ppData = ((PBYTE)pfFind + FIELDOFFSET(FILEFNDBUF3L,cchName));
@@ -963,7 +1014,7 @@ USHORT usBlockIndex;
                   //
                   if (usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                        szLongName, &ulFeaSize))
-                  if (*pcbData < (ulFeaSize + strlen(szLongName) + 2))
+                  if ((ULONG)*pcbData < (ulFeaSize + strlen(szLongName) + 2))
                      return ERROR_BUFFER_OVERFLOW;
 
                   pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
@@ -1047,8 +1098,6 @@ USHORT usNameLen;
 USHORT usNameHash;
 USHORT usBlockIndex;
 USHORT usNumSecondary;
-ULONGLONG cbFile;
-ULONGLONG cbFileAlloc;
 BYTE fEAS;
 USHORT attrFile;
 
@@ -1234,7 +1283,7 @@ USHORT attrFile;
                   //
                   if (usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                        szLongName, &ulFeaSize))
-                  if (*pcbData < (ulFeaSize + strlen(szLongName) + 2))
+                  if ((ULONG)*pcbData < (ulFeaSize + strlen(szLongName) + 2))
                      return ERROR_BUFFER_OVERFLOW;
 
                   pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
@@ -1306,7 +1355,7 @@ USHORT attrFile;
                   //
                   if (usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
                        szLongName, &ulFeaSize))
-                  if (*pcbData < (ulFeaSize + strlen(szLongName) + 2))
+                  if ((ULONG)*pcbData < (ulFeaSize + strlen(szLongName) + 2))
                      return ERROR_BUFFER_OVERFLOW;
 
                   pFindInfo->pInfo->EAOP.fpFEAList = (PFEALIST)*ppData;
@@ -1375,38 +1424,68 @@ USHORT attrFile;
             if (usLevel == FIL_STANDARD)
                {
                PFILEFNDBUF pfFind = (PFILEFNDBUF)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+#endif
                }
             else if (usLevel == FIL_STANDARDL)
                {
                PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
+               iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+#endif
                }
             else if (usLevel == FIL_QUERYEASIZE)
                {
                PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+#endif
                }
             else if (usLevel == FIL_QUERYEASIZEL)
                {
                PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
+               iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+#endif
                }
             else if (usLevel == FIL_QUERYEASFROMLIST)
                {
                PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
+               pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+#endif
                }
             else if (usLevel == FIL_QUERYEASFROMLISTL)
                {
                PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
+#ifdef INCL_LONGLONG
                pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
                pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+#else
+               iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
+               iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+#endif
                }
             }
          else if (pDir->bEntryType == ENTRY_TYPE_FILE)
@@ -1440,7 +1519,7 @@ USHORT attrFile;
                   pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
 
                   pfFind->attrFile = pDir->u.File.usFileAttr;
-                  attrFile = pfFind->attrFile;
+                  attrFile = (USHORT)pfFind->attrFile;
                   }
                else if (usLevel == FIL_QUERYEASIZE)
                   {
@@ -1466,12 +1545,11 @@ USHORT attrFile;
                   pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
 
                   pfFind->attrFile = pDir->u.File.usFileAttr;
-                  attrFile = pfFind->attrFile;
+                  attrFile = (USHORT)pfFind->attrFile;
                   }
                else if (usLevel == FIL_QUERYEASFROMLIST)
                   {
                   PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
-                  ULONG ulFeaSize;
 
                   pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
                   pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
@@ -1485,7 +1563,6 @@ USHORT attrFile;
                else if (usLevel == FIL_QUERYEASFROMLISTL)
                   {
                   PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
-                  ULONG ulFeaSize;
 
                   pfFind->fdateCreation = GetDate1(pDir->u.File.ulCreateTimestp);
                   pfFind->ftimeCreation = GetTime1(pDir->u.File.ulCreateTimestp);
@@ -1494,7 +1571,7 @@ USHORT attrFile;
                   pfFind->ftimeLastWrite = GetTime1(pDir->u.File.ulLastModifiedTimestp);
 
                   pfFind->attrFile = pDir->u.File.usFileAttr;
-                  attrFile = pfFind->attrFile;
+                  attrFile = (USHORT)pfFind->attrFile;
                   }
                }
             memset(szLongName, 0, sizeof szLongName);
@@ -1619,9 +1696,9 @@ FDATE GetDate1(TIMESTAMP ts)
 {
    FDATE date = {0};
 
-   date.day = ts.day;
-   date.month = ts.month;
-   date.year = ts.year;
+   date.day = (USHORT)ts.day;
+   date.month = (USHORT)ts.month;
+   date.year = (USHORT)ts.year;
 
    return date;
 }
@@ -1630,9 +1707,9 @@ FTIME GetTime1(TIMESTAMP ts)
 {
    FTIME time = {0};
 
-   time.twosecs = ts.seconds / 2;
-   time.minutes = ts.minutes;
-   time.hours = ts.hour;
+   time.twosecs = (USHORT)ts.seconds / 2;
+   time.minutes = (USHORT)ts.minutes;
+   time.hours = (USHORT)ts.hour;
 
    return time;
 }
@@ -1728,11 +1805,11 @@ int far pascal _loadds FS_FINDNOTIFYNEXT(
 BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usBlockIndex)
 {
 USHORT usIndex;
-USHORT usBlocksPerCluster = pVolInfo->ulClusterSize / pVolInfo->ulBlockSize;
+USHORT usBlocksPerCluster = (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
 USHORT usClusterIndex = usBlockIndex / usBlocksPerCluster;
 ULONG  ulBlock = usBlockIndex % usBlocksPerCluster;
-USHORT usSectorsPerBlock = pVolInfo->SectorsPerCluster /
-         (pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+USHORT usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
+         (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
 USHORT usSectorsRead;
 ULONG  ulSector;
 CHAR   fRootDir = FALSE;
@@ -1754,7 +1831,7 @@ CHAR   fRootDir = FALSE;
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
             usIndex * pVolInfo->SectorsPerCluster;
-         usSectorsRead = usIndex * pVolInfo->SectorsPerCluster;
+         usSectorsRead = usIndex * (USHORT)pVolInfo->SectorsPerCluster;
          }
       for (usIndex = pFindInfo->pInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {

@@ -26,6 +26,7 @@
 PRIVATE ULONG ulSemEmergencyTrigger=0UL;
 PRIVATE ULONG ulSemEmergencyDone   =0UL;
 PRIVATE ULONG ulDummySem           =0UL;
+PRIVATE ULONG ulSemRWRead          =0UL;
 
 PRIVATE volatile USHORT  usOldestEntry = 0xFFFF;
 PRIVATE volatile USHORT  usNewestEntry = 0xFFFF;
@@ -39,7 +40,10 @@ PRIVATE CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))pCacheBase2[MAX_SECTORS] = 
 ULONG          _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
 PRIVATE USHORT _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
 PRIVATE BOOL   _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
+PRIVATE BYTE _based(_segname("ifscache_sect_DATA")) pbSect[0x10000]  = {0};
 
+PRIVATE USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName);
+PRIVATE VOID   ReleaseReadBuf(PVOLINFO pVolInfo);
 PRIVATE BOOL   IsSectorInCache(PVOLINFO pVolInfo, ULONG ulSector, PBYTE bSector);
 PRIVATE BOOL   fStoreSector(PVOLINFO pVolInfo, ULONG ulSector, PBYTE pbSector, BOOL fDirty);
 PRIVATE PVOID  GetAddress(ULONG ulEntry);
@@ -53,6 +57,8 @@ PRIVATE VOID   LockBuffer(PCACHEBASE pBase);
 PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE USHORT usEmergencyFlush(VOID);
 PRIVATE USHORT VerifyOn(VOID);
+USHORT GetBufAccess(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseBuf(PVOLINFO pVolInfo);
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 
 PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
@@ -207,7 +213,7 @@ APIRET rc = ERROR_PROTECTION_VIOLATION,rc2 = NO_ERROR;
 USHORT usSectors;
 USHORT usIndex;
 PBYTE pbSectors;
-static BYTE pbSect[0x10000];
+//static BYTE pbSect[0x10000];
 BOOL fFromCache;
 BOOL fSectorInCache;
 USHORT usCBIndex;
@@ -358,7 +364,7 @@ USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbDa
 {
 USHORT rc = ERROR_PROTECTION_VIOLATION;
 
-   if (!GetFatAccess(pVolInfo, "ReadSector"))
+   if (!GetFatAccess(pVolInfo, "ReadSector")) // && !GetReadAccess(pVolInfo, "ReadSector"))
       {
       rc = ReadSector2(pVolInfo, ulSector, nSectors, pbData, usIOMode);
       ReleaseFat(pVolInfo, "ReadSector");
@@ -1100,12 +1106,37 @@ USHORT VerifyOn(VOID)
    UCHAR fVerifyOn = 0;
    USHORT ret = 0;
 
-   Message("VerifyOn Pre-Invocation");
+   //Message("VerifyOn Pre-Invocation");
    rc = FSH_QSYSINFO(4,&fVerifyOn,sizeof(fVerifyOn));
    if (rc == NO_ERROR)
       {
       ret = (fVerifyOn ? DVIO_OPVERIFY: 0);
       }
-   Message("VerifyOn Post-Invocation");
+   //Message("VerifyOn Post-Invocation");
    return ret;
+}
+
+USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName)
+{
+USHORT rc;
+
+   pVolInfo = pVolInfo;
+
+   Message("GetReadAccess: %s", pszName);
+   rc = SemRequest(&ulSemRWRead, TO_INFINITE, pszName);
+   if (rc)
+      {
+      Message("ERROR: SemRequest GetReadAccess Failed, rc = %d!", rc);
+      CritMessage("FAT32: SemRequest GetReadAccess Failed, rc = %d!", rc);
+      Message("GetReadAccess Failed for %s, rc = %d", pszName, rc);
+      return rc;
+      }
+   return 0;
+}
+
+VOID ReleaseReadBuf(PVOLINFO pVolInfo)
+{
+   pVolInfo = pVolInfo;
+   Message("ReleaseReadBuf");
+   FSH_SEMCLEAR(&ulSemRWRead);
 }

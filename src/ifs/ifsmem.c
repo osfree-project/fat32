@@ -347,7 +347,6 @@ VOID GetMemAccess(VOID)
 VOID ReleaseMemAccess(VOID)
 {
     APIRET rc;
-    USHORT usCount;
 
     if (fLocked)
     {

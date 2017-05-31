@@ -33,6 +33,6 @@
 
 //#pragma data_seg ( DATA );
 
-const char __based(__segname("_CONST")) __Alphabet[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char _based(_segname("_CONST")) __Alphabet[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 //#pragma data_seg ( );

@@ -22,6 +22,12 @@ typedef struct _FTIME {
 
 #define _FAR_
 
+#if defined(_MSC_VER) && defined(__OS2__) && defined(__16BITS__)
+#define FIL_STANDARDL         11
+#define FIL_QUERYEASIZEL      12
+#define FIL_QUERYEASFROMLISTL 13
+#endif
+
 #if defined(__WATCOM) && defined(__16BITS__)
 /* File info levels: Dos...PathInfo only */
 #define FIL_STANDARD           1   /* Info level 1, standard file info */
@@ -49,7 +55,13 @@ typedef struct _FILESTATUS2 {  /* fsts2 */
     ULONG   cbList;
 } FILESTATUS2;
 typedef FILESTATUS2 FAR *PFILESTATUS2;
+#pragma pack()
 
+#define ERROR_EA_FILE_CORRUPT   276     /* MSG%ERROR_EAS_CORRUPT */
+#endif
+
+#if (defined(_MSC_VER) || defined(__WATCOM)) && defined(__OS2__) && defined(__16BITS__)
+#pragma pack(2)
 typedef struct _FILESTATUS3L     /* fsts3L */
 {
    FDATE    fdateCreation;
@@ -78,9 +90,7 @@ typedef struct _FILESTATUS4L      /* fsts4L */
    ULONG    cbList;
 } FILESTATUS4L;
 typedef FILESTATUS4L FAR *PFILESTATUS4L;
-#pragma pack()
-
-#define ERROR_EA_FILE_CORRUPT   276     /* MSG%ERROR_EAS_CORRUPT */
+#pragma pack(2)
 #endif
 
 #ifdef __OS2__
