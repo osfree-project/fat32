@@ -454,6 +454,13 @@ BOOL pascal far ReleaseLightLock(PSPINLOCK ControlVar);
 */
 #define GetCurTime() (*pGITicks)
 
+#define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
+                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->SectorsPerCluster ))
+
+#define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
+                                         pVolInfo->SectorsPerCluster + 2 ))
+
+
 
 #define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + SECTOR_SIZE * 8 + 10000)
 

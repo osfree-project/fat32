@@ -6740,35 +6740,21 @@ ULONG  tStart = GetCurTime();
 
 ULONG GetChainSize(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
 {
-ULONG ulCount;
-ULONG ulSector;
-USHORT usSectorsRead;
-USHORT usSectorsPerBlock;
+ULONG ulCount=0;
+USHORT usSectorsRead=0;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("GetChainSize");
 
-   if (ulCluster == 1)
-      {
-      // FAT12/FAT16 root directory starting sector
-      ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
-         pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
-         (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
-      usSectorsRead = 0;
-      }
-
    if (GetFatAccess(pVolInfo, "GetChainSize"))
       return 0L;
 
-   ulCount = 0;
    while (ulCluster && ulCluster != pVolInfo->ulFatEof)
       {
       ulCount++;
       if (ulCluster == 1)
          {
          // reading the root directory in case of FAT12/FAT16
-         ulSector += pVolInfo->SectorsPerCluster;
          usSectorsRead += pVolInfo->SectorsPerCluster;
          if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
             pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))

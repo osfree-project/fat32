@@ -197,12 +197,6 @@ ULONG ulSize;
 }
 
 
-#define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
-                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->SectorsPerCluster ))
-
-#define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
-                                         pVolInfo->SectorsPerCluster + 2 ))
-
 /******************************************************************
 *
 ******************************************************************/
