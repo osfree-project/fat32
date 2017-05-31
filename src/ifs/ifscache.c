@@ -203,7 +203,7 @@ ULONG ulSize;
 ******************************************************************/
 USHORT ReadSector2(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
-APIRET rc,rc2;
+APIRET rc = ERROR_PROTECTION_VIOLATION,rc2 = NO_ERROR;
 USHORT usSectors;
 USHORT usIndex;
 PBYTE pbSectors;
@@ -356,7 +356,7 @@ char far *p;
 ******************************************************************/
 USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
-USHORT rc;
+USHORT rc = ERROR_PROTECTION_VIOLATION;
 
    if (!GetFatAccess(pVolInfo, "ReadSector"))
       {
@@ -372,7 +372,7 @@ USHORT rc;
 ******************************************************************/
 USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
-APIRET rc,rc2;
+APIRET rc = ERROR_PROTECTION_VIOLATION,rc2 = NO_ERROR;
 USHORT usSectors = nSectors;
 USHORT usIndex;
 BOOL   fDirty;

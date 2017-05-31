@@ -47,7 +47,6 @@ static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 static PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
 static PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName, PUSHORT pusNameHash);
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
-USHORT ReadSector2(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 static ULONG SetNextCluster2(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
 static PDIRENTRY CompactDir(PDIRENTRY pStart, ULONG ulSize, USHORT usNeededEntries);
 static PDIRENTRY1 CompactDir1(PDIRENTRY1 pStart, ULONG ulSize, USHORT usEntriesNeeded);
@@ -3557,7 +3556,7 @@ USHORT rc;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   rc = ReadSector2(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
+   rc = ReadSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
       pVolInfo->pbFatSector, 0);
    if (rc)
       return rc;
@@ -3636,7 +3635,7 @@ USHORT rc;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   rc = ReadSector2(pVolInfo, pVolInfo->ulBmpStartSector + ulSector, 1,
+   rc = ReadSector(pVolInfo, pVolInfo->ulBmpStartSector + ulSector, 1,
       pVolInfo->pbFatBits, 0);
    if (rc)
       return rc;
@@ -4098,7 +4097,7 @@ ULONG ulTotalFree;
 ******************************************************************/
 ULONG GetFreeSpace(PVOLINFO pVolInfo)
 {
-ULONG rc;
+ULONG rc = 0;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
       Message("GetFreeSpace");
@@ -6546,7 +6545,7 @@ ULONG  ulReturn = 0;
          break;
          }
       }
-   //ReleaseFat(pVolInfo);
+   //ReleaseFat(pVolInfo, "GetLastCluster");
    return ulReturn;
 }
 
