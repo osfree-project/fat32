@@ -25,7 +25,7 @@ static BOOL fData = FALSE;
 static BYTE szLost[]="(information lost)\r\n";
 static ULONG ulLogSem = 0UL;
 
-void __cdecl (far *LogPrint)(char far *fmt,...) = 0;
+void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
 // QSINIT/OS4LDR log support
 

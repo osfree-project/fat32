@@ -62,7 +62,6 @@ void _cdecl autocheck(char *args)
   RESULTCODES Result;
   USHORT len = 0;                           /* temp var for filling in buffer*/
   ULONG i;                                  /* loop count                    */
-  SEL   sel;
   char far * temp;
 
   char     drive[4];                        /* drive name ie C:              */
@@ -71,7 +70,6 @@ void _cdecl autocheck(char *args)
   char     boot_sector[512];                /* data area for boot sector     */
   ULONG    rc =0;
   USHORT   bytes_read;                      /* bytes read by dosread         */
-  BOOTSECT *boot_rec;                       /* extended boot structure       */
   UCHAR    type;
 
   fRing3 = TRUE;

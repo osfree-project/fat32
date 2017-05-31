@@ -3,17 +3,18 @@
 !ENDIF
 
 !IF $(DEBUG)
-COPTS=/Od /Zi
-AOPTS=/Zi
+COPTS=/Od /Zi /J /D__16BITS__ /D__OS2__
+AOPTS=/Zi /Ilibc
 LOPTS=/COD
 L32OPTS=/DE
 !ELSE
-COPTS=/Ox /Gr
-AOPTS=
+COPTS=/Gr /J /D__16BITS__ /D__OS2__ # /Ox
+AOPTS=/Ilibc
 LOPTS=/E:2
 L32OPTS=/E:2
 !ENDIF
 
+LINK=$(BOOTDRIVE)\os2\link386.exe
 CFLAGS=/nologo $(COPTS) /G2s /Zl /Alfu /Zp1 /W3 /c /Fc%|dpfF.lst
 AFLAGS=/nologo $(AOPTS) /c /Sa /Sn /Fl%|dpfF.lst
 LFLAGS=/NOL $(LOPTS) /MAP /FAR /PACKC /PACKD /NOD /A:512
@@ -31,28 +32,40 @@ L32FLAGS=/NOL /BAT $(L32OPTS) /MAP /NOP /NOE /NOD
 .map.sym:
     @mapsym %s >nul 2>&1
 
-ALL: fat32.ifs fat32.sym
+all: fat32.ifs fat32.sym
 
-FAT32OBJS=FAT32.OBJ IFSMOUNT.OBJ IFSFIND.OBJ IFSDIR.OBJ IFSATTR.OBJ\
-          IFSFILE.OBJ IFSLOG.OBJ IFSCACHE.OBJ IFSSWAP.OBJ IFSMEM.OBJ\
-          IFSEA.OBJ IFSLANG.OBJ # HELPERS.OBJ
+FAT32OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
+          ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj\
+          ifsea.obj ifslang.obj ifsachk.obj\
+          mem.obj alphabet.obj i8m086.obj i8d086.obj # helpers.obj
 
-FAT32.IFS : $(FAT32OBJS) ..\lib\fat32.def
-    link $(LFLAGS) $(FAT32OBJS) ,$@,, $(DDKTOOLS)\toolkits\msc60\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\FAT32.DEF
+fat32.ifs : $(FAT32OBJS) ..\lib\fat32.def makefile.msc
+    @$(LINK) $(L32FLAGS) $(FAT32OBJS) ,$@,, $(DDKTOOLS)\toolkits\msc60\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\fat32.def
 
-FAT32.OBJ :   FAT32.C     ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSMOUNT.OBJ : IFSMOUNT.C ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSFIND.OBJ : IFSFIND.C   ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSDIR.OBJ  : IFSDIR.C    ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSFILE.OBJ  : IFSFILE.C  ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSLOG.OBJ  : IFSLOG.C    ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSCACHE.OBJ : IFSCACHE.C ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSSWAP.OBJ : IFSSWAP.C   ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSMEM.OBJ : IFSMEM.C     ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSEA.OBJ  : IFSEA.C      ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSLANG.OBJ: IFSLANG.C    ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-IFSATTR.OBJ: IFSATTR.C    ..\include\FAT32IFS.H ..\include\FAT32DEF.H ..\include\portable.h
-HELPERS.OBJ: HELPERS.ASM
-UFAT32.OBJ : UFAT32.C     ..\include\FAT32DEF.H
+fat32.obj:    fat32.c      ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsmount.obj: ifsmount.c   ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsfind.obj:  ifsfind.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsdir.obj:   ifsdir.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsfile.obj:  ifsfile.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifslog.obj:   ifslog.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifscache.obj: ifscache.c   ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsswap.obj:  ifsswap.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsmem.obj:   ifsmem.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsea.obj:    ifsea.c      ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifslang.obj:  ifslang.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsattr.obj:  ifsattr.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+ifsachk.obj:  ifsachk.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+helpers.obj:  helpers.asm
+ufat32.obj:   ufat32.c     ..\include\fat32def.h
 
-
+mem.obj: libc\mem.c
+    @cl $(CFLAGS) %s
+
+alphabet.obj: libc\alphabet.c
+    @cl $(CFLAGS) %s
+
+i8d086.obj: libc\i8d086.asm
+    @ml $(AFLAGS) %s
+
+i8m086.obj: libc\i8m086.asm
+    @ml $(AFLAGS) %s

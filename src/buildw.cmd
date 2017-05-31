@@ -12,5 +12,5 @@ set BEGINLIBPATH=%toolkit%\dll;%watcom%\binp\dll;\tools\dll
 call %WATCOM%\owsetenv.cmd >nul 2>&1
 call svnrev.cmd
 call envwic.cmd
-wmake -h -f makefile.wcc %1
+wmake -h -f makefile.wcc %1 %2 %3 %4 %5 %6 %7 %8 %9
 endlocal

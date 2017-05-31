@@ -30,7 +30,7 @@ ULONG ulDirCluster;
 PSZ   pszFile;
 DIRENTRY DirEntry;
 DIRENTRY DirNew;
-DIRENTRY1 DirStream, DirEntryStream, DirEntryStreamNew;
+DIRENTRY1 DirStream, DirEntryStream;
 SHOPENINFO DirSHInfo;
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT rc;
@@ -350,7 +350,11 @@ USHORT rc;
 
                if (!(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen;
+#else
+                  pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen.ulLo;
+#endif
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -378,10 +382,28 @@ USHORT rc;
 
                if (!(DirEntry.bAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntry.ulFileSize;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssignUL(&pfStatus->cbFile, DirEntry.ulFileSize);
+                  pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+                  pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfStatus->cbFileAlloc = iAdd(pfStatus->cbFileAlloc, llRest);
+                  }
+#endif
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
@@ -397,10 +419,28 @@ USHORT rc;
 
                if (!(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssign(&pfStatus->cbFile, *(PLONGLONG)&DirEntryStream.u.Stream.ullValidDataLen);
+                  pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+                  pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfStatus->cbFileAlloc = iAdd(pfStatus->cbFileAlloc, llRest);
+                  }
+#endif
                   }
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;
@@ -443,7 +483,11 @@ USHORT rc;
 
                if (!(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen;
+#else
+                  pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen.ulLo;
+#endif
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -478,10 +522,28 @@ USHORT rc;
                pfStatus->ftimeLastWrite = DirEntry.wLastWriteTime;
                if (!(DirEntry.bAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntry.ulFileSize;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssignUL(&pfStatus->cbFile, DirEntry.ulFileSize);
+                  pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+                  pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfStatus->cbFileAlloc = iAdd(pfStatus->cbFileAlloc, llRest);
+                  }
+#endif
                   }
 
                pfStatus->attrFile = (USHORT)DirEntry.bAttr;
@@ -497,10 +559,28 @@ USHORT rc;
 
                if (!(pDirEntry->u.File.usFileAttr & FILE_DIRECTORY))
                   {
+#ifdef INCL_LONGLONG
                   pfStatus->cbFile = DirEntryStream.u.Stream.ullValidDataLen;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+                  {
+                  LONGLONG llRest;
+
+                  iAssign(&pfStatus->cbFile, *(PLONGLONG)&DirEntryStream.u.Stream.ullValidDataLen);
+                  pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+                  pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
+                  llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
+
+                  if (iNeqUL(llRest, 0))
+                     iAssignUL(&llRest, pVolInfo->ulClusterSize);
+                  else
+                     iAssignUL(&llRest, 0);
+
+                  pfStatus->cbFileAlloc = iAdd(pfStatus->cbFileAlloc, llRest);
+                  }
+#endif
                   }
 
                pfStatus->attrFile = (USHORT)pDirEntry->u.File.usFileAttr;

@@ -15,7 +15,7 @@
 #include "fat32ifs.h"
 
 VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ);
-ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONGLONG ullOffset);
+ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, LONGLONG llOffset);
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo);
 
 #define PSIZE           4096
@@ -124,20 +124,33 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
 )
 {
    int rc;
+   ULONGLONG ullSize;
+
+#ifdef INCL_LONGLONG
+   ullSize = (ULONGLONG)ulSize;
+#else
+   AssignUL(&ullSize, ulSize);
+#endif
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, lWantContig);
 
    _asm push es;
 
-   rc = FS_NEWSIZEL(psffsi, psffsd, ulSize, 0x10);
+   rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x10);
 
    if (rc == 0)
       {
       psffsi->sfi_size = ulSize;
 
       if (f32Parms.fLargeFiles)
+         {
+#ifdef INCL_LONGLONG
          psffsi->sfi_sizel = (ULONGLONG)ulSize;
+#else
+         iAssignUL(&psffsi->sfi_sizel, ulSize);
+#endif
+         }
       }
 
    if (f32Parms.fMessageActive & LOG_FS)
@@ -159,7 +172,7 @@ int far pascal _loadds FS_DOPAGEIO(
 {
    POPENINFO       pOpenInfo;
    PVOLINFO        pVolInfo;
-   ULONG           ulStartCluster;
+   //ULONG           ulStartCluster;
    ULONG           fsbno;  /* starting block number to read/write */
    struct PageCmd  *pgcmd; /* pointer to current command in list */
    Req_List_Header *rlhp;  /* pointer to request list header */
@@ -202,7 +215,7 @@ int far pascal _loadds FS_DOPAGEIO(
    rlhp->Block_Dev_Unit = pVolInfo->bUnit;
 
    for (i = 0, pgcmd = pPageCmdList->PageCmdList;
-        i < pPageCmdList->OpCount;
+        i < (int)pPageCmdList->OpCount;
         i++, pgcmd++)
       {
       /* Fill in request header.
@@ -248,7 +261,7 @@ int far pascal _loadds FS_DOPAGEIO(
     * Set return value to error code from first failing command.
     */
    rc = 0;
-   for (i = 0; i < pPageCmdList->OpCount; i++)
+   for (i = 0; i < (int)pPageCmdList->OpCount; i++)
       {
       pgcmd = &pPageCmdList->PageCmdList[i];
       rhp = &pgreq.rgReq[i].pb.RqHdr;
@@ -295,8 +308,14 @@ int far pascal _loadds FS_SETSWAP(
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo)
 {
    ULONG ulCluster;
+   LONGLONG llOffset;
    //ULONG ulClusterSize = pVolInfo->ulClusterSize;
    //int i;
+#ifdef INCL_LONGLONG
+   llOffset = (LONGLONG)ulOffset;
+#else
+   iAssignUL(&llOffset, ulOffset);
+#endif
 
    // get cluster at the ulOffset offset
    /* for (i = 0, ulCluster = ulStartCluster;
@@ -308,7 +327,7 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
       } */
 
    // get cluster number from file offset
-   ulCluster = PositionToOffset(pVolInfo, pOpenInfo, ulOffset);
+   ulCluster = PositionToOffset(pVolInfo, pOpenInfo, llOffset);
 
    if (ulCluster == pVolInfo->ulFatEof)
        return ERROR_SECTOR_NOT_FOUND;
@@ -355,11 +374,11 @@ VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ)
       if (ulIndex + 1 < pRQ->rlh.Count)
          pPB->RqHdr.Length = sizeof (REQUEST);
 
-      pPB->RqHdr.Head_Offset   = (USHORT)pPB - (USHORT)pRLH;
+      pPB->RqHdr.Head_Offset   = OFFSETOF(pPB) - OFFSETOF(pRLH);
       }
 
    usSeg = SELECTOROF(pRQ);
-   usOff = (USHORT)pRQ + offsetof(RQLIST, rlh);
+   usOff = OFFSETOF(pRQ) + offsetof(RQLIST, rlh);
 
    pfnStrategy = pVolInfo->pfnStrategy;
 

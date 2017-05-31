@@ -394,7 +394,7 @@ IMPORT ULONG GetFreeSpace(PVOLINFO pVolInfo);
 IMPORT BOOL UpdateFSInfo(PVOLINFO pVolInfo);
 IMPORT BOOL IsDriveLocked(PVOLINFO pVolInfo);
 IMPORT ULONG GetLastCluster(PVOLINFO pVolInfo, ULONG ulCluster, PDIRENTRY1 pDirEntryStream);
-IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, ULONGLONG ullPosition);
+IMPORT ULONG SeekToCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, LONGLONG llPosition);
 IMPORT USHORT usFlushAll(VOID);
 IMPORT USHORT usFlushVolume(PVOLINFO, USHORT, BOOL, BYTE);
 IMPORT BOOL MarkDiskStatus(PVOLINFO pVolInfo, BOOL fClean);

@@ -37,7 +37,6 @@ PFEA pTarFea;
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usModifyEAS for %s", pszFileName);
 
-
    /*
       Do not allow ea's file files with no filename (root)
    */
@@ -71,7 +70,6 @@ PFEA pTarFea;
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("cbList before = %lu", pTarFeal->cbList);
-
 
    pSrcMax = (PBYTE)pSrcFeal + pSrcFeal->cbList;
    pSrcFea = pSrcFeal->list;
@@ -194,7 +192,11 @@ ULONG    ulCluster;
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       *pulSize = DirEntry.ulFileSize;
    else
+#ifdef INCL_LONGLONG
       *pulSize = DirEntryStream.u.Stream.ullValidDataLen;
+#else
+      *pulSize = DirEntryStream.u.Stream.ullValidDataLen.ulLo;
+#endif
 
    rc = 0;
 
@@ -534,6 +536,7 @@ PDIRENTRY1 pNewEntry = (PDIRENTRY1)&NewEntry;
 USHORT rc;
 
 
+   Message("ulDirCluster=%lx, pszFileName=%s, pDirSHInfo=%lx", ulDirCluster, pszFileName, pDirSHInfo);
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, &OldEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
@@ -591,7 +594,7 @@ BOOL fFirst = TRUE;
 
    if ((ulCluster && ulCluster != pVolInfo->ulFatEof) || fCreate)
       {
-      pFEAL = malloc(MAX_EA_SIZE);
+      pFEAL = malloc((size_t)MAX_EA_SIZE);
       if (!pFEAL)
          return ERROR_NOT_ENOUGH_MEMORY;
       memset(pFEAL, 0, (size_t) MAX_EA_SIZE);
@@ -764,11 +767,11 @@ PSHOPENINFO pSHInfo = NULL;
    if (rc)
       return rc;
 
-   usClustersNeeded = (USHORT)pFEAL->cbList / pVolInfo->ulClusterSize;
+   usClustersNeeded = (USHORT)((ULONG)pFEAL->cbList / pVolInfo->ulClusterSize);
    if (pFEAL->cbList % pVolInfo->ulClusterSize)
       usClustersNeeded++;
 
-   usBlocksNeeded = (USHORT)pFEAL->cbList / pVolInfo->ulBlockSize;
+   usBlocksNeeded = (USHORT)((ULONG)pFEAL->cbList / pVolInfo->ulBlockSize);
    if (pFEAL->cbList % pVolInfo->ulBlockSize)
       usBlocksNeeded++;
 
@@ -796,13 +799,21 @@ PSHOPENINFO pSHInfo = NULL;
          }
       else
          {
-         pDirNew->bEntryType = ENTRY_TYPE_FILE;
-         DirStreamNew.bEntryType = ENTRY_TYPE_STREAM_EXT;
          pDirNew->u.File.usFileAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
-         DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
+         DirStreamNew.u.Stream.bAllocPossible = 1;
+         DirStreamNew.u.Stream.bNoFatChain = 0;
+
+#ifdef INCL_LONGLONG
+         DirStreamNew.u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
          DirStreamNew.u.Stream.ullDataLen =
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+         AssignUL(&DirStreamNew.u.Stream.ullValidDataLen, pFEAL->cbList);
+         AssignUL(&DirStreamNew.u.Stream.ullDataLen, 
+            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
+#endif
          }
 
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
@@ -849,10 +860,19 @@ PSHOPENINFO pSHInfo = NULL;
          {
          pDirNew->bEntryType = ENTRY_TYPE_FILE;
          DirStreamNew.bEntryType = ENTRY_TYPE_STREAM_EXT;
-         DirStreamNew.u.Stream.ullValidDataLen = pFEAL->cbList;
+         DirStreamNew.u.Stream.bAllocPossible = 1;
+         DirStreamNew.u.Stream.bNoFatChain = 0;
+#ifdef INCL_LONGLONG
+         DirStreamNew.u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
          DirStreamNew.u.Stream.ullDataLen =
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+#else
+         AssignUL(&DirStreamNew.u.Stream.ullValidDataLen, pFEAL->cbList);
+         AssignUL(&DirStreamNew.u.Stream.ullDataLen, 
+            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
+#endif
          }
       rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
            &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL, 0);

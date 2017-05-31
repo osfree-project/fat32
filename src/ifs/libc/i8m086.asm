@@ -201,14 +201,14 @@ u4mu4           label   near
         push    dx              ; hi:cx*si2             -16[bp]
         mov     ax,odx[bp]      ; (3)
         mul     word ptr ss:2[si]       ; dx*si2
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     -16[bp],bx
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     [bp-16],bx
         mov     ax,ocx[bp]      ; (4)
         mul     word ptr ss:[si]        ; cx*si0
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     -16[bp],bx
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     [bp-16],bx
         pop     ax
         pop     bx
         pop     cx
@@ -252,28 +252,28 @@ u6mu6           label   near
         push    dx              ; hi:dx*si4     -16[bp]
         mov     ax,odx[bp]      ; (3)
         mul     word ptr ss:2[si]       ; dx*si2
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     word ptr -16[bp],0
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     word ptr [bp-16],0
         mov     ax,ocx[bp]      ; (4)
         mul     word ptr ss:[si]        ; cx*si0
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     word ptr -16[bp],0
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     word ptr [bp-16],0
         mov     ax,ocx[bp]      ; (5)
         mul     word ptr ss:2[si]       ; cx*si2
-        add     -14[bp],ax
-        adc     -16[bp],dx
+        add     [bp-14],ax
+        adc     [bp-16],dx
         mov     ax,obx[bp]      ; (6)
         mul     word ptr ss:[si]        ; bx*si0
-        add     -14[bp],ax
-        adc     -16[bp],dx
+        add     [bp-14],ax
+        adc     [bp-16],dx
         mov     ax,ocx[bp]      ; (7)
         mul     word ptr ss:4[si]       ; cx*si4
-        add     -16[bp],ax
+        add     [bp-16],ax
         mov     ax,obx[bp]      ; (8)
         mul     word ptr ss:2[si]       ; bx*si2
-        add     -16[bp],ax
+        add     [bp-16],ax
         pop     ax
         pop     bx
         pop     cx
@@ -307,34 +307,34 @@ u8mu8           label   near
         push    dx              ; hi:dx*si4     -16[bp]
         mov     ax,odx[bp]      ; (3)
         mul     word ptr ss:2[si]       ; dx*si2
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     word ptr -16[bp],0
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     word ptr [bp-16],0
         mov     ax,ocx[bp]      ; (4)
         mul     word ptr ss:[si]        ; cx*si0
-        add     -12[bp],ax
-        adc     -14[bp],dx
-        adc     word ptr -16[bp],0
+        add     [bp-12],ax
+        adc     [bp-14],dx
+        adc     word ptr [bp-16],0
         mov     ax,ocx[bp]      ; (5)
         mul     word ptr ss:2[si]       ; cx*si2
-        add     -14[bp],ax
-        adc     -16[bp],dx
+        add     [bp-14],ax
+        adc     [bp-16],dx
         mov     ax,obx[bp]      ; (6)
         mul     word ptr ss:[si]        ; bx*si0
-        add     -14[bp],ax
-        adc     -16[bp],dx
+        add     [bp-14],ax
+        adc     [bp-16],dx
         mov     ax,ocx[bp]      ; (7)
         mul     word ptr ss:4[si]       ; cx*si4
-        add     -16[bp],ax
+        add     [bp-16],ax
         mov     ax,obx[bp]      ; (8)
         mul     word ptr ss:2[si]       ; bx*si2
-        add     -16[bp],ax
+        add     [bp-16],ax
         mov     ax,odx[bp]      ; (9)
         mul     word ptr ss:6[si]       ; dx*si6
-        add     -16[bp],ax
+        add     [bp-16],ax
         mov     ax,oax[bp]      ; (10)
         mul     word ptr ss:[si]        ; ax*si0
-        add     -16[bp],ax
+        add     [bp-16],ax
         pop     ax
         pop     bx
         pop     cx

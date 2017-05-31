@@ -4,8 +4,9 @@ rem
 setlocal
 @echo off
 SET DEBUG=0
-SET COMSPEC=D:\OS2\CMD.EXE
-SET OS2_SHELL=D:\OS2\CMD.EXE
+SET BOOTDRIVE=d:
+SET COMSPEC=%BOOTDRIVE%\OS2\CMD.EXE
+SET OS2_SHELL=%BOOTDRIVE%\OS2\CMD.EXE
 SET DDK=f:\ddk
 SET DDKTOOLS=f:\ddktools
 SET TOOLKIT=f:\os2tk45
@@ -18,5 +19,5 @@ SET PATH=%MASM%\BINP;%PATH%
 rem call %IBMC%\bin\csetenv.cmd
 call %MSC%\binp\setenv.cmd
 call svnrev.cmd
-nmake -f makefile.msc
+nmake -f makefile.msc %1 %2 %3 %4 %5 %6 %7 %8 %9
 endlocal

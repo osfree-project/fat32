@@ -305,7 +305,7 @@ int i;
                   // F8     1.44 MB    3.5-inch, 2-sided, 9-sector DS/QD PS/2 diskette
 
                   // predefined floppy formats, no BPB
-                  if (*pBoot != 0xeb && fValidBoot)
+                  if (*(UCHAR *)pBoot != 0xeb && fValidBoot)
                      {
                      pSect0->bpb.BytesPerSector = 0x200;
                      pSect0->bpb.SectorsPerCluster = 1;
@@ -317,7 +317,7 @@ int i;
                      pSect0->bpb.HiddenSectors = 0;
                      }
 
-                  switch (*pBoot)
+                  switch (*(UCHAR *)pBoot)
                      {
                      case 0xf0:
                         pSect0->bpb.MediaDescriptor = 0xf0;
@@ -442,7 +442,11 @@ int i;
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
+#ifdef INCL_LONGLONG
                         pvpfsi->vpi_totsec = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;
+#else
+                        pvpfsi->vpi_totsec = ((PBOOTSECT1)pSect)->ullVolumeLength.ulLo;
+#endif
                         }
                   }
             }
@@ -488,17 +492,22 @@ int i;
          else
             {
             // exFAT case
-            pVolInfo->ulClusterSize =  1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
+            pVolInfo->ulClusterSize =  (ULONG)(1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift);
             pVolInfo->ulClusterSize *= 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
             pVolInfo->BootSect.bpb.BytesPerSector = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
             pVolInfo->SectorsPerCluster = 1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
-            pVolInfo->BootSect.bpb.ReservedSectors = ((PBOOTSECT1)pSect)->ulFatOffset;
+            pVolInfo->BootSect.bpb.ReservedSectors = (USHORT)((PBOOTSECT1)pSect)->ulFatOffset;
             pVolInfo->BootSect.bpb.RootDirStrtClus = ((PBOOTSECT1)pSect)->RootDirStrtClus;
             pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.SectorsPerFat = (USHORT)((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.NumberOfFATs = ((PBOOTSECT1)pSect)->bNumFats;
+#ifdef INCL_LONGLONG
             pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength;  ////
             pVolInfo->BootSect.bpb.HiddenSectors = (ULONG)((PBOOTSECT1)pSect)->ullPartitionOffset; ////
+#else
+            pVolInfo->BootSect.bpb.BigTotalSectors = ((PBOOTSECT1)pSect)->ullVolumeLength.ulLo;  ////
+            pVolInfo->BootSect.bpb.HiddenSectors = ((PBOOTSECT1)pSect)->ullPartitionOffset.ulLo; ////
+#endif
             }
 
          // size of a subcluster block
@@ -514,7 +523,7 @@ int i;
          pVolInfo->fFormatInProgress = FALSE;
 
          if (usDefaultRASectors == 0xFFFF)
-            pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 2;
+            pVolInfo->usRASectors = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 2;
          else
             pVolInfo->usRASectors = usDefaultRASectors;
 
@@ -572,7 +581,11 @@ int i;
                memcpy(pVolInfo->BootSect.FileSystem, "EXFAT   ", 8);
                }
 
+#ifdef INCL_LONGLONG
             pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength; ////
+#else
+            pVolInfo->BootSect.bpb.BigTotalSectors = ((PBOOTSECT1)pSect)->ullVolumeLength.ulLo; ////
+#endif
             pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
             pVolInfo->BootSect.bpb.ExtFlags = 0;
             // force calculating the free space
@@ -601,7 +614,6 @@ int i;
             // exFAT case
             ULONGLONG ullLen;
             ULONG ulChecksum;
-            ULONG ulAllocBmpCluster;
 
             if (((PBOOTSECT1)pSect)->usVolumeFlags & VOL_FLAG_ACTIVEFAT)
                {
@@ -609,12 +621,20 @@ int i;
                }
 
             fGetAllocBitmap(pVolInfo, &pVolInfo->ulAllocBmpCluster, &ullLen);
+#ifdef INCL_LONGLONG
             pVolInfo->ulAllocBmpLen = (ULONG)ullLen;
+#else
+            pVolInfo->ulAllocBmpLen = ullLen.ulLo;
+#endif
             pVolInfo->ulBmpStartSector = pVolInfo->ulStartOfData +
                (pVolInfo->ulAllocBmpCluster - 2) * pVolInfo->SectorsPerCluster;
             pVolInfo->ulCurBmpSector = 0xffffffff;
             fGetUpCaseTbl(pVolInfo, &pVolInfo->ulUpcaseTblCluster, &ullLen, &ulChecksum);
+#ifdef INCL_LONGLONG
             pVolInfo->ulUpcaseTblLen = (ULONG)ullLen;
+#else
+            pVolInfo->ulUpcaseTblLen = ullLen.ulLo;
+#endif
             }
 
          if (fValidBoot)

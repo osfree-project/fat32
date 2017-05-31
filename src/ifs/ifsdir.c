@@ -256,7 +256,7 @@ ULONG    ulBlock;
       goto FS_MKDIREXIT;
       }
 
-   pbCluster = malloc(pVolInfo->ulBlockSize);
+   pbCluster = malloc((size_t)pVolInfo->ulBlockSize);
    if (!pbCluster)
       {
       SetNextCluster( pVolInfo, ulCluster, 0L);
@@ -264,7 +264,7 @@ ULONG    ulBlock;
       goto FS_MKDIREXIT;
       }
 
-   memset(pbCluster, 0, pVolInfo->ulBlockSize);
+   memset(pbCluster, 0, (size_t)pVolInfo->ulBlockSize);
 
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
       {
@@ -283,8 +283,13 @@ ULONG    ulBlock;
       (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
       (pDir1+1)->u.Stream.bAllocPossible = 1;
       (pDir1+1)->u.Stream.bNoFatChain = 0;
+#ifdef INCL_LONGLONG
       (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
       (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
+#else
+      AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
+      AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+#endif
       (pDir1+1)->u.Stream.ulFirstClus = ulCluster;
       }
 
@@ -320,14 +325,14 @@ ULONG    ulBlock;
       pDir->bAttr = FILE_DIRECTORY;
       }
    else
-      memset(pbCluster, 0, pVolInfo->ulBlockSize);
+      memset(pbCluster, 0, (size_t)pVolInfo->ulBlockSize);
 
    rc = WriteBlock( pVolInfo, ulCluster, 0, pbCluster, DVIO_OPWRTHRU);
 
    if (rc)
       goto FS_MKDIREXIT;
 
-   memset(pbCluster, 0, pVolInfo->ulBlockSize);
+   memset(pbCluster, 0, (size_t)pVolInfo->ulBlockSize);
 
    // zero-out remaining blocks
    for (ulBlock = 1; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
@@ -470,7 +475,7 @@ PSHOPENINFO pSHInfo = NULL;
       goto FS_RMDIREXIT;
       }
 
-   pDir = malloc(pVolInfo->ulClusterSize);
+   pDir = malloc((size_t)pVolInfo->ulClusterSize);
    if (!pDir)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;

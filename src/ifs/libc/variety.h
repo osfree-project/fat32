@@ -38,8 +38,8 @@
 //
 
 #ifndef __WATCOMC__
-    // when building with other tools, only include clibext.h
-    #include "clibext.h"
+//    // when building with other tools, only include clibext.h
+//    #include "clibext.h"
 #else
 
 #ifndef _COMDEF_H_INCLUDED
