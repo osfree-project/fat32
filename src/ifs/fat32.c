@@ -7995,11 +7995,12 @@ USHORT rc;
          rc = ModifyDirectory0(pVolInfo, ulDirCluster, usMode, pOld, pNew,
                                pszLongName, usIOMode);
 #ifdef EXFAT
+      else
          rc = ModifyDirectory1(pVolInfo, ulDirCluster, pDirSHInfo, usMode,
                                (PDIRENTRY1)pOld, (PDIRENTRY1)pNew,
                                pStreamOld, pStreamNew, pszLongName, usIOMode);
 #endif
-      ReleaseBuf1(pVolInfo);
+   //   ReleaseBuf1(pVolInfo);
    //   }
 
    return rc;
