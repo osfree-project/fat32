@@ -52,7 +52,9 @@ DIRENTRY DirEntry;
 DIRENTRY1 DirEntryStream;
 POPENINFO pOpenInfo = NULL;
 DIRENTRY1 DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT   usIOMode;
 ULONGLONG size;

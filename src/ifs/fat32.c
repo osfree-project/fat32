@@ -149,8 +149,10 @@ DIRENTRY1 DirStreamEntry;
 DIRENTRY1 TarStreamEntry;
 DIRENTRY1 DirSrcStream;
 DIRENTRY1 DirDstStream;
+#ifdef EXFAT
 SHOPENINFO DirSrcSHInfo, DirDstSHInfo;
 SHOPENINFO SrcSHInfo;
+#endif
 PSHOPENINFO pSrcSHInfo = NULL;
 PSHOPENINFO pDirSrcSHInfo = NULL, pDirDstSHInfo = NULL;
 ULONG    ulSrcCluster;
@@ -520,7 +522,9 @@ DIRENTRY1 DirEntryStream;
 PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
 POPENINFO pOpenInfo = NULL;
 DIRENTRY1 DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 BYTE     szLongName[ FAT32MAXPATH ];
 
@@ -2674,7 +2678,9 @@ USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark)
 {
 ULONG ulDirCluster;
 DIRENTRY1 DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 PSZ   pszFile;
 
@@ -2824,7 +2830,9 @@ DIRENTRY DirNew;
 DIRENTRY1 DirStream, DirStreamNew, DirStreamEntry;
 ULONG ulClustersNeeded;
 ULONG ulClustersUsed;
+#ifdef EXFAT
 SHOPENINFO SHInfo;
+#endif
 PSHOPENINFO pSHInfo = NULL;
 SHOPENINFO DirSHInfo;
 PSHOPENINFO pDirSHInfo = NULL;
@@ -2966,7 +2974,9 @@ POPENINFO pOISrc = NULL;
 POPENINFO pOIDst = NULL;
 DIRENTRY1 DirSrcStream;
 DIRENTRY1 DirDstStream;
+#ifdef EXFAT
 SHOPENINFO DirSrcSHInfo, DirDstSHInfo;
+#endif
 PSHOPENINFO pDirSrcSHInfo = NULL, pDirDstSHInfo = NULL;
 BYTE     szSrcLongName[ FAT32MAXPATH ];
 BYTE     szDstLongName[ FAT32MAXPATH ];
@@ -4114,7 +4124,9 @@ BYTE bMask;
 ******************************************************************/
 BOOL ClusterInUse2(PVOLINFO pVolInfo, ULONG ulCluster)
 {
+#ifdef EXFAT
 ULONG ulBmpSector;
+#endif
 
    if (ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
@@ -4293,7 +4305,9 @@ ULONG  ulSector = 0;
 ULONG  ulBmpSector = 0;
 BOOL   fStartAt2;
 BOOL   fContiguous;
+#ifdef EXFAT
 BOOL   fStatus;
+#endif
 BOOL   fClean;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)
@@ -4530,7 +4544,9 @@ ULONG ulBmpSector = 0;
 ULONG ulLastCluster = 0;
 ULONG  ulCluster = 0;
 ULONG ulNewCluster = 0;
+#ifdef EXFAT
 BOOL fStatus;
+#endif
 USHORT rc;
 
    if (f32Parms.fMessageActive & LOG_FUNCS)

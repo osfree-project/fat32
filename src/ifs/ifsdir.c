@@ -170,9 +170,11 @@ ULONG    ulDirCluster;
 PSZ      pszFile;
 DIRENTRY DirEntry;
 PDIRENTRY pDir;
+#ifdef EXFAT
 PDIRENTRY1 pDir1;
-DIRENTRY1 DirStream;
 SHOPENINFO DirSHInfo;
+#endif
+DIRENTRY1 DirStream;
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT   rc;
 PBYTE    pbCluster;
@@ -386,9 +388,11 @@ USHORT   rc;
 USHORT   usFileCount;
 BYTE     szLongName[ FAT32MAXPATH ];
 DIRENTRY1 StreamEntry, DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
-PSHOPENINFO pDirSHInfo = NULL;
 SHOPENINFO SHInfo;
+#endif
+PSHOPENINFO pDirSHInfo = NULL;
 PSHOPENINFO pSHInfo = NULL;
 
    _asm push es;

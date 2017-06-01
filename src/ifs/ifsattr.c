@@ -31,7 +31,9 @@ PSZ   pszFile;
 DIRENTRY DirEntry;
 DIRENTRY DirNew;
 DIRENTRY1 DirStream, DirEntryStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT rc;
 
@@ -202,7 +204,9 @@ PSZ   pszFile;
 DIRENTRY DirEntry;
 DIRENTRY1 DirEntryStream;
 DIRENTRY1 DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT usNeededSize;
 USHORT rc;

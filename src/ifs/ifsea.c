@@ -406,7 +406,9 @@ PSZ   pszSrcEAName = NULL,
 DIRENTRY SrcEntry, TarEntry;
 DIRENTRY1 TarStreamEntry;
 DIRENTRY1 SrcStreamEntry;
+#ifdef EXFAT
 SHOPENINFO SrcSHInfo;
+#endif
 PSHOPENINFO pSrcSHInfo = NULL;
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
@@ -591,7 +593,9 @@ PBYTE  pszEAName;
 PBYTE pRead;
 USHORT rc;
 DIRENTRY1 StreamEntry;
+#ifdef EXFAT
 SHOPENINFO SHInfo;
+#endif
 PSHOPENINFO pSHInfo = NULL;
 USHORT usClustersUsed;
 USHORT usBlocksUsed;
@@ -773,7 +777,9 @@ DIRENTRY1 DirStreamNew;
 BOOL     fCritical;
 PFEA     pFea, pFeaEnd;
 BOOL fFirst = TRUE;
+#ifdef EXFAT
 SHOPENINFO SHInfo;
+#endif
 PSHOPENINFO pSHInfo = NULL;
 
    if (pFEAL->cbList > MAX_EA_SIZE)
