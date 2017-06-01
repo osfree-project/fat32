@@ -250,11 +250,13 @@ struct extbpb dp;
          pCD->ulFatClean = FAT32_CLEAN_SHUTDOWN;
          break;
 
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
          pCD->ulFatEof   = EXFAT_EOF;
          pCD->ulFatEof2  = EXFAT_EOF2;
          pCD->ulFatBad   = EXFAT_BAD_CLUSTER;
          pCD->ulFatClean = EXFAT_CLEAN_SHUTDOWN;
+#endif
       }
 
    if (pCD->bFatType == FAT_TYPE_FAT32)
@@ -530,8 +532,10 @@ PSZ    pszType;
             pszType = "FAT32";
             break;
 
+#ifdef EXFAT
          case FAT_TYPE_EXFAT:
             pszType = "exFAT";
+#endif
          }
 
       show_message("The type of file system for the disk is %1.\n", 0, 1507, 1, TYPE_STRING, pszType);
@@ -1917,10 +1921,12 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG DataSec;
    ULONG CountOfClusters;
 
+#ifdef EXFAT
    //if (!memcmp(pSect->oemID, "EXFAT   ", 8))
    //   {
    //   return FAT_TYPE_EXFAT;
    //   } /* endif */
+#endif
 
    if (!pSect)
       {
@@ -2038,7 +2044,9 @@ ULONG  ulSector;
          break;
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          ulSector = (ulCluster * 4) / usBlockSize;
       }
 
@@ -2067,7 +2075,9 @@ ULONG GetFatEntriesPerBlock(PCDINFO pCD, USHORT usBlockSize)
          return (ULONG)usBlockSize / 2;
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          return (ULONG)usBlockSize / 4;
       }
 
@@ -2093,7 +2103,9 @@ ULONG ulFatSize = pCD->ulTotalClusters;
          break;
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          ulFatSize *= 4;
       }
 
@@ -2149,7 +2161,9 @@ ULONG GetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, USHORT usBloc
          }
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          {
          ULONG   ulOffset;
          PULONG pulCluster;
@@ -2219,7 +2233,9 @@ void SetFatEntryEx(PCDINFO pCD, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue,
          }
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          {
          ULONG   ulOffset;
          PULONG  pulCluster;

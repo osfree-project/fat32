@@ -2,13 +2,22 @@
 !ERROR ,SPECIFY EITHER DEBUG=0 or DEBUG=1 ON THE NMAKE COMMANDLINE !
 !ENDIF
 
+# whether to enable exFAT support (undef to disable it)
+EXFAT = 1
+
+!ifdef EXFAT
+ADD_DEFS = /DEXFAT
+!else
+ADD_DEFS =
+!endif
+
 !IF $(DEBUG)
-COPTS=/Od /Zi /J /D__16BITS__ /D__OS2__
+COPTS=/Od /Zi /J /D__16BITS__ /D__OS2__ $(ADD_DEFS)
 AOPTS=/Zi /Ilibc
 LOPTS=/COD
 L32OPTS=/DE
 !ELSE
-COPTS=/Gr /J /D__16BITS__ /D__OS2__ # /Ox
+COPTS=/Gr /J /D__16BITS__ /D__OS2__ $(ADD_DEFS) # /Ox
 AOPTS=/Ilibc
 LOPTS=/E:2
 L32OPTS=/E:2

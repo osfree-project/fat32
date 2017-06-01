@@ -58,7 +58,9 @@ UCHAR GetFatType(PBOOTSECT pBoot);
 
 ULONG fat_mask = 0;
 ULONG fat32_mask = 0;
+#ifdef EXFAT
 ULONG exfat_mask = 0;
+#endif
 
 extern PGINFOSEG pGI;
 
@@ -157,6 +159,7 @@ int i;
                goto FS_MOUNT_EXIT;
                }
 
+#ifdef EXFAT
             if ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) &&
                  ((! f32Parms.fExFat) || ! (exfat_mask & (1UL << pvpfsi->vpi_drive))) )
                {
@@ -164,6 +167,7 @@ int i;
                freeseg(pVolInfo);
                goto FS_MOUNT_EXIT;
                }
+#endif
 
             switch (pVolInfo->bFatType)
                {
@@ -188,11 +192,13 @@ int i;
                   pVolInfo->ulFatClean = FAT32_CLEAN_SHUTDOWN;
                   break;
 
+#ifdef EXFAT
                case FAT_TYPE_EXFAT:
                   pVolInfo->ulFatEof   = EXFAT_EOF;
                   pVolInfo->ulFatEof2  = EXFAT_EOF2;
                   pVolInfo->ulFatBad   = EXFAT_BAD_CLUSTER;
                   pVolInfo->ulFatClean = EXFAT_CLEAN_SHUTDOWN;
+#endif
                }
 
             rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
@@ -437,6 +443,7 @@ int i;
                         pvpfsi->vpi_nhead  = pSect->bpb.Heads;
                         }
                   }
+#ifdef EXFAT
                else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
                   {
                      if (fValidBoot)
@@ -449,6 +456,7 @@ int i;
 #endif
                         }
                   }
+#endif
             }
 
          /* continue mount in both cases:
@@ -457,16 +465,24 @@ int i;
          */
          memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
 
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
             pVolInfo->ulActiveFatStart = pSect->bpb.ReservedSectors;
+#ifdef EXFAT
          else
             pVolInfo->ulActiveFatStart = ((PBOOTSECT1)pSect)->ulFatOffset;
+#endif
 
+#ifdef EXFAT
          if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             pVolInfo->ulStartOfData    = ((PBOOTSECT1)pSect)->ulClusterHeapOffset;
             }
          else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+#else
+         if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+#endif
             {
             pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
                   pSect->bpb.BigSectorsPerFat * pSect->bpb.NumberOfFATs;
@@ -483,11 +499,14 @@ int i;
          pVolInfo->ulCurFatSector = -1L;
          pVolInfo->pbFatBits = (PBYTE)pVolInfo->pbFatSector + SECTOR_SIZE * 8 * 3;
          
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             pVolInfo->ulClusterSize = (ULONG)pSect->bpb.BytesPerSector;
             pVolInfo->ulClusterSize *= pSect->bpb.SectorsPerCluster;
             pVolInfo->SectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+#ifdef EXFAT
             }
          else
             {
@@ -509,6 +528,7 @@ int i;
             pVolInfo->BootSect.bpb.HiddenSectors = ((PBOOTSECT1)pSect)->ullPartitionOffset.ulLo; ////
 #endif
             }
+#endif
 
          // size of a subcluster block
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
@@ -572,6 +592,7 @@ int i;
                memcpy(pVolInfo->BootSect.FileSystem, "FAT32   ", 8);
                }
             }
+#ifdef EXFAT
          else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             // create FAT32-type extended BPB for exFAT
@@ -591,6 +612,7 @@ int i;
             // force calculating the free space
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
+#endif
 
          pVolInfo->BootSect.ulVolSerial = pvpfsi->vpi_vid;
 
@@ -609,6 +631,7 @@ int i;
                   pSect->bpb.BigSectorsPerFat * (pSect->bpb.ExtFlags & 0x000F);
                }
             }
+#ifdef EXFAT
          else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             // exFAT case
@@ -636,6 +659,7 @@ int i;
             pVolInfo->ulUpcaseTblLen = ullLen.ulLo;
 #endif
             }
+#endif
 
          if (fValidBoot)
             {
@@ -997,10 +1021,12 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       } /* endif */
 
+#ifdef EXFAT
    if (!memcmp(pSect->oemID, "EXFAT   ", 8))
       {
       return FAT_TYPE_EXFAT;
       } /* endif */
+#endif
 
    pbpb = &pSect->bpb;
 

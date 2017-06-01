@@ -71,7 +71,9 @@ DWORD get_fat_size_sectors ( format_params *params, DWORD DskSize,
             break;
 
         case FAT_TYPE_FAT32:
+#ifdef EXFAT
         case FAT_TYPE_EXFAT:
+#endif
             FatElementSize2 = 8;
     }
 
@@ -191,6 +193,7 @@ BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DW
 
         break;
 
+#ifdef EXFAT
     case FAT_TYPE_EXFAT:
         // 7 MB to 256 MB - 4 KB
         if ( DiskSizeMB > 7 )
@@ -203,10 +206,13 @@ BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DW
         // Larger than 32,784 MB - 128 KB
         if ( DiskSizeMB > 32784 )
             ret = get_spc( 128, BytesPerSect );  // ret = 0x80;
+#endif
     }
     
     return( ret );
 }
+
+#ifdef EXFAT
 
 void SetBmpEntry(PBYTE pBitmap, struct extbpb *dp, ULONG ulCluster, BOOL fState)
 {
@@ -251,6 +257,8 @@ ULONG BootChkSum(const char *data, int bytes)
 
    return sum;
 }
+
+#endif
 
 void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumSects) //, DISK_GEOMETRY* pdgDrive  )
 {
@@ -344,8 +352,10 @@ int format_volume (char *path, format_params *params)
     // extended BPB
     struct extbpb dp = {0, 0, 32, 2, 0, 0, 0xf8, 0, 0, 0, 0, 0, {0}};
 
+#ifdef EXFAT
     // exFAT UpCase table
     #include "upcase.h"
+#endif
 
     // Recommended values
     //DWORD ReservedSectCount = 32; !!! create cmd line parameter !!!
@@ -364,17 +374,22 @@ int format_volume (char *path, format_params *params)
     ULONGLONG qTotalSectors=0;
 
     // structures to be written to the disk
+#ifdef EXFAT
     EXFAT_BOOTSECTOR *pEXFATBootSect;
+#endif
     FAT_BOOTSECTOR32 *pFAT32BootSect;
     FAT_BOOTSECTOR16 *pFATBootSect;
     FAT_FSINFO *pFAT32FsInfo;
+    DWORD *pFirstSectOfFat;
+
+#ifdef EXFAT
     DWORD ulExfatBitmapLen, ulExfatUpCaseLen;
     DWORD ulExfatBitmapClusters, ulExfatUpCaseClusters;
     
-    DWORD *pFirstSectOfFat;
     BYTE  *pBitmap;
     BYTE  *pUpCaseTbl;
     BYTE  *pRootDir;
+#endif
 
     // Debug temp vars
     ULONGLONG FatNeeded, ClusterCount;
@@ -433,9 +448,11 @@ int format_volume (char *path, format_params *params)
             dp.ReservedSectCount = 32;
             break;
 
+#ifdef EXFAT
         case FAT_TYPE_EXFAT:
             dp.ReservedSectCount = 24;
             dp.NumFATs = 1;
+#endif
         }
     }
 
@@ -463,7 +480,11 @@ int format_volume (char *path, format_params *params)
     if ( (ClusterCount >= FAT12_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT12) ||
          (ClusterCount >= FAT16_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT16) ||
          (ClusterCount >= FAT32_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT32) ||
+#ifdef EXFAT
          (ClusterCount >= EXFAT_BAD_CLUSTER && params->bFatType == FAT_TYPE_EXFAT) )
+#else
+         FALSE )
+#endif
     {
         die ( "The specified file system does not support the current volume size.\n", -2 );
     }
@@ -511,7 +532,9 @@ int format_volume (char *path, format_params *params)
             break;
 
         case FAT_TYPE_FAT32:
+#ifdef EXFAT
         case FAT_TYPE_EXFAT:
+#endif
             FatNeeded = ClusterCount * 4;
     }
 
@@ -556,6 +579,7 @@ int format_volume (char *path, format_params *params)
         if ( !pFAT32BootSect )
             die ( "Failed to allocate memory", -2 );
     }
+#ifdef EXFAT
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         BackupBootSect = 12;
@@ -564,6 +588,7 @@ int format_volume (char *path, format_params *params)
         if ( !pEXFATBootSect )
             die ( "Failed to allocate memory", -2 );
     }
+#endif
 
     mem_alloc ( (void **)&pFAT32FsInfo, dp.BytesPerSect );
     mem_alloc ( (void **)&pFirstSectOfFat, dp.BytesPerSect );
@@ -657,6 +682,7 @@ int format_volume (char *path, format_params *params)
         ((BYTE*)pFAT32BootSect)[510] = 0x55;
         ((BYTE*)pFAT32BootSect)[511] = 0xaa;
     }
+#ifdef EXFAT
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         USHORT usSectorSize  = (USHORT)dp.BytesPerSect;
@@ -728,6 +754,7 @@ int format_volume (char *path, format_params *params)
         if ( !pRootDir )
              die ( "Failed to allocate memory", -2 );
     }
+#endif
 
     /* FATGEN103.DOC says "NOTE: Many FAT documents mistakenly say that this 0xAA55 signature occupies the "last 2 bytes of 
     the boot sector". This statement is correct if - and only if - BPB_BytsPerSec is 512. If BPB_BytsPerSec is greater than 
@@ -768,6 +795,7 @@ int format_volume (char *path, format_params *params)
         pFirstSectOfFat[1] = 0x0fffffff;  // Reserved cluster 2 EOC
         pFirstSectOfFat[2] = 0x0fffffff;  // end of cluster chain for root dir
     }
+#ifdef EXFAT
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         pFirstSectOfFat[0] = 0xfffffff8;  // Reserved cluster 1 media id in low byte
@@ -792,6 +820,7 @@ int format_volume (char *path, format_params *params)
         // root dir
         pFirstSectOfFat[2 + ulExfatBitmapClusters + i++] = 0xffffffff;
     }
+#endif
 
     // Write boot sector, fats
     // Sector 0 Boot Sector
@@ -841,11 +870,13 @@ int format_volume (char *path, format_params *params)
     // First zero out ReservedSect + FatSize * NumFats + SectorsPerCluster
     SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
 
+#ifdef EXFAT
     if (params->bFatType == FAT_TYPE_EXFAT)
     {
         // count the bitmap and upcase table
         SystemAreaSize += ulExfatBitmapClusters + 1;
     }
+#endif
 
     zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize);
 
@@ -867,6 +898,7 @@ int format_volume (char *path, format_params *params)
             write_sect ( hDevice, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
         }
     }
+#ifdef EXFAT
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         int j;
@@ -899,6 +931,7 @@ int format_volume (char *path, format_params *params)
             write_sect ( hDevice, SectorStart, dp.BytesPerSect, pEXFATBootSect, BackupBootSect );
         }
     }
+#endif
 
     // Write the first fat sector in the right places
     for ( i=0; i<dp.NumFATs; i++ )
@@ -907,6 +940,7 @@ int format_volume (char *path, format_params *params)
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
     }
 
+#ifdef EXFAT
     if (params->bFatType == FAT_TYPE_EXFAT)
     {
         DWORD SectorStart = (DWORD)pEXFATBootSect->ulClusterHeapOffset;
@@ -956,6 +990,7 @@ int format_volume (char *path, format_params *params)
         SectorStart += dp.SectorsPerCluster;
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, dp.SectorsPerCluster );
     }
+#endif
 
     // The filesystem recogniser in Windows XP doesn't use the partition type - in can be 
     // set to pretty much anything other Os's like Dos (still useful for Norton Ghost!) and Windows ME might, 
@@ -991,8 +1026,10 @@ int format_volume (char *path, format_params *params)
             type = 0xc;
             break;
 
+#ifdef EXFAT
         case FAT_TYPE_EXFAT:
             type = 0x7;
+#endif
         }
 
         set_part_type (hDevice, &dp, type);
@@ -1013,12 +1050,14 @@ int format_volume (char *path, format_params *params)
         mem_free ( (void *)pFATBootSect, dp.BytesPerSect );
     else if (params->bFatType == FAT_TYPE_FAT32)
         mem_free ( (void *)pFAT32BootSect, dp.BytesPerSect );
+#ifdef EXFAT
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         mem_free ( (void *)pEXFATBootSect, dp.BytesPerSect );
         mem_free ( (void *)pBitmap,  dp.SectorsPerCluster * dp.BytesPerSect );
         mem_free ( (void *)pRootDir, dp.SectorsPerCluster * dp.BytesPerSect );
     }
+#endif
 
     return( TRUE );
 }
@@ -1159,8 +1198,10 @@ int format(int argc, char *argv[], char *envp[])
                 p.bFatType = FAT_TYPE_FAT16;
             else if (!strcmp(strupr(val), "FAT32"))
                 p.bFatType = FAT_TYPE_FAT32;
+#ifdef EXFAT
             else if (!strcmp(strupr(val), "EXFAT"))
                 p.bFatType = FAT_TYPE_EXFAT;
+#endif
             else
                 p.bFatType = FAT_TYPE_NONE;
 
@@ -1184,11 +1225,13 @@ int format(int argc, char *argv[], char *envp[])
                     p.ulFatBad  = FAT32_BAD_CLUSTER;
                     break;
 
+#ifdef EXFAT
                 case FAT_TYPE_EXFAT:
                     p.ulFatEof  = EXFAT_EOF;
                     p.ulFatEof2 = EXFAT_EOF2;
                     p.ulFatBad  = EXFAT_BAD_CLUSTER;
                     break;
+#endif
 
                 case FAT_TYPE_NONE:
                     ;

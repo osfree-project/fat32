@@ -583,10 +583,12 @@ USHORT    usBlocks;
          pDrive->ulFatBad  = FAT32_BAD_CLUSTER;
          break;
 
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
          pDrive->ulFatEof  = EXFAT_EOF;
          pDrive->ulFatEof2 = EXFAT_EOF2;
          pDrive->ulFatBad  = EXFAT_BAD_CLUSTER;
+#endif
       }
 
    if (pDrive->bFatType < FAT_TYPE_FAT32)
@@ -816,7 +818,9 @@ ULONG  ulSector;
          break;
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          ulSector = (ulCluster * 4) / usBlockSize;
       }
 
@@ -871,7 +875,9 @@ ULONG GetFatEntryEx(PDRIVEINFO pDrive, PBYTE pFatStart, ULONG ulCluster, USHORT 
          }
 
       case FAT_TYPE_FAT32:
+#ifdef EXFAT
       case FAT_TYPE_EXFAT:
+#endif
          {
          PULONG pulCluster;
          ULONG  ulOffset = ulCluster * 4;

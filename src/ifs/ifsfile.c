@@ -52,7 +52,9 @@ DIRENTRY DirEntry;
 DIRENTRY1 DirEntryStream;
 POPENINFO pOpenInfo = NULL;
 DIRENTRY1 DirStream;
+#ifdef EXFAT
 SHOPENINFO DirSHInfo;
+#endif
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT   usIOMode;
 ULONGLONG size;
@@ -163,11 +165,13 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
+#ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
          pDirSHInfo = &DirSHInfo;
          SetSHInfo1(pVolInfo, &DirStream, pDirSHInfo);
          }
+#endif
 
       pOpenInfo->pDirSHInfo = pDirSHInfo;
 #if 0
@@ -215,13 +219,16 @@ USHORT rc;
          }
       else
          {
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             if (DirEntry.bAttr & FILE_DIRECTORY)
                {
                rc = ERROR_ACCESS_DENIED;
                goto FS_OPENCREATEEXIT;
                }
+#ifdef EXFAT
             }
          else
             {
@@ -233,6 +240,7 @@ USHORT rc;
 
             pOpenInfo->pSHInfo->fNoFatChain = DirEntryStream.u.Stream.bNoFatChain;
             }
+#endif
 
          if (!(usOpenFlag & (FILE_OPEN | FILE_TRUNCATE)))
             {
@@ -240,10 +248,15 @@ USHORT rc;
             goto FS_OPENCREATEEXIT;
             }
 
+#ifdef EXFAT
          if ( ((pVolInfo->bFatType < FAT_TYPE_EXFAT) && DirEntry.bAttr & FILE_READONLY &&
               (ulOpenMode & OPEN_ACCESS_WRITEONLY || ulOpenMode & OPEN_ACCESS_READWRITE)) ||
               ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && ((PDIRENTRY1)&DirEntry)->u.File.usFileAttr & FILE_READONLY &&
               (ulOpenMode & OPEN_ACCESS_WRITEONLY || ulOpenMode & OPEN_ACCESS_READWRITE)) )
+#else
+         if ( DirEntry.bAttr & FILE_READONLY &&
+              (ulOpenMode & OPEN_ACCESS_WRITEONLY || ulOpenMode & OPEN_ACCESS_READWRITE) )
+#endif
             {
             if ((psffsi->sfi_type & STYPE_FCB) && (ulOpenMode & OPEN_ACCESS_READWRITE))
                {
@@ -276,36 +289,46 @@ USHORT rc;
       if (ulCluster == pVolInfo->ulFatEof)
          {
          memset(&DirEntry, 0, sizeof (DIRENTRY));
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
             DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+#ifdef EXFAT
          else
             ((PDIRENTRY1)&DirEntry)->u.File.usFileAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
+#endif
          ulCluster = 0;
 
-#ifdef INCL_LONGLONG
-         if (f32Parms.fLargeFiles)
-            {
-            if (pVolInfo->bFatType < FAT_TYPE_EXFAT && size > (ULONGLONG)ULONG_MAX)
-               size = (ULONGLONG)ULONG_MAX;
-            }
-         else
-            {
-            if (size > (ULONGLONG)LONG_MAX)
-               size = (ULONGLONG)LONG_MAX;
-            }
-#else
-         if (f32Parms.fLargeFiles)
-            {
-            if (pVolInfo->bFatType < FAT_TYPE_EXFAT && GreaterUL(size, ULONG_MAX))
-               AssignUL(&size, ULONG_MAX);
-            }
-         else
-            {
-            if (GreaterUL(size, (ULONG)LONG_MAX))
-               AssignUL(&size, (ULONG)LONG_MAX);
-            }
+#ifdef EXFAT
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
+            {
+#ifdef INCL_LONGLONG
+            if (f32Parms.fLargeFiles)
+               {
+               if (size > (ULONGLONG)ULONG_MAX)
+                  size = (ULONGLONG)ULONG_MAX;
+               }
+            else
+               {
+               if (size > (ULONGLONG)LONG_MAX)
+                  size = (ULONGLONG)LONG_MAX;
+               }
+#else
+            if (f32Parms.fLargeFiles)
+               {
+               if (GreaterUL(size, ULONG_MAX))
+                  AssignUL(&size, ULONG_MAX);
+               }
+            else
+               {
+               if (GreaterUL(size, (ULONG)LONG_MAX))
+                  AssignUL(&size, (ULONG)LONG_MAX);
+               }
+#endif
+            }
 
+#ifdef EXFAT
          if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
@@ -320,6 +343,7 @@ USHORT rc;
             AssignUL(&DirEntryStream.u.Stream.ullDataLen, 0);
 #endif
             }
+#endif
 
 #ifdef INCL_LONGLONG
          if (size > 0)
@@ -350,8 +374,10 @@ USHORT rc;
             ulCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, pVolInfo->ulFatEof, ulClustersNeeded, NULL);
             if (ulCluster != pVolInfo->ulFatEof)
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
+#endif
                   DirEntry.wCluster = LOUSHORT(ulCluster);
                   DirEntry.wClusterHigh = HIUSHORT(ulCluster);
 #ifdef INCL_LONGLONG
@@ -359,6 +385,7 @@ USHORT rc;
 #else
                   DirEntry.ulFileSize = size.ulLo;
 #endif
+#ifdef EXFAT
                   }
                else
                   {
@@ -389,6 +416,7 @@ USHORT rc;
                   DirEntryStream.u.Stream.bAllocPossible = 1;
                   DirEntryStream.u.Stream.bNoFatChain = (BYTE)pOpenInfo->pSHInfo->fNoFatChain;
                   }
+#endif
                }
             else
                {
@@ -401,14 +429,17 @@ USHORT rc;
          if (rc)
             goto FS_OPENCREATEEXIT;
 
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
             psffsi->sfi_atime = 0;
             memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
             memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+#ifdef EXFAT
             }
          else
             {
@@ -426,6 +457,7 @@ USHORT rc;
             memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
             }
+#endif
 
          pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
@@ -452,15 +484,23 @@ USHORT rc;
             goto FS_OPENCREATEEXIT;
             }
 
+#ifdef EXFAT
          if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN)) ||
               ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN)) )
+#else
+         if ( (DirEntry.bAttr & FILE_HIDDEN) && !(usAttr & FILE_HIDDEN) )
+#endif
             {
             rc = ERROR_ACCESS_DENIED;
             goto FS_OPENCREATEEXIT;
             }
 
+#ifdef EXFAT
          if ( ((pVolInfo->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM)) ||
               ((pVolInfo->bFatType == FAT_TYPE_EXFAT) && (pDirEntry->u.File.usFileAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM)) )
+#else
+         if ( (DirEntry.bAttr & FILE_SYSTEM) && !(usAttr & FILE_SYSTEM) )
+#endif
             {
             rc = ERROR_ACCESS_DENIED;
             goto FS_OPENCREATEEXIT;
@@ -469,13 +509,16 @@ USHORT rc;
          memcpy(&DirOld, &DirEntry, sizeof (DIRENTRY));
          memcpy(&DirOldStream, &DirEntryStream, sizeof (DIRENTRY1));
 
+#ifdef EXFAT
          if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
             {
+#endif
             DirEntry.bAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
             DirEntry.wCluster     = 0;
             DirEntry.wClusterHigh = 0;
             DirEntry.ulFileSize   = 0;
             DirEntry.fEAS = FILE_HAS_NO_EAS;
+#ifdef EXFAT
             }
          else
             {
@@ -495,11 +538,22 @@ USHORT rc;
             DirEntryStream.u.Stream.bAllocPossible = 1;
             DirEntryStream.u.Stream.bNoFatChain = (BYTE)pOpenInfo->pSHInfo->fNoFatChain;
             }
+#endif
 
          rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile);
          if (rc)
             goto FS_OPENCREATEEXIT;
-         DirOld.fEAS = FILE_HAS_NO_EAS;
+#ifdef EXFAT
+         if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
+#endif
+            DirOld.fEAS = FILE_HAS_NO_EAS;
+#ifdef EXFAT
+         else
+            {
+            PDIRENTRY1 pDirOld = (PDIRENTRY1)&DirOld;
+            pDirOld->u.File.fEAS = FILE_HAS_NO_EAS;
+            }
+#endif
 
          if (ulCluster)
             DeleteFatChain(pVolInfo, ulCluster);
@@ -507,29 +561,34 @@ USHORT rc;
          ResetAllCurrents(pVolInfo, pOpenInfo);
          ulCluster = 0;
 
-#ifdef INCL_LONGLONG
-         if (f32Parms.fLargeFiles)
-            {
-            if (pVolInfo->bFatType < FAT_TYPE_EXFAT && size > (ULONGLONG)ULONG_MAX)
-               size = (ULONGLONG)ULONG_MAX;
-            }
-         else
-            {
-            if (size > (ULONGLONG)LONG_MAX)
-               size = (ULONGLONG)LONG_MAX;
-            }
-#else
-         if (f32Parms.fLargeFiles)
-            {
-            if (pVolInfo->bFatType < FAT_TYPE_EXFAT && GreaterUL(size, ULONG_MAX))
-               AssignUL(&size, ULONG_MAX);
-            }
-         else
-            {
-            if (GreaterUL(size, (ULONG)LONG_MAX))
-               AssignUL(&size, (ULONG)LONG_MAX);
-            }
+#ifdef EXFAT
+         if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
+            {
+#ifdef INCL_LONGLONG
+            if (f32Parms.fLargeFiles)
+               {
+               if (size > (ULONGLONG)ULONG_MAX)
+                  size = (ULONGLONG)ULONG_MAX;
+               }
+            else
+               {
+               if (size > (ULONGLONG)LONG_MAX)
+                  size = (ULONGLONG)LONG_MAX;
+               }
+#else
+            if (f32Parms.fLargeFiles)
+               {
+               if (GreaterUL(size, ULONG_MAX))
+                  AssignUL(&size, ULONG_MAX);
+               }
+            else
+               {
+               if (GreaterUL(size, (ULONG)LONG_MAX))
+                  AssignUL(&size, (ULONG)LONG_MAX);
+               }
+#endif
+            }
 
 #ifdef INCL_LONGLONG
          if (size > 0)
@@ -560,8 +619,10 @@ USHORT rc;
             ulCluster = MakeFatChain(pVolInfo, pOpenInfo->pSHInfo, pVolInfo->ulFatEof, ulClustersNeeded, &pOpenInfo->pSHInfo->ulLastCluster);
             if (ulCluster != pVolInfo->ulFatEof)
                {
+#ifdef EXFAT
                if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
                   {
+#endif
                   DirEntry.wCluster = LOUSHORT(ulCluster);
                   DirEntry.wClusterHigh = HIUSHORT(ulCluster);
 #ifdef INCL_LONGLONG
@@ -569,6 +630,7 @@ USHORT rc;
 #else
                   DirEntry.ulFileSize = size.ulLo;
 #endif
+#ifdef EXFAT
                   }
                else
                   {
@@ -583,6 +645,7 @@ USHORT rc;
                      (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
                   {
+
                   ULONGLONG ullRest;
 
                   Assign(&DirEntryStream.u.Stream.ullValidDataLen, size);
@@ -601,6 +664,7 @@ USHORT rc;
                   DirEntryStream.u.Stream.bAllocPossible = 1;
                   DirEntryStream.u.Stream.bNoFatChain = (BYTE)pOpenInfo->pSHInfo->fNoFatChain;
                   }
+#endif
                }
             else
                {
@@ -617,14 +681,17 @@ USHORT rc;
          if (rc)
             goto FS_OPENCREATEEXIT;
 
+#ifdef EXFAT
          if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
             psffsi->sfi_atime = 0;
             memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
             memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+#ifdef EXFAT
             }
          else
             {
@@ -642,6 +709,7 @@ USHORT rc;
             memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
             }
+#endif
 
          pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
@@ -658,14 +726,17 @@ USHORT rc;
          }
       else
          {
+#ifdef EXFAT
          if (pVolInfo->bFatType <  FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
             psffsi->sfi_atime = 0;
             memcpy(&psffsi->sfi_adate, &DirEntry.wAccessDate, sizeof (USHORT));
             memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
+#ifdef EXFAT
             }
          else
             {
@@ -683,6 +754,7 @@ USHORT rc;
             memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
             }
+#endif
 
          psffsi->sfi_tstamp = 0;
          *pAction = FILE_EXISTED;
@@ -700,12 +772,18 @@ USHORT rc;
 
       if (pOpenInfo->pSHInfo->sOpenCount == 1)
          {
+#ifdef EXFAT
          PDIRENTRY1 pDirEntry = (PDIRENTRY1)&DirEntry;
+#endif
          pOpenInfo->pSHInfo->ulLastCluster = GetLastCluster(pVolInfo, ulCluster, &DirEntryStream);
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
             pOpenInfo->pSHInfo->bAttr = DirEntry.bAttr;
+#ifdef EXFAT
          else
             pOpenInfo->pSHInfo->bAttr = (BYTE)pDirEntry->u.File.usFileAttr;
+#endif
          }
 
       pOpenInfo->pSHInfo->ulDirCluster = ulDirCluster;
@@ -717,14 +795,17 @@ USHORT rc;
 
       pOpenInfo->ulCurBlock = 0;
 
+#ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
          {
+#endif
 #ifdef INCL_LONGLONG
          size = DirEntry.ulFileSize;
 #else
          AssignUL(&size, DirEntry.ulFileSize);
 #endif
          psffsi->sfi_DOSattr = DirEntry.bAttr;
+#ifdef EXFAT
          }
       else
          {
@@ -736,6 +817,7 @@ USHORT rc;
 #endif
          psffsi->sfi_DOSattr = (UCHAR)pDirEntry->u.File.usFileAttr;
          }
+#endif
       }
    else /* OPEN_FLAGS_DASD */
       {
@@ -1937,7 +2019,6 @@ ULONGLONG size;
                                         size + usBytesToWrite >= (LONGLONG)LONG_MAX)) ||
              (f32Parms.fLargeFiles   && (pos + usBytesToWrite >= (LONGLONG)ULONG_MAX  ||
                                         size + usBytesToWrite >= (LONGLONG)ULONG_MAX) &&
-             (pVolInfo->bFatType < FAT_TYPE_EXFAT)) )
 #else
         LONGLONG llPos, llSize;
 
@@ -1948,7 +2029,11 @@ ULONGLONG size;
                                         iGreaterEUL(llSize, LONG_MAX))) ||
              (f32Parms.fLargeFiles   && (iGreaterEUL(llPos, ULONG_MAX)  ||
                                         iGreaterEUL(llSize, ULONG_MAX)) &&
+#endif
+#ifdef EXFAT
              (pVolInfo->bFatType < FAT_TYPE_EXFAT)) )
+#else
+             TRUE) )
 #endif
         {
             rc = ERROR_INVALID_PARAMETER;
@@ -1968,8 +2053,13 @@ ULONGLONG size;
         if (! f32Parms.fLargeFiles && (LONGLONG)LONG_MAX - pos < (LONGLONG)usBytesToWrite)
            usBytesToWrite = (USHORT)((LONGLONG)LONG_MAX - pos);
 
+#ifdef EXFAT
         if (f32Parms.fLargeFiles && (pVolInfo->bFatType < FAT_TYPE_EXFAT) &&
             (LONGLONG)ULONG_MAX - pos < (LONGLONG)usBytesToWrite)
+#else
+        if (f32Parms.fLargeFiles &&
+            (LONGLONG)ULONG_MAX - pos < (LONGLONG)usBytesToWrite)
+#endif
            usBytesToWrite = (USHORT)((LONGLONG)ULONG_MAX - pos);
 #else
         iAssignUL(&llPos, LONG_MAX);
@@ -1981,8 +2071,13 @@ ULONGLONG size;
         iAssignUL(&llPos, ULONG_MAX);
         llPos = iSub(llPos, pos);
 
+#ifdef EXFAT
         if (f32Parms.fLargeFiles && (pVolInfo->bFatType < FAT_TYPE_EXFAT) &&
             iLessUL(llPos, usBytesToWrite))
+#else
+        if (f32Parms.fLargeFiles &&
+            iLessUL(llPos, usBytesToWrite))
+#endif
            usBytesToWrite = (USHORT)llPos.ulLo;
 #endif
 
@@ -2797,8 +2892,10 @@ USHORT rc;
          memcpy(&DirEntry, &DirOld, sizeof (DIRENTRY));
          memcpy(&DirEntryStream, &DirOldStream, sizeof (DIRENTRY));
 
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&DirEntry.wCreateTime,    &psffsi->sfi_ctime, sizeof (USHORT));
             memcpy(&DirEntry.wCreateDate,    &psffsi->sfi_cdate, sizeof (USHORT));
             memcpy(&DirEntry.wAccessDate,    &psffsi->sfi_adate, sizeof (USHORT));
@@ -2810,6 +2907,7 @@ USHORT rc;
 #else
             DirEntry.ulFileSize  = size.ulLo;
 #endif
+#ifdef EXFAT
             }
          else
             {
@@ -2846,39 +2944,52 @@ USHORT rc;
             DirEntryStream.u.Stream.bAllocPossible = 1;
             DirEntryStream.u.Stream.bNoFatChain = (BYTE)(pOpenInfo->pSHInfo->fNoFatChain & 1);
             }
+#endif
 
          if (pOpenInfo->fCommitAttr || psffsi->sfi_DOSattr != pOpenInfo->pSHInfo->bAttr)
             {
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#endif
                DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr = psffsi->sfi_DOSattr;
+#ifdef EXFAT
             else
                pDirEntry->u.File.usFileAttr = pOpenInfo->pSHInfo->bAttr = psffsi->sfi_DOSattr;
+#endif
             pOpenInfo->fCommitAttr = FALSE;
             }
 
          if (pOpenInfo->pSHInfo->ulStartCluster)
             {
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                DirEntry.wCluster     = LOUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
                DirEntry.wClusterHigh = HIUSHORT(pOpenInfo->pSHInfo->ulStartCluster);
+#ifdef EXFAT
                }
             else
                {
                DirEntryStream.u.Stream.ulFirstClus = pOpenInfo->pSHInfo->ulStartCluster;
                }
+#endif
             }
          else
             {
+#ifdef EXFAT
             if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                {
+#endif
                DirEntry.wCluster = 0;
                DirEntry.wClusterHigh = 0;
+#ifdef EXFAT
                }
             else
                {
                DirEntryStream.u.Stream.ulFirstClus = 0;
                }
+#endif
             }
 
          rc = ModifyDirectory(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, MODIFY_DIR_UPDATE,
@@ -3359,8 +3470,10 @@ ULONGLONG size;
             goto FS_FILEINFOEXIT;
             }
 
+#ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
+#endif
             memcpy(&psffsi->sfi_ctime, &DirEntry.wCreateTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_cdate, &DirEntry.wCreateDate, sizeof (USHORT));
             psffsi->sfi_atime = 0;
@@ -3368,6 +3481,7 @@ ULONGLONG size;
             memcpy(&psffsi->sfi_mtime, &DirEntry.wLastWriteTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &DirEntry.wLastWriteDate, sizeof (USHORT));
             psffsi->sfi_DOSattr = DirEntry.bAttr = pOpenInfo->pSHInfo->bAttr;
+#ifdef EXFAT
             }
          else
             {
@@ -3386,6 +3500,7 @@ ULONGLONG size;
             psffsi->sfi_DOSattr = pOpenInfo->pSHInfo->bAttr;
             pDirEntry->u.File.usFileAttr = (USHORT)pOpenInfo->pSHInfo->bAttr;
             }
+#endif
          }
 
       switch (usLevel)

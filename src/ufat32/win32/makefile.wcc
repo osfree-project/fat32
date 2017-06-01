@@ -11,6 +11,14 @@ DESC5="UFAT16 Forwarder DLL, Henk Kelder & Netlabs"
 DESC6="UFAT12 Forwarder DLL, Henk Kelder & Netlabs"
 DESC7="UEXFAT Forwarder DLL, Henk Kelder & Netlabs"
 
+!include ..\..\makefile.mk
+
+!ifeq EXFAT 1
+ADD_DEFS = -dEXFAT
+!else
+ADD_DEFS =
+!endif
+
 # create win32 binaries
 OBJS1=$(PROJ_BLD)\format.obd $(PROJ_BLD)\win32.obd &
       $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
@@ -23,16 +31,18 @@ OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\win32.obc &
 OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\win32.obj &
       $(PROJ_BLD)\log.obj
 OBJS5=$(PROJ_BLD)\stub.obd
-COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
+COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ $(ADD_DEFS) -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
 TARGETS=$(BINROOT)\win32\dll\ufat32.sym &
         $(BINROOT)\win32\fat32fmt.sym &
         $(BINROOT)\win32\fat32chk.sym &
         $(BINROOT)\win32\fat32sys.sym
         # $(BINROOT)\win32\dll\ufat16.dll $(BINROOT)\win32\dll\ufat12.dll &
+!ifeq EXFAT 1
         # $(BINROOT)\win32\dll\uexfat.dll
+!else
+        #
+!endif
 SYS=nt
-
-!include ..\..\makefile.mk
 
 DIRS=
 
@@ -42,7 +52,9 @@ $(BINROOT)\win32\dll\ufat16.dll:
 
 $(BINROOT)\win32\dll\ufat12.dll:
 
+!ifeq EXFAT 1
 $(BINROOT)\win32\dll\uexfat.dll:
+!endif
 
 $(BINROOT)\win32\fat32fmt.exe:
 
@@ -70,9 +82,11 @@ $(PROJ_BLD)\ufat12.ols: $(OBJS5) makefile.wcc ..\..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
+!ifeq EXFAT 1
 $(PROJ_BLD)\uexfat.ols: $(OBJS5) makefile.wcc ..\..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
+!endif
 
 $(PROJ_BLD)\fat32fmt.ols: $(OBJS2) makefile.wcc ..\..\makefile.mk
  @%create $^@
@@ -137,6 +151,7 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols makefile.wcc ..\..\makefile.mk
      sys
  @%append $@ @$[@
 
+!ifeq EXFAT 1
 $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols makefile.wcc ..\..\makefile.mk
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
@@ -155,6 +170,7 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols makefile.wcc ..\..\makefile.mk
      recover, &
      sys
  @%append $@ @$[@
+!endif
 
 $(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols makefile.wcc ..\..\makefile.mk
  @%create $@

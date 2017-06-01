@@ -12,6 +12,14 @@ DESC6="UFAT12 Forwarder DLL, Henk Kelder & Netlabs"
 DESC7="UEXFAT Forwarder DLL, Henk Kelder & Netlabs"
 DESC8="UFAT32 Forwarder DLL, Henk Kelder & Netlabs"
 
+!include ..\makefile.mk
+
+!ifeq EXFAT 1
+ADD_DEFS = -dEXFAT
+!else
+ADD_DEFS =
+!endif
+
 # create OS/2 binaries
 OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
       $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd &
@@ -24,17 +32,21 @@ OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc &
 OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\os2.obj &
       $(PROJ_BLD)\msg.obj $(PROJ_BLD)\log.obj
 OBJS5=$(PROJ_BLD)\stub.obd
-COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+
 TARGETS=$(BINROOT)\os2\fat32fmt.sym &
         $(BINROOT)\os2\fat32chk.sym &
         $(BINROOT)\os2\fat32sys.sym &
         $(BINROOT)\os2\dll\uunifat.sym &
         $(BINROOT)\os2\dll\ufat16.dll $(BINROOT)\os2\dll\ufat12.dll &
-        $(BINROOT)\os2\dll\uexfat.dll $(BINROOT)\os2\dll\ufat32.dll
+        $(BINROOT)\os2\dll\ufat32.dll &
+!ifeq EXFAT 1
+        $(BINROOT)\os2\dll\uexfat.dll
+!else
+        #
+!endif
 SYS=os2v2
-
-!include ..\makefile.mk
 
 DIRS=..\include
 
@@ -46,7 +58,9 @@ $(BINROOT)\os2\dll\ufat16.dll:
 
 $(BINROOT)\os2\dll\ufat12.dll:
 
+!ifeq EXFAT 1
 $(BINROOT)\os2\dll\uexfat.dll:
+!endif
 
 $(BINROOT)\os2\fat32fmt.exe:
 
@@ -74,9 +88,11 @@ $(PROJ_BLD)\ufat12.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
+!ifeq EXFAT 1
 $(PROJ_BLD)\uexfat.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
+!endif
 
 $(PROJ_BLD)\ufat32.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
@@ -191,6 +207,7 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
      LoadTranslateTable
  @%append $@ @$[@
 
+!ifeq EXFAT 1
 $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
@@ -222,6 +239,7 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
      sys,     &
      LoadTranslateTable
  @%append $@ @$[@
+!endif
 
 $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
  @%create $@
