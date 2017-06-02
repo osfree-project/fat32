@@ -219,13 +219,6 @@ char far *p;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   if( ulSector < pVolInfo->ulStartOfData )
-      {
-      Message("FAT32: ERROR: Sector %ld does not exist on disk %c:",
-         ulSector, pVolInfo->bDrive + 'A');
-      return ERROR_SECTOR_NOT_FOUND;
-      }
-
    f32Parms.ulTotalReads += nSectors;
 
    /*
@@ -246,7 +239,7 @@ char far *p;
    if (fFromCache)
       return 0;
 
-   if (!(usIOMode & DVIO_OPNCACHE) && (nSectors < pVolInfo->usRASectors))
+   if ((ulSector >= pVolInfo->ulStartOfData) && !(usIOMode & DVIO_OPNCACHE) && (nSectors < pVolInfo->usRASectors))
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
