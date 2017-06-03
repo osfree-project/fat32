@@ -40,7 +40,9 @@ PRIVATE CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))pCacheBase2[MAX_SECTORS] = 
 ULONG          _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
 PRIVATE USHORT _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
 PRIVATE BOOL   _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
+#ifdef USE_STATIC_BUFS
 PRIVATE BYTE _based(_segname("ifscache_sect_DATA")) pbSect[0x10000]  = {0};
+#endif
 
 PRIVATE USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName);
 PRIVATE VOID   ReleaseReadBuf(PVOLINFO pVolInfo);
@@ -257,16 +259,21 @@ char far *p;
             (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
       }
 #endif
-   //pbSectors = NULL;
+#ifndef USE_STATIC_BUFS
+   pbSectors = NULL;
+#endif
    if (( ulSector >= pVolInfo->ulStartOfData ) &&
        !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
       {
       usSectors = pVolInfo->usRASectors;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      //pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
-      fRASectors = TRUE;
+#ifdef USE_STATIC_BUFS
       pbSectors = pbSect;
+#else
+      pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
+      fRASectors = TRUE;
       }
    //if (!pbSectors)
    if (!fRASectors)
@@ -353,8 +360,10 @@ char far *p;
        memcpy(pbData, pbSectors, min( usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
        }
 
-   //if (pbSectors != pbData)
-   //   free(pbSectors);
+#ifndef USE_STATIC_BUFS
+   if (pbSectors != pbData)
+      free(pbSectors);
+#endif
 
    return rc;
 }

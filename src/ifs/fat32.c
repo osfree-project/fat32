@@ -37,9 +37,11 @@ static ULONG ulSemRWBuf3 = 0UL;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
 
+#ifdef USE_STATIC_BUFS
 static BYTE _based(_segname("fat32_buf1_DATA")) pbDirBuf1[0x10000] = {0};
 static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf2[0x8000]  = {0};
 static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf3[0x8000]  = {0};
+#endif
 
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
@@ -5181,12 +5183,20 @@ ULONG FindPathCluster0(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PDIRENTR
 {
 // FAT12/FAT16/FAT32 case
 BYTE szShortName[13];
+#ifdef USE_STATIC_BUFS
 static BYTE szLongName[FAT32MAXPATHCOMP * 2];
 PSZ  pszLongName = szLongName;
+#else
+PSZ  pszLongName;;
+#endif
 PSZ  pszPart;
 PSZ  p;
 PDIRENTRY pDir;
+#ifdef USE_STATIC_BUFS
 PDIRENTRY pDirStart = (PDIRENTRY)pbDirBuf3;
+#else
+PDIRENTRY pDirStart;
+#endif
 PDIRENTRY pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -5233,6 +5243,21 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          pszPath += 2;
       }
 
+#ifndef USE_STATIC_BUFS
+   pDirStart = malloc(pVolInfo->ulBlockSize);
+   if (!pDirStart)
+      {
+      Message("FAT32: Not enough memory for cluster in FindPathCluster");
+      return pVolInfo->ulFatEof;
+      }
+   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
+   if (!pszLongName)
+      {
+      Message("FAT32: Not enough memory for buffers in FindPathCluster");
+      free(pDirStart);
+      return pVolInfo->ulFatEof;
+      }
+#endif
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
    pszPart = pszLongName + FAT32MAXPATHCOMP;
 
@@ -5261,7 +5286,10 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         Message("fpc000: ulCluster=%lx", ulCluster);
+#ifndef USE_STATIC_BUFS
+         free(pDirStart);
+         free(pszLongName);
+#endif
          return pVolInfo->ulFatEof;
          }
 
@@ -5388,6 +5416,10 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
             ulCluster = pVolInfo->ulFatEof;
          }
       }
+#ifndef USE_STATIC_BUFS
+   free(pDirStart);
+   free(pszLongName);
+#endif
    if (f32Parms.fMessageActive & LOG_FUNCS)
       {
       if (ulCluster != pVolInfo->ulFatEof)
@@ -5395,7 +5427,6 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
       else
          Message("FindPathCluster for %s returned EOF", pszPath);
       }
-   Message("fpc001: ulCluster=%lx", ulCluster);
    return ulCluster;
 }
 
@@ -5409,13 +5440,21 @@ ULONG FindPathCluster1(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PSHOPENI
                        PSZ pszFullName)
 {
 // exFAT case
+#ifdef USE_STATIC_BUFS
 static BYTE szLongName[FAT32MAXPATHCOMP * 2];
 PSZ  pszLongName = szLongName;
+#else
+PSZ  pszLongName;
+#endif
 PSZ  pszPart;
 PSZ  p;
 DIRENTRY1  Dir;
 PDIRENTRY1 pDir;
+#ifdef USE_STATIC_BUFS
 PDIRENTRY1 pDirStart = (PDIRENTRY1)pbDirBuf3;
+#else
+PDIRENTRY1 pDirStart;
+#endif
 PDIRENTRY1 pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -5451,6 +5490,21 @@ USHORT usFileAttr;
          pszPath += 2;
       }
 
+#ifndef USE_STATIC_BUFS
+   pDirStart = malloc(pVolInfo->ulBlockSize);
+   if (!pDirStart)
+      {
+      Message("FAT32: Not enough memory for cluster in FindPathCluster");
+      return pVolInfo->ulFatEof;
+      }
+   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
+   if (!pszLongName)
+      {
+      Message("FAT32: Not enough memory for buffers in FindPathCluster");
+      free(pDirStart);
+      return pVolInfo->ulFatEof;
+      }
+#endif
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
    pszPart = pszLongName + FAT32MAXPATHCOMP;
 
@@ -5479,6 +5533,10 @@ USHORT usFileAttr;
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
+#ifndef USE_STATIC_BUFS
+         free(pDirStart);
+         free(pszLongName);
+#endif
          return pVolInfo->ulFatEof;
          }
 
@@ -5612,6 +5670,10 @@ USHORT usFileAttr;
             ulCluster = pVolInfo->ulFatEof;
          }
       }
+#ifndef USE_STATIC_BUFS
+   free(pDirStart);
+   free(pszLongName);
+#endif
    if (f32Parms.fMessageActive & LOG_FUNCS)
       {
       if (ulCluster != pVolInfo->ulFatEof)
@@ -5654,15 +5716,23 @@ ULONG rc;
 USHORT TranslateName2(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
 {
 BYTE szShortName[13];
+#ifdef USE_STATIC_BUFS
 static BYTE szLongName[FAT32MAXPATHCOMP * 4];
 PSZ  pszLongName = szLongName;
+#else
+PSZ  pszLongName;
+#endif
 PSZ  pszUpperName;
 PSZ  pszUpperPart;
 PSZ  pszPart;
 PSZ  p;
 /* PSZ  pTar = pszTarget; */
 PDIRENTRY pDir;
+#ifdef USE_STATIC_BUFS
 PDIRENTRY pDirStart = (PDIRENTRY)pbDirBuf2;
+#else
+PDIRENTRY pDirStart;
+#endif
 PDIRENTRY pDirEnd;
 BOOL fFound;
 USHORT usMode;
@@ -5687,6 +5757,21 @@ ULONG  ulDirEntries = 0;
          }
       }
 
+#ifndef USE_STATIC_BUFS
+   pDirStart = malloc(pVolInfo->ulBlockSize);
+   if (!pDirStart)
+      {
+      Message("FAT32: Not enough memory for cluster in TranslateName");
+      return ERROR_NOT_ENOUGH_MEMORY;
+      }
+   pszLongName = malloc(FAT32MAXPATHCOMP * 4);
+   if (!pszLongName)
+      {
+      Message("FAT32: Not enough memory for buffers in TranslateName");
+      free(pDirStart);
+      return ERROR_NOT_ENOUGH_MEMORY;
+      }
+#endif
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 4);
 
    pszPart      = pszLongName + FAT32MAXPATHCOMP;
@@ -5733,6 +5818,10 @@ ULONG  ulDirEntries = 0;
 
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
+#ifndef USE_STATIC_BUFS
+         free(pDirStart);
+         free(pszLongName);
+#endif
          return ERROR_BUFFER_OVERFLOW;
          }
 
@@ -5870,6 +5959,10 @@ ULONG  ulDirEntries = 0;
          }
       }
 
+#ifndef USE_STATIC_BUFS
+   free(pDirStart);
+   free(pszLongName);
+#endif
    if (ulCluster == pVolInfo->ulFatEof)
       strcat(pszTarget, pszPath);
    return 0;
@@ -6989,8 +7082,11 @@ USHORT ModifyDirectory0(PVOLINFO pVolInfo, ULONG ulDirCluster,
                        USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew,
                        PSZ pszLongName, USHORT usIOMode)
 {
+#ifdef USE_STATIC_BUFS
+PDIRENTRY pDirectory = (PDIRENTRY)pbDirBuf1;
+#else
 PDIRENTRY pDirectory;
-//PDIRENTRY pDirectory = (PDIRENTRY)pbDirBuf1;
+#endif
 PDIRENTRY pDir2;
 PDIRENTRY pWork, pWork2;
 PDIRENTRY pMax;
@@ -7064,13 +7160,14 @@ ULONG     ulBytesRemained;
          }
       }
 
+#ifndef USE_STATIC_BUFS
    pDirectory = (PDIRENTRY)malloc(2 * (size_t)pVolInfo->ulBlockSize);
    if (!pDirectory)
       {
       Message("Modify directory: Not enough memory");
       return ERROR_NOT_ENOUGH_MEMORY;
       }
-
+#endif
    memset(pDirectory, 0, (size_t)pVolInfo->ulBlockSize);
    pDir2 = (PDIRENTRY)((PBYTE)pDirectory + pVolInfo->ulBlockSize);
    memset(pDir2, 0, (size_t)pVolInfo->ulBlockSize);
@@ -7128,7 +7225,9 @@ ULONG     ulBytesRemained;
                }
             if (rc)
                {
+#ifndef USE_STATIC_BUFS
                free(pDirectory);
+#endif
                return rc;
                }
             }
@@ -7195,7 +7294,9 @@ ULONG     ulBytesRemained;
                            rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                         if (rc)
                            {
+#ifndef USE_STATIC_BUFS
                            free(pDirectory);
+#endif
                            return rc;
                            }
                         ulCluster = pVolInfo->ulFatEof;
@@ -7228,7 +7329,9 @@ ULONG     ulBytesRemained;
                               rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
                            if (rc)
                               {
+#ifndef USE_STATIC_BUFS
                               free(pDirectory);
+#endif
                               return rc;
                               }
                            }
@@ -7243,7 +7346,9 @@ ULONG     ulBytesRemained;
                            rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                         if (rc)
                            {
+#ifndef USE_STATIC_BUFS
                            free(pDirectory);
+#endif
                            return rc;
                            }
 
@@ -7286,7 +7391,9 @@ ULONG     ulBytesRemained;
                      rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
 
@@ -7297,7 +7404,9 @@ ULONG     ulBytesRemained;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   ulCluster = pVolInfo->ulFatEof;
@@ -7322,7 +7431,9 @@ ULONG     ulBytesRemained;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   ulCluster = pVolInfo->ulFatEof;
@@ -7338,7 +7449,9 @@ ULONG     ulBytesRemained;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   }
@@ -7381,7 +7494,9 @@ ULONG     ulBytesRemained;
                   {
                   if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return ERROR_FILE_NOT_FOUND;
                      }
                   else
@@ -7402,7 +7517,9 @@ ULONG     ulBytesRemained;
                      ulNextCluster = SetNextCluster(pVolInfo, ulCluster, FAT_ASSIGN_NEW);
                   if (ulNextCluster == pVolInfo->ulFatEof)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      Message("Modify Directory: Disk Full!");
                      return ERROR_DISK_FULL;
                      }
@@ -7421,7 +7538,9 @@ ULONG     ulBytesRemained;
                   rc = WriteBlock(pVolInfo, ulCluster, ulBlock2, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   }
@@ -7439,7 +7558,9 @@ ULONG     ulBytesRemained;
          ulCluster = ulNextCluster;
       }
 
+#ifndef USE_STATIC_BUFS
    free(pDirectory);
+#endif
    return 0;
 }
 
@@ -7491,8 +7612,11 @@ USHORT ModifyDirectory1(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirS
                        PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew,
                        PSZ pszLongName, USHORT usIOMode)
 {
+#ifdef USE_STATIC_BUFS
+PDIRENTRY1 pDirectory = (PDIRENTRY1)pbDirBuf1;
+#else
 PDIRENTRY1 pDirectory;
-//PDIRENTRY1 pDirectory = (PDIRENTRY1)pbDirBuf1;
+#endif
 PDIRENTRY1 pDir2, pDir1;
 PDIRENTRY1 pWork, pWork2, pWorkStream, pWorkFile;
 PDIRENTRY1 pMax;
@@ -7570,12 +7694,13 @@ BOOL      fFound;
          }
       }
 
+#ifndef USE_STATIC_BUFS
    pDirectory = (PDIRENTRY1)malloc(2 * (size_t)pVolInfo->ulBlockSize);
    if (!pDirectory)
       {
       return ERROR_NOT_ENOUGH_MEMORY;
       }
-
+#endif
    memset(pDirectory, 0, (size_t)pVolInfo->ulBlockSize);
    pDir2 = (PDIRENTRY1)((PBYTE)pDirectory + pVolInfo->ulBlockSize);
    memset(pDir2, 0, (size_t)pVolInfo->ulBlockSize);
@@ -7633,7 +7758,9 @@ BOOL      fFound;
             //   }
             if (rc)
                {
+#ifndef USE_STATIC_BUFS
                free(pDirectory);
+#endif
                return rc;
                }
             }
@@ -7724,7 +7851,9 @@ BOOL      fFound;
                            rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                         if (rc)
                            {
+#ifndef USE_STATIC_BUFS
                            free(pDirectory);
+#endif
                            return rc;
                            }
                         ulCluster = pVolInfo->ulFatEof;
@@ -7761,7 +7890,9 @@ BOOL      fFound;
                         //      rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
                         //   if (rc)
                         //      {
+#ifndef USE_STATIC_BUFS
                         //      free(pDirectory);
+#endif
                         //      return rc;
                         //      }
                         //   }
@@ -7776,7 +7907,9 @@ BOOL      fFound;
                            rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                         if (rc)
                            {
+#ifndef USE_STATIC_BUFS
                            free(pDirectory);
+#endif
                            return rc;
                            }
 
@@ -7831,7 +7964,9 @@ BOOL      fFound;
                      rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
 
@@ -7842,7 +7977,9 @@ BOOL      fFound;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   ulCluster = pVolInfo->ulFatEof;
@@ -7874,7 +8011,9 @@ BOOL      fFound;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   ulCluster = pVolInfo->ulFatEof;
@@ -7890,7 +8029,9 @@ BOOL      fFound;
                      rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   }
@@ -7933,7 +8074,9 @@ BOOL      fFound;
                   {
                   if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return ERROR_FILE_NOT_FOUND;
                      }
                   else
@@ -7954,7 +8097,9 @@ BOOL      fFound;
                      ulNextCluster = SetNextCluster(pVolInfo, ulCluster, FAT_ASSIGN_NEW);
                   if (ulNextCluster == pVolInfo->ulFatEof)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return ERROR_DISK_FULL;
                      }
                   fNewCluster = TRUE;
@@ -7972,7 +8117,9 @@ BOOL      fFound;
                   rc = WriteBlock(pVolInfo, ulCluster, ulBlock2, pDir2, usIOMode);
                   if (rc)
                      {
+#ifndef USE_STATIC_BUFS
                      free(pDirectory);
+#endif
                      return rc;
                      }
                   }
@@ -7990,7 +8137,9 @@ BOOL      fFound;
          ulCluster = ulNextCluster;
       }
 
+#ifndef USE_STATIC_BUFS
    free(pDirectory);
+#endif
    return 0;
 }
 
