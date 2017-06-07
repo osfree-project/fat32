@@ -150,7 +150,7 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      ulDirCluster = FindDirCluster(pVolInfo,
+      ulDirCluster = FindDirCluster(pVolInfo, ////
          pcdfsi,
          pcdfsd,
          pName,

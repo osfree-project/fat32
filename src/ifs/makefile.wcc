@@ -25,7 +25,8 @@ SYS=os2 lx phys
 # SYS=os2 lx dll initglobal
 # SYS=os2 dll initglobal
 
-OBJS=$(PROJ_BLD)\fat32.obj &
+OBJS=$(PROJ_BLD)\fat32a.obj &
+     $(PROJ_BLD)\fat32b.obj &
      $(PROJ_BLD)\ifsmount.obj &
      $(PROJ_BLD)\ifsfind.obj &
      $(PROJ_BLD)\ifsdir.obj &
