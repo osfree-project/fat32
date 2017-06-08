@@ -117,7 +117,8 @@ static void Handler(INT iSignal)
 
 static void usage(char *s)
 {
-   show_message("Usage: [c:\\] %s x: [/v[:[1|2]] [/p] [/f] [/c] [/a] [/h] [/?]]\n"
+   show_message("\nUsage: [c:\\] %s x: [/v[:[1|2]] [/p] [/f] [/c] [/a] [/h] [/?]]\n"
+                "\n"
                 "(c) Henk Kelder & Netlabs, covered by (L)GPL\n"
                 "/v         verbose, /v[:<verboseness level>]\n"
                 "/p         use with PM frontend\n"
@@ -507,6 +508,22 @@ PSZ    pszType;
 
    pCD->fCleanOnBoot = GetDiskStatus(pCD);
 
+   if (pCD->fAutoRecover && pCD->fCleanOnBoot)
+      pCD->fAutoRecover = FALSE;
+
+   //if (pCD->fAutoCheck && pCD->fCleanOnBoot)
+   if (pCD->fAutoRecover)
+      {
+      // do a line feed for each autochecked disk (for more aestheticity)
+      printf("\n");
+      }
+   else
+      {
+      // cancel autocheck if disk is clean
+      rc = 0;
+      goto ChkDskMainExit;
+      }
+
    if (! pCD->fAutoCheck || ! pCD->fCleanOnBoot)
       {
       show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
@@ -540,16 +557,6 @@ PSZ    pszType;
 
       show_message("The type of file system for the disk is %1.\n", 0, 1507, 1, TYPE_STRING, pszType);
       show_message("\n", 0, 0, 0);
-      }
-
-   if (pCD->fAutoRecover && pCD->fCleanOnBoot)
-      pCD->fAutoRecover = FALSE;
-
-   if (pCD->fAutoCheck && pCD->fCleanOnBoot)
-      {
-      // cancel autocheck if disk is clean
-      rc = 0;
-      goto ChkDskMainExit;
       }
 
    rc = CheckFats(pCD);

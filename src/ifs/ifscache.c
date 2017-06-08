@@ -375,10 +375,17 @@ USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbDa
 {
 USHORT rc;
 
-   if (!GetFatAccess(pVolInfo, "ReadSector")) // && !GetReadAccess(pVolInfo, "ReadSector"))
+   if (!GetFatAccess(pVolInfo, "ReadSector")
+#ifdef USE_STATIC_BUFS
+       && !GetReadAccess(pVolInfo, "ReadSector") )
+#else
+      )
+#endif
       {
       rc = ReadSector2(pVolInfo, ulSector, nSectors, pbData, usIOMode);
-      //ReleaseReadBuf(pVolInfo);
+#ifdef USE_STATIC_BUFS
+      ReleaseReadBuf(pVolInfo);
+#endif
       ReleaseFat(pVolInfo);
       }
 

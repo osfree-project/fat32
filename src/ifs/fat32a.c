@@ -31,17 +31,8 @@ PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 static BYTE szDiskLocked[]="The disk is in use or locked by another process.\r\n";
 static BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
 static ULONG ulSemRWFat = 0UL;
-static ULONG ulSemRWBuf1 = 0UL;
-static ULONG ulSemRWBuf2 = 0UL;
-static ULONG ulSemRWBuf3 = 0UL;
 static SEL sGlob = 0;
 static SEL sLoc = 0;
-
-#ifdef USE_STATIC_BUFS
-static BYTE _based(_segname("fat32_buf1_DATA")) pbDirBuf1[0x10000] = {0};
-static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf2[0x8000]  = {0};
-static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf3[0x8000]  = {0};
-#endif
 
 static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
@@ -64,12 +55,6 @@ VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
 USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
 VOID   ReleaseFat(PVOLINFO pVolInfo);
-USHORT GetBuf1Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf1(PVOLINFO pVolInfo);
-USHORT GetBuf2Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf2(PVOLINFO pVolInfo);
-USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf3(PVOLINFO pVolInfo);
 static USHORT RecoverChain(PVOLINFO pVolInfo, ULONG ulCluster, PBYTE pData, USHORT cbData);
 static USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector);
 static USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector);
@@ -6463,81 +6448,6 @@ VOID ReleaseFat(PVOLINFO pVolInfo)
    pVolInfo = pVolInfo;
    Message("ReleaseFat");
    FSH_SEMCLEAR(&ulSemRWFat);
-}
-
-USHORT GetBuf1Access(PVOLINFO pVolInfo, PSZ pszName)
-{
-USHORT rc;
-
-   pVolInfo = pVolInfo;
-
-   Message("GetBuf1Access: %s", pszName);
-   rc = SemRequest(&ulSemRWBuf1, TO_INFINITE, pszName);
-   if (rc)
-      {
-      Message("ERROR: SemRequest GetBuf1Access Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetBuf1Access Failed, rc = %d!", rc);
-      Message("GetBuf1Access Failed for %s, rc = %d", pszName, rc);
-      return rc;
-      }
-   return 0;
-}
-
-VOID ReleaseBuf1(PVOLINFO pVolInfo)
-{
-   pVolInfo = pVolInfo;
-   Message("ReleaseBuf1");
-   FSH_SEMCLEAR(&ulSemRWBuf1);
-}
-
-USHORT GetBuf2Access(PVOLINFO pVolInfo, PSZ pszName)
-{
-USHORT rc;
-
-   pVolInfo = pVolInfo;
-
-   Message("GetBuf2Access: %s", pszName);
-   rc = SemRequest(&ulSemRWBuf2, TO_INFINITE, pszName);
-   if (rc)
-      {
-      Message("ERROR: SemRequest GetBuf2Access Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetBuf2Access Failed, rc = %d!", rc);
-      Message("GetBuf2Access Failed for %s, rc = %d", pszName, rc);
-      return rc;
-      }
-   return 0;
-}
-
-VOID ReleaseBuf2(PVOLINFO pVolInfo)
-{
-   pVolInfo = pVolInfo;
-   Message("ReleaseBuf2");
-   FSH_SEMCLEAR(&ulSemRWBuf2);
-}
-
-USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName)
-{
-USHORT rc;
-
-   pVolInfo = pVolInfo;
-
-   Message("GetBuf3Access: %s", pszName);
-   rc = SemRequest(&ulSemRWBuf3, TO_INFINITE, pszName);
-   if (rc)
-      {
-      Message("ERROR: SemRequest GetBuf3Access Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetBuf3Access Failed, rc = %d!", rc);
-      Message("GetBuf3Access Failed for %s, rc = %d", pszName, rc);
-      return rc;
-      }
-   return 0;
-}
-
-VOID ReleaseBuf3(PVOLINFO pVolInfo)
-{
-   pVolInfo = pVolInfo;
-   Message("ReleaseBuf3");
-   FSH_SEMCLEAR(&ulSemRWBuf3);
 }
 
 VOID Yield(void)

@@ -25,6 +25,23 @@ PDIRENTRY1 CompactDir1(PDIRENTRY1 pStart, ULONG ulSize, USHORT usEntriesNeeded);
 USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 USHORT DBCSStrlen( const PSZ pszStr );
 
+USHORT GetBuf1Access(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseBuf1(PVOLINFO pVolInfo);
+USHORT GetBuf2Access(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseBuf2(PVOLINFO pVolInfo);
+USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName);
+VOID   ReleaseBuf3(PVOLINFO pVolInfo);
+
+static ULONG ulSemRWBuf1 = 0UL;
+static ULONG ulSemRWBuf2 = 0UL;
+static ULONG ulSemRWBuf3 = 0UL;
+
+#ifdef USE_STATIC_BUFS
+static BYTE _based(_segname("fat32_buf1_DATA")) pbDirBuf1[0x10000] = {0};
+static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf2[0x8000]  = {0};
+static BYTE _based(_segname("fat32_buf2_DATA")) pbDirBuf3[0x8000]  = {0};
+#endif
+
 /******************************************************************
 *
 ******************************************************************/
@@ -658,8 +675,10 @@ ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PSHOPENIN
 {
 ULONG rc;
 
-   //if (!GetBuf3Access(pVolInfo, "FindPathCluster"))
-   //   {
+#ifdef USE_STATIC_BUFS
+   if (!GetBuf3Access(pVolInfo, "FindPathCluster"))
+      {
+#endif
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
@@ -670,8 +689,10 @@ ULONG rc;
             (PDIRENTRY1)pDirEntry, (PDIRENTRY1)pDirEntryStream, pszFullName);
 #endif
 
-   //   ReleaseBuf3(pVolInfo);
-   //   }
+#ifdef USE_STATIC_BUFS
+      ReleaseBuf3(pVolInfo);
+      }
+#endif
 
    return rc;
 }
@@ -936,11 +957,15 @@ USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ psz
 {
 USHORT rc;
 
-   //if (!GetBuf2Access(pVolInfo, "TranslateName"))
-   //   {
+#ifdef USE_STATIC_BUFS
+   if (!GetBuf2Access(pVolInfo, "TranslateName"))
+      {
+#endif
       rc = TranslateName2(pVolInfo, ulDirCluster, pszPath, pszTarget, usTranslate);
-   //   ReleaseBuf2(pVolInfo);
-   //   }
+#ifdef USE_STATIC_BUFS
+      ReleaseBuf2(pVolInfo);
+      }
+#endif
 
    return rc;
 }
@@ -2019,8 +2044,10 @@ USHORT ModifyDirectory(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSH
 {
 USHORT rc;
 
-   //if (!GetBuf1Access(pVolInfo, "ModifyDirectory"))
-   //   {
+#ifdef USE_STATIC_BUFS
+   if (!GetBuf1Access(pVolInfo, "ModifyDirectory"))
+      {
+#endif
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
@@ -2032,8 +2059,85 @@ USHORT rc;
                                (PDIRENTRY1)pOld, (PDIRENTRY1)pNew,
                                pStreamOld, pStreamNew, pszLongName, usIOMode);
 #endif
-   //   ReleaseBuf1(pVolInfo);
-   //   }
+#ifdef USE_STATIC_BUFS
+      ReleaseBuf1(pVolInfo);
+      }
+#endif
 
    return rc;
+}
+
+USHORT GetBuf1Access(PVOLINFO pVolInfo, PSZ pszName)
+{
+USHORT rc;
+
+   pVolInfo = pVolInfo;
+
+   Message("GetBuf1Access: %s", pszName);
+   rc = SemRequest(&ulSemRWBuf1, TO_INFINITE, pszName);
+   if (rc)
+      {
+      Message("ERROR: SemRequest GetBuf1Access Failed, rc = %d!", rc);
+      CritMessage("FAT32: SemRequest GetBuf1Access Failed, rc = %d!", rc);
+      Message("GetBuf1Access Failed for %s, rc = %d", pszName, rc);
+      return rc;
+      }
+   return 0;
+}
+
+VOID ReleaseBuf1(PVOLINFO pVolInfo)
+{
+   pVolInfo = pVolInfo;
+   Message("ReleaseBuf1");
+   FSH_SEMCLEAR(&ulSemRWBuf1);
+}
+
+USHORT GetBuf2Access(PVOLINFO pVolInfo, PSZ pszName)
+{
+USHORT rc;
+
+   pVolInfo = pVolInfo;
+
+   Message("GetBuf2Access: %s", pszName);
+   rc = SemRequest(&ulSemRWBuf2, TO_INFINITE, pszName);
+   if (rc)
+      {
+      Message("ERROR: SemRequest GetBuf2Access Failed, rc = %d!", rc);
+      CritMessage("FAT32: SemRequest GetBuf2Access Failed, rc = %d!", rc);
+      Message("GetBuf2Access Failed for %s, rc = %d", pszName, rc);
+      return rc;
+      }
+   return 0;
+}
+
+VOID ReleaseBuf2(PVOLINFO pVolInfo)
+{
+   pVolInfo = pVolInfo;
+   Message("ReleaseBuf2");
+   FSH_SEMCLEAR(&ulSemRWBuf2);
+}
+
+USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName)
+{
+USHORT rc;
+
+   pVolInfo = pVolInfo;
+
+   Message("GetBuf3Access: %s", pszName);
+   rc = SemRequest(&ulSemRWBuf3, TO_INFINITE, pszName);
+   if (rc)
+      {
+      Message("ERROR: SemRequest GetBuf3Access Failed, rc = %d!", rc);
+      CritMessage("FAT32: SemRequest GetBuf3Access Failed, rc = %d!", rc);
+      Message("GetBuf3Access Failed for %s, rc = %d", pszName, rc);
+      return rc;
+      }
+   return 0;
+}
+
+VOID ReleaseBuf3(PVOLINFO pVolInfo)
+{
+   pVolInfo = pVolInfo;
+   Message("ReleaseBuf3");
+   FSH_SEMCLEAR(&ulSemRWBuf3);
 }
