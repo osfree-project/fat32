@@ -511,17 +511,10 @@ PSZ    pszType;
    if (pCD->fAutoRecover && pCD->fCleanOnBoot)
       pCD->fAutoRecover = FALSE;
 
-   //if (pCD->fAutoCheck && pCD->fCleanOnBoot)
    if (pCD->fAutoRecover)
       {
       // do a line feed for each autochecked disk (for more aestheticity)
       printf("\n");
-      }
-   else
-      {
-      // cancel autocheck if disk is clean
-      rc = 0;
-      goto ChkDskMainExit;
       }
 
    if (! pCD->fAutoCheck || ! pCD->fCleanOnBoot)
@@ -557,6 +550,13 @@ PSZ    pszType;
 
       show_message("The type of file system for the disk is %1.\n", 0, 1507, 1, TYPE_STRING, pszType);
       show_message("\n", 0, 0, 0);
+      }
+
+   if (pCD->fAutoCheck && pCD->fCleanOnBoot)
+      {
+      // cancel autocheck if disk is clean
+      rc = 0;
+      goto ChkDskMainExit;
       }
 
    rc = CheckFats(pCD);
