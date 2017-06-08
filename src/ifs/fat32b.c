@@ -167,7 +167,7 @@ BYTE szShortName[13];
 static BYTE szLongName[FAT32MAXPATHCOMP * 2];
 PSZ  pszLongName = szLongName;
 #else
-PSZ  pszLongName;;
+PSZ  pszLongName;
 #endif
 PSZ  pszPart;
 PSZ  p;
@@ -224,13 +224,13 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
       }
 
 #ifndef USE_STATIC_BUFS
-   pDirStart = malloc(pVolInfo->ulBlockSize);
+   pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
    if (!pDirStart)
       {
       Message("FAT32: Not enough memory for cluster in FindPathCluster");
       return pVolInfo->ulFatEof;
       }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
+   pszLongName = malloc((size_t)FAT32MAXPATHCOMP * 2);
    if (!pszLongName)
       {
       Message("FAT32: Not enough memory for buffers in FindPathCluster");
@@ -471,13 +471,13 @@ USHORT usFileAttr;
       }
 
 #ifndef USE_STATIC_BUFS
-   pDirStart = malloc(pVolInfo->ulBlockSize);
+   pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
    if (!pDirStart)
       {
       Message("FAT32: Not enough memory for cluster in FindPathCluster");
       return pVolInfo->ulFatEof;
       }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 2);
+   pszLongName = malloc((size_t)FAT32MAXPATHCOMP * 2);
    if (!pszLongName)
       {
       Message("FAT32: Not enough memory for buffers in FindPathCluster");
@@ -742,13 +742,13 @@ ULONG  ulDirEntries = 0;
       }
 
 #ifndef USE_STATIC_BUFS
-   pDirStart = malloc(pVolInfo->ulBlockSize);
+   pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
    if (!pDirStart)
       {
       Message("FAT32: Not enough memory for cluster in TranslateName");
       return ERROR_NOT_ENOUGH_MEMORY;
       }
-   pszLongName = malloc(FAT32MAXPATHCOMP * 4);
+   pszLongName = malloc((size_t)FAT32MAXPATHCOMP * 4);
    if (!pszLongName)
       {
       Message("FAT32: Not enough memory for buffers in TranslateName");

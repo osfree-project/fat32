@@ -43,7 +43,7 @@ L32FLAGS=/NOL /BAT $(L32OPTS) /MAP /NOP /NOE /NOD
 
 all: fat32.ifs fat32.sym
 
-FAT32OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
+FAT32OBJS=fat32a.obj fat32b.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
           ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj\
           ifsea.obj ifslang.obj ifsachk.obj\
           mem.obj alphabet.obj i8m086.obj i8d086.obj # helpers.obj
@@ -51,7 +51,8 @@ FAT32OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
 fat32.ifs : $(FAT32OBJS) ..\lib\fat32.def makefile.msc
     @$(LINK) $(L32FLAGS) $(FAT32OBJS) ,$@,, $(DDKTOOLS)\toolkits\msc60\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\fat32.def
 
-fat32.obj:    fat32.c      ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+fat32a.obj:   fat32a.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+fat32b.obj:   fat32b.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsmount.obj: ifsmount.c   ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsfind.obj:  ifsfind.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsdir.obj:   ifsdir.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
