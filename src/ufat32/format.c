@@ -214,7 +214,7 @@ BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DW
 
 #ifdef EXFAT
 
-void SetBmpEntry(PBYTE pBitmap, struct extbpb *dp, ULONG ulCluster, BOOL fState)
+void SetBmpEntry2(PBYTE pBitmap, struct extbpb *dp, ULONG ulCluster, BOOL fState)
 {
 ULONG ulOffset;
 USHORT usShift;
@@ -231,7 +231,7 @@ BYTE bMask;
       pBitmap[ulOffset] &= ~bMask;
 }
 
-ULONG GetChkSum32(const char *data, int bytes)
+ULONG GetChkSum2(const char *data, int bytes)
 {
    ULONG sum = 0;
    int i;
@@ -952,15 +952,15 @@ int format_volume (char *path, format_params *params)
         // bitmap clusters
         for ( i = 0; i < ulExfatBitmapClusters; i++)
         {
-            SetBmpEntry(pBitmap, &dp, 2 + i, 1);
+            SetBmpEntry2(pBitmap, &dp, 2 + i, 1);
         }
         // upcase table clusters
         for ( i = 0; i < ulExfatUpCaseClusters; i++)
         {
-            SetBmpEntry(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
+            SetBmpEntry2(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
         }
         // root dir cluster
-        SetBmpEntry(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
+        SetBmpEntry2(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pBitmap, ulExfatBitmapClusters * dp.SectorsPerCluster );
 
         // write upcase table
@@ -985,7 +985,7 @@ int format_volume (char *path, format_params *params)
         pDir->bEntryType = ENTRY_TYPE_UPCASE_TABLE;
         pDir->u.UpCaseTbl.ulFirstCluster = 2 + ulExfatBitmapClusters;
         pDir->u.UpCaseTbl.ullDataLength = ulExfatUpCaseLen;
-        pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum32((char *)pUpCase, ulExfatUpCaseLen);
+        pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum2((char *)pUpCase, ulExfatUpCaseLen);
         //
         SectorStart += dp.SectorsPerCluster;
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, dp.SectorsPerCluster );
