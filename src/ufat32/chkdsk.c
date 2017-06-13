@@ -578,22 +578,26 @@ PSZ    pszType;
                    ulFreeBlocks);
       }
 
-   show_message("\n%1 bytes total disk space.\n", 0, 1361, 1,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize);
+   show_message("%1 kilobytes total disk space.\n", 0, 568, 1,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulTotalClusters * pCD->ulClusterSize / 1024);
+   show_message("%1 kilobytes are in %2 directories.\n", 0, 569, 2,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->ulClusterSize / 1024,
+      TYPE_LONG, pCD->ulTotalDirs);
+   show_message("%1 kilobytes are in %2 user files.\n", 0, 570, 2,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->ulClusterSize / 1024,
+      TYPE_LONG, pCD->ulUserFiles);
    if (pCD->ulBadClusters)
       show_message("%1 bytes in bad sectors.\n", 0, 1362, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulBadClusters * pCD->ulClusterSize);
+
    show_message("%1 bytes in %2 hidden files.\n", 0, 1363, 2,
       TYPE_DOUBLE, (DOUBLE)pCD->ulHiddenClusters * pCD->ulClusterSize,
       TYPE_LONG, pCD->ulHiddenFiles);
-   show_message("%1 bytes in %2 directories.\n", 0, 1364, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulDirClusters * pCD->ulClusterSize,
-      TYPE_LONG, pCD->ulTotalDirs);
-   show_message("%1 bytes in extended attributes.\n", 0, 1819, 1,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->ulClusterSize);
-   show_message("%1 bytes in %2 user files.\n", 0, 1365, 2,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulUserClusters * pCD->ulClusterSize,
-      TYPE_LONG, pCD->ulUserFiles);
+   show_message("%1 kilobytes are in extended attributes.\n", 0, 633, 1,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulEAClusters * pCD->ulClusterSize / 1024);
+   show_message("%1 kilobytes are reserved for system use.\n", 0, 632, 1,
+      TYPE_DOUBLE, (DOUBLE)((pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.BytesPerSector + 
+      pCD->ulDirClusters * pCD->ulClusterSize) / 1024));
 
    if (pCD->ulRecoveredClusters)
       show_message("%1 bytes in %2 user files.\n", 0, 1365, 2,
@@ -604,8 +608,8 @@ PSZ    pszType;
       show_message("%1 bytes disk space would be freed.\n", 0, 1359, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->ulClusterSize);
 
-   show_message("%1 bytes available on disk.\n", 0, 1368, 1,
-      TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize);
+   show_message("%1 kilobytes are available for use.", 0, 571, 2,
+      TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize / 1024);
 
    show_message("\n", 0, 0, 0);
 
@@ -810,7 +814,8 @@ ULONG dummy = 0;
       USHORT usNew  = (USHORT)(ulCluster * 100 / pCD->ulTotalClusters);
       ULONG ulNext = GetNextCluster(pCD, ulCluster + 2, FALSE, TRUE);
 
-      if (!pCD->fPM && !fToFile && usNew != usPerc)
+      //if (!pCD->fPM && !fToFile && usNew != usPerc)
+      if (!fToFile && usNew != usPerc)
          {
          show_message("CHKDSK has searched %1% of the disk.", 0, 563, 1, TYPE_PERC, usNew);
          printf("\r");
@@ -846,7 +851,8 @@ ULONG dummy = 0;
          }
       }
 
-   if (!pCD->fPM && !fToFile)
+   //if (!pCD->fPM && !fToFile)
+   if (!fToFile)
       show_message("CHKDSK has searched %1% of the disk.", 0, 563, 1, TYPE_PERC, 100);
    show_message("\n", 0, 0, 0);
 

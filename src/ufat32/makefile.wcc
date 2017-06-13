@@ -112,7 +112,7 @@ $(PROJ_BLD)\fat32sys.ols: $(OBJS4) makefile.wcc ..\makefile.mk
 
 $(PROJ_BLD)\uunifat.lnk: $(PROJ_BLD)\uunifat.ols
  @%create $@
- @%append $@ SYSTEM $(SYS) dll
+ @%append $@ SYSTEM $(SYS) dll initinstance terminstance
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION MIXED1632
