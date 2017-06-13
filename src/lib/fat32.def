@@ -54,3 +54,8 @@ EXPORTS
     FS_ATTRIBUTE
     FS_NAME
 
+IMPORTS
+    _TKSSBase=MVDM.2
+    KernThunkStackTo16=KEE.40
+    KernThunkStackTo32=KEE.41
+    

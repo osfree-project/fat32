@@ -178,17 +178,17 @@ void _far *memchr( const void _far *s, char c, size_t n )
 
 char _far *strchr( const char _far *s, int c );
 
-#ifdef _MSC_VER // MSC
-char *strchr( const char *s, int c )
-{
-    char cc = (char)c;
-    do {
-        if( *s == cc )
-            return( (char *)s );
-    } while( *s++ != '\0' );
-    return( 0 );
-}
-#endif
+//#ifdef _MSC_VER // MSC
+//char _far *strchr( const char *s, int c )
+//{
+//    char cc = (char)c;
+//    do {
+//        if( *s == cc )
+//            return( (char *)s );
+//    } while( *s++ != '\0' );
+//    return( 0 );
+//}
+//#endif
 
 #define memeq( p1, p2, len )    ( memcmp((p1),(p2),(len)) == 0 )
 

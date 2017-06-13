@@ -4,6 +4,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <conio.h>
 
 int main(int argc, char **argv)
 {
@@ -57,16 +58,16 @@ int main(int argc, char **argv)
   while (*cmd++) ;
 
   // without this, no strings are output to screen by UFAT32.DLL
-  puts("");
+  cputs("\r");
 
   _fstrcpy(buf + prgLen, cmd);
   Argv[0] = buf;
 
   for (p = buf + prgLen, i = 1; i < argc; p++, i++)
   {
-    while (*p == ' ') p++;
+    while (*p && *p == ' ') p++;
     Argv[i] = p;
-    while (*p != ' ') p++;
+    while (*p && *p != ' ') p++;
     *p = '\0';
   }
 

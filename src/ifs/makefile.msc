@@ -13,19 +13,20 @@ ADD_DEFS =
 
 !IF $(DEBUG)
 COPTS=/Od /Zi /J /D__16BITS__ /D__OS2__ $(ADD_DEFS)
-AOPTS=/Zi /Ilibc
+AOPTS=-Od:MS16 -I:libc
 LOPTS=/COD
 L32OPTS=/DE
 !ELSE
-COPTS=/Gr /J /D__16BITS__ /D__OS2__ $(ADD_DEFS) # /Ox
-AOPTS=/Ilibc
+COPTS=/Gr /J /D__16BITS__ /D__OS2__ $(ADD_DEFS)
+AOPTS=-I:libc
 LOPTS=/E:2
 L32OPTS=/E:2
 !ENDIF
 
 LINK=$(BOOTDRIVE)\os2\link386.exe
 CFLAGS=/nologo $(COPTS) /G2s /Zl /Alfu /Zp1 /W3 /c /Fc%|dpfF.lst
-AFLAGS=/nologo $(AOPTS) /c /Sa /Sn /Fl%|dpfF.lst
+#AFLAGS=-Mb $(AOPTS) -Fl:%|dpfF.lst
+AFLAGS=-Mb $(AOPTS) +Fl
 LFLAGS=/NOL $(LOPTS) /MAP /FAR /PACKC /PACKD /NOD /A:512
 L32FLAGS=/NOL /BAT $(L32OPTS) /MAP /NOP /NOE /NOD
 
@@ -36,22 +37,23 @@ L32FLAGS=/NOL /BAT $(L32OPTS) /MAP /NOP /NOE /NOD
     @cl $(CFLAGS) %s
 
 .asm.obj:
-    @ml $(AFLAGS) %s
+    alp $(AFLAGS) %s
 
 .map.sym:
     @mapsym %s >nul 2>&1
 
 all: fat32.ifs fat32.sym
 
-FAT32OBJS=fat32.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
+FAT32OBJS=fat32a.obj fat32b.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
           ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj\
           ifsea.obj ifslang.obj ifsachk.obj\
-          mem.obj alphabet.obj i8m086.obj i8d086.obj # helpers.obj
+          mem.obj alphabet.obj i8m086.obj i8d086.obj helpers.obj
 
 fat32.ifs : $(FAT32OBJS) ..\lib\fat32.def makefile.msc
-    @$(LINK) $(L32FLAGS) $(FAT32OBJS) ,$@,, $(DDKTOOLS)\toolkits\msc60\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\fat32.def
+    @$(LINK) $(L32FLAGS) $(FAT32OBJS) ,$@,, $(DDK)\base\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\fat32.def
 
-fat32.obj:    fat32.c      ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+fat32a.obj:   fat32a.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
+fat32b.obj:   fat32b.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsmount.obj: ifsmount.c   ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsfind.obj:  ifsfind.c    ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
 ifsdir.obj:   ifsdir.c     ..\include\fat32ifs.h ..\include\fat32def.h ..\include\portable.h
@@ -74,7 +76,7 @@ alphabet.obj: libc\alphabet.c
     @cl $(CFLAGS) %s
 
 i8d086.obj: libc\i8d086.asm
-    @ml $(AFLAGS) %s
+    alp $(AFLAGS) %s
 
 i8m086.obj: libc\i8m086.asm
-    @ml $(AFLAGS) %s
+    alp $(AFLAGS) %s

@@ -14,6 +14,8 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
+# ADD_DEFS += -dUSE_STATIC_BUFS
+
 # COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM $(ADD_DEFS) -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
 # -zt=24576
@@ -25,7 +27,8 @@ SYS=os2 lx phys
 # SYS=os2 lx dll initglobal
 # SYS=os2 dll initglobal
 
-OBJS=$(PROJ_BLD)\fat32.obj &
+OBJS=$(PROJ_BLD)\fat32a.obj &
+     $(PROJ_BLD)\fat32b.obj &
      $(PROJ_BLD)\ifsmount.obj &
      $(PROJ_BLD)\ifsfind.obj &
      $(PROJ_BLD)\ifsdir.obj &

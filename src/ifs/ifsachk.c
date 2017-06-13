@@ -184,7 +184,7 @@ void _cdecl autocheck(char *args)
     Arg_Buf[len] = ' ';
     len++;
 
-    /* if the force mask is set for this drive ommit the /C, otherwise */
+    /* if the force mask is set for this drive omit the /C, otherwise */
     /* add it as parm 5 */
     if (! (force_mask & (1UL << i)) )
     {

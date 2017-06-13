@@ -1,4 +1,5 @@
-.286p
+.MODEL LARGE,PASCAL
+.686p
 
 ERROR_NOT_SUPPORTED        equ 50
 ERROR_INVALID_PARAMETER    equ 87
@@ -34,51 +35,51 @@ LIS_PackShrSel	DW	?
 LIS_PackPckSel	DW	?
 InfoSegLDT	ENDS
 
+extrn C Device_Help      :dword
+extrn FS_READ            :far
+extrn FS_WRITE           :far
+extrn FS_CHGFILEPTR      :far
+extrn FS_CHGFILEPTRL     :far
 
-extern KernThunkStackTo16 :near
-extern KernThunkStackTo32 :near
-extern C Device_Help      :dword
-extern C TKSSBase         :dword
-extern Dos32FlatDS        :near
+extrn SYSCALL KernThunkStackTo16 :near
+extrn SYSCALL KernThunkStackTo32 :near
+extrn C TKSSBase         :dword
+extrn SYSCALL Dos32FlatDS :abs
 
-extern FS_READ            :far
-extern FS_WRITE           :far
-extern FS_CHGFILEPTR      :far
-extern FS_CHGFILEPTRL     :far
 
-_TEXT segment word public 'CODE' use16
+
+_TEXT segment word public use16 'CODE'
 _TEXT ends
 
-CONST segment word public 'DATA' use16
+CONST segment word public use16 'DATA'
 CONST ends
 
-CONST2 segment word public 'DATA' use16
+CONST2 segment word public use16 'DATA'
 CONST2 ends
 
-_DATA segment word public 'DATA' use16
+_DATA segment word public use16 'DATA'
 _DATA ends
 
-_BSS  segment word public 'BSS' use16
+_BSS  segment word public use16 'BSS'
 _BSS  ends
 
 DGROUP group CONST, CONST2, _DATA, _BSS
 
-.686p
-.xmm2
-_TEXT segment word public 'CODE' use16
+_TEXT segment word public use16 'CODE'
 ASSUME ds:DGROUP
+ASSUME cs:_TEXT
 
    PUBLIC AcquireLightLock
-AcquireLightLock PROC FAR PASCAL USES esi edi,ControlVar:DWORD
+AcquireLightLock PROC USES esi edi,ControlVar:DWORD
    mov al,DHGETDOSV_LOCINFOSEG
    xor cx,cx
    mov dl,DevHlp_GetDOSVar
    call DWORD PTR Device_Help
    mov es,ax
    les bx,es:[bx]
-   mov si,es:[bx]+LIS_CurProcID
+   mov si,es:[bx]+InfoSegLDT.LIS_CurProcID
    shl esi,010h
-   mov si,es:[bx]+LIS_CurThrdID
+   mov si,es:[bx]+InfoSegLDT.LIS_CurThrdID
    
    les bx,ControlVar
 
@@ -91,8 +92,8 @@ AcquireLightLock PROC FAR PASCAL USES esi edi,ControlVar:DWORD
    cmp ecx,esi                   ; ecx (eax) was not zero, is it our own thread ?
    jz short @F                   ; nested call: we again grabbed the sem
 
-   pause                         ; was introduced with SSE2 but will not trap on any processor !
-                                 ; this pauses the CPU which is more CPU friendly
+   ;pause                        ; was introduced with SSE2 but will not trap on any processor !
+   db 0f3h,090h                  ; this pauses the CPU which is more CPU friendly
 
    jmp short @B                  ; else, go back and try to claim RAM semaphore
 
@@ -105,16 +106,16 @@ AcquireLightLock ENDP
 
 
    PUBLIC ReleaseLightLock
-ReleaseLightLock PROC FAR PASCAL USES esi,ControlVar:DWORD
+ReleaseLightLock PROC USES esi,ControlVar:DWORD
    mov al,DHGETDOSV_LOCINFOSEG
    xor cx,cx
    mov dl,DevHlp_GetDOSVar
    call DWORD PTR Device_Help
    mov es,ax
    les bx,es:[bx]
-   mov si,es:[bx]+LIS_CurProcID
+   mov si,es:[bx]+InfoSegLDT.LIS_CurProcID
    shl esi,010h
-   mov si,es:[bx]+LIS_CurThrdID
+   mov si,es:[bx]+InfoSegLDT.LIS_CurThrdID
    
    les bx,ControlVar
 
@@ -131,10 +132,7 @@ ReleaseLightLock PROC FAR PASCAL USES esi,ControlVar:DWORD
    xor ax,ax
    ret
 ReleaseLightLock ENDP
-
 _TEXT ends
-
-.386p
 
 SaveReg macro Which
     irp y,<Which>
@@ -200,6 +198,10 @@ LinToGdtSel macro sel, lin, size
 endm
 
 _TEXT32 segment word public 'CODE' use32
+ASSUME DS:FLAT,ES:FLAT
+
+
+
 
 public FS32_CHGFILEPTR
 public FS32_CHGFILEPTRL
@@ -271,12 +273,6 @@ psffsd16 equ <dword ptr ebp - 8h>
 pvData16 equ <dword ptr ebp - 0ch>
 pcb16    equ <dword ptr ebp - 10h>
 
-      assume cs:_TEXT
-      assume ds:FLAT, es:FLAT
-
-      ;assume cs:FLAT
-      ;assume ds:FLAT, es:FLAT
-
       push ebp
       mov  ebp, esp
 
@@ -287,17 +283,16 @@ pcb16    equ <dword ptr ebp - 10h>
 
       call KernThunkStackTo16
 
-      jmp  far ptr FS32_READ_16
+      jmp  far ptr _TEXT:FS32_READ_16
 
-_TEXT segment
+_TEXT32 ends
+_TEXT segment word public use16 'CODE'
 
 FS32_READ_16:
 
-      ;assume cs:_TEXT
-      ;assume ds:DGROUP, es:DGROUP
+      assume cs:_TEXT
+      assume ds:DGROUP, es:DGROUP
 
-      ;assume  ds:DGROUP
-      ;assume  es:DGROUP
 
       mov  ax, seg DGROUP
       mov  ds, ax
@@ -339,18 +334,17 @@ FS32_READ_16:
       ;;;;add   esp, 18
 
       jmp far ptr FLAT:FS32_READ_32
-      ;jmp far ptr _TEXT32:FS32_READ_32
 
 _TEXT ends
 
+_TEXT32 segment word public 'CODE' use32
+ASSUME DS:FLAT,ES:FLAT
+
 FS32_READ_32:
 
-      ;assume cs:FLAT
-      ;assume ds:FLAT, es:FLAT
-
-      mov  ax, offset Dos32FlatDS
-      mov  ds, ax
-      mov  es, ax
+      mov  eax, Dos32FlatDS
+      mov  ds, eax
+      mov  es, eax
 
       call KernThunkStackTo32
 
@@ -400,7 +394,7 @@ FS32_WRITE endp
 
 _TEXT32 ends
 
-_DATA segment word public 'DATA' use16
+_DATA segment word public use16 'DATA'
 
 InitFlag DW 1
 

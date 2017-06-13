@@ -357,4 +357,5 @@ $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
 .map.sym:
  @echo MAPSYM   $^.
  @mapsym $[@ >nul 2>&1
- @move $^. $^: >nul 2>&1
+ @copy $^. $^: >nul 2>&1
+ @del $^. >nul 2>&1
