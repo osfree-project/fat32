@@ -548,7 +548,6 @@ PDIRENTRY1 pNewEntry = (PDIRENTRY1)&NewEntry;
 USHORT rc;
 
 
-   Message("ulDirCluster=%lx, pszFileName=%s, pDirSHInfo=%lx", ulDirCluster, pszFileName, pDirSHInfo);
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, &OldEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {

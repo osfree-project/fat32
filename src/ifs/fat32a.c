@@ -1647,6 +1647,7 @@ BOOL fFound;
 
    *pulFirstCluster = DirEntry.u.AllocBmp.ulFirstCluster;
    *pullLen = DirEntry.u.AllocBmp.ullDataLength;
+   free(pDirStart);
    return 0;
 }
 
@@ -2006,8 +2007,8 @@ APIRET rc = 0;
    if (!fSilent)
       InitMessage(szBanner);
 
-   if (!ulCacheSectors)
-      InitMessage("FAT32: Warning CACHE size is zero!");
+   //if (!ulCacheSectors)
+   //   InitMessage("FAT32: Warning CACHE size is zero!");
    //else
    //   InitCache(ulCacheSectors);
 
@@ -4569,6 +4570,8 @@ USHORT rc;
          ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
 #ifdef EXFAT
          if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
+#else
+         if (ulNewCluster)
 #endif
             {
             CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
@@ -6298,16 +6301,44 @@ PDIRENTRY1 pTar, pMax, pFirstFree;
 USHORT usFreeEntries;
 BOOL bLoop;
 
-
    pMax = (PDIRENTRY1)((PBYTE)pStart + ulSize);
    bLoop = pMax == pStart;
    pFirstFree = pMax;
    usFreeEntries = 0;
    while (( pFirstFree != pStart ) || bLoop )
       {
+      BYTE bSecondaries;
       //if (!(pFirstFree - 1)->bFileName[0])
-      if ((pFirstFree - 1)->bEntryType == ENTRY_TYPE_EOD)
+      if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_EOD )
+         {
          usFreeEntries++;
+         bSecondaries = 0;
+         }
+      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_STREAM_EXT )
+         {
+         usFreeEntries++;
+         bSecondaries++;
+         }
+      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE_NAME )
+         {
+         usFreeEntries++;
+         bSecondaries++;
+         }
+      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE )
+         {
+         if ((pFirstFree - 1)->u.File.bSecondaryCount == bSecondaries)
+            {
+            pFirstFree += bSecondaries;
+            usFreeEntries -= bSecondaries;
+            bSecondaries = 0;
+            break;
+            }
+         else
+            {
+            usFreeEntries++;
+            bSecondaries = 0;
+            }
+         }
       else
          break;
       bLoop = FALSE;
@@ -6315,7 +6346,7 @@ BOOL bLoop;
       }
 
    //if ((( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bAttr != FILE_LONGNAME)
-   if ( (( pFirstFree == pStart ) && !bLoop ) )
+   if ( (( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE_NAME)
       {
       if (usFreeEntries >= usEntriesNeeded)
          return pFirstFree;

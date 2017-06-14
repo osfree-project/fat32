@@ -464,6 +464,9 @@ USHORT usFileAttr;
          }
       }
 
+   if (pDirEntryStream)
+      memset(pDirEntryStream, 0, sizeof(DIRENTRY1));
+
    if (strlen(pszPath) >= 2)
       {
       if (pszPath[1] == ':')
@@ -975,7 +978,7 @@ USHORT ModifyDirectory0(PVOLINFO pVolInfo, ULONG ulDirCluster,
                        PSZ pszLongName, USHORT usIOMode)
 {
 #ifdef USE_STATIC_BUFS
-PDIRENTRY pDirectory = (PDIRENTRY)pbDirBuf1;
+DIRENTRY _huge *pDirectory = (PDIRENTRY)pbDirBuf1;
 #else
 PDIRENTRY pDirectory;
 #endif
@@ -1505,7 +1508,7 @@ USHORT ModifyDirectory1(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirS
                        PSZ pszLongName, USHORT usIOMode)
 {
 #ifdef USE_STATIC_BUFS
-PDIRENTRY1 pDirectory = (PDIRENTRY1)pbDirBuf1;
+DIRENTRY1 _huge *pDirectory = (PDIRENTRY1)pbDirBuf1;
 #else
 PDIRENTRY1 pDirectory;
 #endif

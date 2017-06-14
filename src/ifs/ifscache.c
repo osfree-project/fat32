@@ -74,18 +74,17 @@ PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 ******************************************************************/
 BOOL InitCache(ULONG ulSectors)
 {
-//static BOOL fInitDone = FALSE;
+static BOOL fInitDone = FALSE;
 APIRET rc;
 PCACHEBASE pBase;
 PCACHEBASE2 pBase2;
 USHORT usIndex;
 ULONG ulSize;
-//PVOID p;
+PVOID p;
 
-//   if (fInitDone)
-//      return FALSE;
-//   fInitDone = TRUE;
-
+   if (fInitDone)
+      return FALSE;
+   fInitDone = TRUE;
 
    if (!ulSectors || f32Parms.usCacheSize)
       return FALSE;
@@ -93,8 +92,7 @@ ULONG ulSize;
 
    if (ulSectors > MAX_SECTORS)
       ulSectors = MAX_SECTORS;
-//   Message("Allocating cache space for %ld sectors", ulSectors);
-   InitMessage("Allocating cache space for %ld sectors",ulSectors);
+   Message("Allocating cache space for %ld sectors", ulSectors);
 
 
    f32Parms.usCacheSize = 0L;
@@ -102,7 +100,6 @@ ULONG ulSize;
    /* Account for enough selectors */
 
    usSelCount = (USHORT)(ulSectors / 128 + (ulSectors % 128 ? 1: 0));
-
 
    rc = DevHelp_AllocGDTSelector(rgCacheSel, usSelCount);
    if (rc)
@@ -142,8 +139,7 @@ ULONG ulSize;
                                         rgCacheSel[usIndex]);
         if (rc)
         {
-//            FatalMessage("FAT32: PhysGDTSelector (%d) failed, rc = %d", usIndex, rc);
-            InitMessage("FAT32: PhysGDTSelector (%d) failed, rc = %d", usIndex, rc);
+            FatalMessage("FAT32: PhysGDTSelector (%d) failed, rc = %d", usIndex, rc);
 
             return FALSE;
         }
@@ -175,7 +171,6 @@ ULONG ulSize;
 
    f32Parms.usCacheUsed = 0L;
 
-/*
    p = (PVOID)InitCache;
    rc = FSH_FORCENOSWAP(SELECTOROF(p));
    if (rc)
@@ -195,8 +190,6 @@ ULONG ulSize;
    rc = FSH_FORCENOSWAP(SELECTOROF(p));
    if (rc)
       FatalMessage("FAT32:FSH_FORCENOSWAP on IFSCACHE3_DATA Segment failed, rc=%u", rc);
-*/
-
 
    return TRUE;
 }
@@ -764,7 +757,6 @@ USHORT    usCBIndex,usCBIndexNew;
 
    usCBIndex = rgSlot[(USHORT)(ulSector % MAX_SLOTS)];
 
-
    while (usCBIndex != FREE_SLOT)
       {
       rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
@@ -1010,7 +1002,6 @@ ULONG  ulCurTime = GetCurTime();
    for (usCBIndex = 0; ( f32Parms.usDirtySectors || usFlag == FLUSH_DISCARD ) &&
          usCBIndex < f32Parms.usCacheUsed; usCBIndex++)
       {
-
       rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
 
       pBase = pCacheBase + usCBIndex;

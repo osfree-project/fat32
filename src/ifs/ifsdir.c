@@ -554,6 +554,7 @@ PSHOPENINFO pSHInfo = NULL;
             BYTE bSecondaryCount;
             while (pWork1 < pMax1)
                {
+               BYTE bSecondaries = 0;
                if (pWork1->bEntryType == ENTRY_TYPE_EOD)
                   {
                   break;
@@ -563,9 +564,18 @@ PSHOPENINFO pSHInfo = NULL;
                   if (pWork1->bEntryType == ENTRY_TYPE_FILE)
                      {
                      bSecondaryCount = pWork1->u.File.bSecondaryCount;
-                     usFileCount++;
+                     }
+                  if (pWork1->bEntryType == ENTRY_TYPE_STREAM_EXT)
+                     {
+                     bSecondaries++;
+                     }
+                  if (pWork1->bEntryType == ENTRY_TYPE_FILE_NAME)
+                     {
+                     bSecondaries++;
                      }
                   }
+               if (bSecondaries == bSecondaryCount)
+                  usFileCount++;
                pWork1++;
                }
             }

@@ -134,6 +134,11 @@ int i;
 
             memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
 
+            if (!ulCacheSectors)
+               Message("FAT32: Warning CACHE size is zero!");
+            //else
+            //   InitCache(ulCacheSectors);
+
             pVolInfo->bFatType = GetFatType(pSect);
 
             if (pVolInfo->bFatType == FAT_TYPE_NONE)

@@ -211,6 +211,23 @@ struct extbpb
 
 #pragma pack(pop)
 
+#pragma pack(1)
+typedef struct _ShOpenInfo
+{
+BYTE   szFileName[FAT32MAXPATH];  /* 275 */
+SHORT  sOpenCount;
+ULONG  ulDirCluster;
+ULONG  ulStartCluster;
+ULONG  ulLastCluster;
+BYTE   bAttr;
+BYTE   fMustCommit;
+PVOID  pNext;
+PVOID  pChild;
+BOOL   fLock;
+BOOL   fNoFatChain;
+} SHOPENINFO, *PSHOPENINFO;
+#pragma pack()
+
 //
 // API
 //
