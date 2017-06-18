@@ -276,7 +276,7 @@ char far *p;
       }
 
    /* check bad cluster (moved to ReadBlock) */
-   /* if( ulSector >= pVolInfo->ulStartOfData )
+   if( ulSector >= pVolInfo->ulStartOfData )
    {
         ULONG ulStartCluster = Sector2Cluster( ulSector );
         ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
@@ -295,7 +295,11 @@ char far *p;
             usSectors = ( ulStartCluster != ulCluster ) ?
                 ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
         }
-   } */
+
+        if (usSectors == 0)
+            // avoid reading zero sectors
+            return ERROR_SECTOR_NOT_FOUND;
+   }
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();

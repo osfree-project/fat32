@@ -2064,15 +2064,15 @@ APIRET rc = 0;
       }
 
 #ifdef EXFAT
-   if (f32Parms.fFat || f32Parms.fExFat)
+   //if (f32Parms.fFat || f32Parms.fExFat)
 #else
-   if (f32Parms.fFat)
+   //if (f32Parms.fFat)
 #endif
-      {
-      // report itself as "UNIFAT" driver, instead of "FAT32"
-      // (to avoid confusion, when FAT16 drives are shown as FAT32)
-      strcpy(FS_NAME, "UNIFAT");
-      }
+   //   {
+   //   // report itself as "UNIFAT" driver, instead of "FAT32"
+   //   // (to avoid confusion, when FAT16 drives are shown as FAT32)
+   //   strcpy(FS_NAME, "UNIFAT");
+   //   }
 
 //FS_INITEXIT:
    _asm pop es;
