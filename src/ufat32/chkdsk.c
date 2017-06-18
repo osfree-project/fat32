@@ -106,6 +106,7 @@ BOOL ClusterInUse2(PCDINFO pCD, ULONG ulCluster);
 BOOL MarkCluster2(PCDINFO pCD, ULONG ulCluster, BOOL fState);
 BOOL fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax);
 USHORT fGetAllocBitmap(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen);
+USHORT fGetUpCaseTbl(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum);
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
 
 USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
@@ -434,8 +435,8 @@ PSZ    p;
 ULONG  dummy = 0;
 HFILE  hf;
 ULONG  cbActual, ulAction;
-ULONG  ulBitmapFirstCluster;
-ULONGLONG ullBitmapLen;
+ULONG  ulBitmapFirstCluster, ulUpCaseFirstCluster;
+ULONGLONG ullBitmapLen, ullUpCaseLen;
 PSZ    pszType;
 
    if (pCD->fFix)
@@ -538,18 +539,6 @@ PSZ    pszType;
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto ChkDskMainExit;
       }
-#ifdef EXFAT
-   if (pCD->bFatType == FAT_TYPE_EXFAT)
-      {
-      fGetAllocBitmap(pCD, &ulBitmapFirstCluster, &ullBitmapLen);
-      if ((ULONG)ullBitmapLen > ulBytes)
-         {
-         printf("Incorrect bitmap length!\n");
-         return ERROR_BAD_FORMAT;
-         }
-      pCD->ulAllocBmpLen = (ULONG)ullBitmapLen;
-      }
-#endif
 
    if (pCD->bFatType != FAT_TYPE_FAT32)
       {
@@ -557,6 +546,44 @@ PSZ    pszType;
       memset(&pCD->FSInfo, 0, sizeof(BOOTFSINFO));
       GetFreeSpace(pCD);
       }
+
+#ifdef EXFAT
+   if (pCD->bFatType == FAT_TYPE_EXFAT)
+      {
+      ULONG ulBitmapClusters, ulUpCaseClusters, ulChecksum;
+      int i;
+
+      fGetAllocBitmap(pCD, &ulBitmapFirstCluster, &ullBitmapLen);
+      if ((ULONG)ullBitmapLen > ulBytes)
+         {
+         printf("Incorrect bitmap length!\n");
+         return ERROR_BAD_FORMAT;
+         }
+      pCD->ulAllocBmpLen = (ULONG)ullBitmapLen;
+      pCD->ulAllocBmpCluster = (ULONG)ulBitmapFirstCluster;
+      ulBitmapClusters =
+         (pCD->ulAllocBmpLen / pCD->ulClusterSize) +
+         ((pCD->ulAllocBmpLen % pCD->ulClusterSize) ? 1 : 0);
+      for (i = 0; i < ulBitmapClusters; i++)
+          {
+          MarkCluster(pCD, ulBitmapFirstCluster + i, "Allocation Bitmap");
+          }
+      pCD->ulBmpStartSector = pCD->ulStartOfData +
+         (pCD->ulAllocBmpCluster - 2) * pCD->SectorsPerCluster;
+      pCD->ulCurBmpSector = 0xffffffff;
+
+      fGetUpCaseTbl(pCD, &ulUpCaseFirstCluster, &ullUpCaseLen, &ulChecksum);
+      pCD->ulUpcaseTblLen = (ULONG)ullUpCaseLen;
+      pCD->ulUpcaseTblCluster = (ULONG)ulUpCaseFirstCluster;
+      ulUpCaseClusters =
+         (pCD->ulUpcaseTblLen / pCD->ulClusterSize) +
+         ((pCD->ulUpcaseTblLen % pCD->ulClusterSize) ? 1 : 0);
+      for (i = 0; i < ulUpCaseClusters; i++)
+          {
+          MarkCluster(pCD, ulUpCaseFirstCluster + i, "UpCase Table");
+          }
+      }
+#endif
 
    memset(szString, 0, sizeof(szString));
 #if 0
@@ -2644,7 +2671,23 @@ ULONG  ulDirEntries = 0;
    if (!fFound)
       memset(pszVolLabel, 0, 11);
    else
-      memcpy(pszVolLabel, DirEntry.bFileName, 11);
+      {
+#ifdef EXFAT
+      if (pCD->bFatType < FAT_TYPE_EXFAT)
+#endif
+         memcpy(pszVolLabel, DirEntry.bFileName, 11);
+#ifdef EXFAT
+      else
+         {
+         // exFAT case
+         USHORT pVolLabel[11];
+         memcpy(pVolLabel, ((PDIRENTRY1)&DirEntry)->u.VolLbl.usChars,
+            ((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount * sizeof(USHORT));
+         pVolLabel[((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount] = 0;
+         Translate2OS2(pVolLabel, pszVolLabel, ((PDIRENTRY1)&DirEntry)->u.VolLbl.bCharCount);
+         }
+#endif
+      }
 
    return 0;
 }
@@ -2725,8 +2768,11 @@ ULONG  ulRet = 0;
 
    if (ulRet >= pCD->ulTotalClusters  + 2)
       {
-      show_message("Error: Next cluster for %lu = %8.8lX\n", 0, 0, 2,
-         ulCluster, ulRet);
+#ifdef EXFAT
+      if (pCD->bFatType < FAT_TYPE_EXFAT)
+#endif
+         show_message("Error: Next cluster for %lu = %8.8lX\n", 0, 0, 2,
+            ulCluster, ulRet);
       return pCD->ulFatEof;
       }
 

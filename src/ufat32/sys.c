@@ -122,9 +122,23 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
     return;
   }
 
-  if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->FileSystem), "FAT32   ", 8))
-    fs_type = FAT_TYPE_FAT32;
+#ifdef EXFAT
+  if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->oemID), "EXFAT   ", 8))
+    fs_type = FAT_TYPE_EXFAT;
+  else
+#endif
+    if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->FileSystem), "FAT32   ", 8))
+      fs_type = FAT_TYPE_FAT32;
 
+#ifdef EXFAT
+  if (fs_type == FAT_TYPE_EXFAT)
+  {
+    /* exFAT */
+    /* exFAT bootblock is not yet implemented */
+    show_message("Not yet implemented.\n", 0, 0, 0);
+  }
+  else
+#endif
   if (fs_type == FAT_TYPE_FAT32)
   {
     /* FAT32 */
@@ -190,6 +204,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   unlock_drive(hf);
   close_drive(hf);
+
+#ifdef EXFAT
+  if (fs_type == FAT_TYPE_EXFAT)
+    return;
+#endif
 
   // create subdirs
   memset(file, 0, sizeof(file));

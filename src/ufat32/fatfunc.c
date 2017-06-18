@@ -332,7 +332,56 @@ APIRET rc;
    return 0;
 }
 
-#endif
+USHORT fGetUpCaseTbl(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum)
+{
+// This is relevant for exFAT only
+PDIRENTRY1 pDirStart, pDir, pDirEnd;
+DIRENTRY1 DirEntry;
+ULONG ulCluster;
+ULONG ulBlock;
+BOOL fFound;
+
+   pDir = NULL;
+
+   pDirStart = (PDIRENTRY1)malloc((size_t)pCD->ulClusterSize);
+   if (!pDirStart)
+      return ERROR_NOT_ENOUGH_MEMORY;
+
+   fFound = FALSE;
+   ulCluster = pCD->BootSect.bpb.RootDirStrtClus;
+   while (!fFound && ulCluster != pCD->ulFatEof)
+      {
+      ReadCluster(pCD, ulCluster, pDirStart);
+      pDir    = pDirStart;
+      pDirEnd = (PDIRENTRY1)((PBYTE)pDirStart + pCD->ulClusterSize);
+      while (pDir < pDirEnd)
+         {
+         if (pDir->bEntryType == ENTRY_TYPE_UPCASE_TABLE)
+            {
+            fFound = TRUE;
+            memcpy(&DirEntry, pDir, sizeof (DIRENTRY1));
+            break;
+            }
+         pDir++;
+         }
+      if (fFound)
+         break;
+      else
+         {
+         ulCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
+         if (!ulCluster)
+            ulCluster = pCD->ulFatEof;
+         }
+      pDir++;
+      if (ulCluster == pCD->ulFatEof)
+         break;
+      }
+
+   *pulFirstCluster = DirEntry.u.UpCaseTbl.ulFirstCluster;
+   *pullLen = DirEntry.u.UpCaseTbl.ullDataLength;
+   *pulChecksum = DirEntry.u.UpCaseTbl.ulTblCheckSum;
+   return 0;
+}
 
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo)
 {
@@ -341,6 +390,8 @@ void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo)
    pSHInfo->ulStartCluster = pStreamEntry->u.Stream.ulFirstClus;
    pSHInfo->ulLastCluster = GetLastCluster(pCD, pStreamEntry->u.Stream.ulFirstClus, pStreamEntry);
 }
+
+#endif
 
 ULONG GetLastCluster(PCDINFO pCD, ULONG ulCluster, PDIRENTRY1 pDirEntryStream)
 {
@@ -462,9 +513,7 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
    if (pCD->ulCurFATSector != 0)
       {
       if (ReadFatSector(pCD, 0))
-         {
          return FALSE;
-         }
       }
 
    ulNextCluster = GetFatEntry(pCD, 1);
@@ -481,9 +530,7 @@ BOOL MarkDiskStatus(PCDINFO pCD, BOOL fClean)
    SetFatEntry(pCD, 1, ulNextCluster);
 
    if (WriteFatSector(pCD, 0))
-      {
       return FALSE;
-      }
 
    return TRUE;
 }
@@ -595,6 +642,7 @@ BYTE   bCheck;
 ULONG  ulSector;
 USHORT usSectorsRead;
 ULONG  ulDirEntries = 0;
+APIRET rc;
 
    if (ulCluster == 1)
       {
@@ -626,13 +674,16 @@ ULONG  ulDirEntries = 0;
          pszPath += 2;
       }
 
-   pDirStart = malloc(pCD->ulClusterSize);
-   if (!pDirStart)
+   //pDirStart = malloc(pCD->ulClusterSize);
+   rc = mem_alloc((void **)&pDirStart, pCD->ulClusterSize);
+   //if (!pDirStart)
+   if (rc)
       return pCD->ulFatEof;
    pszLongName = malloc(FAT32MAXPATHCOMP * 2);
    if (!pszLongName)
       {
-      free(pDirStart);
+      //free(pDirStart);
+      mem_free(pDirStart, pCD->ulClusterSize);
       return pCD->ulFatEof;
       }
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
@@ -659,7 +710,8 @@ ULONG  ulDirEntries = 0;
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         free(pDirStart);
+         //free(pDirStart);
+         mem_free(pDirStart, pCD->ulClusterSize);
          free(pszLongName);
          return pCD->ulFatEof;
          }
@@ -778,7 +830,8 @@ ULONG  ulDirEntries = 0;
             ulCluster = pCD->ulFatEof;
          }
       }
-   free(pDirStart);
+   //free(pDirStart);
+   mem_free(pDirStart, pCD->ulClusterSize);
    free(pszLongName);
    return ulCluster;
 }
@@ -808,17 +861,16 @@ USHORT usMaxDirEntries = (USHORT)(pCD->ulClusterSize / sizeof(DIRENTRY1));
 ULONG  ulRet;
 USHORT usNumSecondary;
 USHORT usFileAttr;
+APIRET rc;
 
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
 
-   printf("000\n");
    if (pDirEntry)
       {
       memset(pDirEntry, 0, sizeof (DIRENTRY1));
       pDirEntry->u.File.usFileAttr = FILE_DIRECTORY;
       }
-   printf("001\n");
    if (pszFullName)
       {
       memset(pszFullName, 0, FAT32MAXPATH);
@@ -830,33 +882,28 @@ USHORT usFileAttr;
          }
       }
 
-   printf("002\n");
    if (pDirEntryStream)
       memset(pDirEntryStream, 0, sizeof(DIRENTRY1));
 
-   printf("003\n");
    if (strlen(pszPath) >= 2)
       {
       if (pszPath[1] == ':')
          pszPath += 2;
       }
 
-   printf("004: pCD->ulClusterSize=%lx\n", pCD->ulClusterSize);
-   pDirStart = malloc((size_t)pCD->ulClusterSize);
-   printf("004a\n");
-   if (!pDirStart)
+   //pDirStart = malloc((size_t)pCD->ulClusterSize);
+   rc = mem_alloc((void **)&pDirStart, pCD->ulClusterSize);
+   //if (!pDirStart)
+   if (rc)
       {
       //Message("FAT32: Not enough memory for cluster in FindPathCluster");
-      printf("005\n");
       return pCD->ulFatEof;
       }
-   printf("006\n");
    pszLongName = malloc((size_t)FAT32MAXPATHCOMP * 2);
    if (!pszLongName)
       {
       //Message("FAT32: Not enough memory for buffers in FindPathCluster");
-      printf("007\n");
-      free(pDirStart);
+      mem_free(pDirStart, pCD->ulClusterSize);
       return pCD->ulFatEof;
       }
    memset(pszLongName, 0, FAT32MAXPATHCOMP * 2);
@@ -870,48 +917,37 @@ USHORT usFileAttr;
    //if (ProcInfo.usPdb && f32Parms.fEAS && IsEASFile(pszPath))
    //   ProcInfo.usPdb = 0;
 
-   printf("008\n");
    while (usMode != MODE_RETURN && ulCluster != pCD->ulFatEof)
       {
       usMode = MODE_SCAN;
 
-      printf("009\n");
       if (*pszPath == '\\')
          pszPath++;
 
-      printf("010\n");
       if (!strlen(pszPath))
          break;
 
-      printf("011\n");
       p = strchr(pszPath, '\\');
       if (!p)
          p = pszPath + strlen(pszPath);
 
-      printf("012\n");
       memset(pszPart, 0, FAT32MAXPATHCOMP);
       if (p - pszPath > FAT32MAXPATHCOMP - 1)
          {
-         printf("013\n");
-         free(pDirStart);
+         mem_free(pDirStart, pCD->ulClusterSize);
          free(pszLongName);
          return pCD->ulFatEof;
          }
 
-      printf("014\n");
       memcpy(pszPart, pszPath, p - pszPath);
       pszPath = p;
 
-      printf("015\n");
       memset(pszLongName, 0, FAT32MAXPATHCOMP);
 
       fFound = FALSE;
-      printf("016\n");
       while (usMode == MODE_SCAN && ulCluster != pCD->ulFatEof)
          {
-         printf("017\n");
          ReadCluster(pCD, ulCluster, pDirStart);
-         printf("018\n");
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY1)((PBYTE)pDirStart + pCD->ulClusterSize);
 
@@ -921,27 +957,21 @@ USHORT usFileAttr;
 
          usDirEntries = 0;
          //while (usMode == MODE_SCAN && pDir < pDirEnd)
-         printf("019\n");
          while (usMode == MODE_SCAN && usDirEntries < usMaxDirEntries)
             {
-            printf("020\n");
             if (pDir->bEntryType == ENTRY_TYPE_EOD)
                {
-               printf("021\n");
                ulCluster = pCD->ulFatEof;
                usMode = MODE_RETURN;
                break;
                }
             else if (pDir->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
                {
-               printf("022\n");
                if (pDir->bEntryType == ENTRY_TYPE_FILE_NAME)
                   {
-                  printf("023\n");
                   usNumSecondary--;
                   fGetLongName1(pDir, pszLongName, FAT32MAXPATHCOMP);
 
-                  printf("024\n");
                   if (!usNumSecondary)
                      {
                      //MakeName(pDir, szShortName, sizeof szShortName);
@@ -975,87 +1005,66 @@ USHORT usFileAttr;
                      //if (!strlen(pszLongName))
                      //   strcpy(pszLongName, szShortName);
 
-                     printf("025\n");
                      if (( strlen(pszLongName) && !stricmp(pszPart, pszLongName))) //||
                      //!stricmp( pszPart, szShortName ))
                         {
-                        printf("026\n");
                         if( pszFullName )
                            strcat( pszFullName, pszLongName );
                         fFound = TRUE;
                         }
 
-                     printf("027\n");
                      if (fFound)
                         {
                         //ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
                         ulCluster = ulRet;
-                        printf("028\n");
                         if (strlen(pszPath))
                            {
-                           printf("029\n");
                            if (usFileAttr & FILE_DIRECTORY)
                               {
-                              printf("030\n");
                               if (pszFullName)
                                  strcat(pszFullName, "\\");
                               usMode = MODE_START;
                               break;
                               }
-                           printf("031\n");
                            ulCluster = pCD->ulFatEof;
                            }
                         else
                            {
-                           printf("032\n");
                            if (pDirEntry)
                               memcpy(pDirEntry, &Dir, sizeof (DIRENTRY1));
                            }
                         usMode = MODE_RETURN;
-                        printf("033\n");
                         break;
                         }
                      }
-                  printf("034\n");
                   }
                else if (pDir->bEntryType == ENTRY_TYPE_STREAM_EXT)
                   {
                   usNumSecondary--;
                   ulRet = pDir->u.Stream.ulFirstClus;
-                  printf("035\n");
                   if (pDirEntryStream)
                      memcpy(pDirEntryStream, pDir, sizeof(DIRENTRY1));
                   }
                else if (pDir->bEntryType == ENTRY_TYPE_FILE)
                   {
-                  printf("036\n");
                   usNumSecondary = pDir->u.File.bSecondaryCount;
                   usFileAttr = pDir->u.File.usFileAttr;
-                  printf("037\n");
                   memcpy(&Dir, pDir, sizeof (DIRENTRY1));
-                  printf("038\n");
                   memset(pszLongName, 0, FAT32MAXPATHCOMP);
-                  printf("039\n");
                   }
                }
-            printf("040\n");
             pDir++;
             usDirEntries++;
             }
-         printf("041\n");
          if (usMode != MODE_SCAN)
             break;
-         printf("042\n");
          ulCluster = GetNextCluster(pCD, pSHInfo, ulCluster, FALSE);
-         printf("043\n");
          if (!ulCluster)
             ulCluster = pCD->ulFatEof;
-         printf("044\n");
          }
-      printf("045\n");
       }
-   printf("046\n");
-   free(pDirStart);
+   //free(pDirStart);
+   mem_free(pDirStart, pCD->ulClusterSize);
    free(pszLongName);
    //if (f32Parms.fMessageActive & LOG_FUNCS)
       //{
@@ -1064,7 +1073,6 @@ USHORT usFileAttr;
       //else
       //   Message("FindPathCluster for %s returned EOF", pszPath);
       //}
-   printf("047\n");
    return ulCluster;
 }
 
@@ -1694,8 +1702,10 @@ BOOL      fFound;
          }
       }
 
-   pDirectory = (PDIRENTRY1)malloc(2 * (size_t)pCD->ulClusterSize);
-   if (!pDirectory)
+   //pDirectory = (PDIRENTRY1)malloc(2 * (size_t)pCD->ulClusterSize);
+   rc = mem_alloc((void **)&pDirectory, 2 * (size_t)pCD->ulClusterSize);
+   //if (!pDirectory)
+   if (rc)
       {
       return ERROR_NOT_ENOUGH_MEMORY;
       }
@@ -1751,7 +1761,8 @@ BOOL      fFound;
          //   }
          if (rc)
             {
-            free(pDirectory);
+            //free(pDirectory);
+            mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
             return rc;
             }
          }
@@ -1842,7 +1853,8 @@ BOOL      fFound;
                         rc = WriteCluster(pCD, ulCluster, pDir2);
                      if (rc)
                         {
-                        free(pDirectory);
+                        //free(pDirectory);
+                        mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                         return rc;
                         }
                      ulCluster = pCD->ulFatEof;
@@ -1879,7 +1891,8 @@ BOOL      fFound;
                      //      rc = WriteCluster(pCD, ulPrevCluster, pDirectory);
                      //   if (rc)
                      //      {
-                     //      free(pDirectory);
+                     //      //free(pDirectory);
+                     //      mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                      //      return rc;
                      //      }
                      //   }
@@ -1894,7 +1907,8 @@ BOOL      fFound;
                         rc = WriteCluster(pCD, ulCluster, pDir2);
                      if (rc)
                         {
-                        free(pDirectory);
+                        //free(pDirectory);
+                        mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                         return rc;
                         }
 
@@ -1950,7 +1964,8 @@ BOOL      fFound;
                   rc = WriteCluster(pCD, ulPrevCluster, pDirectory);
                if (rc)
                   {
-                  free(pDirectory);
+                  //free(pDirectory);
+                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                //if (ulCluster == 1)
@@ -1960,7 +1975,8 @@ BOOL      fFound;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  free(pDirectory);
+                  //free(pDirectory);
+                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                ulCluster = pCD->ulFatEof;
@@ -1993,7 +2009,8 @@ BOOL      fFound;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  free(pDirectory);
+                  //free(pDirectory);
+                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                ulCluster = pCD->ulFatEof;
@@ -2009,7 +2026,8 @@ BOOL      fFound;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  free(pDirectory);
+                  //free(pDirectory);
+                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                }
@@ -2050,7 +2068,8 @@ BOOL      fFound;
                 usMode == MODIFY_DIR_DELETE ||
                 usMode == MODIFY_DIR_RENAME)
                {
-               free(pDirectory);
+               //free(pDirectory);
+               mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                return ERROR_FILE_NOT_FOUND;
                }
             else
@@ -2064,7 +2083,8 @@ BOOL      fFound;
                   ulNextCluster = SetNextCluster(pCD, ulCluster, FAT_ASSIGN_NEW);
                if (ulNextCluster == pCD->ulFatEof)
                   {
-                  free(pDirectory);
+                  //free(pDirectory);
+                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return ERROR_DISK_FULL;
                   }
                fNewCluster = TRUE;
@@ -2074,7 +2094,8 @@ BOOL      fFound;
          }
       }
 
-   free(pDirectory);
+   //free(pDirectory);
+   mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
    return 0;
 }
 
@@ -3885,7 +3906,6 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
          {
          strcpy(pszOldFileName, pszOldFile);
 
-         ////
          ulOldCluster = FindPathCluster(pCD, ulDirCluster, pszOldFileName, pDirSHInfo, &OldOldEntry, &OldOldEntryStream, NULL);
 
          if (ulOldCluster != pCD->ulFatEof)
@@ -3909,9 +3929,10 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
          else
             {
             memcpy(&OldNewEntry, &OldEntry, sizeof(DIRENTRY));
+            memcpy(&OldNewEntryStream, &OldEntryStream, sizeof(DIRENTRY));
             // rename chkdsk.log to chkdsk.old
             rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_RENAME,
-               &OldEntry, &OldNewEntry, &OldEntryStream, NULL, pszOldFileName);
+               &OldEntry, &OldNewEntry, &OldEntryStream, &OldNewEntryStream, pszOldFileName);
             if (rc)
                goto MakeFileEnd;
             }
@@ -3922,7 +3943,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
          memset(&NewEntryStream, 0, sizeof(DIRENTRY1));
          }
 
-      ulCluster = MakeFatChain(pCD, NULL, pCD->ulFatEof, ulClustersNeeded, NULL); //// EOF
+      ulCluster = MakeFatChain(pCD, NULL, pCD->ulFatEof, ulClustersNeeded, NULL);
 
       if (ulCluster != pCD->ulFatEof)
          {
@@ -3942,7 +3963,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
                pNewEntryStream->u.Stream.ullValidDataLen = cbBuf;
                pNewEntryStream->u.Stream.ullDataLen =
                   (cbBuf / pCD->ulClusterSize) * pCD->ulClusterSize +
-                  (cbBuf % pCD->ulClusterSize) ? pCD->ulClusterSize : 0;
+                  ((cbBuf % pCD->ulClusterSize) ? pCD->ulClusterSize : 0);
                }
 #endif
          }
@@ -3954,7 +3975,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
       }
 
    if (! file_exists || pszOldFile)
-      rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, &NewEntry, &NewEntryStream, pszFileName);
+      rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, &NewEntry, &NewEntryStream, pszFileName); ////
    else
       rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
               &OldEntry, &NewEntry, &OldEntryStream, &NewEntryStream, pszFileName);

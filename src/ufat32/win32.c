@@ -324,6 +324,11 @@ int mem_alloc(void **p, ULONG cb)
     return 1;
 }
 
+int mem_alloc2(void **p, ULONG cb)
+{
+    return mem_alloc(p, cb);
+}
+
 void mem_free(void *p, ULONG cb)
 {
     if (p)

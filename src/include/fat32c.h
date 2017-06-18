@@ -249,6 +249,7 @@ void startlw(HANDLE hDevice);
 void stoplw(HANDLE hDevice);
 void close_drive(HANDLE hDevice);
 int  mem_alloc(void **p, ULONG cb);
+int  mem_alloc2(void **p, ULONG cb);
 void mem_free(void *p, ULONG cb);
 void query_freq(ULONGLONG *freq);
 void query_time(ULONGLONG *time);

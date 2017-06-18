@@ -547,7 +547,6 @@ void close_drive(HANDLE hDevice)
     DosClose ( (HFILE)hDevice );
 }
 
-
 int mem_alloc(void **p, ULONG cb)
 {
     APIRET rc;
@@ -556,6 +555,54 @@ int mem_alloc(void **p, ULONG cb)
         memset(*p, 0, cb);
     else
         show_message("mem_alloc failed, rc=%lu\n", 0, 0, 1, rc);
+
+    return rc;
+}
+
+int mem_alloc2(void **p, ULONG cb)
+{
+    APIRET rc;
+    ULONG  ulParm = cb;
+    ULONG  cbParm = sizeof(ulParm);
+    struct
+    {
+        LONG  lRc;
+        PVOID pMem;
+        ULONG ulLen;
+    } Data;
+    ULONG cbData = sizeof(Data);
+    HFILE hf;
+    ULONG ulAction;
+
+    printf("cbParm=%lu, cbData=%lu\n", cbParm, cbData);
+
+    rc = DosOpen("\\DEV\\CHKDSK$",
+                 &hf,
+                 &ulAction,
+                 0,
+                 0,
+                 OPEN_ACTION_OPEN_IF_EXISTS,
+                 OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYREADWRITE |
+                 OPEN_ACCESS_READWRITE,
+                 NULL);
+
+    printf("DosOpen rc=%lu\n", rc);
+    if (rc)
+        return rc;
+
+    memset(&Data, 0, sizeof(Data));
+    Data.lRc  = -1;
+
+    rc = DosDevIOCtl(hf, 0x80, 0x28,
+                     &ulParm, cbParm, &cbParm,
+                     &Data, cbData, &cbData);
+
+    DosClose(hf);
+    *p = Data.pMem;
+    printf("lRc=%ld\n", Data.lRc);
+    printf("pMem=%lu\n", Data.pMem);
+    printf("ulLen=%lu\n", Data.ulLen);
+    printf("DosDevIOCtl rc=%lu\n", rc);
 
     return rc;
 }
