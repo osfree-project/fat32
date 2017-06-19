@@ -230,7 +230,7 @@ USHORT rc;
       }
 
    rc = ReadSector(pCD, pCD->ulBmpStartSector + ulSector, 1,
-      pCD->pFatBits);
+      pCD->pbFatBits);
    if (rc)
       return rc;
 
@@ -262,7 +262,7 @@ USHORT rc;
    //for (usFat = 0; usFat < pCD->BootSect.bpb.NumberOfFATs; usFat++)
    //   {
       rc = WriteSector(pCD, pCD->ulBmpStartSector + ulSector, 1,
-         pCD->pFatBits);
+         pCD->pbFatBits);
       if (rc)
          return rc;
 
@@ -408,7 +408,8 @@ ULONG  ulReturn = 0;
       {
       if (pDirEntryStream->u.Stream.bNoFatChain & 1)
          {
-         return ulCluster + pDirEntryStream->u.Stream.ullDataLen / pCD->ulClusterSize - 1;
+         return ulCluster + (pDirEntryStream->u.Stream.ullValidDataLen / pCD->ulClusterSize) +
+             ((pDirEntryStream->u.Stream.ullValidDataLen % pCD->ulClusterSize) ? 1 : 0) - 1;
          }
       }
 #endif
@@ -3191,7 +3192,7 @@ PVOID pbCluster;
 PDIRENTRY1 pDir1;
 SHOPENINFO DirSHInfo;
 #endif
-DIRENTRY1 DirStream;
+PDIRENTRY1 pDirStream;
 PSHOPENINFO pDirSHInfo = NULL;
 APIRET rc;
 
@@ -3235,12 +3236,13 @@ APIRET rc;
       (pDir1+1)->u.Stream.ullValidDataLen = pCD->ulClusterSize;
       (pDir1+1)->u.Stream.ullDataLen = pCD->ulClusterSize;
       (pDir1+1)->u.Stream.ulFirstClus = ulCluster;
+      pDirStream = pDir1+1;
       }
 
    if (pCD->bFatType == FAT_TYPE_EXFAT)
       {
       pDirSHInfo = &DirSHInfo;
-      SetSHInfo1(pCD, &DirStream, pDirSHInfo);
+      SetSHInfo1(pCD, pDirStream, pDirSHInfo);
       }
 #endif
 
@@ -3304,6 +3306,10 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    DIRENTRY1 DirStream;
    BYTE     szFileName[14];
    USHORT   usNr;
+#ifdef EXFAT
+   SHOPENINFO DirSHInfo;
+#endif
+   PSHOPENINFO pDirSHInfo = NULL;
 
    memset(&DirEntry, 0, sizeof (DIRENTRY));
    memset(&DirStream, 0, sizeof (DIRENTRY1));
@@ -3313,8 +3319,8 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 #endif
       {
       memcpy(DirEntry.bFileName, "FOUND   000", 11);
-      strcpy(szFileName, "FOUND.000");
       }
+   strcpy(szFileName, "FOUND.000");
    for (usNr = 0; usNr <= 999; usNr++)
       {
       USHORT iPos = 8;
@@ -3345,7 +3351,12 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 
    memset(&DirEntry, 0, sizeof (DIRENTRY));
 
-   memcpy(DirEntry.bFileName, "FILE0000CHK", 11);
+#ifdef EXFAT
+   if (pCD->bFatType < FAT_TYPE_EXFAT)
+#endif
+      {
+      memcpy(DirEntry.bFileName, "FILE0000CHK", 11);
+      }
    strcpy(szFileName, "FILE0000.CHK");
    for (usNr = 0; usNr < 9999; usNr++)
       {
@@ -3398,9 +3409,12 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
          {
          DirStream.u.Stream.ullValidDataLen += pCD->ulClusterSize;
          DirStream.u.Stream.ullDataLen += pCD->ulClusterSize;
+
+         pDirSHInfo = &DirSHInfo;
+         SetSHInfo1(pCD, &DirStream, pDirSHInfo);
          }
 #endif
-      ulNextCluster = GetNextCluster(pCD, NULL, ulCluster, TRUE);
+      ulNextCluster = GetNextCluster(pCD, pDirSHInfo, ulCluster, TRUE);
       if (!ulNextCluster)
          {
          SetNextCluster(pCD, ulCluster, pCD->ulFatEof);

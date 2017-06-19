@@ -43,7 +43,7 @@ PRIVATE ULONG CheckFats(PCDINFO pCD);
 PRIVATE ULONG CheckFiles(PCDINFO pCD);
 PRIVATE ULONG CheckFreeSpace(PCDINFO pCD);
 PRIVATE ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCluster);
-PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
+PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile);
 PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
 PRIVATE PSZ    MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 PRIVATE ULONG fGetVolLabel(PCDINFO pCD, PSZ pszVolLabel);
@@ -531,9 +531,16 @@ PSZ    pszType;
    usBlocks = (USHORT)(ulBytes / 4096 +
             (ulBytes % 4096 ? 1:0));
 
-   pCD->pFatBits = calloc(usBlocks,4096);
-   if (!pCD->pFatBits)
-   //if (mem_alloc((void **)&pCD->pFatBits, ulBytes))
+#ifdef EXFAT
+   if (pCD->bFatType == FAT_TYPE_EXFAT)
+      {
+      mem_alloc((void **)&pCD->pbFatBits, pCD->BootSect.bpb.BytesPerSector);
+      }
+#endif
+
+   //pCD->pFatBits = calloc(usBlocks,4096);
+   //if (!pCD->pFatBits)
+   if (mem_alloc((void **)&pCD->pFatBits, usBlocks * 4096))
       {
       show_message("Not enough memory for FATBITS\n", 0, 0, 0);
       rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -621,8 +628,20 @@ PSZ    pszType;
       if( p > szString )
          show_message("The volume label is %1.\n", 0, 1375, 1, TYPE_STRING, szString);
 
-      sprintf(szString, "%4.4X-%4.4X",
-         HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
+#ifdef EXFAT
+      if (pCD->bFatType < FAT_TYPE_EXFAT)
+         {
+#endif
+         sprintf(szString, "%4.4X-%4.4X",
+            HIUSHORT(pCD->BootSect.ulVolSerial), LOUSHORT(pCD->BootSect.ulVolSerial));
+#ifdef EXFAT
+         }
+      else
+         {
+         sprintf(szString, "%4.4X-%4.4X",
+            HIUSHORT(((PBOOTSECT1)&pCD->BootSect)->ulVolSerial), LOUSHORT(((PBOOTSECT1)&pCD->BootSect)->ulVolSerial));
+         }
+#endif
       show_message("The Volume Serial Number is %1.\n", 0, 1243, 1, TYPE_STRING, szString);
 
       switch (pCD->bFatType)
@@ -667,25 +686,6 @@ PSZ    pszType;
    rc = CheckFreeSpace(pCD);
    pCD->FSInfo.ulFreeClusters = pCD->ulFreeClusters;
 
-#ifdef EXFAT
-   if (pCD->bFatType == FAT_TYPE_EXFAT)
-      {
-      // write back the bitmap
-      ULONG ulCluster = ulBitmapFirstCluster;
-      char *pBuf = pCD->pFatBits;
-      while (ulCluster != pCD->ulFatEof)
-         {
-         ReadCluster(pCD, ulCluster, pBuf);
-         ulCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
-         if (!ulCluster)
-            {
-            ulCluster = pCD->ulFatEof;
-            }
-         pBuf += pCD->ulClusterSize;
-         }
-      }
-#endif
-
    if (pCD->fFix)
       {
       ULONG ulFreeBlocks;
@@ -724,7 +724,7 @@ PSZ    pszType;
       show_message("%1 bytes disk space would be freed.\n", 0, 1359, 1,
          TYPE_DOUBLE, (DOUBLE)pCD->ulLostClusters * pCD->ulClusterSize);
 
-   show_message("%1 kilobytes are available for use.", 0, 571, 2,
+   show_message("%1 kilobytes are available for use.\n", 0, 571, 1,
       TYPE_DOUBLE, (DOUBLE)pCD->ulFreeClusters * pCD->ulClusterSize / 1024);
 
    show_message("\n", 0, 0, 0);
@@ -772,8 +772,12 @@ ChkDskMainExit:
          remount_media(pCD->hDisk);
       }
 
-   //mem_free((void *)pCD->pFatBits, ulBytes);
-   free((void *)pCD->pFatBits);
+   mem_free((void *)pCD->pFatBits, usBlocks * 4096);
+   //free((void *)pCD->pFatBits);
+#ifdef EXFAT
+   if (pCD->bFatType == FAT_TYPE_EXFAT)
+      mem_free((void *)pCD->pbFatBits, pCD->BootSect.bpb.BytesPerSector);
+#endif
    return rc;
 }
 
@@ -953,13 +957,20 @@ ULONG dummy = 0;
          }
       else if (!ulNext)
          {
-         MarkCluster(pCD, ulCluster+2, "Free space");
-         pCD->ulFreeClusters++;
+#ifdef EXFAT
+         if ( (pCD->bFatType < FAT_TYPE_EXFAT) ||
+              (pCD->bFatType == FAT_TYPE_EXFAT && !ClusterInUse2(pCD, ulCluster+2)) )
+#endif
+            {
+            MarkCluster(pCD, ulCluster+2, "Free space");
+            pCD->ulFreeClusters++;
+            }
          }
       else
          {
 #ifdef EXFAT
-         if (pCD->bFatType < FAT_TYPE_EXFAT)
+         if ( (pCD->bFatType < FAT_TYPE_EXFAT) ||
+              (pCD->bFatType == FAT_TYPE_EXFAT && ClusterInUse2(pCD, ulCluster+2)) )
 #endif
             {
             if (!ClusterInUse(pCD, ulCluster+2))
@@ -1082,7 +1093,7 @@ BYTE bMask;
    //bMask = (BYTE)(0x80 >> usShift);
    bMask = (BYTE)(1 << usShift);
 
-   if (pCD->pFatBits[ulOffset] & bMask)
+   if (pCD->pbFatBits[ulOffset] & bMask)
       return TRUE;
    else
       return FALSE;
@@ -1101,9 +1112,9 @@ BYTE bMask;
    bMask = (BYTE)(1 << usShift);
 
    if (fState)
-      pCD->pFatBits[ulOffset] |= bMask;
+      pCD->pbFatBits[ulOffset] |= bMask;
    else
-      pCD->pFatBits[ulOffset] &= ~bMask;
+      pCD->pbFatBits[ulOffset] &= ~bMask;
 }
 
 /******************************************************************
@@ -1227,7 +1238,7 @@ USHORT usSectorsRead;
    pbPath = malloc(512);
    strcpy(pbPath, "Directory ");
    strcat(pbPath, pszPath);
-   ulClusters = GetClusterCount(pCD, ulDirCluster, pbPath);
+   ulClusters = GetClusterCount(pCD, ulDirCluster, NULL, pbPath);
 
    pCD->ulDirClusters += ulClusters;
 
@@ -1490,7 +1501,7 @@ USHORT usSectorsRead;
                {
                ulClustersNeeded = pDir->ulFileSize / pCD->ulClusterSize +
                   (pDir->ulFileSize % pCD->ulClusterSize ? 1:0);
-               ulClustersUsed = GetClusterCount(pCD,((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof, pbPath);
+               ulClustersUsed = GetClusterCount(pCD,((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof, NULL, pbPath);
                pEA = strstr(pbPath, EA_EXTENTION);
                if (f32Parms.fEAS && pEA && pDir->ulFileSize)
                   {
@@ -1515,7 +1526,7 @@ USHORT usSectorsRead;
 
                         strcat(Mark.szFileName, ".EA");
                         rc = MarkVolume(pCD, TRUE);
-                        if (!rc)
+                        if (rc == TRUE)
                            {
                            ulDirCluster = FindDirCluster(pCD, pbPath, -1, 0xffff, &pszFile, NULL);
 
@@ -1529,11 +1540,14 @@ USHORT usSectorsRead;
                               if (ulFileCluster == pCD->ulFatEof)
                                  rc = ERROR_FILE_NOT_FOUND;
                               }
-                           
-                           memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY));
-                           DirNew.bAttr = FILE_NORMAL;
-                           rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
-                                                &DirEntry, &DirNew, NULL, NULL, NULL);
+
+                           if (!rc)
+                              {                           
+                              memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY));
+                              DirNew.bAttr = FILE_NORMAL;
+                              rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
+                                                   &DirEntry, &DirNew, NULL, NULL, NULL);
+                              }
                            }
                         if (!rc)
                            {
@@ -1546,8 +1560,11 @@ USHORT usSectorsRead;
                            if (ulDstFileCluster == ulFileCluster)
                               rc = ERROR_ACCESS_DENIED;
 
-                           rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
-                                                &DirEntry, &DirNew, NULL, NULL, Mark.szFileName);
+                           if (rc == ERROR_FILE_NOT_FOUND)
+                              {
+                              rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
+                                                   &DirEntry, &DirNew, NULL, NULL, Mark.szFileName);
+                              }
                            }
                         if (!rc)
                            show_message("This attribute has been converted to a file \n(%s)\n", 2422, 0, 1, Mark.szFileName);
@@ -1790,7 +1807,7 @@ USHORT usSectorsRead;
 
 #ifdef EXFAT
 
-ULONG CheckDir1(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCluster)
+ULONG CheckDir1(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pSHInfo, PSZ pszPath, ULONG ulParentDirCluster)
 {
 static BYTE szLongName[512] = "";
 static BYTE szShortName[13] = "";
@@ -1803,6 +1820,9 @@ DIRENTRY1 * pPrevDir;
 DIRENTRY1 DirStream;
 SHOPENINFO DirSHInfo;
 PSHOPENINFO pDirSHInfo;
+SHOPENINFO SHInfo1, SHInfo2;
+PSHOPENINFO pSHInfo1;
+DIRENTRY1 DirStream2;
 PBYTE pbCluster;
 PBYTE pbPath;
 ULONG ulCluster;
@@ -1836,7 +1856,7 @@ BOOL fEAS;
    pbPath = malloc(512);
    strcpy(pbPath, "Directory ");
    strcat(pbPath, pszPath);
-   ulClusters = GetClusterCount(pCD, ulDirCluster, pbPath);
+   ulClusters = GetClusterCount(pCD, ulDirCluster, pSHInfo, pbPath);
 
    pCD->ulDirClusters += ulClusters;
 
@@ -1881,7 +1901,7 @@ BOOL fEAS;
       //else
       //   {
          ReadCluster(pCD, ulCluster, p);
-         ulCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
+         ulCluster = GetNextCluster(pCD, pSHInfo, ulCluster, FALSE);
       //   }
       if (!ulCluster)
          ulCluster = pCD->ulFatEof;
@@ -2105,7 +2125,7 @@ BOOL fEAS;
                   {
                   ulClustersNeeded = ullSize / pCD->ulClusterSize +
                      (ullSize % pCD->ulClusterSize ? 1:0);
-                  ulClustersUsed = GetClusterCount(pCD, ulFirstClus, pbPath);
+                  ulClustersUsed = GetClusterCount(pCD, ulFirstClus, &SHInfo2, pbPath);
                   pEA = strstr(pbPath, EA_EXTENTION);
                   if (f32Parms.fEAS && pEA && ullSize)
                      {
@@ -2130,7 +2150,7 @@ BOOL fEAS;
 
                            strcat(Mark.szFileName, ".EA");
                            rc = MarkVolume(pCD, TRUE);
-                           if (!rc)
+                           if (rc == TRUE)
                               {
                               ulDirCluster = FindDirCluster(pCD, pbPath, -1, 0xffff, &pszFile, &DirStream);
                               rc = NO_ERROR;
@@ -2148,11 +2168,14 @@ BOOL fEAS;
                                     rc = ERROR_FILE_NOT_FOUND;
                                  }
                            
-                              memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY1));
-                              memcpy(&DirStreamNew, &DirStream, sizeof(DIRENTRY1));
-                              DirNew.u.File.usFileAttr = FILE_NORMAL;
-                              rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                                                   (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, NULL);
+                              if (!rc)
+                                 {
+                                 memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY1));
+                                 memcpy(&DirStreamNew, &DirStream, sizeof(DIRENTRY1));
+                                 DirNew.u.File.usFileAttr = FILE_NORMAL;
+                                 rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, NULL);
+                                 }
                               }
                            if (!rc)
                               {
@@ -2164,8 +2187,11 @@ BOOL fEAS;
                               if (ulDstFileCluster == ulFileCluster)
                                  rc = ERROR_ACCESS_DENIED;
 
-                              rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
-                                                   (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, Mark.szFileName);
+                              if (rc == ERROR_FILE_NOT_FOUND)
+                                 {
+                                 rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
+                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, Mark.szFileName);
+                                 }
                               }
                            if (!rc)
                               show_message("This attribute has been converted to a file \n(%s)\n", 2422, 0, 1, Mark.szFileName);
@@ -2260,6 +2286,7 @@ BOOL fEAS;
             usNameHash = pDir->u.Stream.usNameHash;
             ullSize = pDir->u.Stream.ullValidDataLen;
             ulFirstClus = pDir->u.Stream.ulFirstClus;
+            SetSHInfo1(pCD, pDir, &SHInfo2);
             }
          else if (pDir->bEntryType == ENTRY_TYPE_FILE)
             {
@@ -2368,9 +2395,13 @@ BOOL fEAS;
                         strcat(pbPath, szLongName);
                         }
 
+                     pDirSHInfo = &DirSHInfo;
+                     SetSHInfo1(pCD, &DirStream2, pDirSHInfo);
+
                      memset(szLongName, 0, sizeof(szLongName));
-                     CheckDir(pCD,
+                     CheckDir1(pCD,
                         ulFirstClus,
+                        pDirSHInfo,
                         pbPath, (ulDirCluster == pCD->BootSect.bpb.RootDirStrtClus ? 0L : ulDirCluster));
                      }
                   }
@@ -2384,6 +2415,7 @@ BOOL fEAS;
             usNameHash = pDir->u.Stream.usNameHash;
             ullSize = pDir->u.Stream.ullValidDataLen;
             ulFirstClus = pDir->u.Stream.ulFirstClus;
+            memcpy(&DirStream2, pDir, sizeof(DIRENTRY1));
             }
          else if (pDir->bEntryType == ENTRY_TYPE_FILE)
             {
@@ -2448,11 +2480,11 @@ ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCl
       return CheckDir0(pCD, ulDirCluster, pszPath, ulParentDirCluster);
 #ifdef EXFAT
    else
-      return CheckDir1(pCD, ulDirCluster, pszPath, ulParentDirCluster);
+      return CheckDir1(pCD, ulDirCluster, NULL, pszPath, ulParentDirCluster);
 #endif
 }
 
-ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSZ pszFile)
+ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile)
 {
 ULONG ulCount;
 ULONG ulNextCluster;
@@ -2483,7 +2515,7 @@ BOOL  fShown = FALSE;
 
    while (ulCluster != pCD->ulFatEof)
       {
-      ulNextCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
+      ulNextCluster = GetNextCluster(pCD, pSHInfo, ulCluster, FALSE);
       if (!MarkCluster(pCD, ulCluster, pszFile))
          return ulCount;
       ulCount++;
@@ -2833,7 +2865,7 @@ USHORT usIndex;
          }
       }
 
-   ulSize = GetClusterCount(pCD, ulCluster, "Lost data");
+   ulSize = GetClusterCount(pCD, ulCluster, NULL, "Lost data");
    if (pCD->usLostChains < MAX_LOST_CHAINS)
       {
       pCD->rgulLost[pCD->usLostChains] = ulCluster;

@@ -509,7 +509,8 @@ ULONG       ulAllocBmpCluster;
 ULONG       ulAllocBmpLen;
 ULONG       ulUpcaseTblCluster;
 ULONG       ulUpcaseTblLen;
-BYTE      * pFatBits;
+BYTE      * pFatBits;         // CHKDSK bitmap
+BYTE      * pbFatBits;        // exFAT bitmap
 ULONG       ulCurBmpSector;
 ULONG       ulBmpStartSector;
 DISKINFO    DiskInfo;

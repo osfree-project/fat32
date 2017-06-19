@@ -5984,9 +5984,19 @@ ULONG  ulReturn = 0;
       if (pDirEntryStream->u.Stream.bNoFatChain & 1)
          {
 #ifdef INCL_LONGLONG
-         return ulCluster + pDirEntryStream->u.Stream.ullDataLen / pVolInfo->ulClusterSize - 1;
+         return ulCluster + (pDirEntryStream->u.Stream.ullValidDataLen / pVolInfo->ulClusterSize) +
+             ((pDirEntryStream->u.Stream.ullValidDataLen % pVolInfo->ulClusterSize) ? 1 : 0) - 1;
 #else
-         return ulCluster + DivUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize).ulLo - 1;
+         {
+         ULONGLONG ullLen;
+         ullLen = ModUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+
+         if (GreaterUL(ullLen, 0))
+            AddUL(ullLen, 1);
+
+         return ulCluster + DivUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize).ulLo +
+            ullLen.ulLo - 1;
+         }
 #endif
          }
       }
