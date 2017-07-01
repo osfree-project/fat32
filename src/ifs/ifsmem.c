@@ -306,7 +306,6 @@ BOOL IsBlockFree(PBYTE pMCB)
 ULONG BlockSize(PBYTE pMCB)
 {
    return *((PULONG)pMCB) & ~1L;
-
 }
 
 VOID SetFree(PBYTE pMCB)

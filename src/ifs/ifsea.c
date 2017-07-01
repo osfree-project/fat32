@@ -169,21 +169,36 @@ USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo
 {
 PSZ pszEAName;
 USHORT rc;
-DIRENTRY DirEntry;
-DIRENTRY1 DirEntryStream;
+PDIRENTRY pDirEntry;
+PDIRENTRY1 pDirEntryStream = NULL;
 ULONG    ulCluster;
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usGetEASSize for %s", pszFileName);
 
+   pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pDirEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usGetEASizeExit;
+      }
+#ifdef EXFAT
+   pDirEntryStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pDirEntryStream)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usGetEASizeExit;
+      }
+#endif
+
    *pulSize = sizeof (ULONG);
 
    rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
    if (rc)
-      return rc;
+      goto usGetEASizeExit;
 
    ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName,
-      pDirSHInfo, &DirEntry, &DirEntryStream, NULL);
+      pDirSHInfo, pDirEntry, pDirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof || !ulCluster)
       {
       rc = 0;
@@ -192,20 +207,27 @@ ULONG    ulCluster;
 #ifdef EXFAT
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
-      *pulSize = DirEntry.ulFileSize;
+      *pulSize = pDirEntry->ulFileSize;
 #ifdef EXFAT
    else
 #ifdef INCL_LONGLONG
-      *pulSize = DirEntryStream.u.Stream.ullValidDataLen;
+      *pulSize = pDirEntryStream->u.Stream.ullValidDataLen;
 #else
-      *pulSize = DirEntryStream.u.Stream.ullValidDataLen.ulLo;
+      *pulSize = pDirEntryStream->u.Stream.ullValidDataLen.ulLo;
 #endif
 #endif
 
    rc = 0;
 
 usGetEASizeExit:
-   free(pszEAName);
+   if (pszEAName)
+      free(pszEAName);
+   if( pDirEntry)
+      free(pDirEntry);
+#ifdef EXFAT
+   if (pDirEntryStream)
+      free(pDirEntryStream);
+#endif
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usGetEASize for %s returned %d (%u bytes large)",
@@ -403,13 +425,42 @@ USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
-DIRENTRY SrcEntry, TarEntry;
-DIRENTRY1 TarStreamEntry;
-DIRENTRY1 SrcStreamEntry;
-#ifdef EXFAT
-SHOPENINFO SrcSHInfo;
-#endif
+PDIRENTRY pSrcEntry, pTarEntry;
+PDIRENTRY1 pTarStreamEntry = NULL, pSrcStreamEntry = NULL;
 PSHOPENINFO pSrcSHInfo = NULL;
+
+   pSrcEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pSrcEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usCopyEASExit;
+      }
+   pTarEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pTarEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usCopyEASExit;
+      }
+#ifdef EXFAT
+   pSrcStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pSrcStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usCopyEASExit;
+      }
+   pTarStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pTarStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usCopyEASExit;
+      }
+   pSrcSHInfo = (PSHOPENINFO)malloc((size_t)sizeof(SHOPENINFO));
+   if (!pSrcSHInfo)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usCopyEASExit;
+      }
+#endif
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
    if (rc)
@@ -418,11 +469,11 @@ PSHOPENINFO pSrcSHInfo = NULL;
    if (rc)
       goto usCopyEASExit;
 
-   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, &SrcStreamEntry, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, &TarStreamEntry, NULL);
+   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, pSrcEntry, pSrcStreamEntry, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, pTarEntry, pTarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, &TarStreamEntry, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usCopyEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -434,8 +485,7 @@ PSHOPENINFO pSrcSHInfo = NULL;
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      pSrcSHInfo = &SrcSHInfo;
-      SetSHInfo1(pVolInfo, &SrcStreamEntry, pSrcSHInfo);
+      SetSHInfo1(pVolInfo, pSrcStreamEntry, pSrcSHInfo);
       }
 #endif
 
@@ -447,20 +497,20 @@ PSHOPENINFO pSrcSHInfo = NULL;
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
 #endif
-      SrcEntry.wCluster = LOUSHORT(ulTarCluster);
-      SrcEntry.wClusterHigh = HIUSHORT(ulTarCluster);
+      pSrcEntry->wCluster = LOUSHORT(ulTarCluster);
+      pSrcEntry->wClusterHigh = HIUSHORT(ulTarCluster);
 #ifdef EXFAT
       }
    else
       {
-      SrcStreamEntry.u.Stream.ulFirstClus = ulTarCluster;
+      pSrcStreamEntry->u.Stream.ulFirstClus = ulTarCluster;
       }
 #endif
 
    /*
       Make new direntry
    */
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, &SrcStreamEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, 0);
 
 
 usCopyEASExit:
@@ -468,6 +518,18 @@ usCopyEASExit:
       free(pszSrcEAName);
    if (pszTarEAName)
       free(pszTarEAName);
+   if (pSrcEntry)
+      free(pSrcEntry);
+   if (pTarEntry)
+      free(pTarEntry);
+#ifdef EXFAT
+   if (pSrcStreamEntry)
+      free(pSrcStreamEntry);
+   if (pTarStreamEntry)
+      free(pTarStreamEntry);
+   if (pSrcSHInfo)
+      free(pSrcSHInfo);
+#endif
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usCopyEAS for returned %d", rc);
@@ -485,8 +547,35 @@ USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
-DIRENTRY SrcEntry, TarEntry;
-DIRENTRY1 SrcStreamEntry, TarStreamEntry;
+PDIRENTRY pSrcEntry, pTarEntry;
+PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
+
+   pSrcEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pSrcEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usMoveEASExit;
+      }
+   pTarEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pTarEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usMoveEASExit;
+      }
+#ifdef EXFAT
+   pSrcStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pSrcStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usMoveEASExit;
+      }
+   pTarStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pTarStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usMoveEASExit;
+      }
+#endif
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
    if (rc)
@@ -496,11 +585,11 @@ DIRENTRY1 SrcStreamEntry, TarStreamEntry;
       goto usMoveEASExit;
 
 
-   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, &SrcEntry, &SrcStreamEntry, NULL);
-   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, &TarEntry, &TarStreamEntry, NULL);
+   ulSrcCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcEAName, pDirSrcSHInfo, pSrcEntry, pSrcStreamEntry, NULL);
+   ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, pTarEntry, pTarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof && ulTarCluster != ulSrcCluster)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, &TarEntry, NULL, &TarStreamEntry, NULL, NULL, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usMoveEASExit;
       DeleteFatChain(pVolInfo, ulTarCluster);
@@ -511,24 +600,36 @@ DIRENTRY1 SrcStreamEntry, TarStreamEntry;
 
    if (ulSrcDirCluster == ulTarDirCluster)
       {
-      memmove(&TarEntry, &SrcEntry, sizeof TarEntry);
-      memmove(&TarStreamEntry, &SrcStreamEntry, sizeof TarEntry);
+      memmove(pTarEntry, pSrcEntry, sizeof(DIRENTRY1));
+#ifdef EXFAT
+      memmove(pTarStreamEntry, pSrcStreamEntry, sizeof(DIRENTRY1));
+#endif
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
-         MODIFY_DIR_RENAME, &SrcEntry, &TarEntry, &SrcStreamEntry, &TarStreamEntry, pszTarEAName, 0);
+         MODIFY_DIR_RENAME, pSrcEntry, pTarEntry, pSrcStreamEntry, pTarStreamEntry, pszTarEAName, 0);
       goto usMoveEASExit;
       }
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, &SrcEntry, NULL, &SrcStreamEntry, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pSrcEntry, NULL, pSrcStreamEntry, NULL, NULL, 0);
    if (rc)
       goto usMoveEASExit;
 
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, &SrcEntry, NULL, &SrcStreamEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, 0);
 
 usMoveEASExit:
    if (pszSrcEAName)
       free(pszSrcEAName);
    if (pszTarEAName)
       free(pszTarEAName);
+   if (pSrcEntry)
+      free(pSrcEntry);
+   if (pTarEntry)
+      free(pTarEntry);
+#ifdef EXFAT
+   if (pSrcStreamEntry)
+      free(pSrcStreamEntry);
+   if (pTarStreamEntry)
+      free(pTarStreamEntry);
+#endif
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usMoveEAS for returned %d", rc);
@@ -542,41 +643,75 @@ usMoveEASExit:
 USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS)
 {
 ULONG ulCluster;
-DIRENTRY OldEntry, NewEntry;
-DIRENTRY1 OldEntryStream;
-PDIRENTRY1 pNewEntry = (PDIRENTRY1)&NewEntry;
+PDIRENTRY pOldEntry, pNewEntry;
+PDIRENTRY1 pOldEntryStream = NULL;
 USHORT rc;
 
+   pOldEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pOldEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto MarkFileEASExit;
+      }
+   pNewEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pNewEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto MarkFileEASExit;
+      }
+#ifdef EXFAT
+   pOldEntryStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pOldEntryStream)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto MarkFileEASExit;
+      }
+#endif
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, &OldEntry, &OldEntryStream, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFileName, pDirSHInfo, pOldEntry, pOldEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       CritMessage("FAT32: MarkfileEAS : %s not found!", pszFileName);
-      return ERROR_FILE_NOT_FOUND;
+      rc = ERROR_FILE_NOT_FOUND;
+      goto MarkFileEASExit;
       }
-   memcpy(&NewEntry, &OldEntry, sizeof (DIRENTRY));
+   memcpy(pNewEntry, pOldEntry, sizeof (DIRENTRY));
 #ifdef EXFAT
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
 #endif
-      if( HAS_OLD_EAS( NewEntry.fEAS ))
-           NewEntry.fEAS = FILE_HAS_NO_EAS;
-      NewEntry.fEAS = ( BYTE )(( NewEntry.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+      if( HAS_OLD_EAS( pNewEntry->fEAS ))
+           pNewEntry->fEAS = FILE_HAS_NO_EAS;
+      pNewEntry->fEAS = ( BYTE )(( pNewEntry->fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
 #ifdef EXFAT
       }
    else
       {
-      if( HAS_OLD_EAS( pNewEntry->u.File.fEAS ))
-           pNewEntry->u.File.fEAS = FILE_HAS_NO_EAS;
-      pNewEntry->u.File.fEAS = ( BYTE )(( pNewEntry->u.File.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+      PDIRENTRY1 pNewEntry1 = (PDIRENTRY1)pNewEntry;
+      if( HAS_OLD_EAS( pNewEntry1->u.File.fEAS ))
+           pNewEntry1->u.File.fEAS = FILE_HAS_NO_EAS;
+      pNewEntry1->u.File.fEAS = ( BYTE )(( pNewEntry1->u.File.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
       }
 #endif
 
-   if (!memcmp(&NewEntry, &OldEntry, sizeof (DIRENTRY)))
-      return 0;
+   if (!memcmp(pNewEntry, pOldEntry, sizeof (DIRENTRY)))
+      {
+      rc = 0;
+      goto MarkFileEASExit;
+      }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
-      MODIFY_DIR_UPDATE, &OldEntry, &NewEntry, &OldEntryStream, NULL, NULL, 0);
+      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, NULL, 0);
+
+MarkFileEASExit:
+   if (pOldEntry)
+      free(pOldEntry);
+   if (pNewEntry)
+      free(pNewEntry);
+#ifdef EXFAT
+   if (pOldEntryStream)
+      free(pOldEntryStream);
+#endif
 
    return rc;
 }
@@ -590,30 +725,45 @@ PFEALIST pFEAL;
 ULONG ulCluster;
 PBYTE  pszEAName;
 PBYTE pRead;
-USHORT rc;
-DIRENTRY1 StreamEntry;
-#ifdef EXFAT
-SHOPENINFO SHInfo;
-#endif
+USHORT rc = 0;
+PDIRENTRY1 pStreamEntry = NULL;
 PSHOPENINFO pSHInfo = NULL;
 USHORT usClustersUsed;
 USHORT usBlocksUsed;
 BOOL fFirst = TRUE;
 
+#ifdef EXFAT
+   pStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usReadEASExit;
+      }
+   pSHInfo = (PSHOPENINFO)malloc((size_t)sizeof(SHOPENINFO));
+   if (!pSHInfo)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usReadEASExit;
+      }
+#endif
+
    *ppFEAL = NULL;
 
    rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
    if (rc)
-      return rc;
+      goto usReadEASExit;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, NULL, &StreamEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, NULL, pStreamEntry, NULL);
    free(pszEAName);
 
    if ((ulCluster && ulCluster != pVolInfo->ulFatEof) || fCreate)
       {
       pFEAL = malloc((size_t)MAX_EA_SIZE);
       if (!pFEAL)
-         return ERROR_NOT_ENOUGH_MEMORY;
+         {
+         rc = ERROR_NOT_ENOUGH_MEMORY;
+         goto usReadEASExit;
+         }
       memset(pFEAL, 0, (size_t) MAX_EA_SIZE);
       pFEAL->cbList = sizeof (ULONG);
       }
@@ -623,7 +773,8 @@ BOOL fFirst = TRUE;
    if (!ulCluster || ulCluster == pVolInfo->ulFatEof)
       {
       *ppFEAL = pFEAL;
-      return 0;
+      rc = 0;
+      goto usReadEASExit;
       }
 
    pRead = (PBYTE)pFEAL;
@@ -634,12 +785,13 @@ BOOL fFirst = TRUE;
    if (rc)
       {
       free(pFEAL);
-      return rc;
+      goto usReadEASExit;
       }
    if (pFEAL->cbList > MAX_EA_SIZE)
       {
       free(pFEAL);
-      return ERROR_EAS_DIDNT_FIT;
+      rc = ERROR_EAS_DIDNT_FIT;
+      goto usReadEASExit;
       }
 
    usClustersUsed = (USHORT)(pFEAL->cbList / pVolInfo->ulClusterSize);
@@ -663,8 +815,7 @@ BOOL fFirst = TRUE;
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      pSHInfo = &SHInfo;
-      SetSHInfo1(pVolInfo, &StreamEntry, pSHInfo);
+      SetSHInfo1(pVolInfo, pStreamEntry, pSHInfo);
       }
 #endif
 
@@ -679,7 +830,8 @@ BOOL fFirst = TRUE;
          if (ulCluster == pVolInfo->ulFatEof)
             {
             free(pFEAL);
-            return ERROR_EA_FILE_CORRUPT;
+            rc = ERROR_EA_FILE_CORRUPT;
+            goto usReadEASExit;
             }
          }
       for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
@@ -701,7 +853,7 @@ BOOL fFirst = TRUE;
          if (rc)
             {
             free(pFEAL);
-            return rc;
+            goto usReadEASExit;
             }
          pRead += pVolInfo->ulBlockSize;
          usBlocksUsed--;
@@ -714,7 +866,14 @@ BOOL fFirst = TRUE;
       }
    *ppFEAL = pFEAL;
 
-   return 0;
+usReadEASExit:
+#ifdef EXFAT
+   if (pStreamEntry)
+      free(pStreamEntry);
+   if (pSHInfo)
+      free(pSHInfo);
+#endif
+   return rc;
 }
 
 /************************************************************************
@@ -724,21 +883,36 @@ USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo
 {
 PSZ pszEAName;
 USHORT rc;
-DIRENTRY DirEntry;
-DIRENTRY1 StreamEntry;
+PDIRENTRY pDirEntry;
+PDIRENTRY1 pStreamEntry = NULL;
 ULONG    ulCluster;
+
+   pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pDirEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usDeleteEASExit;
+      }
+#ifdef EXFAT
+   pStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pStreamEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usDeleteEASExit;
+      }
+#endif
 
    rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
    if (rc)
       return rc;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, &StreamEntry, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, pDirEntry, pStreamEntry, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &DirEntry, NULL, &StreamEntry, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, NULL, 0);
    if (rc)
       goto usDeleteEASExit;
 
@@ -748,7 +922,14 @@ ULONG    ulCluster;
    rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_NO_EAS);
 
 usDeleteEASExit:
-   free(pszEAName);
+   if (pszEAName)
+      free(pszEAName);
+   if (pDirEntry)
+      free(pDirEntry);
+#ifdef EXFAT
+   if (pStreamEntry)
+      free(pStreamEntry);
+#endif
 
    if (f32Parms.fMessageActive & LOG_EAS)
       Message("usDeleteEAS for %s returned %d",
@@ -768,25 +949,54 @@ PBYTE pWrite;
 USHORT rc;
 USHORT usClustersNeeded;
 USHORT usBlocksNeeded;
-DIRENTRY DirEntry;
-DIRENTRY DirNew;
-PDIRENTRY1 pDirNew = (PDIRENTRY1)&DirNew;
-DIRENTRY1 DirStream;
-DIRENTRY1 DirStreamNew;
+PDIRENTRY pDirEntry;
+PDIRENTRY pDirNew;
+PDIRENTRY1 pDirStream = NULL;
+PDIRENTRY1 pDirStreamNew = NULL;
 BOOL     fCritical;
 PFEA     pFea, pFeaEnd;
 BOOL fFirst = TRUE;
-#ifdef EXFAT
-SHOPENINFO SHInfo;
-#endif
 PSHOPENINFO pSHInfo = NULL;
 
    if (pFEAL->cbList > MAX_EA_SIZE)
       return ERROR_EA_LIST_TOO_LONG;
 
+   pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pDirEntry)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usWriteEASExit;
+      }
+   pDirNew = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
+   if (!pDirNew)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usWriteEASExit;
+      }
+#ifdef EXFAT
+   pDirStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pDirStream)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usWriteEASExit;
+      }
+   pDirStreamNew = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
+   if (!pDirStreamNew)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usWriteEASExit;
+      }
+   pSHInfo = (PSHOPENINFO)malloc((size_t)sizeof(SHOPENINFO));
+   if (!pSHInfo)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto usWriteEASExit;
+      }
+#endif
+
    rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
    if (rc)
-      return rc;
+      goto usWriteEASExit;
 
    usClustersNeeded = (USHORT)((ULONG)pFEAL->cbList / pVolInfo->ulClusterSize);
    if (pFEAL->cbList % pVolInfo->ulClusterSize)
@@ -796,7 +1006,7 @@ PSHOPENINFO pSHInfo = NULL;
    if (pFEAL->cbList % pVolInfo->ulBlockSize)
       usBlocksNeeded++;
 
-   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, &DirEntry, &DirStream, NULL);
+   ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszEAName, pDirSHInfo, pDirEntry, pDirStream, NULL);
    if (!ulCluster || ulCluster == pVolInfo->ulFatEof)
       {
       BOOL fNew = FALSE;
@@ -804,37 +1014,42 @@ PSHOPENINFO pSHInfo = NULL;
       if (ulCluster == pVolInfo->ulFatEof)
          {
          fNew = TRUE;
-         memset(&DirNew, 0, sizeof DirNew);
-         memset(&DirStreamNew, 0, sizeof DirStreamNew);
+         memset(pDirNew, 0, sizeof(DIRENTRY));
+#ifdef EXFAT
+         memset(pDirStreamNew, 0, sizeof(DIRENTRY1));
+#endif
          }
       else
          {
-         memcpy(&DirNew, &DirEntry, sizeof DirEntry);
-         memcpy(&DirStreamNew, &DirStream, sizeof DirStream);
+         memcpy(pDirNew, pDirEntry, sizeof(DIRENTRY));
+#ifdef EXFAT
+         memcpy(pDirStreamNew, pDirStream, sizeof(DIRENTRY1));
+#endif
          }
 
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
          {
 #endif
-         DirNew.bAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
-         DirNew.ulFileSize = pFEAL->cbList;
+         pDirNew->bAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
+         pDirNew->ulFileSize = pFEAL->cbList;
 #ifdef EXFAT
          }
       else
          {
-         pDirNew->u.File.usFileAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
-         DirStreamNew.u.Stream.bAllocPossible = 1;
-         DirStreamNew.u.Stream.bNoFatChain = 0;
+         PDIRENTRY1 pDirNew1 = (PDIRENTRY1)pDirNew;
+         pDirNew1->u.File.usFileAttr  = FILE_HIDDEN | FILE_SYSTEM | FILE_READONLY;
+         pDirStreamNew->u.Stream.bAllocPossible = 1;
+         pDirStreamNew->u.Stream.bNoFatChain = 0;
 
 #ifdef INCL_LONGLONG
-         DirStreamNew.u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
-         DirStreamNew.u.Stream.ullDataLen =
+         pDirStreamNew->u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
+         pDirStreamNew->u.Stream.ullDataLen =
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
-         AssignUL(&DirStreamNew.u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(&DirStreamNew.u.Stream.ullDataLen, 
+         AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
+         AssignUL(pDirStreamNew->u.Stream.ullDataLen, 
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif
@@ -844,8 +1059,7 @@ PSHOPENINFO pSHInfo = NULL;
 #ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
-         pSHInfo = &SHInfo;
-         SetSHInfo1(pVolInfo, &DirStream, pSHInfo);
+         SetSHInfo1(pVolInfo, pDirStream, pSHInfo);
          }
 #endif
 
@@ -853,68 +1067,70 @@ PSHOPENINFO pSHInfo = NULL;
       if (ulCluster == pVolInfo->ulFatEof)
          {
          free(pszEAName);
-         return ERROR_DISK_FULL;
+         rc = ERROR_DISK_FULL;
+         goto usWriteEASExit;
          }
 
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
          {
 #endif
-         DirNew.wCluster = LOUSHORT(ulCluster);
-         DirNew.wClusterHigh = HIUSHORT(ulCluster);
+         pDirNew->wCluster = LOUSHORT(ulCluster);
+         pDirNew->wClusterHigh = HIUSHORT(ulCluster);
 #ifdef EXFAT
          }
       else
          {
-         DirStreamNew.u.Stream.ulFirstClus = ulCluster;
+         pDirStreamNew->u.Stream.ulFirstClus = ulCluster;
          }
 #endif
 
       if (fNew)
-         rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, &DirNew, &DirStreamNew, pszEAName);
+         rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, pDirNew, pDirStreamNew, pszEAName);
       else
          rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
-            MODIFY_DIR_UPDATE, &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL, 0);
+            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
       if (rc)
          {
          free(pszEAName);
-         return rc;
+         goto usWriteEASExit;
          }
       }
    else
       {
-      memcpy(&DirNew, &DirEntry, sizeof (DIRENTRY));
-      memcpy(&DirStreamNew, &DirStream, sizeof (DIRENTRY1));
+      memcpy(pDirNew, pDirEntry, sizeof(DIRENTRY));
 #ifdef EXFAT
+      memcpy(pDirStreamNew, pDirStream, sizeof(DIRENTRY1));
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
-         DirNew.ulFileSize = pFEAL->cbList;
+         pDirNew->ulFileSize = pFEAL->cbList;
 #ifdef EXFAT
       else
          {
-         pDirNew->bEntryType = ENTRY_TYPE_FILE;
-         DirStreamNew.bEntryType = ENTRY_TYPE_STREAM_EXT;
-         DirStreamNew.u.Stream.bAllocPossible = 1;
-         DirStreamNew.u.Stream.bNoFatChain = 0;
+         PDIRENTRY1 pDirNew1 = (PDIRENTRY1)pDirNew;
+         pDirNew1->bEntryType = ENTRY_TYPE_FILE;
+         pDirStreamNew->bEntryType = ENTRY_TYPE_STREAM_EXT;
+         pDirStreamNew->u.Stream.bAllocPossible = 1;
+         pDirStreamNew->u.Stream.bNoFatChain = 0;
 #ifdef INCL_LONGLONG
-         DirStreamNew.u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
-         DirStreamNew.u.Stream.ullDataLen =
+         pDirStreamNew->u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
+         pDirStreamNew->u.Stream.ullDataLen =
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
-         AssignUL(&DirStreamNew.u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(&DirStreamNew.u.Stream.ullDataLen, 
+         AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
+         AssignUL(pDirStreamNew->u.Stream.ullDataLen, 
             (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
             (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif
          }
 #endif
       rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-           &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL, 0);
+           pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
       if (rc)
          {
          free(pszEAName);
-         return rc;
+         goto usWriteEASExit;
          }
       }
 
@@ -923,8 +1139,7 @@ PSHOPENINFO pSHInfo = NULL;
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      pSHInfo = &SHInfo;
-      SetSHInfo1(pVolInfo, (PDIRENTRY1)&DirStreamNew, pSHInfo);
+      SetSHInfo1(pVolInfo, pDirStreamNew, pSHInfo);
       }
 #endif
 
@@ -940,7 +1155,7 @@ PSHOPENINFO pSHInfo = NULL;
          {
          rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pWrite, 0);
          if (rc)
-            return rc;
+            goto usWriteEASExit;
          pWrite += pVolInfo->ulBlockSize;
          }
       usClustersNeeded --;
@@ -952,7 +1167,10 @@ PSHOPENINFO pSHInfo = NULL;
          else
             ulCluster = ulNextCluster;
          if (ulCluster == pVolInfo->ulFatEof)
-            return ERROR_DISK_FULL;
+            {
+            rc = ERROR_DISK_FULL;
+            goto usWriteEASExit;
+            }
          }
       }
    if (ulNextCluster != pVolInfo->ulFatEof)
@@ -976,6 +1194,20 @@ PSHOPENINFO pSHInfo = NULL;
       rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_CRITICAL_EAS);
    else
       rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_EAS);
+
+usWriteEASExit:
+   if (pDirEntry)
+      free(pDirEntry);
+   if (pDirNew)
+      free(pDirNew);
+#ifdef EXFAT
+   if (pDirStream)
+      free(pDirStream);
+   if (pDirStreamNew)
+      free(pDirStreamNew);
+   if (pSHInfo)
+      free(pSHInfo);
+#endif
 
    return rc;
 }
