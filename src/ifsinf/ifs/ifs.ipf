@@ -36,6 +36,16 @@ Version 0&per.1
 July 1993 
 .br 
 
+.br 
+
+.br 
+
+Addtions by Valery V. Sedletski
+
+.br
+
+Jun 2017
+
 :elines.
 :font facename=default.
 :h1 id=3.Disclaimer
@@ -73,6 +83,10 @@ GSA ADP Schedule Contract with IBM Corp&per.
 :p.This document is based on the February 17, 1992 version of the printed IFS 
 documentation&per. 
 :p.July, 1993   
+
+:p.Additions done by V. Sedletski on Jun 2017, all such additions are marked
+in cyan, to distinguish them from IBM's text.
+
 :h1 id=5.Installable File System Mechanism
 The OS/2 Installable File System (IFS) Mechanism supports the following&colon.   
 :p.oCoexistence of multiple, active file systems in a single PC 
@@ -591,14 +605,18 @@ objects should copy all of the EAs for an object before otherwise modifying it i
 to assure that any create-only attributes from the source are properly applied to 
 the target&per. The DosCopy API is the preferred method of copying files or 
 directories&per.   
+
 :h2 id=23.FSD File Image
 
 :p.An FSD loads from a file which is in the format of a standard OS/2 dynamic 
 link library file&per. Exactly one FSD resides in each file&per. The FSD exports 
 information to OS/2 using a set of predefined public names&per.   
+
 :p.The FSD is initialized by a call to the exported entry point FS_INIT&per.   
+
 :p.FS entry points for Mount, Read, Write, etc&per. are exported with known 
 names as standard far entry points&per.   
+
 :p.The FSD exports its name as a public ASCIIZ character string under the name 
 &apos.FS_NAME&apos.&per. All comparisons with user-specified strings are done similar 
 to file names; case is ignored and embedded blanks are significant&per. FS_NAMEs, 
@@ -607,10 +625,20 @@ however, may be input to applications by users&per. Embedded blanks should be av
 boot sector of formatted media, although it may be&per. The ONLY name the kernel 
 pays any attention to, and the only name accessible to user programs through the API
 , is the name exported as FS_NAME&per.   
+
 :p.In addition to various entry points, the FSD must export a dword bit vector 
 of attributes&per. Attributes are exported under the name &apos.FS_ATTRIBUTE&apos.
 &per. FS_ATTRIBUTE specifies special properties of the FSD and is described in the 
-next section&per.   
+next section&per. 
+
+:color fc=darkcyan.
+:p.For 32-bit IFS'es, FS32_ATTRIBUTE also should be exported. It
+should contain the same values as FS_ATTRIBUTE. If FS32_ATTRIBUTE is exported, this
+means that FS32_* entry points (FS32_READ, FS32_WRITE, FS32_CHGFILEPTR, FS32_CHGFILEPTRL,
+FS32_READFILEATCACHE, FS32_RETURNFILECACHE) should be called, instead of FS_READ, FS_WRITE,
+FS_CHGFILEPTR, FS_CHGFILEPTRL.
+:color fc=default.
+
 :h3 id=24.FSD Attribute
 
 :p.The format of the OS/2 FS_ATTRIBUTE is defined in Figure 1-4 and the 
@@ -1047,6 +1075,13 @@ struct sffsi {
     unsigned short  sfi_type;       /* type of object opened */
     unsigned long   sfi_pPVDBFil;   /* performance counter data block pointer */
     unsigned char   sfi_DOSattr;    /* DOS file attributes D/S/A/H/R */
+
+:color fc=darkcyan.
+/* The following fields are supported since OS/2 Warp Server for e-Business (Aurora) */
+
+    long long sfi_sizel;            /* 64-bit file size value */
+    long long sfi_positionl;        /* 64-bit file position value */
+:color fc=default.
 };
 
 /* file system dependent - file instance */
@@ -1185,9 +1220,17 @@ conventions&per.   :font facename='Courier' size=12x12.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=44.FS_CANCELLOCKREQUEST:elink. Cancel file record lock request     FILE I/O
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :color fc=darkcyan.
+ :link reftype=hd refid=92.FS_CANCELLOCKREQUESTL:elink. Cancel file record lock request     FILE I/O
+ :color fc=default.
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=45.FS_CHDIR:elink.             Change/Verify directory path        ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=46.FS_CHGFILEPTR:elink.        Move a file&apos.s position pointer      ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :color fc=darkcyan.
+ :link reftype=hd refid=87.FS_CHGFILEPTRL:elink.       Move a file&apos.s position pointer      ALL
+ :color fc=default.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=47.FS_CLOSE:elink.             Release a file handle               ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -1208,6 +1251,10 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=55.FS_FILEIO:elink.            Multi-function file I/O             ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=56.FS_FILELOCKS:elink.         Request a file record lock/unlock   FILE I/O
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :color fc=darkcyan.
+ :link reftype=hd refid=93.FS_FILELOCKSL:elink.        Request a file record lock/unlock   FILE I/O
+ :color fc=default.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=57.FS_FINDCLOSE:elink.         Directory search close              ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -1241,6 +1288,10 @@ conventions&per.   :font facename='Courier' size=12x12.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=72.FS_NEWSIZE:elink.           Change a file&apos.s logical size        ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :color fc=darkcyan.
+ :link reftype=hd refid=91.FS_NEWSIZEL:elink.          Change a file&apos.s logical size        ALL
+ :color fc=default.
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=73.FS_NMPIPE:elink.            Do a named pipe operation           ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=74.FS_OPENCREATE:elink.        Open/create/replace files           ALL
@@ -1262,7 +1313,20 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=82.FS_VERIFYUNCNAME:elink.     Verify UNC server ownership         UNC
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=83.FS_WRITE:elink.             Write data to a file                ALL
-
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :color fc=darkcyan.
+ :link reftype=hd refid=84.FS32_READ:elink.            Read data from a file               ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :link reftype=hd refid=85.FS32_READFILEATCACHE:elink. Read file from cache                ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :link reftype=hd refid=86.FS32_RETURNFILECACHE:elink. Return file cache                   ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :link reftype=hd refid=88.FS32_CHGFILEPTR:elink.      Move a file&apos.s position pointer      ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :link reftype=hd refid=89.FS32_CHGFILEPTRL:elink.     Move a file&apos.s position pointer      ALL
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ :link reftype=hd refid=90.FS32_WRITE:elink.           Write data to a file                ALL
+ :color fc=default.
 
 :ecgraphic.
 
@@ -1427,6 +1491,7 @@ queries about drives&per.
 see if there are any open references on the drive (for example, open or search 
 references)&per. It is entirely up to the FSD to decide whether it should allow the detach 
 operation&per.   
+
 :h2 id=44.FS_CANCELLOCKREQUEST - Cancel file record lock request
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -1464,6 +1529,45 @@ has the following format&colon.
 request of an outstanding FS_FILELOCKS call&per. If two threads in a process are 
 blocked on a lock range and a cancel request is issued by another thread, both blocked 
 threads will be released&per.   
+
+:h2 id=44.FS_CANCELLOCKREQUESTL - Cancel file record lock request
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Cancels an outstanding FS_FILELOCKSL request on a file&per. Version for a 64-bit file position.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int far pascal FS_CANCELLOCKREQUESTL(psffsi, psffsd, pLockRange)
+
+struct sffsi far * psffsi;
+struct sffsd far * psffsd;
+struct filelockl far * pLockRange;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per.   
+:p.pLockRange is a pointer to a filelock structure&per. The filelock structure 
+has the following format&colon.   
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.struct filelockl {
+    long long FileOffset;   /* offset where the lock/unlock begins  */
+    long long RangeLength;  /* length of region locked/unlocked     */
+}
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+.br 
+:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.This entry point was added to support the 32-bit DosCancelLockRequest API
+&per.   
+:p.This function provides a simple mechanism for canceling the lock range 
+request of an outstanding FS_FILELOCKSL call&per. If two threads in a process are 
+blocked on a lock range and a cancel request is issued by another thread, both blocked 
+threads will be released&per.   
+
 :h2 id=45.FS_CHDIR - Change/Verify Directory Path
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -1623,6 +1727,7 @@ THEN
 
 :ecgraphic.
 :font facename=default.  
+
 :h2 id=46.FS_CHGFILEPTR - Move a file's position pointer
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -1673,6 +1778,62 @@ requests&per.
 :p.FSDs must allow seeks to positions beyond end-of-file&per.   
 :p.The information passed in IOflag is what was set for the handle during a 
 DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
+
+:h2 id=87.FS_CHGFILEPTRL - Move a file's position pointer
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Move a file&apos.s logical read/write position pointer&per. Version for a 64-bit file pointer for 16-bit IFS'es.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int far pascal FS_CHGFILEPTRL(psffsi, psffsd, offset, type, IOflag)
+
+struct sffsi far * psffsi;
+struct sffsd far * psffsd;
+long long offset;
+unsigned short type;
+unsigned short IOflag;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.The FSD uses the current file size or sfi_positionl along with offset and type 
+to compute a new sfi_positionl&per. This is updated by the system&per. sfi_position should be
+updated too. It needs to be assigned a truncated to 32-bits sfi_positionl value.
+
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per. The FSD may store or adjust data as appropriate in this structure&per.   
+:p.offset is the signed offset to be added to the current file size or position 
+to form the new position within the file&per.   
+:p.type indicates the basis of a seek operation&per.   
+:p.type == 0 indicates seek relative to beginning of file&per. 
+.br 
+type == 1 indicates seek relative to current position within the file&per. 
+.br 
+type == 2 indicates seek relative to end of file&per.   
+:p.The value of type passed to the FSD will be valid&per.   
+:p.IOflag indicates information about the operation on the handle&per.   
+:p.IOflag == 0x0010 indicates write-through&per. 
+.br 
+IOflag == 0x0020 indicates no-cache&per. 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.The file system may want to take the seek operation as a hint that an I/O 
+operation is about to take place at the new position and initiate a positioning operation 
+on sequential access media or read-ahead operation on other media&per.   
+:p.Some DOS mode programs expect to be able to do a negative seek&per. OS/2 
+passes these requests on to the FSD and returns an error for OS/2 mode negative seek 
+requests&per. Because a seek to a negative position is, effectively, a seek to a very 
+large offset, it is suggested that the FSD return end-of-file for subsequent read 
+requests&per.   
+:p.FSDs must allow seeks to positions beyond end-of-file&per.   
+:p.The information passed in IOflag is what was set for the handle during a 
+DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
+
 :h2 id=47.FS_CLOSE - Close a file.
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -2216,6 +2377,7 @@ themselves and not to the list as a whole&per.
 in that any data written to the block device must be put out on the medium before 
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
+
 :h2 id=56.FS_FILELOCKS - Request a file record lock/unlock
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -2315,6 +2477,114 @@ non-owners of a file do either reads or writes of files that have exclusive or
 shared locks set&per. A range to be locked for exclusive access must first be cleared 
 of any locked subranges or locked any locked subranges or locked overlapping 
 ranges&per.   
+
+:h2 id=93.FS_FILELOCKSL - Request a file record lock/unlock
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Locks and/or unlocks a range (record)  in a opened file&per. Version for a 64-bit file offset.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.:color fc=darkcyan.
+:cgraphic.
+:font facename='Courier' size=12x12.int far pascal FS_FILELOCKSL(psffsi, psffsd, pUnLockRange, pLockRange, timeout,
+                            flags)
+
+struct sffsi far * psffsi;
+struct sffsd far * psffsd;
+struct filelockl far * pUnLockRange;
+struct filelockl far * pLockRange;
+unsigned long timeout;
+unsigned long flags;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per.   
+:p.pUnLockRange is a pointer to a filelock structure, identifying the range of 
+the file to be unlocked&per. The filelock structure has the following format&colon.   
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.struct filelockl {
+    long long FileOffset;   /* offset where the lock/unlock begins  */
+    long long RangeLength;  /* length of region locked/unlocked     */
+}
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+
+:p.If RangeLength is zero, no unlocking is required&per.   
+
+:p.pLockRange is a pointer to a filelock structure, identifying the range of the 
+file to be locked&per. If RangeLength is zero, no locking is required&per.   
+
+:p.timeout is the maximum time in milliseconds that the requester wants to wait 
+for the requested ranges, if they are not immediately available&per.   
+
+:p.flags is the bit mask which specifies what actions are to taken&colon.   
+
+:p.:hp2.SHARE Bit 0 on :ehp2.:color fc=darkcyan.indicates other processes can share access to this locked 
+range&per. Ranges with SHARE bit on can overlap&per.   
+
+:p.:hp2.SHARE Bit 0 off :ehp2.:color fc=darkcyan.indicates the current process has exclusive access to the 
+locked range&per. A range with the SHARE bit off CANNOT overlap with any other lock 
+range&per.   
+
+:p.:hp2.ATOMIC Bit 1 :ehp2.:color fc=darkcyan.on indicates an atomic lock request&per. If the lock range 
+equals the unlock range, an atomic lock will occur&per. If the ranges are not equal, 
+an error will be returned&per.   
+:p.All other bits (2-31) are reserved and must be zero&per. 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.This entry point was added to support the 32-bit DosSetFileLocks API&per.   
+:p.If the lock and unlock range lengths are both zero, an error, ERROR_LOCK_
+VIOLATION will be returned to the caller&per. If only a lock is desired, pUnLockRange can 
+be NULL or both FileOffset and RangeLength should be set to zero when the call is 
+made&per. The opposite is true for an unlock&per.   
+:p.When the atomic bit is not set, the unlock occurs first then the lock is 
+performed&per. If an error occurs on the unlock, an error is returned and the lock is not 
+performed&per. If an error occurs on the lock, an error is returned and the unlock 
+remains in effect if one was requested&per. If the atomic bit is set and the unlock 
+range equals the lock range and the unlock range has shared access but wants to 
+change the access to exclusive access, the function is atomic&per. FSDs may not 
+support atomic lock functions&per. If error ERROR_ATOMIC_LOCK_NOT_SUPPORTED is returned
+, the application should do an unlock and lock the range using nonatomic 
+operations&per. The application should also be sure to refresh its internal buffers prior 
+to making any modifications&per.   
+:p.Closing a file with locks still in force causes the locks to be released in 
+no defined order&per.   
+:p.Terminating a process with a file open and having issued locks on that file 
+causes the file to be closed and the locks to be released in no defined order&per.   
+:p.The figure below describes the level of access granted when the accessed 
+region is locked&per. The locked regions can be anywhere in the logical file&per. 
+Locking beyond end-of-file is not an error&per. It is expected that the time in which 
+regions are locked will be short&per. Duplicating the handle duplicates access to the 
+locked regions&per. Access to the locked regions is not duplicated across the 
+DosExecPgm system call&per. The proper method for using locks is not to rely on being 
+denied read or write access, but attempting to lock the region desired and examining 
+the error code&per.   
+:p.:hp2.Locked Access Table :ehp2.:font facename='Courier' size=12x12.
+:cgraphic.
+:color fc=default.:color bc=default.:color fc=darkcyan.
+ Action               Exclusive Lock                 Shared Lock
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ Owner read           Success                        Success
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ Non-owner read       Return code, not block         Success
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ Owner write          Success                        Return code, not block
+ 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ Non-owner write      Return code, not block         Return code, not block
+
+
+:ecgraphic.
+:font facename=default.
+:p.The locked access table has the actions on the left as to whether owners or 
+non-owners of a file do either reads or writes of files that have exclusive or 
+shared locks set&per. A range to be locked for exclusive access must first be cleared 
+of any locked subranges or locked any locked subranges or locked overlapping 
+ranges&per.   
+
 :h2 id=57.FS_FINDCLOSE - Directory Read (Search) Close
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -3211,10 +3481,13 @@ directory names; that is, the source directory is not a prefix of the target dir
 &per.   
 :p.:hp2.Note&colon.   :ehp2.OS/2 does not validate input parameters&per. Therefore, an FSD 
 should call FSH_PROBEBUF where appropriate&per.   
+
 :h2 id=72.FS_NEWSIZE - Change File's Logical Size
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Changes a file&apos.s logical (EOD) size&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_NEWSIZE(psffsi, psffsd, len, IOflag)
@@ -3227,28 +3500,88 @@ unsigned short IOflag;
 :ecgraphic.
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.psffsi is a pointer to the file-system-independent portion of an open file 
 instance&per.   
+
 :p.psffsd is a pointer to the file-system-dependent portion of an open file 
 instance&per.   
+
 :p.len is the desired new length of the file&per.   
+
 :p.IOflag indicates information about the operation on the handle&per.   
+
 :p.IOflag == 0x0010 indicates write-through&per. 
 .br 
 IOflag == 0x0020 indicates no-cache&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.The FSD should return an error if an attempt is made to write beyond the end 
 with a direct access device handle&per.   
+
 :p.The file system driver attempts to set the size (EOD) of the file to newsize 
 and update sfi_size, if successful&per. If the new size is larger than the 
 currently allocated size, the file system driver arranges for for efficient access to the 
 newly-allocated storage&per.   
+
 :p.Of the information passed in IOflag, the write-through bit is a mandatory bit 
 in that any data written to the block device must be put out on the medium before 
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
+
+:h2 id=91.FS_NEWSIZEL - Change File's Logical Size
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.
+:color fc=darkcyan.
+
+:p.Changes a file&apos.s logical (EOD) size&per. Verison for a 64-bit file size.
+
+:p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int far pascal FS_NEWSIZEL(psffsi, psffsd, len, IOflag)
+
+struct sffsi far * psffsi;
+struct sffsd far * psffsd;
+long long len;
+unsigned short IOflag;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per.   
+
+:p.len is the desired new length of the file&per.   
+
+:p.IOflag indicates information about the operation on the handle&per.   
+
+:p.IOflag == 0x0010 indicates write-through&per. 
+.br 
+IOflag == 0x0020 indicates no-cache&per. 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.The FSD should return an error if an attempt is made to write beyond the end 
+with a direct access device handle&per.   
+
+:p.The file system driver attempts to set the size (EOD) of the file to newsize 
+and update sfi_size, if successful&per. If the new size is larger than the 
+currently allocated size, the file system driver arranges for for efficient access to the 
+newly-allocated storage&per.   
+
+:p.Of the information passed in IOflag, the write-through bit is a mandatory bit 
+in that any data written to the block device must be put out on the medium before 
+the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
+bit that says whether the data being transferred is worth caching or not&per.   
+
 :h2 id=73.FS_NMPIPE - Do a remote named pipe operation.
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -3725,6 +4058,7 @@ return an error if it found such blanks&per. It is called after the OS/2
 canonicalization process has succeeded&per. It is not called for FSH_CANONICALIZE&per.   
 :p.This routine is called for all APIs that use pathnames&per.   
 :p.This routine must return no error if the function is not supported&per.   
+
 :h2 id=78.FS_READ - Read from a File
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -3769,6 +4103,7 @@ to make the kernel time stamp the last modification time in the SFT&per.
 in that any data written to the block device must be put out on the medium before 
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
+
 :h2 id=79.FS_RMDIR - Remove Subdirectory
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -3915,6 +4250,7 @@ validate the server name&per.
 :p.For pass 2, the FSD is permitted to do whatever is reasonable, including 
 sending LAN &osq.are you there&osq. messages, to determine if they are able to service 
 the request for UNC server&per.   
+
 :h2 id=83.FS_WRITE - Write to a file
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -3961,6 +4297,327 @@ with a direct access device handle&per.
 in that any data written to the block device must be put out on the medium before 
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
+
+:h2 id=84.FS32_READ - Read from a File
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Read the specified number of bytes from a file to a buffer location&per. Version for 32-bit IFS'es. Handles a 64-bit
+file pointer and size.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int _cdecl FS32_READ(psffsi, psffsd, pData, pLen, IOflag)
+
+struct sffsi * psffsi;
+struct sffsd * psffsd;
+char * pData;
+unsigned long * pLen;
+unsigned long IOflag;
+
+:ecgraphic.
+:font facename=default.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.sfi_position is the location within the file where the data is to be read 
+from&per. The FSD should update the sfi_position field&per. Since OS/2 Warp Server for e-Business 4.5 (Aurora), 
+64-bit file position is supported. It is stored in sfi_positionl field. Both sfi_position and sfi_positionl
+should be updated each time it changed. If the file position is larger than 2GB (signed), it should be
+truncated to a (LONG) value. 
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per.   
+:p.pData is the address of the application data area&per.   
+:p.Addressing of this data area has not been validated by the kernel (see FSH_
+PROBEBUF)&per.   
+:p.pLen is a pointer to the length of the application data area&per.   
+:p.On input, this is the number of bytes to be read&per. On output, this is the 
+number of bytes successfully read&per. If the application data area is smaller than 
+the length, no transfer is to take place&per. The FSD will not be called for zero 
+length reads&per. The FSD does not need to verify this pointer&per.   
+:p.IOflag indicates information about the operation on the handle&per.   
+:p.IOflag == 0x0010 indicates write-through 
+.br 
+IOflag == 0x0020 indicates no-cache 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.If read is successful and is a file, the FSD should set ST_SREAD and ST_PREAD 
+to make the kernel time stamp the last modification time in the SFT&per.   
+:p.Of the information passed in IOflag, the write-through bit is a mandatory bit 
+in that any data written to the block device must be put out on the medium before 
+the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
+bit that says whether the data being transferred is worth caching or not&per.   
+
+:h2 id=85.FS32_READFILEATCACHE - Read file from cache
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.Return KernCacheList_t structure pointer for a given file and a given file offset&per.
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+
+:color fc=darkcyan.
+:cgraphic.
+
+int _cdecl FS32_READFILEATCACHE(psffsi, psffsd, IOflag, off, pcb, ppCacheList);
+
+struct sffsi *psffsi;
+struct sffsd *psffsd;
+unsigned long IOflag;
+long long off;
+unsigned long pcb;
+KernCacheList_t **ppCacheList;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per. The FSD may store or adjust data as appropriate in this structure&per.   
+
+:p.IOflag indicates information about the operation on the handle&per.   
+
+:p.IOflag == 0x0010 indicates write-through 
+.br 
+IOflag == 0x0020 indicates no-cache 
+.br 
+
+:p.off specifies the file offset.
+
+:p.pcb is the pointer to a variable where a size of KernCacheList_t structure is returned&per.
+
+:p.ppCacheList is the pointer to a variable where the KernCacheList_t structure pointer 
+is returned&per.
+
+:cgraphic.
+
+typedef struct _KernCacheList
+{
+  unsigned long  LinListCount;
+  KernPageList_t *LinearList;
+  unsigned long  PhysListCount;
+  KernPageList_t *PhysicalList;
+} KernCacheList_t;
+
+typedef struct _KernPageList
+{
+  unsigned long Addr;
+  unsigned long Size;
+} KernPageList_t;
+
+:ecgraphic.
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.none, yet&per.
+
+:h2 id=86.FS32_RETURNFILECACHE - Return file cache
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.Return KernCacheList_t structure pointer&per.
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+
+:color fc=darkcyan.
+:cgraphic.
+
+int _cdecl FS32_RETURNFILECACHE(pCacheList);
+
+KernCacheList_t *pCacheList;
+
+:ecgraphic.
+
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.pCacheList is a pointer to a KernCacheList_t structure returned&per.
+
+:cgraphic.
+
+typedef struct _KernCacheList
+{
+  unsigned long  LinListCount;
+  KernPageList_t *LinearList;
+  unsigned long  PhysListCount;
+  KernPageList_t *PhysicalList;
+} KernCacheList_t;
+
+typedef struct _KernPageList
+{
+  unsigned long Addr;
+  unsigned long Size;
+} KernPageList_t;
+
+:ecgraphic.
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+
+:p.none, yet&per.
+
+:h2 id=87.FS32_CHGFILEPTR - Move a file's position pointer
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Move a file&apos.s logical read/write position pointer&per. Version for 32-bit IFS'es. Uses a 32-bit file pointer and size.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int _cdecl FS32_CHGFILEPTR(psffsi, psffsd, offset, type, IOflag)
+
+struct sffsi * psffsi;
+struct sffsd * psffsd;
+long offset;
+unsigned long type;
+unsigned long IOflag;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.The FSD uses the current file size or sfi_position along with offset and type 
+to compute a new sfi_position&per. This is updated by the system&per.   
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per. The FSD may store or adjust data as appropriate in this structure&per.   
+:p.offset is the signed offset to be added to the current file size or position 
+to form the new position within the file&per.   
+:p.type indicates the basis of a seek operation&per.   
+:p.type == 0 indicates seek relative to beginning of file&per. 
+.br 
+type == 1 indicates seek relative to current position within the file&per. 
+.br 
+type == 2 indicates seek relative to end of file&per.   
+:p.The value of type passed to the FSD will be valid&per.   
+:p.IOflag indicates information about the operation on the handle&per.   
+:p.IOflag == 0x0010 indicates write-through&per. 
+.br 
+IOflag == 0x0020 indicates no-cache&per. 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.The file system may want to take the seek operation as a hint that an I/O 
+operation is about to take place at the new position and initiate a positioning operation 
+on sequential access media or read-ahead operation on other media&per.   
+:p.Some DOS mode programs expect to be able to do a negative seek&per. OS/2 
+passes these requests on to the FSD and returns an error for OS/2 mode negative seek 
+requests&per. Because a seek to a negative position is, effectively, a seek to a very 
+large offset, it is suggested that the FSD return end-of-file for subsequent read 
+requests&per.   
+:p.FSDs must allow seeks to positions beyond end-of-file&per.   
+:p.The information passed in IOflag is what was set for the handle during a 
+DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
+
+:h2 id=88.FS32_CHGFILEPTRL - Move a file's position pointer
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
+:p.Move a file&apos.s logical read/write position pointer&per. Version for 32-bit IFS'es, uses a 64-bit file pointer and size.
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:font facename='Courier' size=12x12.:color fc=darkcyan.int _cdecl FS32_CHGFILEPTRL(psffsi, psffsd, offset, type, IOflag)
+
+struct sffsi * psffsi;
+struct sffsd * psffsd;
+long long offset;
+unsigned long type;
+unsigned long IOflag;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.The FSD uses the current file size or sfi_position along with offset and type 
+to compute a new sfi_position&per. This is updated by the system&per.   
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per. The FSD may store or adjust data as appropriate in this structure&per.   
+:p.offset is the signed offset to be added to the current file size or position 
+to form the new position within the file&per.   
+:p.type indicates the basis of a seek operation&per.   
+:p.type == 0 indicates seek relative to beginning of file&per. 
+.br 
+type == 1 indicates seek relative to current position within the file&per. 
+.br 
+type == 2 indicates seek relative to end of file&per.   
+:p.The value of type passed to the FSD will be valid&per.   
+:p.IOflag indicates information about the operation on the handle&per.   
+:p.IOflag == 0x0010 indicates write-through&per. 
+.br 
+IOflag == 0x0020 indicates no-cache&per. 
+.br 
+
+:p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.The file system may want to take the seek operation as a hint that an I/O 
+operation is about to take place at the new position and initiate a positioning operation 
+on sequential access media or read-ahead operation on other media&per.   
+:p.Some DOS mode programs expect to be able to do a negative seek&per. OS/2 
+passes these requests on to the FSD and returns an error for OS/2 mode negative seek 
+requests&per. Because a seek to a negative position is, effectively, a seek to a very 
+large offset, it is suggested that the FSD return end-of-file for subsequent read 
+requests&per.   
+:p.FSDs must allow seeks to positions beyond end-of-file&per.   
+:p.The information passed in IOflag is what was set for the handle during a 
+DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
+
+:h2 id=89.FS32_WRITE - Write to a file
+
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+:color fc=darkcyan.
+:p.Write the specified number of bytes to a file from a buffer location&per. Version for 32-bit IFS'es. Uses 64-bit file
+pointer and size.
+:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+:cgraphic.
+:color fc=darkcyan.
+:font facename='Courier' size=12x12.int _cdecl FS32_WRITE(psffsi, psffsd, pDat, pLen, IOflag)
+
+:color fc=darkcyan.
+struct sffsi * psffsi;
+struct sffsd * psffsd;
+char * pData;
+unsigned long * pLen;
+unsigned long IOflag;
+
+:ecgraphic.
+:font facename=default.:color fc=darkcyan.
+:p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.:color fc=darkcyan.
+:p.psffsi is a pointer to the file-system-independent portion of an open file 
+instance&per.   
+:p.sfi_position is the location within the file where the data is to be written 
+to&per. The FSD should update the sfi_position and sfi_size fields&per.   
+:p.psffsd is a pointer to the file-system-dependent portion of an open file 
+instance&per.   
+:p.pData is the address of the application data area&per.   
+:p.Addressing of this data area is not validated by the kernel (see FSH_PROBEBUF
+)&per.   
+:p.pLen is a pointer to the length of the application data area&per.   
+:p.On input, this is the number of bytes that are to be written&per. On output, 
+this is the number of bytes successfully written&per. If the application data area 
+is smaller than the length, no transfer is to take place&per. The FSD does not 
+need to verify this pointer&per.   
+:p.IOflag indicates information about the operation on the handle&per.   
+:p.IOflag == 0x0010 indicates write-through 
+.br 
+IOflag == 0x0020 indicates no-cache 
+.br 
+
+:p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+:p.If write is successful and is a file, the FSD should set ST_SWRITE and ST_
+PWRITE to make the kernel time stamp the last modification time in the SFT&per.   
+:p.The FSD should return an error if an attempt is made to write beyond the end 
+with a direct access device handle&per.   
+:p.Of the information passed in IOflag, the write-through bit is a mandatory bit 
+in that any data written to the block device must be put out on the medium before 
+the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
+bit that says whether the data being transferred is worth caching or not&per.   
+
+:color fc=default.
+
 :h1 id=84.FS Helper Functions
 
 :p.The following table summarizes the routines that make up the File System 
