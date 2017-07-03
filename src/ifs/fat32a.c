@@ -6435,7 +6435,7 @@ ULONG  ulSector = 0;
             ulCluster++;
             }
 #endif
-         if (ulCluster < pSHInfo->ulLastCluster)
+         if (ulCluster <= pSHInfo->ulLastCluster)
             return ulCluster;
          else
             return pVolInfo->ulFatEof;
