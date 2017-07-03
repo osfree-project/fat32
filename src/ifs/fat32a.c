@@ -600,7 +600,7 @@ ULONG    ulCluster;
 ULONG    ulDirCluster;
 PSZ      pszFile;
 USHORT   rc;
-PDIRENTRY pDirEntry;
+PDIRENTRY pDirEntry = NULL;
 #ifdef EXFAT
 PDIRENTRY1 pDirEntry1;
 #endif
@@ -609,7 +609,7 @@ POPENINFO pOpenInfo = NULL;
 PDIRENTRY1 pDirStream = NULL;
 PSHOPENINFO pDirSHInfo = NULL;
 //BYTE     szLongName[ FAT32MAXPATH ];
-PSZ      szLongName;
+PSZ      szLongName = NULL;
 
    _asm push es;
 
@@ -4008,7 +4008,7 @@ USHORT rc;
 USHORT ReadBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode)
 {
 ULONG  ulSector;
-//ULONG  ulNextCluster;
+ULONG  ulNextCluster;
 USHORT usSectorsPerBlock = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector);
 USHORT rc;
 
@@ -4025,9 +4025,9 @@ USHORT rc;
       }
 
    // check for bad cluster
-   //ulNextCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
-   //if (ulNextCluster == pVolInfo->ulFatBad)
-   //   return ERROR_SECTOR_NOT_FOUND;
+   ulNextCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
+   if (ulNextCluster == pVolInfo->ulFatBad)
+      return ERROR_SECTOR_NOT_FOUND;
 
    ulSector = pVolInfo->ulStartOfData +
       (ulCluster - 2) * pVolInfo->SectorsPerCluster;
@@ -4050,7 +4050,7 @@ USHORT rc;
 USHORT WriteBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlock, PVOID pbCluster, USHORT usIOMode)
 {
 ULONG  ulSector;
-//ULONG  ulNextCluster;
+ULONG  ulNextCluster;
 USHORT usSectorsPerBlock = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector);
 USHORT rc;
 
@@ -4067,9 +4067,9 @@ USHORT rc;
       }
 
    // check for bad cluster
-   //ulNextCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
-   //if (ulNextCluster == pVolInfo->ulFatBad)
-   //   return ERROR_SECTOR_NOT_FOUND;
+   ulNextCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
+   if (ulNextCluster == pVolInfo->ulFatBad)
+      return ERROR_SECTOR_NOT_FOUND;
 
    ulSector = pVolInfo->ulStartOfData +
       (ulCluster - 2) * pVolInfo->SectorsPerCluster;
@@ -4902,7 +4902,7 @@ BOOL   fClean;
                goto MakeFatChain_Error;
             }
 
-         ReleaseFat(pVolInfo);
+         ////ReleaseFat(pVolInfo);
          if (f32Parms.fMessageActive & LOG_FUNCS)
             {
             if (fContiguous)
@@ -5376,10 +5376,28 @@ USHORT rc;
 #endif
 
    if (GetFatAccess(pVolInfo, "SetNextCluster"))
+      {
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         // mark cluster in exFAT allocation bitmap
+         MarkCluster(pVolInfo, ulCluster, FALSE);
+         }
+#endif
       return pVolInfo->ulFatEof;
+      }
 
    if (ReadFatSector(pVolInfo, GetFatEntrySec(pVolInfo, ulCluster)))
+      {
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         // mark cluster in exFAT allocation bitmap
+         MarkCluster(pVolInfo, ulCluster, FALSE);
+         }
+#endif
       return pVolInfo->ulFatEof;
+      }
 
    fUpdateFSInfo = FALSE;
    ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
@@ -5402,6 +5420,13 @@ USHORT rc;
    if (rc)
       {
       ReleaseFat(pVolInfo);
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         // mark cluster in exFAT allocation bitmap
+         MarkCluster(pVolInfo, ulCluster, FALSE);
+         }
+#endif
       return pVolInfo->ulFatEof;
       }
 /*
@@ -5890,6 +5915,7 @@ PDIRENTRY1 pLN;
 USHORT usIndex;
 //UCHAR  szLongName1[FAT32MAXPATH];
 PSZ pszLongName1;
+PSZ pszLongName2;
 //USHORT pusUniName[256];
 PUSHORT pusUniName;
 USHORT uniName[15];
@@ -5900,13 +5926,18 @@ PSZ     r;
    if (!pszLongName || !strlen(pszLongName))
       return pDir;
 
-   pszLongName1 = (PSZ)malloc((size_t)FAT32MAXPATH);
-   if (!pszLongName1)
+   pszLongName2 = (PSZ)malloc((size_t)FAT32MAXPATH);
+   if (!pszLongName2)
       return pDir;
+
+   pszLongName1 = pszLongName2;
 
    pusUniName = (PUSHORT)malloc(256 * sizeof(USHORT));
    if (!pusUniName)
+      {
+      free(pszLongName2);
       return pDir;
+      }
 
    // @todo Use upcase table
    strcpy(pszLongName1, pszLongName);
@@ -5915,7 +5946,11 @@ PSZ     r;
    usNeededEntries = ( DBCSStrlen( pszLongName ) + 14 ) / 15;
 
    if (!usNeededEntries)
+      {
+      free(pszLongName2);
+      free(pusUniName);
       return pDir;
+      }
 
    pLN = (PDIRENTRY1)pDir;
    q = pusUniName;
@@ -5951,8 +5986,11 @@ PSZ     r;
    if (pusNameHash)
       *pusNameHash = NameHash(pusUniName, DBCSStrlen(r));
 
-   free(pusUniName);
-   free(pszLongName1);
+
+   if (pusUniName)
+      free(pusUniName);
+   if (pszLongName2)
+      free(pszLongName2);
 
    return pLN;
 }

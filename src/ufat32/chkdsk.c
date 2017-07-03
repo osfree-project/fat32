@@ -108,6 +108,7 @@ BOOL fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax);
 USHORT fGetAllocBitmap(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen);
 USHORT fGetUpCaseTbl(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum);
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
+APIRET DelFile(PCDINFO pCD, PSZ pszFilename);
 
 USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
 
@@ -716,9 +717,12 @@ PSZ    pszType;
    //   pCD->ulDirClusters * pCD->ulClusterSize) / 1024));
 
    if (pCD->ulRecoveredClusters)
-      show_message("%1 bytes in %2 user files.\n", 0, 1365, 2,
+      show_message("%1 bytes in %2 recovered files.\n", 0, 1366, 2,
          TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->ulClusterSize,
          TYPE_LONG, pCD->ulRecoveredFiles);
+      //show_message("%1 bytes in %2 user files.\n", 0, 1365, 2,
+      //   TYPE_DOUBLE, (DOUBLE)pCD->ulRecoveredClusters * pCD->ulClusterSize,
+      //   TYPE_LONG, pCD->ulRecoveredFiles);
 
    if (pCD->ulLostClusters)
       show_message("%1 bytes disk space would be freed.\n", 0, 1359, 1,
@@ -1485,7 +1489,8 @@ USHORT usSectorsRead;
                   show_message("File marked having EAs, but the EA file (%s) is empty\n", 2420, 0, 1, Mark.szFileName);
                   if (pCD->fFix)
                      {
-                     unlink(Mark.szFileName);
+                     DelFile(pCD, Mark.szFileName);
+                     //unlink(Mark.szFileName);
                      strcpy(Mark.szFileName, pbPath);
                      Mark.fEAS = FILE_HAS_NO_EAS;
                      rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);
@@ -2109,7 +2114,8 @@ BOOL fEAS;
                      show_message("File marked having EAs, but the EA file (%s) is empty\n", 2420, 0, 1, Mark.szFileName);
                      if (pCD->fFix)
                         {
-                        unlink(Mark.szFileName);
+                        DelFile(pCD, Mark.szFileName);
+                        //unlink(Mark.szFileName);
                         strcpy(Mark.szFileName, pbPath);
                         Mark.fEAS = FILE_HAS_NO_EAS;
                         rc = GetSetFileEAS(pCD, FAT32_SETEAS, (PMARKFILEEASBUF)&Mark);

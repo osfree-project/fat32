@@ -834,6 +834,7 @@ USHORT rc;
 #ifdef EXFAT
          free(pDirOldStream);
 #endif
+         free(szLongName);
          }
       else
          {

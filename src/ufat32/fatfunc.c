@@ -90,6 +90,7 @@ VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
 ULONG GetLastCluster(PCDINFO pCD, ULONG ulCluster, PDIRENTRY1 pDirEntryStream);
 USHORT fGetAllocBitmap(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen);
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
+APIRET DelFile(PCDINFO pCD, PSZ pszFilename);
 
 void set_datetime(DIRENTRY *pDir);
 
@@ -2687,7 +2688,16 @@ APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 #endif
 
    if (ReadFatSector(pCD, GetFatEntrySec(pCD, ulCluster)))
+      {
+#ifdef EXFAT
+      if (pCD->bFatType == FAT_TYPE_EXFAT)
+         {
+         // mark cluster in exFAT allocation bitmap
+         MarkCluster2(pCD, ulCluster, FALSE);
+         }
+#endif
       return pCD->ulFatEof;
+      }
 
    fUpdateFSInfo = FALSE;
    ulNextCluster = GetFatEntry(pCD, ulCluster);
@@ -2707,7 +2717,16 @@ APIRET SetNextCluster(PCDINFO pCD, ULONG ulCluster, ULONG ulNext)
 
    rc = WriteFatSector(pCD, GetFatEntrySec(pCD, ulCluster));
    if (rc)
+      {
+#ifdef EXFAT
+      if (pCD->bFatType == FAT_TYPE_EXFAT)
+         {
+         // mark cluster in exFAT allocation bitmap
+         MarkCluster2(pCD, ulCluster, FALSE);
+         }
+#endif
       return pCD->ulFatEof;
+      }
 
    if (fUpdateFSInfo)
       UpdateFSInfo(pCD);
@@ -4011,5 +4030,73 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
    UpdateFSInfo(pCD);
 
 MakeFileEnd:
+   return rc;
+}
+
+APIRET DelFile(PCDINFO pCD, PSZ pszFilename)
+{
+PSZ pszFile;
+DIRENTRY DirEntry;
+PDIRENTRY1 pDirEntry1;
+DIRENTRY1 DirEntryStream;
+DIRENTRY1 DirStream;
+SHOPENINFO DirSHInfo;
+PSHOPENINFO pDirSHInfo = NULL;
+ULONG ulDirCluster;
+ULONG ulCluster;
+APIRET rc;
+
+   ulDirCluster = FindDirCluster(pCD,
+      pszFilename,
+      0xffff,
+      RETURN_PARENT_DIR,
+      &pszFile,
+      &DirStream);
+
+   if (ulDirCluster == pCD->ulFatEof)
+      {
+      rc = ERROR_PATH_NOT_FOUND;
+      goto DeleteFileExit;
+      }
+
+#ifdef EXFAT
+   if (pCD->bFatType == FAT_TYPE_EXFAT)
+      {
+      pDirSHInfo = &DirSHInfo;
+      SetSHInfo1(pCD, &DirStream, pDirSHInfo);
+      }
+#endif
+
+   ulCluster = FindPathCluster(pCD, ulDirCluster, pszFile, pDirSHInfo,
+                               &DirEntry, &DirEntryStream, NULL);
+   if (ulCluster == pCD->ulFatEof)
+      {
+      rc = ERROR_FILE_NOT_FOUND;
+      goto DeleteFileExit;
+      }
+
+   pDirEntry1 = (PDIRENTRY1)&DirEntry;
+
+#ifdef EXFAT
+   if ( ((pCD->bFatType <  FAT_TYPE_EXFAT) && (DirEntry.bAttr & FILE_DIRECTORY)) ||
+        ((pCD->bFatType == FAT_TYPE_EXFAT) && (pDirEntry1->u.File.usFileAttr & FILE_DIRECTORY)) )
+#else
+   if ( DirEntry.bAttr & FILE_DIRECTORY )
+#endif
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto DeleteFileExit;
+      }
+
+   rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
+                        &DirEntry, NULL, &DirEntryStream, NULL, NULL);
+   if (rc)
+      goto DeleteFileExit;
+
+   if (ulCluster)
+      DeleteFatChain(pCD, ulCluster);
+   rc = 0;
+
+DeleteFileExit:
    return rc;
 }

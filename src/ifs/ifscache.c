@@ -274,7 +274,7 @@ char far *p;
         ULONG ulNextCluster = 0;
         ULONG ulCluster;
 
-        for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
+        /* for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
         {
             //ulNextCluster = GetNextCluster2( pVolInfo, NULL, ulCluster );
             ulNextCluster = GetNextCluster( pVolInfo, NULL, ulCluster );
@@ -290,7 +290,7 @@ char far *p;
 
         if (usSectors == 0)
             // avoid reading zero sectors
-            return ERROR_SECTOR_NOT_FOUND;
+            return ERROR_SECTOR_NOT_FOUND; */
    }
 
    usIOMode &= ~DVIO_OPWRITE;
