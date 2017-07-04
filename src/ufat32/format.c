@@ -701,7 +701,8 @@ int format_volume (char *path, format_params *params)
         pEXFATBootSect->ulClusterHeapOffset = pEXFATBootSect->ulFatOffset + pEXFATBootSect->ulFatLength;
         pEXFATBootSect->ulClusterCount = (ULONG)((dp.TotalSectors - dp.FatSize
             - dp.ReservedSectCount) / dp.SectorsPerCluster);
-        ulExfatBitmapLen = pEXFATBootSect->ulClusterCount / 8;
+        ulExfatBitmapLen = (pEXFATBootSect->ulClusterCount / 8) +
+           (pEXFATBootSect->ulClusterCount % 8 ? 1 : 0);
         ulExfatBitmapClusters = ulExfatBitmapLen / (dp.SectorsPerCluster * dp.BytesPerSect);
         ulExfatBitmapClusters = (ulExfatBitmapLen % (dp.SectorsPerCluster * dp.BytesPerSect)) ?
             ulExfatBitmapClusters + 1 : ulExfatBitmapClusters;
@@ -709,7 +710,7 @@ int format_volume (char *path, format_params *params)
         ulExfatUpCaseClusters = ulExfatUpCaseLen / (dp.SectorsPerCluster * dp.BytesPerSect);
         ulExfatUpCaseClusters = (ulExfatUpCaseLen % (dp.SectorsPerCluster * dp.BytesPerSect)) ?
             ulExfatUpCaseClusters + 1 : ulExfatUpCaseClusters;
-        pEXFATBootSect->RootDirStrtClus = 2 + ulExfatBitmapClusters + 1;
+        pEXFATBootSect->RootDirStrtClus = 2 + ulExfatBitmapClusters + ulExfatUpCaseClusters;
         pEXFATBootSect->ulVolSerial = VolumeId;
         pEXFATBootSect->usFsRev = 0x0100;
         pEXFATBootSect->usVolumeFlags = 0x0000;
@@ -987,7 +988,7 @@ int format_volume (char *path, format_params *params)
         pDir->u.UpCaseTbl.ullDataLength = ulExfatUpCaseLen;
         pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum2((char *)pUpCase, ulExfatUpCaseLen);
         //
-        SectorStart += dp.SectorsPerCluster;
+        SectorStart += ulExfatUpCaseClusters * dp.SectorsPerCluster;
         write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, dp.SectorsPerCluster );
     }
 #endif
