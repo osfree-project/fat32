@@ -258,6 +258,7 @@ char *get_vol_label(char *path, char *vol);
 void set_vol_label (char *path, char *vol);
 ULONG query_vol_label(char *path, char *pszVolLabel, int cbVolLabel);
 void set_datetime(DIRENTRY *pDir);
+void set_datetime1(DIRENTRY1 *pDir);
 char *get_error(USHORT rc);
 void query_current_disk(char *pszDrive);
 BOOL OutputToFile(HANDLE hFile);

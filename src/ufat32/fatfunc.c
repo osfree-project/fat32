@@ -93,6 +93,7 @@ void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
 APIRET DelFile(PCDINFO pCD, PSZ pszFilename);
 
 void set_datetime(DIRENTRY *pDir);
+void set_datetime1(DIRENTRY1 *pDir);
 
 /******************************************************************
 *
@@ -1674,6 +1675,7 @@ BOOL      fFound;
             Message("Modify directory: Longname error");
             return ERROR_FILE_EXISTS;
             }
+         set_datetime1(&DirNew);
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
@@ -1842,6 +1844,7 @@ BOOL      fFound;
                      //if (f32Parms.fMessageActive & LOG_FUNCS)
                      //   Message(" Updating cluster");
                      memcpy(pWorkFile, pNew, sizeof (DIRENTRY1));
+                     set_datetime1(pWorkFile);
                      if (pStreamNew)
                         {
                         memcpy(pWorkStream, pStreamNew, sizeof (DIRENTRY1));
@@ -3362,7 +3365,16 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 #endif
       memcpy(DirEntry.bExtention, szFileName + 6, 3);
 
-   set_datetime(&DirEntry);
+
+#ifdef EXFAT
+   if (pCD->bFatType < FAT_TYPE_EXFAT)
+#endif
+      set_datetime(&DirEntry);
+#ifdef EXFAT
+   else
+      set_datetime1((PDIRENTRY1)&DirEntry);
+#endif
+
    if (!ulDirCluster)
       ulDirCluster = MakeDir(pCD, pCD->BootSect.bpb.RootDirStrtClus, &DirEntry, szFileName);
    if (ulDirCluster == pCD->ulFatEof)
@@ -3401,7 +3413,14 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
    if (pData)
       strncpy(pData, szFileName, cbData);
 
-   set_datetime(&DirEntry);
+#ifdef EXFAT
+   if (pCD->bFatType < FAT_TYPE_EXFAT)
+#endif
+      set_datetime(&DirEntry);
+#ifdef EXFAT
+   else
+      set_datetime1((PDIRENTRY1)&DirEntry);
+#endif
 
 #ifdef EXFAT
    if (pCD->bFatType < FAT_TYPE_EXFAT)
@@ -3454,6 +3473,19 @@ USHORT RecoverChain2(PCDINFO pCD, ULONG ulCluster, PBYTE pData, USHORT cbData)
 USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                     PDIRENTRY pNew, PDIRENTRY1 pNewStream, PSZ pszName)
 {
+#ifdef EXFAT
+   if (pCD->bFatType < FAT_TYPE_EXFAT)
+      {
+#endif
+      set_datetime(pNew);
+#ifdef EXFAT
+      }
+   else
+      {
+      set_datetime1((PDIRENTRY1)pNew);
+      }
+#endif
+
    return ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_INSERT, 
       NULL, pNew, NULL, pNewStream, pszName);
 }

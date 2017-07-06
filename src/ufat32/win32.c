@@ -377,6 +377,7 @@ void set_vol_label (char *path, char *vol)
 
 void set_datetime(DIRENTRY *pDir)
 {
+    // FAT12/FAT16/FAT32
     SYSTEMTIME datetime;
 
     GetSystemTime(&datetime);
@@ -393,6 +394,24 @@ void set_datetime(DIRENTRY *pDir)
     pDir->wAccessDate = pDir->wLastWriteDate;
 }
 
+
+void set_datetime1(DIRENTRY1 *pDir)
+{
+   // exFAT
+   SYSTEMTIME datetime;
+
+   GetSystemTime(&datetime);
+
+   pDir->u.File.ulLastModifiedTimestp.year = datetime.wYear - 1980;
+   pDir->u.File.ulLastModifiedTimestp.month = datetime.wMonth;
+   pDir->u.File.ulLastModifiedTimestp.day = datetime.wDay;
+   pDir->u.File.ulLastModifiedTimestp.hour = datetime.wHour;
+   pDir->u.File.ulLastModifiedTimestp.minutes = datetime.wMinute;
+   pDir->u.File.ulLastModifiedTimestp.seconds = datetime.wSecond / 2;
+
+   pDir->u.File.ulCreateTimestp = pDir->u.File.ulLastModifiedTimestp;
+   pDir->u.File.ulLastAccessedTimestp = pDir->u.File.ulLastModifiedTimestp;
+}
 
 char *get_error(USHORT rc)
 {

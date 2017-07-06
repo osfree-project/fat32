@@ -195,17 +195,37 @@ BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DW
 
 #ifdef EXFAT
     case FAT_TYPE_EXFAT:
-        // 7 MB to 256 MB - 4 KB
-        if ( DiskSizeMB > 7 )
+        // 256 MB to 512 MB - 1 KB
+        if ( DiskSizeMB > 256 )
+            ret = get_spc( 1, BytesPerSect );  // ret = 0x2;
+
+        // 512 MB to 1,024 MB - 2 KB
+        if ( DiskSizeMB > 512 )
+            ret = get_spc( 2, BytesPerSect );  // ret = 0x4;
+
+        // 1,024 MB to 2,048 MB - 4 KB
+        if ( DiskSizeMB > 1024 )
             ret = get_spc( 4, BytesPerSect );  // ret = 0x8;
 
-        // 256 MB to 1,024 MB - 32 KB
-        if ( DiskSizeMB > 256 )
+        // 2,048 MB to 4,096 MB - 8 KB
+        if ( DiskSizeMB > 2048 )
+            ret = get_spc( 8, BytesPerSect );  // ret = 0x10;
+
+        // 4,096 MB to 8,192 MB - 16 KB
+        if ( DiskSizeMB > 4096 )
+            ret = get_spc( 16, BytesPerSect );  // ret = 0x20;
+
+        // 8,192 MB to 16,384 MB - 32 KB
+        if ( DiskSizeMB > 8192 )
             ret = get_spc( 32, BytesPerSect );  // ret = 0x40;
+
+        // 16,384 MB to 32,768 MB - 64 KB
+        if ( DiskSizeMB > 16384 )
+            ret = get_spc( 64, BytesPerSect );  // ret = 0x80;
 
         // Larger than 32,784 MB - 128 KB
         if ( DiskSizeMB > 32784 )
-            ret = get_spc( 128, BytesPerSect );  // ret = 0x80;
+            ret = get_spc( 128, BytesPerSect );  // ret = 0x100;
 #endif
     }
     
@@ -381,6 +401,7 @@ int format_volume (char *path, format_params *params)
     FAT_BOOTSECTOR16 *pFATBootSect;
     FAT_FSINFO *pFAT32FsInfo;
     DWORD *pFirstSectOfFat;
+    DWORD FatSize;
 
 #ifdef EXFAT
     DWORD ulExfatBitmapLen, ulExfatUpCaseLen;
@@ -465,17 +486,17 @@ int format_volume (char *path, format_params *params)
     else
         dp.SectorsPerCluster = get_sectors_per_cluster( params, ((LONGLONG)dp.TotalSectors) * dp.BytesPerSect, dp.BytesPerSect );
 
-    dp.FatSize = get_fat_size_sectors ( params, dp.TotalSectors, 
-        dp.ReservedSectCount, dp.SectorsPerCluster,
+    FatSize = get_fat_size_sectors ( params, dp.TotalSectors, 
+        dp.ReservedSectCount, params->sectors_per_cluster,
         dp.NumFATs, dp.BytesPerSect );
 
-    UserAreaSize = dp.TotalSectors - dp.ReservedSectCount - (dp.NumFATs*dp.FatSize);
+    UserAreaSize = dp.TotalSectors - dp.ReservedSectCount - ((DWORD)dp.NumFATs*FatSize);
 
     if (params->bFatType < FAT_TYPE_FAT32)
         // root dir is excluded from user area on FAT12/FAT16
-        UserAreaSize -= dp.SectorsPerCluster;
+        UserAreaSize -= params->sectors_per_cluster; // ???!
 
-    ClusterCount = UserAreaSize / dp.SectorsPerCluster;
+    ClusterCount = UserAreaSize / params->sectors_per_cluster;
 
     if ( (ClusterCount >= FAT12_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT12) ||
          (ClusterCount >= FAT16_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT16) ||
@@ -541,7 +562,7 @@ int format_volume (char *path, format_params *params)
     FatNeeded += (dp.BytesPerSect-1);
     FatNeeded /= dp.BytesPerSect;
 
-    if ( FatNeeded > dp.FatSize )
+    if ( FatNeeded > FatSize )
     {
         die ( "This drive is too big for this version\n"
               "of fat32format, check for an upgrade.\n", -5 );
@@ -605,10 +626,10 @@ int format_volume (char *path, format_params *params)
         strcpy( pFATBootSect->sOEMName, "MSWIN4.1" );
         pFATBootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
 
-        pFATBootSect->bSecPerClus = (BYTE) dp.SectorsPerCluster;
+        pFATBootSect->bSecPerClus = (BYTE) params->sectors_per_cluster;
         pFATBootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
         pFATBootSect->bNumFATs = (BYTE) dp.NumFATs;
-        pFATBootSect->wRootEntCnt = (dp.SectorsPerCluster * dp.BytesPerSect) /
+        pFATBootSect->wRootEntCnt = (params->sectors_per_cluster * dp.BytesPerSect) /
             sizeof(DIRENTRY); // number of dir entries per cluster
 
         if (dp.TotalSectors < 65536L)
@@ -617,7 +638,7 @@ int format_volume (char *path, format_params *params)
             pFATBootSect->wTotSec16 = 0;
 
         pFATBootSect->bMedia = 0xF8;
-        pFATBootSect->wFATSz16 = dp.FatSize;
+        pFATBootSect->wFATSz16 = (WORD)FatSize;
         pFATBootSect->wSecPerTrk = (WORD) dp.SectorsPerTrack;
         pFATBootSect->wNumHeads = (WORD) dp.TracksPerCylinder;
         pFATBootSect->dHiddSec = (DWORD) dp.HiddenSectors;
@@ -652,7 +673,7 @@ int format_volume (char *path, format_params *params)
         strcpy( pFAT32BootSect->sOEMName, "MSWIN4.1" );
         pFAT32BootSect->wBytsPerSec = (WORD) dp.BytesPerSect;
 
-        pFAT32BootSect->bSecPerClus = (BYTE) dp.SectorsPerCluster;
+        pFAT32BootSect->bSecPerClus = (BYTE) params->sectors_per_cluster;
         pFAT32BootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
         pFAT32BootSect->bNumFATs = (BYTE) dp.NumFATs;
         pFAT32BootSect->wRootEntCnt = 0;
@@ -665,7 +686,7 @@ int format_volume (char *path, format_params *params)
         //dp.TotalSectors = (DWORD)  (dp.PartitionLength / dp.BytesPerSect);
         pFAT32BootSect->dTotSec32 = dp.TotalSectors;
     
-        pFAT32BootSect->dFATSz32 = dp.FatSize;
+        pFAT32BootSect->dFATSz32 = (WORD)FatSize;
         pFAT32BootSect->wExtFlags = 0;
         pFAT32BootSect->wFSVer = 0;
         pFAT32BootSect->dRootClus = 2;
@@ -686,7 +707,7 @@ int format_volume (char *path, format_params *params)
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         USHORT usSectorSize  = (USHORT)dp.BytesPerSect;
-        USHORT usClusterSize = (USHORT)dp.SectorsPerCluster;
+        USHORT usClusterSize = (USHORT)params->sectors_per_cluster;
 
         // fill out the boot sector and fs info
         pEXFATBootSect->sJmpBoot[0]=0xEB;
@@ -697,18 +718,18 @@ int format_volume (char *path, format_params *params)
         pEXFATBootSect->ullPartitionOffset = (ULONGLONG)dp.HiddenSectors;
         pEXFATBootSect->ullVolumeLength = (ULONGLONG)dp.TotalSectors;
         pEXFATBootSect->ulFatOffset = (WORD) dp.ReservedSectCount;
-        pEXFATBootSect->ulFatLength = dp.FatSize;
+        pEXFATBootSect->ulFatLength = FatSize;
         pEXFATBootSect->ulClusterHeapOffset = pEXFATBootSect->ulFatOffset + pEXFATBootSect->ulFatLength;
-        pEXFATBootSect->ulClusterCount = (ULONG)((dp.TotalSectors - dp.FatSize
-            - dp.ReservedSectCount) / dp.SectorsPerCluster);
+        pEXFATBootSect->ulClusterCount = (ULONG)((dp.TotalSectors - FatSize
+            - dp.ReservedSectCount) / params->sectors_per_cluster);
         ulExfatBitmapLen = (pEXFATBootSect->ulClusterCount / 8) +
            (pEXFATBootSect->ulClusterCount % 8 ? 1 : 0);
-        ulExfatBitmapClusters = ulExfatBitmapLen / (dp.SectorsPerCluster * dp.BytesPerSect);
-        ulExfatBitmapClusters = (ulExfatBitmapLen % (dp.SectorsPerCluster * dp.BytesPerSect)) ?
+        ulExfatBitmapClusters = ulExfatBitmapLen / (params->sectors_per_cluster * dp.BytesPerSect);
+        ulExfatBitmapClusters = (ulExfatBitmapLen % (params->sectors_per_cluster * dp.BytesPerSect)) ?
             ulExfatBitmapClusters + 1 : ulExfatBitmapClusters;
         ulExfatUpCaseLen = sizeof(pUpCase);
-        ulExfatUpCaseClusters = ulExfatUpCaseLen / (dp.SectorsPerCluster * dp.BytesPerSect);
-        ulExfatUpCaseClusters = (ulExfatUpCaseLen % (dp.SectorsPerCluster * dp.BytesPerSect)) ?
+        ulExfatUpCaseClusters = ulExfatUpCaseLen / (params->sectors_per_cluster * dp.BytesPerSect);
+        ulExfatUpCaseClusters = (ulExfatUpCaseLen % (params->sectors_per_cluster * dp.BytesPerSect)) ?
             ulExfatUpCaseClusters + 1 : ulExfatUpCaseClusters;
         pEXFATBootSect->RootDirStrtClus = 2 + ulExfatBitmapClusters + ulExfatUpCaseClusters;
         pEXFATBootSect->ulVolSerial = VolumeId;
@@ -740,17 +761,17 @@ int format_volume (char *path, format_params *params)
         memset( pEXFATBootSect->bBootCode, 0, 390);
         pEXFATBootSect->usBootSig = 0xaa55;
 
-        mem_alloc ( (void **)&pBitmap,  ulExfatBitmapClusters * dp.SectorsPerCluster * dp.BytesPerSect);
+        mem_alloc ( (void **)&pBitmap,  ulExfatBitmapClusters * params->sectors_per_cluster * dp.BytesPerSect);
 
         if ( !pBitmap )
              die ( "Failed to allocate memory", -2 );
 
-        mem_alloc ( (void **)&pRootDir,  dp.SectorsPerCluster * dp.BytesPerSect);
+        mem_alloc ( (void **)&pRootDir,  params->sectors_per_cluster * dp.BytesPerSect);
 
         if ( !pRootDir )
              die ( "Failed to allocate memory", -2 );
 
-        mem_alloc ( (void **)&pUpCaseTbl,  ulExfatUpCaseClusters * dp.SectorsPerCluster * dp.BytesPerSect);
+        mem_alloc ( (void **)&pUpCaseTbl,  ulExfatUpCaseClusters * params->sectors_per_cluster * dp.BytesPerSect);
 
         if ( !pRootDir )
              die ( "Failed to allocate memory", -2 );
@@ -796,32 +817,6 @@ int format_volume (char *path, format_params *params)
         pFirstSectOfFat[1] = 0x0fffffff;  // Reserved cluster 2 EOC
         pFirstSectOfFat[2] = 0x0fffffff;  // end of cluster chain for root dir
     }
-#ifdef EXFAT
-    else if (params->bFatType == FAT_TYPE_EXFAT)
-    {
-        pFirstSectOfFat[0] = 0xfffffff8;  // Reserved cluster 1 media id in low byte
-        pFirstSectOfFat[1] = 0xffffffff;  // Reserved cluster 2 EOC
-
-        for (i = 0; i < ulExfatBitmapClusters - 1; i++)
-        {
-            // next cluster for alloc bitmap
-            pFirstSectOfFat[2 + i] = 3 + i;
-        }
-        // end of cluster chain for alloc bitmap
-        pFirstSectOfFat[2 + i++] = 0xffffffff;
-
-        for (i = 0; i < ulExfatUpCaseClusters - 1; i++)
-        {
-            // next cluster for upcase table
-            pFirstSectOfFat[2 + ulExfatBitmapClusters + i] = 3 + ulExfatBitmapClusters + i;
-        }
-        // end of cluster chain for upcase table
-        pFirstSectOfFat[2 + ulExfatBitmapClusters + i++] = 0xffffffff;
-
-        // root dir
-        pFirstSectOfFat[2 + ulExfatBitmapClusters + i++] = 0xffffffff;
-    }
-#endif
 
     // Write boot sector, fats
     // Sector 0 Boot Sector
@@ -841,13 +836,13 @@ int format_volume (char *path, format_params *params)
 
     // Now we're commited - print some info first
     show_message ( "Size: %g MB %u sectors.\n", 0, 0, 2, (double) ((dp.TotalSectors / (1024*1024)) * dp.BytesPerSect), dp.TotalSectors );
-    show_message ( "%d Bytes Per Sector, Cluster size %d bytes.\n", 0, 0, 2, dp.BytesPerSect, dp.SectorsPerCluster * dp.BytesPerSect );
+    show_message ( "%d Bytes Per Sector, Cluster size %d bytes.\n", 0, 0, 2, dp.BytesPerSect, params->sectors_per_cluster * dp.BytesPerSect );
 
     show_message ( "Volume label is %1.\n", 0, 1375, 1, TYPE_STRING, vol );
     sprintf(szString, "%4.4X-%4.4X", HIUSHORT(VolumeId), LOUSHORT(VolumeId));
     show_message ( "The Volume Serial Number is %1.\n", 0, 1243, 1, TYPE_STRING, szString);
 
-    show_message ( "%d Reserved Sectors, %d Sectors per FAT, %d fats.\n", 0, 0, 3, dp.ReservedSectCount, dp.FatSize, dp.NumFATs );
+    show_message ( "%d Reserved Sectors, %lu Sectors per FAT, %d fats.\n", 0, 0, 3, dp.ReservedSectCount, FatSize, dp.NumFATs );
 
     // Work out the Cluster count
 
@@ -855,10 +850,10 @@ int format_volume (char *path, format_params *params)
     show_message ( "%1 kilobytes total disk space.\n", 0, 568, 1, TYPE_STRING, szString);
     
     // fix up the FSInfo sector
-    pFAT32FsInfo->dFree_Count = (UserAreaSize/dp.SectorsPerCluster)-1;
+    pFAT32FsInfo->dFree_Count = (UserAreaSize/params->sectors_per_cluster)-1;
     pFAT32FsInfo->dNxt_Free = 3; // clusters 0-1 resered, we used cluster 2 for the root dir
 
-    sprintf(szString, "%lu", (pFAT32FsInfo->dFree_Count / 1024) * (dp.SectorsPerCluster * dp.BytesPerSect));
+    sprintf(szString, "%lu", (pFAT32FsInfo->dFree_Count / 1024) * (params->sectors_per_cluster * dp.BytesPerSect));
     show_message ( "%1 kilobytes are available.\n", 0, 537, 1, TYPE_STRING, szString);
 
     sprintf(szString, "%d", 0);
@@ -869,7 +864,7 @@ int format_volume (char *path, format_params *params)
     // Once zero_sectors has run, any data on the drive is basically lost....
 
     // First zero out ReservedSect + FatSize * NumFats + SectorsPerCluster
-    SystemAreaSize = (dp.ReservedSectCount+(dp.NumFATs*dp.FatSize) + dp.SectorsPerCluster);
+    SystemAreaSize = (dp.ReservedSectCount+((DWORD)dp.NumFATs*FatSize) + params->sectors_per_cluster);
 
 #ifdef EXFAT
     if (params->bFatType == FAT_TYPE_EXFAT)
@@ -934,12 +929,97 @@ int format_volume (char *path, format_params *params)
     }
 #endif
 
-    // Write the first fat sector in the right places
-    for ( i=0; i<dp.NumFATs; i++ )
+#ifdef EXFAT
+    if (params->bFatType < FAT_TYPE_EXFAT)
     {
-        int SectorStart = dp.ReservedSectCount + (i * dp.FatSize );
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
+#endif
+       // Write the first fat sector in the right places
+       for ( i = 0; i < dp.NumFATs; i++ )
+       {
+          int SectorStart = dp.ReservedSectCount + (i * FatSize );
+          write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
+       }
+#ifdef EXFAT
     }
+   else
+   {
+      int j;
+
+      for ( j = 0; j < dp.NumFATs; j++ )
+      {
+         int SectorStart = dp.ReservedSectCount + (j * FatSize);
+         int EntriesPerSec = dp.BytesPerSect / 4;
+
+         pFirstSectOfFat[0] = 0xfffffff8;  // Reserved cluster 1 media id in low byte
+         pFirstSectOfFat[1] = 0xffffffff;  // Reserved cluster 2 EOC
+
+         for (i = 2; i < ulExfatBitmapClusters + 2; i++)
+         {
+            if (!(i % EntriesPerSec))
+            {
+               // next sector
+               if (i / EntriesPerSec)
+               {
+                  // write previous sector
+                  write_sect ( hDevice,
+                               SectorStart + (i / EntriesPerSec - 1),
+                               dp.BytesPerSect,
+                               pFirstSectOfFat,
+                               1 );
+               }
+               memset(pFirstSectOfFat, 0, dp.BytesPerSect);
+            }
+
+            if (i == ulExfatBitmapClusters + 1)
+            {
+               // end of cluster chain for alloc bitmap
+               pFirstSectOfFat[i % EntriesPerSec] = 0xffffffff;
+            }
+            else
+               // next cluster for alloc bitmap
+               pFirstSectOfFat[i % EntriesPerSec] = i + 1;
+         }
+
+         for (i = 0; i < ulExfatUpCaseClusters; i++)
+         {
+            int k = 2 + ulExfatBitmapClusters + i;
+
+            if (!(k % EntriesPerSec))
+            {
+               // next sector
+               if (k / EntriesPerSec)
+               {
+                  write_sect ( hDevice,
+                               SectorStart + (k / EntriesPerSec - 1),
+                               dp.BytesPerSect,
+                               pFirstSectOfFat,
+                               1 );
+               }
+               memset(pFirstSectOfFat, 0, dp.BytesPerSect);
+            }
+
+            if (i == ulExfatUpCaseClusters - 1)
+            {
+               // end of cluster chain for alloc bitmap
+               pFirstSectOfFat[k % EntriesPerSec] = 0xffffffff;
+            }
+            else
+               // next cluster for alloc bitmap
+               pFirstSectOfFat[k % EntriesPerSec] = k + 1;
+         }
+
+         // root dir
+         pFirstSectOfFat[(2 + ulExfatBitmapClusters + ulExfatUpCaseClusters) % EntriesPerSec] = 0xffffffff;
+
+         // write last sector
+         write_sect ( hDevice,
+                      SectorStart + ((2 + ulExfatBitmapClusters + ulExfatUpCaseClusters) / EntriesPerSec),
+                      dp.BytesPerSect,
+                      pFirstSectOfFat,
+                      1 );
+      }
+   }
+#endif
 
 #ifdef EXFAT
     if (params->bFatType == FAT_TYPE_EXFAT)
@@ -949,7 +1029,7 @@ int format_volume (char *path, format_params *params)
         USHORT pVolLabel[11];
 
         // write bitmap
-        memset( pBitmap, 0, ulExfatBitmapClusters * dp.SectorsPerCluster * dp.BytesPerSect );
+        memset( pBitmap, 0, ulExfatBitmapClusters * params->sectors_per_cluster * dp.BytesPerSect );
         // bitmap clusters
         for ( i = 0; i < ulExfatBitmapClusters; i++)
         {
@@ -962,16 +1042,16 @@ int format_volume (char *path, format_params *params)
         }
         // root dir cluster
         SetBmpEntry2(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pBitmap, ulExfatBitmapClusters * dp.SectorsPerCluster );
+        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pBitmap, ulExfatBitmapClusters * params->sectors_per_cluster );
 
         // write upcase table
-        memset( pUpCaseTbl, 0, ulExfatUpCaseClusters * dp.SectorsPerCluster * dp.BytesPerSect );
+        memset( pUpCaseTbl, 0, ulExfatUpCaseClusters * params->sectors_per_cluster * dp.BytesPerSect );
         memcpy( pUpCaseTbl, pUpCase, ulExfatUpCaseLen );
-        SectorStart += ulExfatBitmapClusters * dp.SectorsPerCluster;
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pUpCaseTbl, ulExfatUpCaseClusters * dp.SectorsPerCluster );
+        SectorStart += ulExfatBitmapClusters * params->sectors_per_cluster;
+        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pUpCaseTbl, ulExfatUpCaseClusters * params->sectors_per_cluster );
 
         // write root dir
-        memset( pRootDir, 0, dp.SectorsPerCluster * dp.BytesPerSect );
+        memset( pRootDir, 0, params->sectors_per_cluster * dp.BytesPerSect );
         // volume label
         pDir->bEntryType = ENTRY_TYPE_VOLUME_LABEL;
         pDir->u.VolLbl.bCharCount = 0;
@@ -988,8 +1068,8 @@ int format_volume (char *path, format_params *params)
         pDir->u.UpCaseTbl.ullDataLength = ulExfatUpCaseLen;
         pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum2((char *)pUpCase, ulExfatUpCaseLen);
         //
-        SectorStart += ulExfatUpCaseClusters * dp.SectorsPerCluster;
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, dp.SectorsPerCluster );
+        SectorStart += ulExfatUpCaseClusters * params->sectors_per_cluster;
+        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, params->sectors_per_cluster );
     }
 #endif
 
@@ -1055,8 +1135,8 @@ int format_volume (char *path, format_params *params)
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         mem_free ( (void *)pEXFATBootSect, dp.BytesPerSect );
-        mem_free ( (void *)pBitmap,  dp.SectorsPerCluster * dp.BytesPerSect );
-        mem_free ( (void *)pRootDir, dp.SectorsPerCluster * dp.BytesPerSect );
+        mem_free ( (void *)pBitmap,  params->sectors_per_cluster * dp.BytesPerSect );
+        mem_free ( (void *)pRootDir, params->sectors_per_cluster * dp.BytesPerSect );
     }
 #endif
 
@@ -1246,20 +1326,23 @@ int format(int argc, char *argv[], char *envp[])
         {
         case 'C':
                 p.sectors_per_cluster = atol(val);
-                if (  (p.sectors_per_cluster != 1) &&  // 512 bytes, 0.5k
-                   (p.sectors_per_cluster != 2)    &&  // 1K
-                   (p.sectors_per_cluster != 4)    &&  // 2K
-                   (p.sectors_per_cluster != 8)    &&  // 4K
-                   (p.sectors_per_cluster != 16)   &&  // 8K
-                   (p.sectors_per_cluster != 32)   &&  // 16K
-                   (p.sectors_per_cluster != 64)   &&  // 32K 
-                   (p.sectors_per_cluster != 128)      // 64K ( Microsoft say don't use 64K or bigger);               
-		   )
-                {
-                    show_message ( "Ignoring bad cluster size %d\n", 0, 0, 1, p.sectors_per_cluster );
-                    p.sectors_per_cluster = 0;
-                    usage( argv[0] );
-                }
+                if (p.bFatType < FAT_TYPE_EXFAT)
+                   {
+                   if (  (p.sectors_per_cluster != 1) &&  // 512 bytes, 0.5k
+                      (p.sectors_per_cluster != 2)    &&  // 1K
+                      (p.sectors_per_cluster != 4)    &&  // 2K
+                      (p.sectors_per_cluster != 8)    &&  // 4K
+                      (p.sectors_per_cluster != 16)   &&  // 8K
+                      (p.sectors_per_cluster != 32)   &&  // 16K
+                      (p.sectors_per_cluster != 64)   &&  // 32K 
+                      (p.sectors_per_cluster != 128)      // 64K ( Microsoft say don't use 64K or bigger);
+                      )
+                      {
+                      show_message ( "Ignoring bad cluster size %d\n", 0, 0, 1, p.sectors_per_cluster );
+                      p.sectors_per_cluster = 0;
+                      usage( argv[0] );
+                      }
+                   }
                 continue;
         case 'R':
                 p.reserved_sectors = atol(val);

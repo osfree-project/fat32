@@ -1248,7 +1248,7 @@ USHORT usBytesRead;
 USHORT usBytesToRead;
 PBYTE  pbCluster;
 ULONG  ulClusterSector;
-USHORT usClusterOffset;
+ULONG  ulClusterOffset;
 USHORT usBlockOffset;
 ULONG  ulBytesPerCluster;
 ULONG  ulBytesPerBlock;
@@ -1517,14 +1517,14 @@ ULONGLONG size;
         ulBytesPerCluster = pVolInfo->ulClusterSize;
         ulBytesPerBlock   = pVolInfo->ulBlockSize;
 #ifdef INCL_LONGLONG
-        usClusterOffset   = (USHORT)(pos % ulBytesPerCluster); /* get remainder */
+        ulClusterOffset   = (ULONG)(pos % ulBytesPerCluster); /* get remainder */
         usBlockOffset     = (USHORT)(pos % ulBytesPerBlock);   /* get remainder */
 #else
         {
         LONGLONG llRes;
 
         llRes = iModUL(pos, ulBytesPerCluster);
-        usClusterOffset = (USHORT)llRes.ulLo;
+        ulClusterOffset = (ULONG)llRes.ulLo;
         llRes = iModUL(pos, ulBytesPerBlock);
         usBlockOffset   = (USHORT)llRes.ulLo; 
         }
@@ -1588,7 +1588,7 @@ ULONGLONG size;
                 usBytesToRead           -= (USHORT)ulCurrBytesToRead;
             }
 
-            if (((ULONG)usClusterOffset + ulCurrBytesToRead) >= ulBytesPerCluster)
+            if (ulClusterOffset + ulCurrBytesToRead >= ulBytesPerCluster)
             {
                 pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
@@ -1869,7 +1869,7 @@ USHORT usBytesWritten;
 USHORT usBytesToWrite;
 PBYTE  pbCluster;
 ULONG  ulClusterSector;
-USHORT usClusterOffset;
+ULONG  ulClusterOffset;
 USHORT usBlockOffset;
 ULONG  ulBytesPerCluster;
 ULONG  ulBytesPerBlock;
@@ -2298,14 +2298,14 @@ ULONGLONG size;
         ulBytesPerCluster = pVolInfo->ulClusterSize;
         ulBytesPerBlock   = pVolInfo->ulBlockSize;
 #ifdef INCL_LONGLONG
-        usClusterOffset   = (USHORT)(pos % ulBytesPerCluster); /* get remainder */
+        ulClusterOffset   = (ULONG)(pos % ulBytesPerCluster); /* get remainder */
         usBlockOffset     = (USHORT)(pos % ulBytesPerBlock);   /* get remainder */
 #else
         {
         LONGLONG llRes;
 
         llRes = iModUL(pos, ulBytesPerCluster);
-        usClusterOffset   = (USHORT)llRes.ulLo;
+        ulClusterOffset   = (ULONG)llRes.ulLo;
         llRes = iModUL(pos, ulBytesPerBlock);
         usBlockOffset     = (USHORT)llRes.ulLo; 
         }
@@ -2375,7 +2375,7 @@ ULONGLONG size;
                 usBytesToWrite          -= (USHORT)ulCurrBytesToWrite;
             }
 
-            if (((ULONG)usClusterOffset + ulCurrBytesToWrite) >= ulBytesPerCluster)
+            if (ulClusterOffset + ulCurrBytesToWrite >= ulBytesPerCluster)
             {
                 pOpenInfo->ulCurCluster     = GetNextCluster(pVolInfo, pOpenInfo->pSHInfo, pOpenInfo->ulCurCluster);
                 if (!pOpenInfo->ulCurCluster)
