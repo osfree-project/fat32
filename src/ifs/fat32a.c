@@ -6032,7 +6032,7 @@ USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInf
          pNew1->u.File.ulLastModifiedTimestp.day = pGI->day;
          pNew1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
          pNew1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
-         pNew1->u.File.ulLastModifiedTimestp.seconds = pGI->seconds;
+         pNew1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
 
          pNew1->u.File.ulCreateTimestp = pNew1->u.File.ulLastModifiedTimestp;
          pNew1->u.File.ulLastAccessedTimestp = pNew1->u.File.ulLastModifiedTimestp;

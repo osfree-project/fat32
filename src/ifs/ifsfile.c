@@ -1634,6 +1634,7 @@ ULONGLONG size;
             USHORT  usAdjacentClusters  = 1;
             USHORT  usAdjacentBlocks;
             USHORT  usBlocks;
+            ULONG   ulBytesRead2 = 0;
 
 #ifdef INCL_LONGLONG
             ulCurrBytesToRead           = (ULONG)min((ULONG)usBytesToRead,size - pos);
@@ -1724,18 +1725,19 @@ ULONGLONG size;
                            usBlocks -= 1;
 
                            pBufPosition                += ulBytesPerBlock;
+                           ulBytesRead2                += ulBytesPerBlock;
                            ulClusterSector             += usSectorsPerBlock;
                            usAdjacentBlocks--;
                         }
                     }
 
 #ifdef INCL_LONGLONG
-                    pos                             += (USHORT)ulCurrBytesToRead;
+                    pos                             += (USHORT)ulBytesRead2; //ulCurrBytesToRead;
 #else
-                    pos                             =  iAddUS(pos, (USHORT)ulCurrBytesToRead);
+                    pos                             =  iAddUS(pos, (USHORT)ulBytesRead2); //ulCurrBytesToRead);
 #endif
-                    usBytesRead                     += (USHORT)ulCurrBytesToRead;
-                    usBytesToRead                   -= (USHORT)ulCurrBytesToRead;
+                    usBytesRead                     += (USHORT)ulBytesRead2; //ulCurrBytesToRead;
+                    usBytesToRead                   -= (USHORT)ulBytesRead2; //ulCurrBytesToRead;
                     usAdjacentBlocks                =  (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
                     usAdjacentClusters              =  1;
 
@@ -1790,7 +1792,7 @@ ULONGLONG size;
                 {
                     goto FS_READEXIT;
                 }
-                memcpy(pBufPosition,pbCluster, (USHORT)ulCurrBytesToRead);
+                memcpy(pBufPosition, pbCluster, (USHORT)ulCurrBytesToRead);
 
 #ifdef INCL_LONGLONG
                 pos                     += (USHORT)ulCurrBytesToRead;
@@ -2420,6 +2422,7 @@ ULONGLONG size;
             USHORT  usAdjacentClusters  = 1;
             USHORT  usAdjacentBlocks;
             USHORT  usBlocks;
+            ULONG   ulBytesWritten2 = 0;
 
 #ifdef INCL_LONGLONG
             ulCurrBytesToWrite  = (ULONG)min((ULONG)usBytesToWrite, size - pos);
@@ -2508,18 +2511,19 @@ ULONGLONG size;
                            usBlocks -= 1;
 
                            pBufPosition                += ulBytesPerBlock;
+                           ulBytesWritten2             += ulBytesPerBlock;
                            ulClusterSector             += usSectorsPerBlock;
                            usAdjacentBlocks--;
                         }
                     }
 
 #ifdef INCL_LONGLONG
-                    pos                             += (USHORT)ulCurrBytesToWrite;
+                    pos                             += (USHORT)ulBytesWritten2; //ulCurrBytesToWrite;
 #else
-                    pos                             =  iAddUS(pos, (USHORT)ulCurrBytesToWrite);
+                    pos                             =  iAddUS(pos, (USHORT)ulBytesWritten2); //ulCurrBytesToWrite);
 #endif
-                    usBytesWritten                  += (USHORT)ulCurrBytesToWrite;
-                    usBytesToWrite                  -= (USHORT)ulCurrBytesToWrite;
+                    usBytesWritten                  += (USHORT)ulBytesWritten2; //ulCurrBytesToWrite;
+                    usBytesToWrite                  -= (USHORT)ulBytesWritten2; //ulCurrBytesToWrite;
                     usAdjacentBlocks                =  (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
                     usAdjacentClusters              = 1;
 

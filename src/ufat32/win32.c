@@ -407,7 +407,7 @@ void set_datetime1(DIRENTRY1 *pDir)
    pDir->u.File.ulLastModifiedTimestp.day = datetime.wDay;
    pDir->u.File.ulLastModifiedTimestp.hour = datetime.wHour;
    pDir->u.File.ulLastModifiedTimestp.minutes = datetime.wMinute;
-   pDir->u.File.ulLastModifiedTimestp.seconds = datetime.wSecond / 2;
+   pDir->u.File.ulLastModifiedTimestp.twosecs = datetime.wSecond / 2;
 
    pDir->u.File.ulCreateTimestp = pDir->u.File.ulLastModifiedTimestp;
    pDir->u.File.ulLastAccessedTimestp = pDir->u.File.ulLastModifiedTimestp;

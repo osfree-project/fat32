@@ -624,10 +624,10 @@ PSHOPENINFO pSHInfo = NULL;
             {
             PDIRENTRY1 pWork1 = (PDIRENTRY1)pDir;
             PDIRENTRY1 pMax1 = (PDIRENTRY1)((PBYTE)pDir + pVolInfo->ulBlockSize);
-            BYTE bSecondaryCount;
+            BYTE bSecondaryCount = 0;
+            BYTE bSecondaries = 0;
             while (pWork1 < pMax1)
                {
-               BYTE bSecondaries = 0;
                if (pWork1->bEntryType == ENTRY_TYPE_EOD)
                   {
                   break;
@@ -647,8 +647,13 @@ PSHOPENINFO pSHInfo = NULL;
                      bSecondaries++;
                      }
                   }
-               if (bSecondaries == bSecondaryCount)
+               if (bSecondaries && bSecondaryCount &&
+                   bSecondaries == bSecondaryCount)
+                  {
                   usFileCount++;
+                  bSecondaries = 0;
+                  bSecondaryCount = 0;
+                  }
                pWork1++;
                }
             }

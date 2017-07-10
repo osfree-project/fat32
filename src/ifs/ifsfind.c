@@ -1811,7 +1811,7 @@ FTIME GetTime1(TIMESTAMP ts)
 {
    FTIME time = {0};
 
-   time.twosecs = (USHORT)ts.seconds / 2;
+   time.twosecs = (USHORT)ts.twosecs;
    time.minutes = (USHORT)ts.minutes;
    time.hours = (USHORT)ts.hour;
 
@@ -1822,7 +1822,7 @@ TIMESTAMP SetTimeStamp(FDATE date, FTIME time)
 {
    TIMESTAMP ts;
 
-   ts.seconds = time.twosecs * 2;
+   ts.twosecs = time.twosecs;
    ts.minutes = time.minutes;
    ts.hour = time.hours;
 

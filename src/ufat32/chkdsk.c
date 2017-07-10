@@ -1846,7 +1846,7 @@ ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usNumSecondary;
 USHORT usNameLen, usNameHash, usFileAttr;
-ULONGLONG ullSize;
+ULONGLONG ullSize = 0;
 ULONG ulFirstClus;
 BOOL fEAS;
 
@@ -2108,7 +2108,7 @@ BOOL fEAS;
                         }
                      }
                   //else if (!DirEntry.ulFileSize)
-                  else if (!ullSize)
+                  else if (!DirStream.u.Stream.ullValidDataLen)
                      {
                      show_message("%s is marked having EAs, but the EA file (%s) is empty\n", 0, 0, 2, pbPath, Mark.szFileName);
                      show_message("File marked having EAs, but the EA file (%s) is empty\n", 2420, 0, 1, Mark.szFileName);

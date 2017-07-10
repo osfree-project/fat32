@@ -54,7 +54,7 @@ USHORT    usBootSig;                   // 0xaa55
 
 typedef struct _TimeStamp
 {
-   ULONG seconds:5;
+   ULONG twosecs:5;
    ULONG minutes:6;
    ULONG hour:5;
    ULONG day:5;
