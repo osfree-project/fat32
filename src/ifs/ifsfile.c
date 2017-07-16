@@ -848,6 +848,8 @@ USHORT rc;
             memcpy(&psffsi->sfi_adate, &pDirEntry->wAccessDate, sizeof (USHORT));
             memcpy(&psffsi->sfi_mtime, &pDirEntry->wLastWriteTime, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &pDirEntry->wLastWriteDate, sizeof (USHORT));
+
+            *pfGenFlag = ( HAS_CRITICAL_EAS( pDirEntry->fEAS ) ? 1 : 0);
 #ifdef EXFAT
             }
          else
@@ -865,12 +867,13 @@ USHORT rc;
             time = GetTime1(pDirEntry1->u.File.ulLastModifiedTimestp);
             memcpy(&psffsi->sfi_mtime, &time, sizeof (USHORT));
             memcpy(&psffsi->sfi_mdate, &date, sizeof (USHORT));
+
+            *pfGenFlag = ( HAS_CRITICAL_EAS( pDirEntry1->u.File.fEAS ) ? 1 : 0);
             }
 #endif
 
          psffsi->sfi_tstamp = 0;
          *pAction = FILE_EXISTED;
-         *pfGenFlag = ( HAS_CRITICAL_EAS( pDirEntry->fEAS ) ? 1 : 0);
          }
 
 #if 0
@@ -3075,6 +3078,13 @@ USHORT rc;
             memcpy(&pDirEntry1->u.File.ulLastAccessedTimestp, &ts, sizeof(TIMESTAMP));
             ts = SetTimeStamp(*(FDATE *)&psffsi->sfi_mdate, *(FTIME *)&psffsi->sfi_mtime);
             memcpy(&pDirEntry1->u.File.ulLastModifiedTimestp, &ts, sizeof(TIMESTAMP));
+
+            pDirEntry1->u.File.bCreate10msIncrement = 0;
+            pDirEntry1->u.File.bLastModified10msIncrement = 0;
+            pDirEntry1->u.File.bCreateTimezoneOffset = 0;
+            pDirEntry1->u.File.bLastModifiedTimezoneOffset = 0;
+            pDirEntry1->u.File.bLastAccessedTimezoneOffset = 0;
+            memset(pDirEntry1->u.File.bResvd2, 0, sizeof(pDirEntry1->u.File.bResvd2));
 
 #ifdef INCL_LONGLONG
             pDirEntryStream->u.Stream.ullValidDataLen = size;

@@ -267,14 +267,14 @@ char far *p;
       }
 
    /* check bad cluster (moved to ReadBlock) */
-   if( ulSector >= pVolInfo->ulStartOfData )
+   /* if( ulSector >= pVolInfo->ulStartOfData )
    {
         ULONG ulStartCluster = Sector2Cluster( ulSector );
         ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
         ULONG ulNextCluster = 0;
         ULONG ulCluster;
 
-        /* for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
+        for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
         {
             //ulNextCluster = GetNextCluster2( pVolInfo, NULL, ulCluster );
             ulNextCluster = GetNextCluster( pVolInfo, NULL, ulCluster );
@@ -290,8 +290,8 @@ char far *p;
 
         if (usSectors == 0)
             // avoid reading zero sectors
-            return ERROR_SECTOR_NOT_FOUND; */
-   }
+            return ERROR_SECTOR_NOT_FOUND;
+   } */
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();

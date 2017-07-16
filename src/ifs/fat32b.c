@@ -13,8 +13,8 @@
 #include "fat32ifs.h"
 
 USHORT NameHash(USHORT *pszFilename, int NameLen);
-USHORT GetChkSum16(const char *data, int bytes);
-ULONG GetChkSum32(const char *data, int bytes);
+USHORT GetChkSum16(const UCHAR *data, int bytes);
+ULONG  GetChkSum32(const UCHAR *data, int bytes);
 
 VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
@@ -894,30 +894,29 @@ ULONG  ulDirEntries = 0;
    return 0;
 }
 
-USHORT GetChkSum16(const char *data, int bytes)
+USHORT GetChkSum16(const UCHAR *data, int bytes)
 {
    USHORT chksum = 0;
    int i;
 
    for (i = 0; i < bytes; i++)
       {
-      if (i == 2)
-         // skip checksum field
-         i++;
-      else
-         chksum = (chksum << 15) | (chksum >> 1) + data[i];
+      if (i == 2 || i == 3)
+         continue;
+
+      chksum = (chksum << 15) | (chksum >> 1) + (USHORT)data[i];
       }
 
    return chksum;
 }
 
-ULONG GetChkSum32(const char *data, int bytes)
+ULONG GetChkSum32(const UCHAR *data, int bytes)
 {
    ULONG chksum = 0;
    int i;
 
    for (i = 0; i < bytes; i++)
-      chksum = (chksum << 31) | (chksum >> 1) + data[i];
+      chksum = (chksum << 31) | (chksum >> 1) + (ULONG)data[i];
 
    return chksum;
 }
@@ -1641,7 +1640,7 @@ USHORT    rc;
                               {
                               memcpy(pWorkStream, pStreamNew, sizeof (DIRENTRY1));
                               }
-                           pWorkFile->u.File.usSetCheckSum = GetChkSum16((char *)pWorkFile,
+                           pWorkFile->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pWorkFile,
                               sizeof(DIRENTRY1) * (pWorkFile->u.File.bSecondaryCount + 1));
                            //if (ulCluster == 1)
                            //   // reading root directory on FAT12/FAT16
@@ -1750,7 +1749,7 @@ USHORT    rc;
                      pStreamNew->u.Stream.usNameHash = usNameHash;
                      pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongName);
                      memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
+                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
                         sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
 
                      //if (ulPrevCluster == 1)
@@ -1796,7 +1795,7 @@ USHORT    rc;
                      pStreamNew->u.Stream.usNameHash = usNameHash;
                      pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongName);
                      memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
+                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
                         sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
                      //if (ulCluster == 1)
                      //   // reading root directory on FAT12/FAT16

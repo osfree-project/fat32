@@ -19,7 +19,12 @@ ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, LONGLONG llOffset
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo);
 
 #define PSIZE           4096
-#define MAXPGREQ	8
+#define MAXPGREQ	16 // 8
+
+// swap file open count
+USHORT swap_open_count = 0;
+// hVPB of volume with a swap file
+unsigned short swap_hVPB = 0;
 
 RQLIST pgreq;
 
@@ -69,7 +74,7 @@ int far pascal _loadds FS_OPENPAGEFILE (
    /* Keep track of volume with swap-space.  We can't allow this volume
     * to be quiesced.
     */
-   ////page_hVPB = psffsi->sfi_hVPB;
+   swap_hVPB = psffsi->sfi_hVPB;
 
    /* pathlookup needs the hVPB in the current directory structure
     * to figure out where to start.  conjure up a cds with just the
@@ -85,22 +90,35 @@ int far pascal _loadds FS_OPENPAGEFILE (
 
    if (rc == 0)
       {
-      if (pVolInfo->pfnStrategy)
-         {
-            /*   Strat2 is supported.
-             *   set return information:
-             *   pageio requests require physical addresses;
-             *   maximum request is 16 pages;
-             */
-            *pFlags = PGIO_PADDR;
-            *pcMaxReq = MAXPGREQ;
-         }
-      else
-         {
-            // no Strat2
-            *pFlags = PGIO_VADDR;
+      swap_open_count++;
+
+      //if (pVolInfo->pfnStrategy)
+      //   {
+      //      /*   Strat2 is supported.
+      //       *   set return information:
+      //       *   pageio requests require physical addresses;
+      //       *   maximum request is 16 pages;
+      //       */
+      //      *pFlags |= PGIO_PADDR;
+      //      *pcMaxReq = MAXPGREQ;
+      //   }
+      //else
+      //   {
+      //      // no Strat2
+            *pFlags |= PGIO_VADDR;
             *pcMaxReq = 0;
-         }
+      //   }
+
+      //if ((*pFlags & PGIO_FIRSTOPEN) && (swap_open_count == 1))
+      //   {
+      //   // make swap file zero-aligned
+      //   rc = FS_NEWSIZEL (psffsi, psffsd, 0LL, 0);
+
+      //   if (rc)
+      //      {
+      //      goto FS_OPENPAGEFILE_EXIT;
+      //      }
+      //   }
       }
 
 FS_OPENPAGEFILE_EXIT:
@@ -120,11 +138,12 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
     struct sffsi far *psffsi,       /* ptr to fs independent SFT */
     struct sffsd far *psffsd,       /* ptr to fs dependent SFT   */
     unsigned long     ulSize,       /* new size          */
-    unsigned long     lWantContig   /* contiguous chunk size     */
+    unsigned long     ulWantContig   /* contiguous chunk size     */
 )
 {
    int rc;
    ULONGLONG ullSize;
+   PVOLINFO  pVolInfo;
 
 #ifdef INCL_LONGLONG
    ullSize = (ULONGLONG)ulSize;
@@ -133,9 +152,29 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
 #endif
 
    if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, lWantContig);
+      Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, ulWantContig);
 
    _asm push es;
+
+   pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
+
+   if (! pVolInfo)
+      {
+      rc = ERROR_INVALID_DRIVE;
+      goto FS_ALLOCATEPAGESPACE_EXIT;
+      }
+
+   if (pVolInfo->fFormatInProgress)
+      {
+      rc = ERROR_ACCESS_DENIED;
+      goto FS_ALLOCATEPAGESPACE_EXIT;
+      }
+
+   if (ulWantContig > pVolInfo->ulClusterSize)
+      {
+      rc = ERROR_DISK_FULL;
+      goto FS_ALLOCATEPAGESPACE_EXIT;
+      }
 
    rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x10);
 
@@ -146,13 +185,14 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
       if (f32Parms.fLargeFiles)
          {
 #ifdef INCL_LONGLONG
-         psffsi->sfi_sizel = (ULONGLONG)ulSize;
+         psffsi->sfi_sizel = ullSize;
 #else
-         iAssignUL(&psffsi->sfi_sizel, ulSize);
+         iAssign(&psffsi->sfi_sizel, *(PLONGLONG)&ullSize);
 #endif
          }
       }
 
+FS_ALLOCATEPAGESPACE_EXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_ALLOCATEPAGESPACE returned %u\n", rc);
 

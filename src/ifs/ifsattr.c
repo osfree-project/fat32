@@ -195,6 +195,14 @@ USHORT rc;
                pDirNew1->u.File.usFileAttr = (BYTE)(*pAttr | FILE_DIRECTORY);
             else
                pDirNew1->u.File.usFileAttr = (BYTE)*pAttr;
+
+            pDirNew1->u.File.bCreate10msIncrement = 0;
+            pDirNew1->u.File.bLastModified10msIncrement = 0;
+            pDirNew1->u.File.bCreateTimezoneOffset = 0;
+            pDirNew1->u.File.bLastModifiedTimezoneOffset = 0;
+            pDirNew1->u.File.bLastAccessedTimezoneOffset = 0;
+            memset(pDirNew1->u.File.bResvd2, 0, sizeof(pDirNew1->u.File.bResvd2));
+
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                pDirEntry, (PDIRENTRY)pDirNew1, pDirEntryStream, NULL, NULL, 0);
             free(pDirNew1);
@@ -933,6 +941,13 @@ USHORT rc;
                   pDirNew1->u.File.usFileAttr = (BYTE)(pfStatus->attrFile | FILE_DIRECTORY);
                else
                   pDirNew1->u.File.usFileAttr = (BYTE)pfStatus->attrFile;
+
+               pDirNew1->u.File.bCreate10msIncrement = 0;
+               pDirNew1->u.File.bLastModified10msIncrement = 0;
+               pDirNew1->u.File.bCreateTimezoneOffset = 0;
+               pDirNew1->u.File.bLastModifiedTimezoneOffset = 0;
+               pDirNew1->u.File.bLastAccessedTimezoneOffset = 0;
+               memset(pDirNew1->u.File.bResvd2, 0, sizeof(pDirNew1->u.File.bResvd2));
                }
 #endif
 
@@ -1057,6 +1072,13 @@ USHORT rc;
                   pDirNew1->u.File.usFileAttr = (BYTE)(pfStatus->attrFile | FILE_DIRECTORY);
                else
                   pDirNew1->u.File.usFileAttr = (BYTE)pfStatus->attrFile;
+
+               pDirNew1->u.File.bCreate10msIncrement = 0;
+               pDirNew1->u.File.bLastModified10msIncrement = 0;
+               pDirNew1->u.File.bCreateTimezoneOffset = 0;
+               pDirNew1->u.File.bLastModifiedTimezoneOffset = 0;
+               pDirNew1->u.File.bLastAccessedTimezoneOffset = 0;
+               memset(pDirNew1->u.File.bResvd2, 0, sizeof(pDirNew1->u.File.bResvd2));
                }
 #endif
 

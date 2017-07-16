@@ -39,8 +39,6 @@ static BYTE szBanner[]=
 "Made by Henk Kelder + Netlabs";
 
 USHORT NameHash(USHORT *pszFilename, int NameLen);
-USHORT GetChkSum16(const char *data, int bytes);
-ULONG GetChkSum32(const char *data, int bytes);
 static BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG GetFreeCluster(PVOLINFO pVolInfo);
 PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszName, BYTE bCheck);
@@ -145,9 +143,9 @@ ULONG    ulDstCluster;
 USHORT   rc, rc2;
 POPENINFO pOpenInfo = NULL;
 //BYTE     szSrcLongName[ FAT32MAXPATH ];
-PSZ      szSrcLongName;
+PSZ      szSrcLongName = NULL;
 //BYTE     szDstLongName[ FAT32MAXPATH ];
-PSZ      szDstLongName;
+PSZ      szDstLongName = NULL;
 
    _asm push es;
 
@@ -3264,9 +3262,9 @@ PDIRENTRY1 pDirSrcStream = NULL;
 PDIRENTRY1 pDirDstStream = NULL;
 PSHOPENINFO pDirSrcSHInfo = NULL, pDirDstSHInfo = NULL;
 //BYTE     szSrcLongName[ FAT32MAXPATH ];
-PSZ      szSrcLongName;
+PSZ      szSrcLongName = NULL;
 //BYTE     szDstLongName[ FAT32MAXPATH ];
-PSZ      szDstLongName;
+PSZ      szDstLongName = NULL;
 
    _asm push es;
 
@@ -4893,7 +4891,7 @@ BOOL   fClean;
          if (ulReturn == pVolInfo->ulFatEof)
             ulReturn = ulFirstCluster;
 
-         if (MakeChain(pVolInfo, pSHInfo, ulFirstCluster, ulClustersRequested)) ////
+         if (MakeChain(pVolInfo, pSHInfo, ulFirstCluster, ulClustersRequested))
             goto MakeFatChain_Error;
 
          if (ulPrevCluster != pVolInfo->ulFatEof)
@@ -4902,7 +4900,6 @@ BOOL   fClean;
                goto MakeFatChain_Error;
             }
 
-         ////ReleaseFat(pVolInfo);
          if (f32Parms.fMessageActive & LOG_FUNCS)
             {
             if (fContiguous)
@@ -4962,7 +4959,7 @@ USHORT MakeChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulFirstCluster, U
 ULONG ulSector = 0;
 ULONG ulBmpSector = 0;
 ULONG ulLastCluster = 0;
-ULONG  ulCluster = 0;
+ULONG ulCluster = 0;
 ULONG ulNewCluster = 0;
 #ifdef EXFAT
 BOOL fStatus;
@@ -4974,19 +4971,24 @@ USHORT rc;
 
    ulLastCluster = ulFirstCluster + ulSize - 1;
 
-   if (GetFatAccess(pVolInfo, "MakeFatChain"))
-      return 1;
-
-   ulSector = GetFatEntrySec(pVolInfo, ulFirstCluster);
-   if (ulSector != pVolInfo->ulCurFatSector)
-      ReadFatSector(pVolInfo, ulSector);
+   if (!GetFatAccess(pVolInfo, "MakeChain"))
+      {
+      ulSector = GetFatEntrySec(pVolInfo, ulFirstCluster);
+      if (ulSector != pVolInfo->ulCurFatSector)
+         ReadFatSector(pVolInfo, ulSector);
+      ReleaseFat(pVolInfo);
+      }
 
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulFirstCluster);
-      if (ulBmpSector != pVolInfo->ulCurBmpSector)
-         ReadBmpSector(pVolInfo, ulBmpSector);
+      if (!GetFatAccess(pVolInfo, "MakeChain"))
+         {
+         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulFirstCluster);
+         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+            ReadBmpSector(pVolInfo, ulBmpSector);
+         ReleaseFat(pVolInfo);
+         }
       }
 #endif
 
@@ -4994,54 +4996,54 @@ USHORT rc;
       {
       if (! pSHInfo || ! pSHInfo->fNoFatChain)
          {
-         ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-         if (ulSector != pVolInfo->ulCurFatSector)
+         if (!GetFatAccess(pVolInfo, "MakeChain"))
             {
-            rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
-            if (rc)
+            ulSector = GetFatEntrySec(pVolInfo, ulCluster);
+            if (ulSector != pVolInfo->ulCurFatSector)
                {
-               ReleaseFat(pVolInfo);
-               return rc;
+               rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
+               if (rc)
+                  return rc;
+               ReadFatSector(pVolInfo, ulSector);
                }
-            ReadFatSector(pVolInfo, ulSector);
-            }
-         ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
+            ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
 #ifdef EXFAT
-         if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #else
-         if (ulNewCluster)
+            if (ulNewCluster)
 #endif
-            {
-            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
-            Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+               {
+               CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+               Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+               return ERROR_SECTOR_NOT_FOUND;
+               }
+            SetFatEntry(pVolInfo, ulCluster, ulCluster + 1);
             ReleaseFat(pVolInfo);
-            return ERROR_SECTOR_NOT_FOUND;
             }
-         SetFatEntry(pVolInfo, ulCluster, ulCluster + 1);
          }
 #ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
-         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
-         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+         if (!GetFatAccess(pVolInfo, "MakeChain"))
             {
-            rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
-            if (rc)
+            ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+            if (ulBmpSector != pVolInfo->ulCurBmpSector)
                {
-               ReleaseFat(pVolInfo);
-               return rc;
+               rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+               if (rc)
+                  return rc;
+               ReadBmpSector(pVolInfo, ulBmpSector);
                }
-            ReadBmpSector(pVolInfo, ulBmpSector);
-            }
-         fStatus = GetBmpEntry(pVolInfo, ulCluster);
-         if (fStatus)
-            {
-            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
-            Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+            fStatus = GetBmpEntry(pVolInfo, ulCluster);
+            if (fStatus)
+               {
+               CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+               Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+               return ERROR_SECTOR_NOT_FOUND;
+               }
+            SetBmpEntry(pVolInfo, ulCluster, 1);
             ReleaseFat(pVolInfo);
-            return ERROR_SECTOR_NOT_FOUND;
             }
-         SetBmpEntry(pVolInfo, ulCluster, 1);
          }
 #endif
       }
@@ -5050,64 +5052,58 @@ USHORT rc;
    if (! pSHInfo || ! pSHInfo->fNoFatChain)
 #endif
       {
-      ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-      if (ulSector != pVolInfo->ulCurFatSector)
+      if (!GetFatAccess(pVolInfo, "MakeChain"))
          {
+         ulSector = GetFatEntrySec(pVolInfo, ulCluster);
+         if (ulSector != pVolInfo->ulCurFatSector)
+            {
+            rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
+            if (rc)
+               return rc;
+            ReadFatSector(pVolInfo, ulSector);
+            }
+         ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
+         if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
+            {
+            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+            Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+            return ERROR_SECTOR_NOT_FOUND;
+            }
+
+         SetFatEntry(pVolInfo, ulCluster, pVolInfo->ulFatEof);
          rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
          if (rc)
-            {
-            ReleaseFat(pVolInfo);
             return rc;
-            }
-         ReadFatSector(pVolInfo, ulSector);
-         }
-      ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
-      if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
-         {
-         CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
-         Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
          ReleaseFat(pVolInfo);
-         return ERROR_SECTOR_NOT_FOUND;
-         }
-
-      SetFatEntry(pVolInfo, ulCluster, pVolInfo->ulFatEof);
-      rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
-      if (rc)
-         {
-         ReleaseFat(pVolInfo);
-         return rc;
          }
       }
 
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
-      if (ulBmpSector != pVolInfo->ulCurBmpSector)
+      if (!GetFatAccess(pVolInfo, "MakeChain"))
          {
+         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+            {
+            rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+            if (rc)
+               return rc;
+            ReadBmpSector(pVolInfo, ulBmpSector);
+            }
+         fStatus = GetBmpEntry(pVolInfo, ulCluster);
+         if (fStatus)
+            {
+            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+            Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
+            return ERROR_SECTOR_NOT_FOUND;
+            }
+
+         SetBmpEntry(pVolInfo, ulCluster, 1);
          rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
          if (rc)
-            {
-            ReleaseFat(pVolInfo);
             return rc;
-            }
-         ReadBmpSector(pVolInfo, ulBmpSector);
-         }
-      fStatus = GetBmpEntry(pVolInfo, ulCluster);
-      if (fStatus)
-         {
-         CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
-         Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
          ReleaseFat(pVolInfo);
-         return ERROR_SECTOR_NOT_FOUND;
-         }
-
-      SetBmpEntry(pVolInfo, ulCluster, 1);
-      rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
-      if (rc)
-         {
-         ReleaseFat(pVolInfo);
-         return rc;
          }
       }
 #endif
@@ -5116,7 +5112,6 @@ USHORT rc;
    pVolInfo->pBootFSInfo->ulNextFreeCluster = ulCluster + 1;
    pVolInfo->pBootFSInfo->ulFreeClusters   -= ulSize;
 
-   ReleaseFat(pVolInfo);
    return 0;
 }
 
@@ -6036,6 +6031,12 @@ USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInf
 
          pNew1->u.File.ulCreateTimestp = pNew1->u.File.ulLastModifiedTimestp;
          pNew1->u.File.ulLastAccessedTimestp = pNew1->u.File.ulLastModifiedTimestp;
+         pNew1->u.File.bCreate10msIncrement = 0;
+         pNew1->u.File.bLastModified10msIncrement = 0;
+         pNew1->u.File.bCreateTimezoneOffset = 0;
+         pNew1->u.File.bLastModifiedTimezoneOffset = 0;
+         pNew1->u.File.bLastAccessedTimezoneOffset = 0;
+         memset(pNew1->u.File.bResvd2, 0, sizeof(pNew1->u.File.bResvd2));
          }
 #endif
       }
@@ -6317,17 +6318,22 @@ USHORT rc;
       return FALSE;
       }
 
-   if (GetFatAccess(pVolInfo, "DeleteFatChain"))
-      return FALSE;
-
-   ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-   ReadFatSector(pVolInfo, ulSector);
+   if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
+      {
+      ulSector = GetFatEntrySec(pVolInfo, ulCluster);
+      ReadFatSector(pVolInfo, ulSector);
+      ReleaseFat(pVolInfo);
+      }
 
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
       {
-      ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
-      ReadBmpSector(pVolInfo, ulSector);
+      if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
+         {
+         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+         ReadBmpSector(pVolInfo, ulSector);
+         ReleaseFat(pVolInfo);
+         }
       }
 #endif
 
@@ -6345,67 +6351,68 @@ USHORT rc;
          break;
          }
 
-      ulSector = GetFatEntrySec(pVolInfo, ulCluster);
-      if (ulSector != pVolInfo->ulCurFatSector)
+      if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
          {
-         rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
-         if (rc)
+         ulSector = GetFatEntrySec(pVolInfo, ulCluster);
+         if (ulSector != pVolInfo->ulCurFatSector)
             {
-            ReleaseFat(pVolInfo);
-            return FALSE;
+            rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
+
+            if (rc)
+               return FALSE;
+            ReadFatSector(pVolInfo, ulSector);
             }
-         ReadFatSector(pVolInfo, ulSector);
+         ulNextCluster = GetFatEntry(pVolInfo, ulCluster);
+         SetFatEntry(pVolInfo, ulCluster, 0L);
+         ReleaseFat(pVolInfo);
          }
-      ulNextCluster = GetFatEntry(pVolInfo, ulCluster);
-      SetFatEntry(pVolInfo, ulCluster, 0L);
 
 #ifdef EXFAT
       if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
          {
-         // modify exFAT allocation bitmap as well
-         ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
-         if (ulBmpSector != pVolInfo->ulCurBmpSector)
+         if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
             {
-            rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
-            if (rc)
+            // modify exFAT allocation bitmap as well
+            ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
+            if (ulBmpSector != pVolInfo->ulCurBmpSector)
                {
-               ReleaseFat(pVolInfo);
-               return FALSE;
+               rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+
+               if (rc)
+                  return FALSE;
+               ReadBmpSector(pVolInfo, ulBmpSector);
                }
-            ReadBmpSector(pVolInfo, ulBmpSector);
+            SetBmpEntry(pVolInfo, ulCluster, 0);
+            ReleaseFat(pVolInfo);
             }
-         SetBmpEntry(pVolInfo, ulCluster, 0);
          }
 #endif
 
       ulClustersFreed++;
       ulCluster = ulNextCluster;
       }
-   rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
 
-   if (rc)
+   if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
       {
-      ReleaseFat(pVolInfo);
-      return FALSE;
-      }
-
-#ifdef EXFAT
-   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-      {
-      rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+      rc = WriteFatSector(pVolInfo, pVolInfo->ulCurFatSector);
 
       if (rc)
-         {
-         ReleaseFat(pVolInfo);
          return FALSE;
+
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         {
+         rc = WriteBmpSector(pVolInfo, pVolInfo->ulCurBmpSector);
+
+         if (rc)
+            return FALSE;
          }
-      }
 #endif
+      ReleaseFat(pVolInfo);
+      }
 
    pVolInfo->pBootFSInfo->ulFreeClusters += ulClustersFreed;
 /*   UpdateFSInfo(pVolInfo);*/
-
-   ReleaseFat(pVolInfo);
 
    return TRUE;
 }
@@ -6443,9 +6450,6 @@ ULONG  ulSector = 0;
       }
 #endif
 
-   if (GetFatAccess(pVolInfo, "SeekToCluster"))
-      return pVolInfo->ulFatEof;
-
    while (ulCluster != pVolInfo->ulFatEof &&
 #ifdef INCL_LONGLONG
           llPosition >= (LONGLONG)pVolInfo->ulClusterSize)
@@ -6453,6 +6457,9 @@ ULONG  ulSector = 0;
           iGreaterEUL(llPosition, pVolInfo->ulClusterSize))
 #endif
       {
+      if (GetFatAccess(pVolInfo, "SeekToCluster"))
+         return pVolInfo->ulFatEof;
+
       ulSector = GetFatEntrySec(pVolInfo, ulCluster);
 
       if (ulSector != pVolInfo->ulCurFatSector)
@@ -6468,8 +6475,8 @@ ULONG  ulSector = 0;
 #else
       llPosition = iSubUL(llPosition, pVolInfo->ulClusterSize);
 #endif
+      ReleaseFat(pVolInfo);
       }
-   ReleaseFat(pVolInfo);
 
    return ulCluster;
 }

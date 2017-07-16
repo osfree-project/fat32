@@ -1821,6 +1821,7 @@ FTIME GetTime1(TIMESTAMP ts)
 TIMESTAMP SetTimeStamp(FDATE date, FTIME time)
 {
    TIMESTAMP ts;
+   memset(&ts, 0, sizeof(ts));
 
    ts.twosecs = time.twosecs;
    ts.minutes = time.minutes;
