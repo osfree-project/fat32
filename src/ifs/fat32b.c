@@ -904,7 +904,7 @@ USHORT GetChkSum16(const UCHAR *data, int bytes)
       if (i == 2 || i == 3)
          continue;
 
-      chksum = (chksum << 15) | (chksum >> 1) + (USHORT)data[i];
+      chksum = ((chksum << 15) | (chksum >> 1)) + (USHORT)data[i];
       }
 
    return chksum;
@@ -916,7 +916,7 @@ ULONG GetChkSum32(const UCHAR *data, int bytes)
    int i;
 
    for (i = 0; i < bytes; i++)
-      chksum = (chksum << 31) | (chksum >> 1) + (ULONG)data[i];
+      chksum = ((chksum << 31) | (chksum >> 1)) + (ULONG)data[i];
 
    return chksum;
 }
@@ -928,7 +928,7 @@ USHORT NameHash(USHORT *pszFilename, int NameLen)
    int i;
 
    for (i = 0; i < NameLen * 2; i++)
-      hash = (hash << 15) | (hash >> 1) + data[i];
+      hash = ((hash << 15) | (hash >> 1)) + data[i];
 
    return hash;
 }
@@ -1677,21 +1677,21 @@ USHORT    rc;
                            /*
                               Write previous cluster if LN start lies there
                            */
-                           //if (ulPrevCluster != pVolInfo->ulFatEof &&
-                           //   pLNStart < pDir2)
-                           //   {
-                           //   if (ulPrevCluster == 1)
-                           //      // reading root directory on FAT12/FAT16
-                           //      rc = WriteSector(pVolInfo, ulPrevSector + ulPrevBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirectory, usIOMode);
-                           //   else
-                           //      rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
-                           //   if (rc)
-                           //      {
-                           //      free(pDirNew);
-                           //      free(pDirectory);
-                           //      return rc;
-                           //      }
-                           //   }
+                           if (ulPrevCluster != pVolInfo->ulFatEof &&
+                              pLNStart < pDir2)
+                              {
+                              //if (ulPrevCluster == 1)
+                              //   // reading root directory on FAT12/FAT16
+                              //   rc = WriteSector(pVolInfo, ulPrevSector + ulPrevBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirectory, usIOMode);
+                              //else
+                                 rc = WriteBlock(pVolInfo, ulPrevCluster, ulPrevBlock, pDirectory, usIOMode);
+                              if (rc)
+                                 {
+                                 free(pDirNew);
+                                 free(pDirectory);
+                                 return rc;
+                                 }
+                              }
 
                            /*
                               Write current cluster
@@ -1714,7 +1714,6 @@ USHORT    rc;
                               {
                               usMode = MODIFY_DIR_INSERT;
                               ulCluster = ulDirCluster;
-                              ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                               ulPrevCluster = pVolInfo->ulFatEof;
                               ulPrevSector = 0;
                               ulPrevBlock = 0;
