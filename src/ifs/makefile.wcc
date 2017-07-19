@@ -85,7 +85,6 @@ $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
     FS_EXIT, &
     FS_FILEATTRIBUTE, &
     FS_FILEINFO, &
-#      Not yet implemented
     FS_FILEIO, &
 #      Not yet implemented
     FS_FILELOCKS, &

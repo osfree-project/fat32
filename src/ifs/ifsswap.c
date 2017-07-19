@@ -14,21 +14,32 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ);
+VOID vCallStrategy2(PVOLINFO pVolInfo, struct pagereq far *pgreq);
 ULONG PositionToOffset(PVOLINFO pVolInfo, POPENINFO pOpenInfo, LONGLONG llOffset);
 int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG pulBlkNo);
+void pageIOdone(struct pagereq far * prp);
 
 #define PSIZE           4096
-#define MAXPGREQ	16 // 8
+#define MAXPGREQ	16
 
-// swap file open count
-USHORT swap_open_count = 0;
 // hVPB of volume with a swap file
 unsigned short swap_hVPB = 0;
 
-RQLIST pgreq;
+/* Request list to be passed to the driver's strategy2 routine.
+ */
+struct pagereq
+{
+   Req_List_Header pr_hdr;     /* 20: */
+   struct _pr_list
+   {
+      PB_Read_Write pr_rw;     /* 52: */
+      SG_Descriptor pr_sg;     /* 8: */
+   } pr_list[MAXPGREQ];        /* 480: (60*8) */
+};                             /* (500) */
 
-//static ULONG ulSemRWSwap = 0;
+struct pagereq pgreq;
+
+static ULONG ulSemRWSwap = 0;
 
 
 /******************************************************************
@@ -51,11 +62,11 @@ int far pascal _loadds FS_OPENPAGEFILE (
    struct cdfsi    dummyCds;
    PVOLINFO        pVolInfo;
 
+   _asm push es;
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_OPENPAGEFILE  pName=%s OpenMode=%x, OpenFlag=%x Attr=%x",
               pName, OpenMode, OpenFlag, Attr);
-
-   _asm push es;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
 
@@ -90,24 +101,22 @@ int far pascal _loadds FS_OPENPAGEFILE (
 
    if (rc == 0)
       {
-      swap_open_count++;
-
-      //if (pVolInfo->pfnStrategy)
-      //   {
-      //      /*   Strat2 is supported.
-      //       *   set return information:
-      //       *   pageio requests require physical addresses;
-      //       *   maximum request is 16 pages;
-      //       */
-      //      *pFlags |= PGIO_PADDR;
-      //      *pcMaxReq = MAXPGREQ;
-      //   }
-      //else
-      //   {
-      //      // no Strat2
+      if (pVolInfo->pfnStrategy)
+         {
+            /*   Strat2 is supported.
+             *   set return information:
+             *   pageio requests require physical addresses;
+             *   maximum request is 16 pages;
+             */
+            *pFlags |= PGIO_PADDR;
+         }
+      else
+         {
+            // no Strat2
             *pFlags |= PGIO_VADDR;
-            *pcMaxReq = 0;
-      //   }
+         }
+
+      *pcMaxReq = MAXPGREQ;
 
       //if ((*pFlags & PGIO_FIRSTOPEN) && (swap_open_count == 1))
       //   {
@@ -151,10 +160,10 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
    AssignUL(&ullSize, ulSize);
 #endif
 
+   _asm push es;
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, ulWantContig);
-
-   _asm push es;
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
 
@@ -176,7 +185,7 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
       goto FS_ALLOCATEPAGESPACE_EXIT;
       }
 
-   rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x10);
+   rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x20);
 
    if (rc == 0)
       {
@@ -212,20 +221,22 @@ int far pascal _loadds FS_DOPAGEIO(
 {
    POPENINFO       pOpenInfo;
    PVOLINFO        pVolInfo;
-   //ULONG           ulStartCluster;
    ULONG           fsbno;  /* starting block number to read/write */
    struct PageCmd  *pgcmd; /* pointer to current command in list */
    Req_List_Header *rlhp;  /* pointer to request list header */
    Req_Header      *rhp;   /* pointer to request header */
    PB_Read_Write   *rwp;   /* pointer to request */
-   int i, rc = NO_ERROR;
+   int i, j, rc = NO_ERROR;
+   USHORT usSectors;
+
+   _asm push es;
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_DOPAGEIO\n");
 
-   _asm push es;
-
-   //FSH_SEMREQUEST(&ulSemRWSwap, TO_INFINITE);
+   /* Serialize on the swap file inode.
+    */
+   //IWRITE_LOCK(ip);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
 
@@ -242,86 +253,165 @@ int far pascal _loadds FS_DOPAGEIO(
       }
 
    pOpenInfo = GetOpenInfo(psffsd);
-   //ulStartCluster = pOpenInfo->pSHInfo->ulStartCluster;
 
-   memset(&pgreq, 0, sizeof(pgreq));
+   /* sectors per page */
+   usSectors = PSIZE / pVolInfo->BootSect.bpb.BytesPerSector;
 
-   rlhp = &pgreq.rlh;
-   rlhp->Count = pPageCmdList->OpCount;
-   rlhp->Notify_Address = 0; //(PVOID)rlhNotify;
-   rlhp->Request_Control = 0; //(pPageCmdList->InFlags & PGIO_FI_ORDER)
-                            //? RLH_Notify_Done | RLH_Exe_Req_Seq
-                            //: RLH_Notify_Done;
-   rlhp->Block_Dev_Unit = pVolInfo->bUnit;
-
-   for (i = 0, pgcmd = pPageCmdList->PageCmdList;
-        i < (int)pPageCmdList->OpCount;
-        i++, pgcmd++)
+   if (pVolInfo->pfnStrategy)
       {
-      /* Fill in request header.
-       * These fields are set to zero by memset, above:
-       *	rhp->Req_Control
-       *	rhp->Status
-       *	rwp->RW_Flags
+      // use strat2 routine
+      memset(&pgreq, 0, sizeof(pgreq));
+
+      rlhp = &pgreq.pr_hdr;
+      rlhp->Count = pPageCmdList->OpCount;
+      rlhp->Notify_Address = (void far *)pageIOdone;
+      rlhp->Request_Control = (pPageCmdList->InFlags & PGIO_FI_ORDER)
+                               ? RLH_Notify_Done | RLH_Exe_Req_Seq
+                               : RLH_Notify_Done;
+      rlhp->Block_Dev_Unit = pVolInfo->bUnit;
+
+      /* Fill in a request for each command in the input list.
        */
-       rhp = &pgreq.rgReq[i].pb.RqHdr;
-       rhp->Length = sizeof(REQUEST);
-       //rhp->Req_Control = RH_NOTIFY_ERROR; // | RH_NOTIFY_DONE;
-       rhp->Old_Command = PB_REQ_LIST;
-       rhp->Command_Code = pgcmd->Cmd;
-       rhp->Head_Offset = (ULONG)rhp - (ULONG)rlhp;
-       rhp->Priority = pgcmd->Priority;
-       rhp->Hint_Pointer = -1;
-       /* Fill in read/write request.
-        */
-       rwp = &pgreq.rgReq[i].pb;
-       rc = GetBlockNum(pVolInfo, pOpenInfo, pgcmd->FileOffset, &fsbno);
-       if (rc)
-          {
-          /* request is not valid, return error */
-          goto FS_DOPAGEIO_EXIT;
-          }
-       rwp->Start_Block = fsbno;
-       rwp->Block_Count = PSIZE >> 9;
-       rwp->SG_Desc_Count = 1;
+      //assert(pPageCmdList->OpCount > 0);
 
-       /* Fill in the scatter/gather descriptor
-        */
-       pgreq.rgReq[i].sg.BufferPtr = (void *)pgcmd->Addr;
-       pgreq.rgReq[i].sg.BufferSize = PSIZE;
-       }
+      for (i = 0, pgcmd = pPageCmdList->PageCmdList;
+           i < (int)pPageCmdList->OpCount;
+           i++, pgcmd++)
+         {
+         /* Fill in request header.
+          * These fields are set to zero by memset, above:
+          *	rhp->Req_Control
+          *	rhp->Status
+          *	rwp->RW_Flags
+          */
+         rhp = &pgreq.pr_list[i].pr_rw.RqHdr;
+         rhp->Length = sizeof(struct _pr_list);
+         rhp->Old_Command = PB_REQ_LIST;
+         rhp->Command_Code = pgcmd->Cmd;
+         rhp->Head_Offset = (ULONG)rhp - (ULONG)rlhp;
+         rhp->Priority = pgcmd->Priority;
+         rhp->Hint_Pointer = -1;
 
-   /* Length in last request must be set to terminal value.
-    */
-   rhp->Length = RH_LAST_REQ;
+         /* Fill in read/write request.
+          */
+         rwp = &pgreq.pr_list[i].pr_rw;
+         rc = GetBlockNum(pVolInfo, pOpenInfo, pgcmd->FileOffset, &fsbno);
+         if (rc)
+            {
+            /* request is not valid, return error */
+            goto FS_DOPAGEIO_EXIT;
+            }
+         rwp->Start_Block = fsbno;
+         rwp->Block_Count = usSectors;
+         rwp->SG_Desc_Count = 1;
 
-   vCallStrategy2(pVolInfo, &pgreq);
+         /* Fill in the scatter/gather descriptor
+          */
+         pgreq.pr_list[i].pr_sg.BufferPtr = (void *)pgcmd->Addr;
+         pgreq.pr_list[i].pr_sg.BufferSize = PSIZE;
+         }
 
-   /* Check for errors and update status info in the command list.
-    * Set return value to error code from first failing command.
-    */
-   rc = 0;
-   for (i = 0; i < (int)pPageCmdList->OpCount; i++)
+      /* Length in last request must be set to terminal value.
+       */
+      rhp->Length = RH_LAST_REQ;
+
+      //IS_QUIESCE(ip->i_ipmnt->i_cachedev);	/* Block if hard quiesce */
+
+      ulSemRWSwap = 0;
+
+      vCallStrategy2(pVolInfo, &pgreq);
+
+      /* Wait for the request to complete.
+       */
+      //PAGING_LOCK();
+      //if (ulSemRWSwap)
+      //   {
+         rc = FSH_SEMREQUEST(&ulSemRWSwap, TO_INFINITE);
+      //   PAGING_NOLOCK();
+      //   }
+      //else
+      //   PAGING_UNLOCK();
+
+      /* If hard quiesce is in progress, and this is the last pending I/O,
+       * wake up the quiescing thread
+       */
+      //ipri = IOCACHE_LOCK();
+      //cdp = ip->i_ipmnt->i_cachedev;
+      //if ((--cdp->cd_pending_requests == 0) && (cdp->cd_flag & CD_QUIESCE))
+      //    IOCACHE_WAKEUP(&cdp->cd_iowait);
+      //IOCACHE_UNLOCK(ipri);
+
+      /* Check for errors and update status info in the command list.
+       * Set return value to error code from first failing command.
+       */
+      rc = 0;
+      for (i = 0; i < (int)pPageCmdList->OpCount; i++)
+         {
+         pgcmd = &pPageCmdList->PageCmdList[i];
+         rhp = &pgreq.pr_list[i].pr_rw.RqHdr;
+
+         pgcmd->Status = rhp->Status;
+         pgcmd->Error = rhp->Error_Code;
+         if ((rc == 0) && (pgcmd->Error != 0))
+            rc = pgcmd->Error;
+         }
+      }
+   else
       {
-      pgcmd = &pPageCmdList->PageCmdList[i];
-      rhp = &pgreq.rgReq[i].pb.RqHdr;
+      // use strat1 routine
+      for (i = 0, pgcmd = pPageCmdList->PageCmdList;
+           i < (int)pPageCmdList->OpCount;
+           i++, pgcmd++)
+         {
+         // read/write operation
+         USHORT op;
 
-      pgcmd->Status = rhp->Status;
-      pgcmd->Error = rhp->Error_Code;
-      if ((rc == 0) && (pgcmd->Error != 0))
-         rc = pgcmd->Error;
+         switch (pgcmd->Cmd)
+            {
+            case PB_READ_X:
+            case PB_PREFETCH_X:
+               op = DVIO_OPREAD;
+               break;
+            case PB_WRITE_X:
+               op = DVIO_OPWRITE;
+               break;
+            case PB_WRITEV_X:
+               op = DVIO_OPWRITE | DVIO_OPVERIFY;
+            }
+
+         op |= DVIO_OPNCACHE;
+
+         // get starting sector number
+         rc = GetBlockNum(pVolInfo, pOpenInfo, pgcmd->FileOffset, &fsbno);
+         if (rc)
+            {
+            /* request is not valid, return error */
+            goto FS_DOPAGEIO_EXIT;
+            }
+
+         // read it
+         rc = FSH_DOVOLIO( op, DVIO_ALLACK, pVolInfo->hVBP, (char far *)pgcmd->Addr, &usSectors, fsbno );
+         if (rc)
+            {
+            CritMessage("FAT32: DOPAGEIO of sector %ld (%d sectors) failed, rc = %u",
+               fsbno, usSectors, rc);
+            Message("ERROR: DOPAGEIO of sector %ld (%d sectors) failed, rc = %u",
+               fsbno, usSectors, rc);
+            }
+         }
       }
 
 FS_DOPAGEIO_EXIT:
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_DOPAGEIO returned %u\n", rc);
 
-   //FSH_SEMCLEAR(&ulSemRWSwap);
-
+   //IWRITE_UNLOCK(ip);
    _asm pop  es;
 
    return rc;
 }
+
+
 
 /******************************************************************
 *
@@ -333,11 +423,15 @@ int far pascal _loadds FS_SETSWAP(
 {
    int rc = NO_ERROR;
 
+   _asm push es;
+
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SETSWAP\n");
 
    if (f32Parms.fMessageActive & LOG_FS)
       Message("FS_SETSWAP returned %u\n", rc);
+
+   _asm pop  es;
 
    return rc;
 }
@@ -349,22 +443,11 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
 {
    ULONG ulCluster;
    LONGLONG llOffset;
-   //ULONG ulClusterSize = pVolInfo->ulClusterSize;
-   //int i;
 #ifdef INCL_LONGLONG
    llOffset = (LONGLONG)ulOffset;
 #else
    iAssignUL(&llOffset, ulOffset);
 #endif
-
-   // get cluster at the ulOffset offset
-   /* for (i = 0, ulCluster = ulStartCluster;
-        i < ulOffset / ulClusterSize + 1;
-        i++, ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster))
-      {
-      if (ulCluster == pVolInfo->ulFatEof)
-          return ERROR_SECTOR_NOT_FOUND;
-      } */
 
    // get cluster number from file offset
    ulCluster = PositionToOffset(pVolInfo, pOpenInfo, llOffset);
@@ -381,44 +464,32 @@ int GetBlockNum(PVOLINFO pVolInfo, POPENINFO pOpenInfo, ULONG ulOffset, PULONG p
 /******************************************************************
 *
 ******************************************************************/
-VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ)
+void vCallStrategy2(PVOLINFO pVolInfo, struct pagereq far *pgreq)
 {
    STRATFUNC pfnStrategy;
    USHORT usSeg;
    USHORT usOff;
-   ULONG  ulIndex;
-   RLH *pRLH;
-   PB  *pPB;
 
-   if (!pRQ)
+   if (!pgreq)
       return;
 
-   _asm push es; // vs
-   _asm push bx; //
+   _asm push es;
+   _asm push bx;
 
-   if (f32Parms.fMessageActive & LOG_FS && pRQ->rlh.Count)
-      Message("vCallStrategy2 drive %c:, %lu sectors, RQ %u",
-         pRQ->rlh.Block_Dev_Unit + 'A',
-         pRQ->rlh.Count,
-         pRQ->usNr);
+   if (f32Parms.fMessageActive & LOG_FS && pgreq->pr_hdr.Count)
+      Message("vCallStrategy2 drive %c:, %lu sectors",
+         pgreq->pr_hdr.Block_Dev_Unit + 'A',
+         pgreq->pr_hdr.Count);
 
-   pRLH = (RLH *)&pRQ->rlh;
-
-   if (pRQ->rlh.Count == 1)
-      pRQ->rlh.Lst_Status |= RLH_Single_Req;
-
-   for (ulIndex = 0; ulIndex < pRQ->rlh.Count; ulIndex++)
+   if (!pgreq->pr_hdr.Count)
       {
-      pPB = (PB *)&pRQ->rgReq[ulIndex].pb;
-
-      if (ulIndex + 1 < pRQ->rlh.Count)
-         pPB->RqHdr.Length = sizeof (REQUEST);
-
-      pPB->RqHdr.Head_Offset   = OFFSETOF(pPB) - OFFSETOF(pRLH);
+      FSH_SEMCLEAR(&ulSemRWSwap);
+      //DevHelp_ProcRun((ULONG)GetRequestList, &usCount);
+      return;
       }
 
-   usSeg = SELECTOROF(pRQ);
-   usOff = OFFSETOF(pRQ) + offsetof(RQLIST, rlh);
+   usSeg = SELECTOROF(pgreq);
+   usOff = OFFSETOF(pgreq) + offsetof(struct pagereq, pr_hdr);
 
    pfnStrategy = pVolInfo->pfnStrategy;
 
@@ -427,6 +498,15 @@ VOID vCallStrategy2(PVOLINFO pVolInfo, RQLIST far *pRQ)
 
    (*pfnStrategy)();
 
-   _asm pop   bx; // vs
-   _asm pop   es; //
+   _asm pop   bx;
+   _asm pop   es;
+}
+
+/*
+ * This is called from on 16-bit stack from strat2
+ */
+void
+pageIOdone(struct pagereq far * prp)
+{
+   FSH_SEMCLEAR(&ulSemRWSwap);
 }

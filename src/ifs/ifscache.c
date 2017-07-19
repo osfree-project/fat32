@@ -372,7 +372,10 @@ char *p;
       return ERROR_WRITE_PROTECT;
 
    if (pVolInfo->fDiskClean)
+      {
       MarkDiskStatus(pVolInfo, FALSE);
+      pVolInfo->fDiskClean = FALSE;
+      }
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {

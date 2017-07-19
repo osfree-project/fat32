@@ -520,6 +520,86 @@ FS_FILEIO(
     unsigned short		/* IOflag	*/
 );
 
+/* FILEIO DEFINES */
+#define FILEIO_LOCK    0
+#define FILEIO_UNLOCK  1
+#define FILEIO_SEEK    2
+#define FILEIO_READ    3
+#define FILEIO_WRITE   4
+
+#pragma pack(1)
+
+struct CmdLock
+{
+    USHORT Cmd;           /* 0 for Lock */
+    USHORT LockCnt;       /* number of locks that follow */
+    ULONG  TimeOut;       /* timeout in ms               */
+};
+
+struct CmdUnLock
+{
+    USHORT Cmd;           /* 1 for UnLock */
+    USHORT UnlockCnt;       /* number of locks that follow */
+};
+
+struct CmdSeek
+{
+    USHORT Cmd;           /* 2 for seek                 */
+    USHORT Method;        /* 0 for absolute             */
+                          /* 1 for relative to current  */
+                          /* 2 for relative to EOF      */
+    LONG  Position;       /* position or delta          */
+    LONG  Actual;         /* actual position seeked to  */
+};
+
+struct CmdSeekL
+{
+    USHORT Cmd;           /* 2 for seek                 */
+    USHORT Method;        /* 0 for absolute             */
+                          /* 1 for relative to current  */
+                          /* 2 for relative to EOF      */
+    LONGLONG Position;    /* position or delta          */
+    LONGLONG Actual;      /* actual position seeked to  */
+};
+
+struct CmdIO
+{
+    USHORT Cmd;           /* 3 for read 4 for write     */
+    void * _Seg16 Buffer; /* data buffer                */
+    USHORT BufferLen;     /* buffer length              */
+    USHORT Actual;        /* actual bytes transferred   */
+
+};
+
+/* lock structure to be passed into jfs_filelock function */
+struct Lock {
+  USHORT  Share;            /* on if lock is shared, else off */
+  ULONG   Start;            /* start offset of lock           */
+  ULONG   Length;           /* count of bytes to be locked    */
+};
+
+/* unlock structure to be passed into jfs_lock function */
+struct UnLock {
+  ULONG   Start;            /* start offset of lock           */
+  ULONG   Length;           /* count of bytes to be locked    */
+};
+
+/* longlong lock structure to be passed into jfs_filelock function */
+struct LockL {
+  USHORT  Share;            /* on if lock is shared, else off */
+  USHORT  Pad;              /* pad to 4 bytes */
+  ULONGLONG Start;          /* start offset of lock           */
+  ULONGLONG Length;         /* count of bytes to be locked    */
+};
+
+/* longlong unlock structure to be passed into jfs_lock function */
+struct UnLockL {
+  ULONGLONG Start;          /* start offset of lock           */
+  ULONGLONG Length;         /* count of bytes to be locked    */
+};
+
+#pragma pack()
+
 int far pascal _loadds
 FS_FILELOCKS(
     struct sffsi far *,		/* psffsi	*/
@@ -529,6 +609,21 @@ FS_FILELOCKS(
     unsigned long,		/* timeout	*/
     unsigned long		/* flags	*/
 );
+
+/* lock defines */
+#define LOCK_EXPIRED   0x0L
+#define LOCK_WAKEUP    0x1L
+#define LOCK_CANCELED  0x2L
+
+struct filelock {
+    long FileOffset;   /* offset where the lock/unlock begins  */
+    long RangeLength;  /* length of region locked/unlocked     */
+};
+
+struct filelockl {
+    long long FileOffset;   /* offset where the lock/unlock begins  */
+    long long RangeLength;  /* length of region locked/unlocked     */
+};
 
 int far pascal _loadds
 FS_FINDCLOSE(

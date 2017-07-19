@@ -4073,22 +4073,165 @@ FS_FILEINFOEXIT:
 int far pascal _loadds FS_FILEIO(
     struct sffsi far * psffsi,      /* psffsi   */
     struct sffsd far * psffsd,      /* psffsd   */
-    char far * cbCmdList,           /* cbCmdList    */
-    unsigned short pCmdLen,     /* pCmdLen  */
+    char far * pCmdList,            /* cbCmdList    */
+    unsigned short cbCmdList,       /* pCmdLen  */
     unsigned short far * poError,   /* poError  */
-    unsigned short IOFlag       /* IOflag   */
+    unsigned short IOFlag           /* IOflag   */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEIO - NOT SUPPORTED");
-   return ERROR_NOT_SUPPORTED;
+struct CmdIO     *io_cmd;               /* ptr to IO cmd structure   */
+struct CmdSeek   *seek_cmd;             /* ptr to seek cmd struct    */
+struct CmdLock   *lock_cmd;             /* ptr to lock cmd struct    */
+struct CmdUnLock *unlock_cmd;           /* ptr to unlock cmd struct  */
+UCHAR    *curr_cmd;                     /* ptr to current command    */
+void far *user_buffer;                  /* flat ptr to user buffer   */
+USHORT buffer_len;
+struct filelockl LockRange;
+struct filelockl UnLockRange;
+APIRET rc;
+short error;
+int i;
 
-   psffsi = psffsi;
-   psffsd = psffsd;
-   cbCmdList = cbCmdList;
-   pCmdLen = pCmdLen;
-   poError = poError;
-   IOFlag = IOFlag;
+   _asm push es;
+
+   if (f32Parms.fMessageActive & LOG_FS)
+      Message("FS_FILEIO");
+
+   //if (cbCmdList > 256)
+   //   {
+   //   /* Expensive system call, so only lock if its a large list */
+   //   rc = FSH_FORCENOSWAP(SELECTOROF(pCmdList));
+   //   if (rc != NO_ERROR)
+   //      {
+   //      error = 0;
+   //      *poError = error;
+   //      goto FS_FILEIO_EXIT;
+   //      }
+   //   }
+   //else
+   //   {
+      /* copy entire command list to kernel mem so we don't have to keep doing */
+      /* verify access calls                                                   */
+      rc = MY_PROBEBUF(PB_OPREAD, pCmdList, cbCmdList);
+   //   }
+
+   curr_cmd = pCmdList;
+
+   while ((rc == 0) && ((ULONG)curr_cmd < ((ULONG)pCmdList + cbCmdList)))
+      {
+      switch ((USHORT)*curr_cmd)
+         {
+         case FILEIO_LOCK:
+            {
+            struct Lock *lock = (struct Lock *)(curr_cmd + sizeof(struct CmdLock));
+            lock_cmd = (struct CmdLock *) curr_cmd;
+
+            for (i = 0; i < lock_cmd->LockCnt; i++, lock++)
+               {
+               LockRange.FileOffset  = lock->Start;
+               LockRange.RangeLength = lock->Length;
+
+               rc = FS_FILELOCKSL(psffsi,
+                                  psffsd,
+                                  NULL,
+                                  &LockRange,
+                                  lock_cmd->TimeOut,
+                                  lock->Share);
+               if (rc)
+                  break;
+               }
+            curr_cmd += (sizeof(struct CmdLock) +
+                        (lock_cmd->LockCnt * sizeof(struct Lock)));
+            }
+            break;
+         case FILEIO_UNLOCK:
+            {
+            struct UnLock *unlock = (struct UnLock *)(curr_cmd + sizeof(struct CmdUnLock));
+            unlock_cmd = (struct CmdUnLock *) curr_cmd;
+
+            for (i = 0; i < unlock_cmd->UnlockCnt; i++, unlock++)
+               {
+               UnLockRange.FileOffset  = unlock->Start;
+               UnLockRange.RangeLength = unlock->Length;
+
+               rc = FS_FILELOCKSL(psffsi,
+                                  psffsd,
+                                  &UnLockRange,
+                                  NULL,
+                                  0,
+                                  0);
+               if (rc)
+                  break;
+               }
+            curr_cmd += (sizeof(struct CmdUnLock) +
+                        (unlock_cmd->UnlockCnt * sizeof(struct UnLock)));
+            }
+            break;
+         case FILEIO_READ:
+            io_cmd = (struct CmdIO *) curr_cmd;
+            /* fs_read take an address of ulong for buffer size so   */
+            /* we need to copy the ushort from params to ulong       */
+            buffer_len  = io_cmd->BufferLen;
+            user_buffer = io_cmd->Buffer ;
+            rc = FS_READ(psffsi, psffsd, user_buffer, &buffer_len, IOFlag);
+            /* put the actual byte return field */
+            io_cmd->Actual = (USHORT) buffer_len;
+            /* move to next cmd */
+            curr_cmd += sizeof(struct CmdIO);
+            break;
+         case FILEIO_WRITE:
+            io_cmd = (struct CmdIO *) curr_cmd;
+            /* fs_write take an address of ulong for buffer size so  */
+            /* we need to copy the ushort from params to ulong       */
+            buffer_len  = io_cmd->BufferLen;
+            user_buffer = io_cmd->Buffer;
+            rc = FS_WRITE(psffsi, psffsd, user_buffer, &buffer_len, IOFlag);
+            /* put the actual byte return field */
+            io_cmd->Actual = (USHORT) buffer_len;
+            /* move to next cmd */
+            curr_cmd += sizeof(struct CmdIO);
+            break;
+         case FILEIO_SEEK:
+            seek_cmd = (struct CmdSeek *) curr_cmd;
+            rc = FS_CHGFILEPTRL(psffsi, psffsd, (long long)seek_cmd->Position,
+                                seek_cmd->Method, IOFlag);
+            if (!rc)
+               {
+               seek_cmd->Actual = seek_cmd->Position;
+               }
+            curr_cmd += sizeof(struct CmdSeek);
+            break;
+         default:
+            rc = ERROR_INVALID_PARAMETER;
+            break;
+
+         } /* end switch */
+      } /* end while */
+
+   if (rc)  /* if error occurred, update error pointer */
+      {
+      error = curr_cmd - pCmdList;
+      *poError = error;
+      }
+
+   //if (cbCmdList > 256)
+   //   {
+   //   rc2 = KernVMUnlock(&lockHandle);
+   //   ASSERT(rc2 == 0);
+   //   }
+   //else
+   //   {
+   //   /* Some fields (Actual) may have changed, so copy back to user's buffer */
+   //   (void) KernCopyOut(pCmdList, cmd_list, cbCmdList);
+   //   }
+
+//FS_FILEIO_EXIT:
+   if (f32Parms.fMessageActive & LOG_FS)
+      Message("FS_FILEIO returned %u", rc);
+
+   _asm pop es;
+
+   return rc;
 }
 
 

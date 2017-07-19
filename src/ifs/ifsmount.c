@@ -709,11 +709,11 @@ int i;
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
-         if (!pDevCaps)
-            {
-            Message("Strategy2 not found, searching Device Driver chain !");
-            pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
-            }
+         //if (!pDevCaps)
+         //   {
+         //   Message("Strategy2 not found, searching Device Driver chain !");
+         //   pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+         //   }
 
          if ( pVolChars && (pVolChars->VolDescriptor & VC_REMOVABLE_MEDIA) )
             pVolInfo->fRemovable = TRUE;
@@ -730,7 +730,7 @@ int i;
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
-         if (f32Parms.fMessageActive & LOG_FS)
+         if (pDevCaps && f32Parms.fMessageActive & LOG_FS)
             {
             if (pDevCaps->Capabilities & GDC_DD_Read2)
                Message("Read2 supported");
@@ -748,7 +748,7 @@ int i;
                Message(">16M supported");
             }
 
-         if (pDevCaps->Strategy2)
+         if (pDevCaps && pDevCaps->Strategy2)
             {
             if (f32Parms.fMessageActive & LOG_FS)
                {
@@ -840,13 +840,13 @@ int i;
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
-         if (!pDevCaps)
-            {
-            Message("Strategy2 not found, searching Device Driver chain !");
-            pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
-            }
+         //if (!pDevCaps)
+         //   {
+         //   Message("Strategy2 not found, searching Device Driver chain !");
+         //   pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+         //   }
 
-         if (f32Parms.fMessageActive & LOG_FS)
+         if (pDevCaps && f32Parms.fMessageActive & LOG_FS)
             {
             if (pDevCaps->Capabilities & GDC_DD_Read2)
                Message("Read2 supported");
@@ -864,7 +864,7 @@ int i;
                Message(">16M supported");
             }
 
-         if (pDevCaps->Strategy2)
+         if (pDevCaps && pDevCaps->Strategy2)
             {
             if (f32Parms.fMessageActive & LOG_FS)
                {

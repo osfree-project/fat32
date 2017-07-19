@@ -15,7 +15,7 @@
 #include "fat32ifs.h"
 
 PUBLIC BYTE  pascal FS_NAME[8]    ="FAT32";
-PUBLIC ULONG pascal FS_ATTRIBUTE = FSA_LVL7;
+PUBLIC ULONG pascal FS_ATTRIBUTE = FSA_LVL7 | FSA_LOCK;
 
 PUBLIC ULONG     Device_Help = 0L;
 PUBLIC PVOLINFO  pGlobVolInfo = NULL;
@@ -926,9 +926,6 @@ USHORT rc;
 
    if (rc)
       goto FS_FLUSHEXIT;
-
-   if (!f32Parms.usDirtySectors) // vs
-      goto FS_FLUSHEXIT;         //
 
    if (!UpdateFSInfo(pVolInfo))
       {
@@ -3772,6 +3769,9 @@ USHORT rc = 0;
       for (pVolInfo = pGlobVolInfo; pVolInfo;
            pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo)
          {
+            Message("disk: %c: fDiskCleanOnMount=%u", 
+               pVolInfo->bDrive + 'a', pVolInfo->fDiskCleanOnMount);
+
             if (pVolInfo->fWriteProtected)
                continue;
 
@@ -3779,9 +3779,6 @@ USHORT rc = 0;
                continue;
 
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
-
-            //if (!f32Parms.usDirtySectors)
-            //   continue;
 
             UpdateFSInfo(pVolInfo);
             MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
@@ -6997,7 +6994,7 @@ USHORT rc;
 
    pVolInfo = pVolInfo;
 
-   Message("GetFatAccess: %s", pszName);
+   //Message("GetFatAccess: %s", pszName);
    rc = SemRequest(&ulSemRWFat, TO_INFINITE, pszName);
    if (rc)
       {
@@ -7012,7 +7009,7 @@ USHORT rc;
 VOID ReleaseFat(PVOLINFO pVolInfo)
 {
    pVolInfo = pVolInfo;
-   Message("ReleaseFat");
+   //Message("ReleaseFat");
    FSH_SEMCLEAR(&ulSemRWFat);
 }
 

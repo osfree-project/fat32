@@ -515,7 +515,7 @@ ULONG	  ulParm;
 		 }
 	  }
 
-   if ( fForeGround && (*pLoadTranslateTable)(FALSE, TRUE))
+   if ( fForeGround && (*pLoadTranslateTable)(fSilent, TRUE))
    	  fSetParms = TRUE;
 
    if( hMod )
