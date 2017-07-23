@@ -30,8 +30,7 @@ PSZ      szDirLongName;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHDIR, flag %u", usFlag);
+   MessageL(LOG_FS, "FS_CHDIR%m, flag %u", 0x000f, usFlag);
 
    szDirLongName = (PSZ)malloc((size_t)FAT32MAXPATH);
    if (!szDirLongName)
@@ -158,8 +157,7 @@ FS_CHDIREXIT:
    if (szDirLongName)
       free(szDirLongName);
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHDIR returned %u", rc);
+   MessageL(LOG_FS, "FS_CHDIR%m returned %u", 0x800f, rc);
 
    _asm pop es;
 
@@ -194,8 +192,7 @@ ULONG    ulBlock;
 
    usFlags = usFlags;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MKDIR - %s", pName);
+   MessageL(LOG_FS, "FS_MKDIR%m - %s", 0x0010, pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -399,8 +396,7 @@ FS_MKDIREXIT:
       free(pDirSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MKDIR returned %u", rc);
+   MessageL(LOG_FS, "FS_MKDIR%m returned %u", 0x8010, rc);
 
    _asm pop es;
 
@@ -432,8 +428,7 @@ PSHOPENINFO pSHInfo = NULL;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_RMDIR %s", pName);
+   MessageL(LOG_FS, "FS_RMDIR%m %s", 0x0011, pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -705,8 +700,7 @@ FS_RMDIREXIT:
    if (szLongName)
       free(szLongName);
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_RMDIR returned %u", rc);
+   MessageL(LOG_FS, "FS_RMDIR%m returned %u", 0x8011, rc);
 
    _asm pop es;
 

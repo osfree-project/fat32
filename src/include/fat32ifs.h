@@ -366,6 +366,8 @@ IMPORT ULONG FindPathCluster(PVOLINFO pVolInfo, ULONG ulCluster, PSZ pszPath, PS
 IMPORT BOOL RemoveFindEntry(PVOLINFO pVolInfo, PFINFO pFindInfo);
 IMPORT USHORT GetProcInfo(PPROCINFO pProcInfo, USHORT usSize);
 IMPORT VOID cdecl _loadds Message(PSZ pszMessage, ...);
+IMPORT VOID cdecl _loadds MessageL(USHORT usLevel, PSZ pszMessage, ...);
+IMPORT APIRET Trace(const char *fmt, ...);
 IMPORT USHORT cdecl CritMessage(PSZ pszMessage, ...);
 IMPORT VOID cdecl FatalMessage(PSZ pszMessage, ...);
 IMPORT VOID InternalError(PSZ pszMessage);

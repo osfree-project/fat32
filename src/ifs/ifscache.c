@@ -242,12 +242,9 @@ char far *p;
       return 0;
 
 #if 0
-   if (f32Parms.fMessageActive & LOG_CACHE)
-      {
-      if (ulSector > pVolInfo->ulStartOfData)
-         Message("Cluster %lu not found in cache!",
-            (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
-      }
+   if (ulSector > pVolInfo->ulStartOfData)
+      MessageL(LOG_CACHE, "Cluster%m %lu not found in cache!", 0x4062,
+               (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
 #endif
    pbSectors = NULL;
    if (( ulSector >= pVolInfo->ulStartOfData ) &&
@@ -388,8 +385,7 @@ char *p;
    rc = 0;
    if (!f32Parms.fLW || (usIOMode & DVIO_OPWRTHRU) || (usIOMode & DVIO_OPNCACHE))
       {
-      if (f32Parms.fLW && f32Parms.fMessageActive & LOG_CACHE)
-         Message("WriteSector: Writing sector thru");
+      MessageL(LOG_CACHE, "WriteSector%m: Writing sector thru", 0x4063);
       pVolInfo->ulLastDiskTime = GetCurTime();
       rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
       if (rc && rc != ERROR_WRITE_PROTECT )
@@ -573,9 +569,7 @@ PCACHEBASE2 pBase2;
             {
 
 #ifdef WAIT_THRESHOLD
-                if (f32Parms.fMessageActive & LOG_CACHE ||
-                    f32Parms.fMessageActive & LOG_WAIT)
-                    Message("waiting for dirty sectors to be less than threshold...");
+                MessageL(LOG_CACHE | LOG_WAIT, "waiting for dirty sectors to be less than threshold%m...", 0x4064);
 
                 FSH_SEMSET(&ulSemEmergencyDone);
                 if (FSH_SEMCLEAR(&ulSemEmergencyTrigger) == NO_ERROR)
@@ -962,14 +956,13 @@ ULONG  ulCurTime = GetCurTime();
          rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
          usCBIndex = usCBIndexNew;
          }
-      if (f32Parms.fMessageActive & LOG_CACHE && usCount > 0)
-         Message("%u sectors LAZY flushed, still %u dirty", usCount, f32Parms.usDirtySectors);
+      if (usCount > 0)
+         MessageL(LOG_CACHE, "%m%u sectors LAZY flushed, still %u dirty", 0x8065, usCount, f32Parms.usDirtySectors);
 
       return 0;
       }
 
-   if (f32Parms.fMessageActive & LOG_CACHE)
-      Message("usFlushVolume ALL");
+   MessageL(LOG_CACHE, "usFlushVolume%m ALL", 0x4066);
 
    usCBIndex = 0;
    for (usCBIndex = 0; ( f32Parms.usDirtySectors || usFlag == FLUSH_DISCARD ) &&
@@ -997,8 +990,7 @@ ULONG  ulCurTime = GetCurTime();
          rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
       }
 
-   if (f32Parms.fMessageActive & LOG_CACHE)
-      Message("%u sectors flushed, still %u dirty", usCount, f32Parms.usDirtySectors);
+   MessageL(LOG_CACHE, "%m%u sectors flushed, still %u dirty", 0x8167, usCount, f32Parms.usDirtySectors);
    return 0;
 }
 
@@ -1077,8 +1069,7 @@ PVOLINFO pVolInfo;
 
    pVolInfo->ulLastDiskTime = GetCurTime();
 
-   if (f32Parms.fMessageActive & LOG_CACHE)
-      Message("usEmergencyFlush: %u sectors flushed, still %u dirty", usCount, f32Parms.usDirtySectors);
+   MessageL(LOG_CACHE, "usEmergencyFlush%m: %u sectors flushed, still %u dirty", 0x8168, usCount, f32Parms.usDirtySectors);
 
    return 0;
 }

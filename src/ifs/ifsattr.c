@@ -36,8 +36,7 @@ USHORT rc;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEATTRIBUTE, Flag = %X for %s", usFlag, pName);
+   MessageL(LOG_FS, "FS_FILEATTRIBUTE%m, Flag = %X for %s", 0x000d, usFlag, pName);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -229,8 +228,7 @@ FS_FILEATTRIBUTEEXIT:
       free(pDirSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEATTRIBUTE returned %d", rc);
+   MessageL(LOG_FS, "FS_FILEATTRIBUTE%m returned %d", 0x800d, rc);
 
    _asm pop es;
 
@@ -265,9 +263,8 @@ USHORT rc;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_PATHINFO Flag = %d, Level = %d called for %s, cbData = %u",
-          usFlag, usLevel, pName, cbData);
+   MessageL(LOG_FS, "FS_PATHINFO%m Flag = %d, Level = %d called for %s, cbData = %u",
+            0x000e, usFlag, usLevel, pName, cbData);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -1135,8 +1132,7 @@ FS_PATHINFOEXIT:
       free(pDirSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_PATHINFO returned %u", rc);
+   MessageL(LOG_FS, "FS_PATHINFO%m returned %u", 0x800e, rc);
 
    _asm pop es;
 

@@ -133,14 +133,12 @@ if( tSize > 0 )
       }
    }
 
-   if (f32Parms.fMessageActive & LOG_MEM)
-      Message("Malloc failed, calling gdtAlloc");
+   MessageL(LOG_MEM, "Malloc failed, calling gdtAlloc%m", 0x4069);
    pRet = gdtAlloc(tSize ? ( ULONG )tSize : 65536L, TRUE);
 
 malloc_exit:
 
-   if (f32Parms.fMessageActive & LOG_MEM)
-      Message("malloc %lu bytes at %lX", tSize ? ( ULONG )tSize : 65536L, pRet);
+   MessageL(LOG_MEM, "malloc%m %lu bytes at %lX", 0x806a, tSize ? ( ULONG )tSize : 65536L, pRet);
 
    ReleaseMemAccess();
    return pRet;
@@ -205,8 +203,7 @@ BYTE _huge * pPrev;
 BYTE _huge * pNext;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_MEM)
-      Message("free %lX", pntr);
+   MessageL(LOG_MEM, "free%m %lX", 0x006c, pntr);
 
    if (fRing3)
       {
@@ -333,8 +330,7 @@ VOID GetMemAccess(VOID)
 {
     APIRET rc;
 
-    if (f32Parms.fMessageActive & LOG_WAIT)
-        Message("Waiting for a heap access");
+    MessageL(LOG_WAIT, "Waiting for a heap access%m", 0x4070);
 
     rc = FSH_SEMREQUEST(&ulMemSem,-1);
     if (rc == NO_ERROR)

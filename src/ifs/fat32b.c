@@ -57,8 +57,8 @@ PDIRENTRY pDirEntry;
 PDIRENTRY1 pDirEntry1;
 PSZ    p;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("FindDirCluster for %s, CurDirEnd %u, AttrWanted %u", pDir, usCurDirEnd, usAttrWanted );
+   MessageL(LOG_FUNCS, "FindDirCluster%m for %s, CurDirEnd %u, AttrWanted %u",
+            0x0031, pDir, usCurDirEnd, usAttrWanted );
 
    if (pcdfsi &&
       (pcdfsi->cdi_flags & CDI_ISVALID) &&
@@ -123,8 +123,7 @@ PSZ    p;
    ulCluster = FindPathCluster(pVolInfo, ulCluster, szDir, NULL, pDirEntry, pStreamEntry, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("FindDirCluster for '%s', not found", szDir);
+      MessageL(LOG_FUNCS, "FindDirCluster%m for '%s', not found", 0x4002, szDir);
       free(szDir);
       free(pDirEntry);
       return pVolInfo->ulFatEof;
@@ -137,8 +136,7 @@ PSZ    p;
        !(pDirEntry->bAttr & FILE_DIRECTORY) )
 #endif
       {
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("FindDirCluster for '%s', not a directory", szDir);
+      MessageL(LOG_FUNCS, "FindDirCluster%m for '%s', not a directory", 0x4003, szDir);
       free(szDir);
       free(pDirEntry);
       return pVolInfo->ulFatEof;
@@ -205,8 +203,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
       USHORT usSectorsRead;
       USHORT usSectorsPerBlock;
 
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
+      MessageL(LOG_FUNCS, "FindPathCluster%m for %s, dircluster %lu", 0x0032, pszPath, ulCluster);
 
       if (ulCluster == 1)
          {
@@ -413,13 +410,10 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
       free(pDirStart);
       free(pszLongName);
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         {
-         if (ulCluster != pVolInfo->ulFatEof)
-            Message("FindPathCluster for %s found cluster %ld", pszPath, ulCluster);
-         else
-            Message("FindPathCluster for %s returned EOF", pszPath);
-         }
+      if (ulCluster != pVolInfo->ulFatEof)
+         MessageL(LOG_FUNCS, "FindPathCluster%m for %s found cluster %ld", 0x8032, pszPath, ulCluster);
+      else
+         MessageL(LOG_FUNCS, "FindPathCluster%m for %s returned EOF", 0x8033, pszPath);
       return ulCluster;
       }
 #ifdef EXFAT
@@ -435,8 +429,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
       USHORT usNumSecondary;
       USHORT usFileAttr;
 
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("FindPathCluster for %s, dircluster %lu", pszPath, ulCluster);
+      MessageL(LOG_FUNCS, "FindPathCluster%m for %s, dircluster %lu", 0x0032, pszPath, ulCluster);
 
       if (pDirEntry1)
          {
@@ -641,13 +634,10 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
       free(pDirStart);
       free(pszLongName);
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         {
-         if (ulCluster != pVolInfo->ulFatEof)
-            Message("FindPathCluster for %s found cluster %ld", pszPath, ulCluster);
-         else
-            Message("FindPathCluster for %s returned EOF", pszPath);
-         }
+      if (ulCluster != pVolInfo->ulFatEof)
+         MessageL(LOG_FUNCS, "FindPathCluster%m for %s found cluster %ld", 0x8032, pszPath, ulCluster);
+      else
+         MessageL(LOG_FUNCS, "FindPathCluster%m for %s returned EOF", 0x8033, pszPath);
       return ulCluster;
       }
 #endif
@@ -675,8 +665,7 @@ USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 ULONG  ulDirEntries = 0;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("TranslateName: %s", pszPath);
+   MessageL(LOG_FUNCS, "TranslateName%m: %s", 0x0034, pszPath);
 
    memset(pszTarget, 0, FAT32MAXPATH);
    if (strlen(pszPath) >= 2)
@@ -967,9 +956,8 @@ USHORT    rc;
       PDIRENTRY pDirNew;
       PDIRENTRY pLNStart;
 
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("ModifyDirectory DirCluster %ld, Mode = %d",
-            ulDirCluster, usMode);
+      MessageL(LOG_FUNCS, "ModifyDirectory%m DirCluster %ld, Mode = %d",
+               0x0035, ulDirCluster, usMode);
 
       pDirNew = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
       if (!pDirNew)
@@ -1149,8 +1137,7 @@ USHORT    rc;
                      switch (usMode)
                         {
                         case MODIFY_DIR_UPDATE:
-                           if (f32Parms.fMessageActive & LOG_FUNCS)
-                              Message(" Updating cluster");
+                           MessageL(LOG_FUNCS, " Updating cluster%m", 0x4009);
                            memcpy(pWork, pNew, sizeof (DIRENTRY));
                            if (ulCluster == 1)
                               // reading root directory on FAT12/FAT16
@@ -1168,13 +1155,11 @@ USHORT    rc;
 
                         case MODIFY_DIR_DELETE:
                         case MODIFY_DIR_RENAME:
-                           if (f32Parms.fMessageActive & LOG_FUNCS)
-                              Message(" Removing entry from cluster");
+                           MessageL(LOG_FUNCS, " Removing entry from cluster%m", 0x400a);
                            pWork2 = pLNStart;
                            while (pWork2 < pWork)
                               {
-                              if (f32Parms.fMessageActive & LOG_FUNCS)
-                                 Message("Deleting Longname entry.");
+                              MessageL(LOG_FUNCS, "Deleting Longname entry.%m", 0x400b);
                               pWork2->bFileName[0] = DELETED_ENTRY;
                               pWork2++;
                               }
@@ -1239,8 +1224,7 @@ USHORT    rc;
                      {
                      BYTE bCheck = GetVFATCheckSum(pDirNew);
 
-                     if (f32Parms.fMessageActive & LOG_FUNCS)
-                        Message(" Inserting entry into 2 clusters");
+                     MessageL(LOG_FUNCS, " Inserting entry into 2 clusters%m", 0x400c);
 
                      pWork = CompactDir(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
                      pWork = fSetLongName(pWork, pszLongName, bCheck);
@@ -1278,8 +1262,7 @@ USHORT    rc;
                      {
                      BYTE bCheck = GetVFATCheckSum(pDirNew);
 
-                     if (f32Parms.fMessageActive & LOG_FUNCS)
-                        Message(" Inserting entry into 1 cluster");
+                     MessageL(LOG_FUNCS, " Inserting entry into 1 cluster%m", 0x400d);
 
                      pWork = CompactDir(pDir2, ulBytesToRead, usEntriesNeeded);
                      pWork = fSetLongName(pWork, pszLongName, bCheck);
@@ -1434,9 +1417,8 @@ USHORT    rc;
       USHORT    usNameHash;
       BOOL      fFound;
 
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("ModifyDirectory DirCluster %ld, Mode = %d",
-            ulDirCluster, usMode);
+      MessageL(LOG_FUNCS, "ModifyDirectory%m DirCluster %ld, Mode = %d",
+               0x0035, ulDirCluster, usMode);
 
       pDirNew = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
       if (!pDirNew)
@@ -1633,8 +1615,7 @@ USHORT    rc;
                      switch (usMode)
                         {
                         case MODIFY_DIR_UPDATE:
-                           if (f32Parms.fMessageActive & LOG_FUNCS)
-                              Message(" Updating cluster");
+                           MessageL(LOG_FUNCS, " Updating cluster%m", 0x4009);
                            memcpy(pWorkFile, pNew, sizeof (DIRENTRY1));
                            if (pStreamNew)
                               {
@@ -1658,14 +1639,12 @@ USHORT    rc;
 
                         case MODIFY_DIR_DELETE:
                         case MODIFY_DIR_RENAME:
-                           if (f32Parms.fMessageActive & LOG_FUNCS)
-                              Message(" Removing entry from cluster");
+                           MessageL(LOG_FUNCS, " Removing entry from cluster%m", 0x400a);
                            pWork2 = pLNStart;
                            //while (pWork2 < pWork)
                            for (usIndex = 0; usIndex < usNumSecondary - 1; usIndex++)
                               {
-                              if (f32Parms.fMessageActive & LOG_FUNCS)
-                                 Message("Deleting Longname entry.");
+                              MessageL(LOG_FUNCS, "Deleting Longname entry.%m", 0x400b);
                               //pWork2->bFileName[0] = DELETED_ENTRY;
                               pWork2->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
                               pWork2++;
@@ -1736,8 +1715,7 @@ USHORT    rc;
                      PDIRENTRY1 pWork3;
                      //BYTE bCheck = GetVFATCheckSum(pDirNew);
 
-                     if (f32Parms.fMessageActive & LOG_FUNCS)
-                        Message(" Inserting entry into 2 clusters");
+                     MessageL(LOG_FUNCS, " Inserting entry into 2 clusters%m", 0x400c);
 
                      pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
                      //pWork = fSetLongName(pWork, pszLongName, bCheck);
@@ -1784,8 +1762,7 @@ USHORT    rc;
                      PDIRENTRY1 pWork3;
                      //BYTE bCheck = GetVFATCheckSum(pDirNew);
 
-                     if (f32Parms.fMessageActive & LOG_FUNCS)
-                        Message(" Inserting entry into 1 cluster");
+                     MessageL(LOG_FUNCS, " Inserting entry into 1 cluster%m", 0x400d);
 
                      pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
                      pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);

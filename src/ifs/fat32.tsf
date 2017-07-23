@@ -1,0 +1,1515 @@
+MODNAME       = fat32.ifs
+MAJOR         = 0xfe
+MAXDATALENGTH = 512
+
+TYPELIST NAME=PRE,ID=1,
+         NAME=MID,ID=0x4000,
+         NAME=POST,ID=0x8000
+
+GROUPLIST
+   NAME=FS,ID=1,
+   NAME=FUNCS,ID=2,
+   NAME=CACHE,ID=3,
+   NAME=MEM,ID=4,
+   NAME=FIND,ID=5,
+   NAME=OTHER,ID=6,
+   NAME=EAS,ID=7,
+   NAME=WAIT,ID=8
+          
+TRACE MINOR=0x0001
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_MOUNT pre-invocation",
+   FMT="FS_MOUNT for %C (%W):, flag = %W",
+
+TRACE MINOR=0x8001
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_MOUNT post-invocation",
+   FMT="FS_MOUNT returned %W",
+
+TRACE MINOR=0x0002
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_OPENPAGEFILE pre-invocation",
+   FMT="FS_OPENPAGEFILE pName=%S OpenMode=%W, OpenFlag=%W Attr=%W",
+
+TRACE MINOR=0x8002
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_OPENPAGEFILE post-invocation",
+   FMT="FS_OPENPAGEFILE returned %W",
+
+TRACE MINOR=0x0003
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_ALLOCATEPAGESPACE pre-invocation",
+   FMT="FS_ALLOCATEPAGESPACE size=%D contig=%D",
+
+TRACE MINOR=0x8003
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_ALLOCATEPAGESPACE post-invocation",
+   FMT="FS_ALLOCATEPAGESPACE returned %W",
+
+TRACE MINOR=0x0004
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_DOPAGEIO pre-invocation",
+   FMT="FS_DOPAGEIO",
+
+TRACE MINOR=0x8004
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_DOPAGEIO post-invocation",
+   FMT="FS_DOPAGEIO returned %W",
+
+TRACE MINOR=0x0005
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDCLOSE pre-invocation",
+   FMT="FS_FINDCLOSE",
+
+TRACE MINOR=0x0006
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDFIRST pre-invocation",
+   FMT="FS_FINDFIRST for %S attr %W, Level %W, cbData %W, MaxEntries %W",
+
+TRACE MINOR=0x8006
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FINDFIRST post-invocation",
+   FMT="FS_FINDFIRST returned %W (%W entries)",
+
+TRACE MINOR=0x0007
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDFIRST pre-invocation",
+   FMT="FS_FINDFIRST for %S attr %W, Level %W, cbData %W, MaxEntries %W",
+
+TRACE MINOR=0x8007
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FINDFIRST post-invocation",
+   FMT="FS_FINDFIRST returned %W (%W entries)",
+
+TRACE MINOR=0x0008
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDNEXT pre-invocation",
+   FMT="FS_FINDNEXT, level %W, cbData %W, MaxEntries %W",
+
+TRACE MINOR=0x8008
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FINDNEXT post-invocation",
+   FMT="FS_FINDNEXT returned %W (%W entries)",
+
+TRACE MINOR=0x0009
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDFROMNAME pre-invocation",
+   FMT="FS_FINDFROMNAME, curpos = %D, requested %D",
+
+TRACE MINOR=0x000a
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDNOTIFYCLOSE pre-invocation",
+   FMT="FS_FINDNOTIFYCLOSE - NOT SUPPORTED",
+
+TRACE MINOR=0x000b
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDNOTIFYFIRST pre-invocation",
+   FMT="FS_FINDNOTIFYFIRST - NOT SUPPORTED",
+
+TRACE MINOR=0x000c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FINDNOTIFYNEXT pre-invocation",
+   FMT="FS_FINDNOTIFYNEXT - NOT SUPPORTED",
+
+TRACE MINOR=0x000d
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FILEATTRIBUTE pre-invocation",
+   FMT="FS_FILEATTRIBUTE, Flag = %W for %S",
+
+TRACE MINOR=0x800d
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FILEATTRIBUTE post-invocation",
+   FMT="FS_FILEATTRIBUTE returned %W"
+
+TRACE MINOR=0x000e
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_PATHINFO pre-invocation",
+   FMT="FS_PATHINFO Flag = %W, Level = %W called for %S, cbData = %W",
+
+TRACE MINOR=0x800e
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_PATHINFO post-invocation",
+   FMT="FS_PATHINFO returned %W"
+
+TRACE MINOR=0x000f
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CHDIR pre-invocation",
+   FMT="FS_CHDIR, flag %W",
+
+TRACE MINOR=0x800f
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_CHDIR post-invocation",
+   FMT="FS_CHDIR returned %W"
+
+TRACE MINOR=0x0010
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_MKDIR pre-invocation",
+   FMT="FS_MKDIR - %S",
+
+TRACE MINOR=0x8010
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_MKDIR post-invocation",
+   FMT="FS_MKDIR returned %W"
+
+TRACE MINOR=0x0011
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_RMDIR pre-invocation",
+   FMT="FS_RMDIR %S",
+
+TRACE MINOR=0x8011
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_RMDIR post-invocation",
+   FMT="FS_RMDIR returned %W"
+
+TRACE MINOR=0x0012
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_OPENCREATE pre-invocation",
+   FMT="FS_OPENCREATE for %S mode %D, Flag %W, IOMode %W, selfsfn=%W",
+
+TRACE MINOR=0x0013
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_OPENCREATE pre-invocation",
+   FMT="              attribute %W, pEABuf %D",
+
+TRACE MINOR=0x8012
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_OPENCREATE post-invocation",
+   FMT="FS_OPENCREATE returned %W (Action = %W, OI=%D)"
+
+TRACE MINOR=0x0014
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CLOSE pre-invocation",
+   FMT="FS_CLOSE (DASD) type %W:",
+
+TRACE MINOR=0x0015
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CLOSE pre-invocation",
+   FMT="FS_CLOSE of %S, type = %W OI=%D",
+
+TRACE MINOR=0x8014
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_CLOSE post-invocation",
+   FMT="FS_CLOSE returned %W"
+
+TRACE MINOR=0x0016
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_READ pre-invocation",
+   FMT="FS_READ, %W bytes at offset %D%D",
+
+TRACE MINOR=0x8016
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_READ post-invocation",
+   FMT="FS_READ returned %W (%W bytes read)"
+
+TRACE MINOR=0x0017
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_WRITE pre-invocation",
+   FMT="FS_WRITE, %W bytes at offset %D%D, pData=%D, Len=%W, ioflag %W, size = %D%D",
+
+TRACE MINOR=0x8017
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_WRITE post-invocation",
+   FMT="FS_WRITE returned %W (%W bytes written)"
+
+TRACE MINOR=0x0018
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CANCELLOCKREQUESTL pre-invocation",
+   FMT="FS_CANCELLOCKREQUESTL - NOT SUPPORTED",
+
+TRACE MINOR=0x0019
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CANCELLOCKREQUEST pre-invocation",
+   FMT="FS_CANCELLOCKREQUEST",
+
+TRACE MINOR=0x001a
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CHGFILEPTRL pre-invocation",
+   FMT="FS_CHGFILEPTRL, Mode %W - offset %D%D current offset=%D%D",
+
+TRACE MINOR=0x801a
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_CHGFILEPTRL post-invocation",
+   FMT="FS_CHGFILEPTRL returned %W",
+
+TRACE MINOR=0x001b
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_CHGFILEPTR pre-invocation",
+   FMT="FS_CHGFILEPTR, Mode %W - offset %D, current offset=%D%D",
+
+TRACE MINOR=0x801b
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_CHGFILEPTR post-invocation",
+   FMT="FS_CHGFILEPTR returned %W",
+
+TRACE MINOR=0x001c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_COMMIT pre-invocation",
+   FMT="FS_COMMIT, type %W",
+
+TRACE MINOR=0x801c
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_COMMIT post-invocation",
+   FMT="FS_COMMIT returned %W",
+
+TRACE MINOR=0x001d
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FILELOCKSL pre-invocation",
+   FMT="FS_FILELOCKSL - NOT SUPPORTED",
+
+TRACE MINOR=0x001e
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FILELOCKS pre-invocation",
+   FMT="FS_FILELOCKS",
+
+TRACE MINOR=0x001f
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_NEWSIZEL pre-invocation",
+   FMT="FS_NEWSIZEL newsize = %D%D",
+
+TRACE MINOR=0x801f
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_NEWSIZEL post-invocation",
+   FMT="FS_NEWSIZEL returned %W",
+
+TRACE MINOR=0x0020
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_NEWSIZE pre-invocation",
+   FMT="FS_NEWSIZE newsize = %D",
+
+TRACE MINOR=0x8020
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_NEWSIZE post-invocation",
+   FMT="FS_NEWSIZE returned %W",
+
+TRACE MINOR=0x0021
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FILEINFO pre-invocation",
+   FMT="FS_FILEINFO for %S, usFlag = %W, level %W",
+
+TRACE MINOR=0x8021
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FILEINFO post-invocation",
+   FMT="FS_FILEINFO returned %W",
+
+TRACE MINOR=0x0022
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FILEIO pre-invocation",
+   FMT="FS_FILEIO",
+
+TRACE MINOR=0x8022
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FILEIO post-invocation",
+   FMT="FS_FILEIO returned %W",
+
+TRACE MINOR=0x0023
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_NMPIPE pre-invocation",
+   FMT="FS_NMPIPE - NOT SUPPORTED",
+
+TRACE MINOR=0x0024
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_ATTACH pre-invocation",
+   FMT="FS_ATTACH - NOT SUPPORTED",
+
+TRACE MINOR=0x0025
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_COPY pre-invocation",
+   FMT="FS_COPY %S to %S, mode %W",
+
+TRACE MINOR=0x8025
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_COPY post-invocation",
+   FMT="FS_COPY returned %W",
+
+TRACE MINOR=0x0026
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_DELETE pre-invocation",
+   FMT="FS_DELETE for %S",
+
+TRACE MINOR=0x8026
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_DELETE post-invocation",
+   FMT="FS_DELETE returned %W",
+
+TRACE MINOR=0x0027
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_EXIT pre-invocation",
+   FMT="FS_EXIT for PID: %W, PDB %W",
+
+TRACE MINOR=0x0028
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FLUSHBUF pre-invocation",
+   FMT="FS_FLUSHBUF, flag = %W",
+
+TRACE MINOR=0x8028
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FLUSHBUF post-invocation",
+   FMT="FS_FLUSHBUF returned %W",
+
+TRACE MINOR=0x0029
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FSCTL pre-invocation",
+   FMT="FS_FSCTL, Func = %W",
+
+TRACE MINOR=0x8029
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FSCTL post-invocation",
+   FMT="FS_FSCTL returned %W",
+
+TRACE MINOR=0x002a
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_FSINFO pre-invocation",
+   FMT="FS_FSINFO, Flag = %W, Level = %W",
+
+TRACE MINOR=0x802a
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_FSINFO post-invocation",
+   FMT="FS_FSINFO returned %W",
+
+TRACE MINOR=0x002b
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_IOCTL pre-invocation",
+   FMT="FS_IOCTL, Cat %W, Func %W, File# %W",
+
+TRACE MINOR=0x802b
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_IOCTL post-invocation",
+   FMT="FS_IOCTL returned %W",
+
+TRACE MINOR=0x002c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_MOVE pre-invocation",
+   FMT="FS_MOVE %S to %S",
+
+TRACE MINOR=0x802c
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_MOVE post-invocation",
+   FMT="FS_MOVE returned %W",
+
+TRACE MINOR=0x002d
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_PROCESSNAME pre-invocation",
+   FMT="FS_PROCESSNAME for %S",
+
+TRACE MINOR=0x802d
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_PROCESSNAME post-invocation",
+   FMT=" FS_PROCESSNAME returned filename: %S",
+
+TRACE MINOR=0x002e
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_SHUTDOWN pre-invocation",
+   FMT="FS_SHUTDOWN, Type = %W",
+
+TRACE MINOR=0x802e
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=FS,
+   DESC="FS_SHUTDOWN post-invocation",
+   FMT="FS_SHUTDOWN returned %W",
+
+TRACE MINOR=0x002f
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FS,
+   DESC="FS_VERIFYUNCNAME pre-invocation",
+   FMT="FS_VERIFYUNCNAME - NOT SUPPORTED",
+
+TRACE MINOR=0x0030
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="CheckWriteProtect pre-invocation",
+   FMT="CheckWriteProtect",
+
+TRACE MINOR=0x0031
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="FindDirCluster pre-invocation",
+   FMT="FindDirCluster for %S, CurDirEnd %W, AttrWanted %W",
+
+TRACE MINOR=0x4002
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FindDirCluster",
+   FMT="FindDirCluster%m for '%s', not found",
+
+TRACE MINOR=0x4003
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FindDirCluster",
+   FMT="FindDirCluster for '%S', not a directory",
+
+TRACE MINOR=0x0032
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="FindPathCluster pre-invocation",
+   FMT="FindPathCluster for %S, dircluster %D",
+
+TRACE MINOR=0x8032
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FindPathCluster",
+   FMT="FindPathCluster for %S found cluster %D",
+
+TRACE MINOR=0x8033
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FindPathCluster",
+   FMT="FindPathCluster for %S returned EOF",
+
+TRACE MINOR=0x0034
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="TranslateName pre-invocation",
+   FMT="TranslateName: %S",
+
+TRACE MINOR=0x0035
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory pre-invocation",
+   FMT="ModifyDirectory DirCluster %D, Mode = %W",
+
+TRACE MINOR=0x4009
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory",
+   FMT=" Updating cluster",
+
+TRACE MINOR=0x400a
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory",
+   FMT=" Removing entry from cluster",
+
+TRACE MINOR=0x400b
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory",
+   FMT="Deleting Longname entry",
+
+TRACE MINOR=0x400c
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory",
+   FMT=" Inserting entry into 2 clusters",
+
+TRACE MINOR=0x400d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="ModifyDirectory",
+   FMT=" Inserting entry into 1 cluster",
+
+TRACE MINOR=0x400e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FS_EXIT",
+   FMT="Still findinfo's allocated",
+
+TRACE MINOR=0x400f
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FS_EXIT",
+   FMT="Removing a FINDINFO",
+
+TRACE MINOR=0x4010
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="FS_EXIT",
+   FMT="DOS Free space: sc: %D tc: %D fc: %D",
+
+TRACE MINOR=0x0036
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetSetFileEAS pre-invocation",
+   FMT="GetSetFileEAS",
+
+TRACE MINOR=0x0037
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="gdtAlloc pre-invocation",
+   FMT="gdtAlloc for %D bytes",
+
+TRACE MINOR=0x0038
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ldtAlloc pre-invocation",
+   FMT="ldtAlloc for %D bytes",
+
+TRACE MINOR=0x0039
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="linAlloc pre-invocation",
+   FMT="linAlloc for %D bytes",
+
+TRACE MINOR=0x4015
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="linAlloc",
+   FMT="ERROR: linalloc failed, rc = %W",
+
+TRACE MINOR=0x4016
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="linAlloc",
+   FMT="ERROR: linalloc VMAlloc failed, rc = %W",
+
+TRACE MINOR=0x0040
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="freeseg pre-invocation",
+   FMT="freeseg",
+
+TRACE MINOR=0x041
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ReadBlock pre-invocation",
+   FMT="ReadBlock %D",
+
+TRACE MINOR=0x0042
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="WriteBlock pre-invocation",
+   FMT="WriteBlock %D",
+
+TRACE MINOR=0x0043
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ReadFatSector pre-invocation",
+   FMT="ReadFatSector",
+
+TRACE MINOR=0x0044
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="WriteFatSector pre-invocation",
+   FMT="WriteFatSector",
+
+TRACE MINOR=0x0045
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ReadBmpSector pre-invocation",
+   FMT="ReadBmpSector",
+
+TRACE MINOR=0x0046
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="WriteBmpSector pre-invocation",
+   FMT="WriteBmpSector",
+
+TRACE MINOR=0x0047
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetNextCluster pre-invocation",
+   FMT="GetNextCluster for %D",
+
+TRACE MINOR=0x0048
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="ClusterInUse pre-invocation",
+   FMT="ClusterInUse for %D",
+
+TRACE MINOR=0x0049
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MarkCluster pre-invocation",
+   FMT="MarkCluster for %D",
+
+TRACE MINOR=0x004a
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetFreeSpace pre-invocation",
+   FMT="GetFreeSpace",
+
+TRACE MINOR=0x004b
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MakeFatChain pre-invocation",
+   FMT="MakeFatChain, %D clusters",
+
+TRACE MINOR=0x4023
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="MakeFatChain",
+   FMT="No contiguous block found, restarting at cluster 2",
+
+TRACE MINOR=0x4024
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="MakeFatChain",
+   FMT="Contiguous chain returned, first = %D",
+
+TRACE MINOR=0x4025
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="MakeFatChain",
+   FMT="NON Contiguous chain returned, first = %D",
+
+TRACE MINOR=0x4026
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FUNCS,
+   DESC="MakeFatChain",
+   FMT="No contiguous block found, largest found is %D clusters",
+
+TRACE MINOR=0x004c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MakeChain pre-invocation",
+   FMT="MakeChain",
+
+TRACE MINOR=0x004d
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="UpdateFSInfo pre-invocation",
+   FMT="UpdateFSInfo",
+
+TRACE MINOR=0x004e
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MarkDiskStatus pre-invocation",
+   FMT="MarkDiskStatus, %W",
+
+TRACE MINOR=0x004f
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="SetNextCluster pre-invocation",
+   FMT="SetNextCluster",
+
+TRACE MINOR=0x0050
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetFreeCluster pre-invocation",
+   FMT="GetFreeCluster",
+
+TRACE MINOR=0x0051
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="RemoveFindEntry pre-invocation",
+   FMT="RemoveFindEntry",
+
+TRACE MINOR=0x0052
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MakeDirEntry pre-invocation",
+   FMT="MakeDirEntry %S",
+
+TRACE MINOR=0x0053
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="MakeShortName pre-invocation",
+   FMT="MakeShortName for %S, dircluster %D",
+
+TRACE MINOR=0x0054
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="DeleteFatChain pre-invocation",
+   FMT="DeleteFatChain for cluster %D",
+
+TRACE MINOR=0x0055
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="DeleteFatChain",
+   FMT="DeleteFatChain for invalid cluster %D (ERROR)",
+
+TRACE MINOR=0x0056
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="SeekToCluster pre-invocation",
+   FMT="SeekToCluster",
+
+TRACE MINOR=0x0057
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetLastCluster pre-invocation",
+   FMT="GetLastCluster",
+
+TRACE MINOR=0x0058
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="CopyChain pre-invocation",
+   FMT="CopyChain, cluster %D",
+
+TRACE MINOR=0x0059
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=FUNCS,
+   DESC="GetChainSize pre-invocation",
+   FMT="GetChainSize",
+
+TRACE MINOR=0x005a
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=EAS,
+   DESC="usModifyEAS pre-invocation",
+   FMT="usModifyEAS for %S",
+
+TRACE MINOR=0x4036
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usModifyEAS",
+   FMT="cbList before = %D",
+
+TRACE MINOR=0x4037
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usModifyEAS",
+   FMT="Inserting EA '%S' (%W,%W)",
+
+TRACE MINOR=0x4038
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usModifyEAS",
+   FMT="Updating EA '%S' (%W,%W)",
+
+TRACE MINOR=0x4039
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usModifyEAS",
+   FMT="cbList after = %D",
+
+TRACE MINOR=0x805a
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usModifyEAS post-invocation",
+   FMT="usModifyEAS for %S returned %W",
+
+TRACE MINOR=0x005b
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=EAS,
+   DESC="usGetEASSize pre-invocation",
+   FMT="usGetEASSize for %S",
+
+TRACE MINOR=0x805b
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usGetEASize post-invocation",
+   FMT="usGetEASize for %S returned %W (%W bytes large)",
+
+TRACE MINOR=0x005c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=EAS,
+   DESC="usGetEAS pre-invocation",
+   FMT="usGetEAS for %S Level %W",
+
+TRACE MINOR=0x403c
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usGetEAS",
+   FMT="Found %S",
+
+TRACE MINOR=0x403d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usGetEAS",
+   FMT="usGetEAS: %S not found!",
+
+TRACE MINOR=0x403e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usGetEAS",
+   FMT="Found %S (%W,%W)",
+
+TRACE MINOR=0x805c
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usGetEAS post-invocation",
+   FMT="usGetEAS for %S returned %W (%D bytes in EAS)",
+
+TRACE MINOR=0x805d
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usCopyEAS post-invocation",
+   FMT="usCopyEAS for returned %W",
+
+TRACE MINOR=0x805e
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usMoveEAS post-invocation",
+   FMT="usMoveEAS for returned %W",
+
+TRACE MINOR=0x4041
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usReadEAS",
+   FMT="usReadEAS: Reading (1) cluster %D",
+
+TRACE MINOR=0x4042
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usReadEAS",
+   FMT="usReadEAS%m: %u clusters used",
+
+TRACE MINOR=0x4043
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=EAS,
+   DESC="usReadEAS",
+   FMT="usReadEAS: Reading (2) cluster %D, block %D",
+
+TRACE MINOR=0x805f
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=EAS,
+   DESC="usDeleteEAS post-invocation",
+   FMT="usDeleteEAS for %S returned %W",
+
+TRACE MINOR=0x0060
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=EAS,
+   DESC="FindEA pre-invocation",
+   FMT="FindEA '%S'",
+
+TRACE MINOR=0x0061
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=EAS,
+   DESC="usGetEmptyEAS pre-invocation",
+   FMT="usGetEmptyEAS for %S with pEAOP %D",
+
+TRACE MINOR=0x4062
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=CACHE,
+   DESC="ReadSector",
+   FMT="Cluster %W not found in cache!",
+
+TRACE MINOR=0x4063
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=CACHE,
+   DESC="WriteSector",
+   FMT="WriteSector: Writing sector thru",
+
+TRACE MINOR=0x4064
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=CACHE,
+   DESC="fStoreSector",
+   FMT="waiting for dirty sectors to be less than threshold%m...",
+
+TRACE MINOR=0x8065
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=CACHE,
+   DESC="usFlushVolume",
+   FMT="%W sectors LAZY flushed, still %W dirty",
+
+TRACE MINOR=0x4066
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=CACHE,
+   DESC="usFlushVolume",
+   FMT="usFlushVolume ALL",
+
+TRACE MINOR=0x8167
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=CACHE,
+   DESC="usFlushVolume",
+   FMT="%W sectors flushed, still %W dirty",
+
+TRACE MINOR=0x8168
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=CACHE,
+   DESC="usEmergencyFlush",
+   FMT="usEmergencyFlush: %W sectors flushed, still %W dirty",
+
+TRACE MINOR=0x4069
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=MEM,
+   DESC="malloc",
+   FMT="Malloc failed, calling gdtAlloc",
+
+TRACE MINOR=0x806a
+   TP=@STATIC,
+   TYPE=(POST),
+   GROUP=MEM,
+   DESC="malloc",
+   FMT="malloc %D bytes at %D",
+
+TRACE MINOR=0x006c
+   TP=@STATIC,
+   TYPE=(PRE),
+   GROUP=MEM,
+   DESC="free pre-invocation",
+   FMT="free %D",
+
+TRACE MINOR=0x406d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FIND,
+   DESC="FS_FINDFIRST",
+   FMT="pInfo at %D, pDirEntries at %D",
+
+TRACE MINOR=0x406e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FIND,
+   DESC="FillDirEntry",
+   FMT="Invalid LFN entry found: %S",
+
+TRACE MINOR=0x406f
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=FIND,
+   DESC="FillDirEntry",
+   FMT=" %D : %S, %S",
+
+TRACE MINOR=0x4070
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=WAIT,
+   DESC="GetMemAccess",
+   FMT="Waiting for a heap access",
+
+TRACE MINOR=0x4071
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1",
+   FMT="tracepoint 1",
+
+TRACE MINOR=0x4072
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2",
+   FMT="tracepoint 2",
+
+TRACE MINOR=0x4073
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 3",
+   FMT="tracepoint 3",
+
+TRACE MINOR=0x4074
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 4",
+   FMT="tracepoint 4",
+
+TRACE MINOR=0x4075
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 5",
+   FMT="tracepoint 5",
+
+TRACE MINOR=0x4076
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 6",
+   FMT="tracepoint 6",
+
+TRACE MINOR=0x4077
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 7",
+   FMT="tracepoint 7",
+
+TRACE MINOR=0x4078
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 8",
+   FMT="tracepoint 8",
+
+TRACE MINOR=0x4079
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 9",
+   FMT="tracepoint 9",
+
+TRACE MINOR=0x407a
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT a",
+   FMT="tracepoint a",
+
+TRACE MINOR=0x407b
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT b",
+   FMT="tracepoint b",
+
+TRACE MINOR=0x407c
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT c",
+   FMT="tracepoint c",
+
+TRACE MINOR=0x407d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT d",
+   FMT="tracepoint d",
+
+TRACE MINOR=0x407e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT e",
+   FMT="tracepoint e",
+
+TRACE MINOR=0x407f
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT f",
+   FMT="tracepoint f",
+
+TRACE MINOR=0x4080
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 10",
+   FMT="tracepoint 10",
+
+TRACE MINOR=0x4081
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 11",
+   FMT="tracepoint 11",
+
+TRACE MINOR=0x4082
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 12",
+   FMT="tracepoint 12",
+
+TRACE MINOR=0x4083
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 13",
+   FMT="tracepoint 13",
+
+TRACE MINOR=0x4084
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 14",
+   FMT="tracepoint 14",
+
+TRACE MINOR=0x4085
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 15",
+   FMT="tracepoint 15",
+
+TRACE MINOR=0x4086
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 16",
+   FMT="tracepoint 16",
+
+TRACE MINOR=0x4087
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 17",
+   FMT="tracepoint 17",
+
+TRACE MINOR=0x4088
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 18",
+   FMT="tracepoint 18",
+
+TRACE MINOR=0x4089
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 19",
+   FMT="tracepoint 19",
+
+TRACE MINOR=0x408a
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1a",
+   FMT="tracepoint 1a",
+
+TRACE MINOR=0x408b
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1b",
+   FMT="tracepoint 1b",
+
+TRACE MINOR=0x408c
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1c",
+   FMT="tracepoint 1c",
+
+TRACE MINOR=0x408d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1d",
+   FMT="tracepoint 1d",
+
+TRACE MINOR=0x408e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1e",
+   FMT="tracepoint 1e",
+
+TRACE MINOR=0x408f
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 1f",
+   FMT="tracepoint 1f",
+
+TRACE MINOR=0x4090
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 20",
+   FMT="tracepoint 20",
+
+TRACE MINOR=0x4091
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 21",
+   FMT="tracepoint 21",
+
+TRACE MINOR=0x4092
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 22",
+   FMT="tracepoint 22",
+
+TRACE MINOR=0x4093
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 23",
+   FMT="tracepoint 23",
+
+TRACE MINOR=0x4094
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 24",
+   FMT="tracepoint 24",
+
+TRACE MINOR=0x4095
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 25",
+   FMT="tracepoint 25",
+
+TRACE MINOR=0x4096
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 26",
+   FMT="tracepoint 26",
+
+TRACE MINOR=0x4097
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 27",
+   FMT="tracepoint 27",
+
+TRACE MINOR=0x4098
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 28",
+   FMT="tracepoint 28",
+
+TRACE MINOR=0x4099
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 29",
+   FMT="tracepoint 29",
+
+TRACE MINOR=0x409a
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2a",
+   FMT="tracepoint 2a",
+
+TRACE MINOR=0x409b
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2b",
+   FMT="tracepoint 2b",
+
+TRACE MINOR=0x409c
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2c",
+   FMT="tracepoint 2c",
+
+TRACE MINOR=0x409d
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2d",
+   FMT="tracepoint 2d",
+
+TRACE MINOR=0x409e
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2e",
+   FMT="tracepoint 2e",
+
+TRACE MINOR=0x409f
+   TP=@STATIC,
+   TYPE=(MID),
+   GROUP=OTHER,
+   DESC="FS_MOUNT 2f",
+   FMT="tracepoint 2f",

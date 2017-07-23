@@ -13,9 +13,15 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#include "infoseg.h"
+
 #define LOGBUF_SIZE 8192
 
 #define serial_hw_port 0x3f8
+
+#define TRACE_MAJOR 254
+
+extern PGINFOSEG pGI;
 
 void serout(unsigned short port, char *s);
 
@@ -24,6 +30,8 @@ static BYTE szLogBuf[LOGBUF_SIZE] = "";
 static BOOL fData = FALSE;
 static BYTE szLost[]="(information lost)\r\n";
 static ULONG ulLogSem = 0UL;
+
+APIRET trace(const char *fmt, va_list va);
 
 void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
@@ -60,30 +68,45 @@ int cdecl sprintf(char * pszBuffer, const char *pszFormat, ...);
 
 static BOOL fWriteLogging(PSZ pszMessage);
 
-VOID cdecl _loadds Message(PSZ pszMessage, ...)
+VOID message(USHORT usLevel, PSZ pszMessage, va_list va)
 {
-static char LogPrintInitted = 0;
+static BOOL fLogPrintInitted = FALSE;
+static BOOL fTraceInitted = FALSE;
+static BOOL fTraceEnabled;
 static BYTE szMessage[512];
-va_list va;
+va_list va2;
 PROCINFO Proc;
 ULONG ulmSecs = *pGITicks;
 USHORT usThreadID;
 
    _asm push es;
 
-   if (!f32Parms.fMessageActive)
+   if (! fTraceInitted)
       {
+      fTraceEnabled = pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8));
+      }
+   fTraceInitted = TRUE;
+
+   if (fTraceEnabled)
+      {
+      // output to trace buffer
+      va_copy(va2, va);
+      trace(pszMessage, va2);
+      va_end(va2);
+      }
+
+   if (!(f32Parms.fMessageActive & usLevel))
+      {
+      va_end(va);
       _asm pop es;
       return;
       }
 
-   if (! LogPrintInitted)
+   if (! fLogPrintInitted)
       {
       LogPrintInit();
-      LogPrintInitted = 1;
+      fLogPrintInitted = 1;
       }
-
-   va_start(va, pszMessage);
 
    FSH_QSYSINFO(2, (PBYTE)&Proc, sizeof Proc);
    FSH_QSYSINFO(3, (PBYTE)&usThreadID, 2);
@@ -97,8 +120,6 @@ USHORT usThreadID;
 
    vsprintf(szMessage + strlen(szMessage), pszMessage, va);
 
-   va_end(va);
-
    // output to FAT32 log buffer
    fWriteLogging(szMessage);
 
@@ -108,6 +129,24 @@ USHORT usThreadID;
       serout(serial_hw_port, szMessage);
 
    _asm pop es;
+}
+
+VOID cdecl _loadds Message(PSZ pszMessage, ...)
+{
+va_list va;
+
+   va_start(va, pszMessage);
+   message(0xffff, pszMessage, va);
+   va_end(va);
+}
+
+VOID cdecl _loadds MessageL(USHORT usLevel, PSZ pszMessage, ...)
+{
+va_list va;
+
+   va_start(va, pszMessage);
+   message(usLevel, pszMessage, va);
+   va_end(va);
 }
 
 BOOL fWriteLogging(PSZ pszMessage)
@@ -257,4 +296,131 @@ void serout(unsigned short port, char *s)
   }
   comout(port, '\r');
   comout(port, '\n');
+}
+
+// accessing the system trace
+APIRET trace(const char *fmt, va_list va)
+{
+static BOOL fInitted = FALSE;
+static BOOL fTraceEnabled;
+static char pData[512];
+USHORT cbData = 0;
+BOOL fLong, fLongLong;
+USHORT minor = 0;
+BYTE bToken;
+char *p = (char *)fmt;
+char *pBuf = pData;
+char *pszValue;
+APIRET rc;
+
+   if (! fInitted)
+      {
+      // check if tracing with TRACE_MAJOR is enabled
+      fTraceEnabled = pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8));
+      }
+   fInitted = TRUE;
+
+   if (! fTraceEnabled)
+      return 0;
+
+   while (*p)
+      {
+      p = strchr(p, '%');
+      if (!p)
+         break;
+      fLong = FALSE;
+      fLongLong = FALSE;
+      p++;
+      if (*p == 'l')
+         {
+         if (p[1] == 'l')
+            {
+            fLongLong = TRUE;
+            p += 2;
+            }
+         else
+            {
+            fLong = TRUE;
+            p++;
+            }
+         }
+      bToken = *p;
+      if (*p)
+         p++;
+      switch (bToken)
+         {
+         case '%':
+            *pBuf = '%';
+            pBuf += sizeof(char);
+            cbData += sizeof(char);
+            break;
+
+         case 'c':
+            *pBuf = (char)va_arg(va, USHORT);
+            pBuf += sizeof(char);
+            cbData += sizeof(char);
+            break;
+
+         case 'm':
+            // system trace minor ID
+            minor = va_arg(va, USHORT);
+            break;
+
+         case 's':
+            pszValue = va_arg(va, char *);
+            if (pszValue)
+               {
+               if (MY_PROBEBUF(PB_OPREAD, pszValue, 1))
+                  pszValue = "(bad address)";
+               }
+            else
+               pszValue = "(null)";
+            strcpy(pBuf, pszValue);
+            pBuf += strlen(pszValue) + 1;
+            cbData += strlen(pszValue) + 1;
+            break;
+
+         case 'u':
+         case 'd':
+         case 'x':
+         case 'X':
+            if (fLongLong)
+               {
+               *(ULONGLONG *)pBuf = va_arg(va, ULONGLONG);
+               pBuf += sizeof(ULONGLONG);
+               cbData += sizeof(ULONGLONG);
+               }
+            else if (fLong)
+               {
+               *(ULONG *)pBuf = va_arg(va, ULONG);
+               pBuf += sizeof(ULONG);
+               cbData += sizeof(ULONG);
+               }
+            else
+               {
+               *(USHORT *)pBuf = va_arg(va, USHORT);
+               pBuf += sizeof(USHORT);
+               cbData += sizeof(USHORT);
+               }
+            break;
+         }
+      }
+
+   if (minor)
+      {
+      rc = DevHelp_RAS(TRACE_MAJOR, minor, cbData, pData);
+      }
+
+   return rc;
+}
+
+APIRET Trace(const char *fmt, ...)
+{
+va_list va;
+APIRET rc;
+
+   va_start(va, fmt);
+   rc = trace(fmt, va);
+   va_end(va);
+   return rc;
 }

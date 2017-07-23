@@ -77,12 +77,9 @@ USHORT rc;
    if (ulOpenMode & OPEN_FLAGS_WRITE_THROUGH)
       usIOMode |= DVIO_OPWRTHRU;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      {
-      Message("FS_OPENCREATE for %s mode %lX, Flag %X, IOMode %X, selfsfn=%u",
-         pName, ulOpenMode, usOpenFlag, usIOMode, psffsi->sfi_selfsfn);
-      Message("              attribute %X, pEABuf %lX", usAttr, pEABuf);
-      }
+   MessageL(LOG_FS, "FS_OPENCREATE%m for %s mode %lX, Flag %X, IOMode %X, selfsfn=%u",
+            0x0012, pName, ulOpenMode, usOpenFlag, usIOMode, psffsi->sfi_selfsfn);
+   MessageL(LOG_FS, "%m              attribute %X, pEABuf %lX", 0x0013, usAttr, pEABuf);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -1018,8 +1015,8 @@ FS_OPENCREATEEXIT:
          free(pOpenInfo);
       }
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_OPENCREATE returned %u (Action = %u, OI=%lX)", rc, *pAction, pOpenInfo);
+   MessageL(LOG_FS, "FS_OPENCREATE%m returned %u (Action = %u, OI=%lX)",
+            0x8012, rc, *pAction, pOpenInfo);
 
    _asm pop es;
 
@@ -1181,16 +1178,13 @@ USHORT  rc = 0;
       goto FS_CLOSEEXIT;
       }
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      {
-      if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
-         Message("FS_CLOSE (DASD) type %u:", usType);
-      else
-         Message("FS_CLOSE of %s, type = %u OI=%lX",
-            pOpenInfo->pSHInfo->szFileName,
-            usType,
-            pOpenInfo);
-      }
+   if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
+      MessageL(LOG_FS, "FS_CLOSE%m (DASD) type %u:", 0x0014, usType);
+   else
+      MessageL(LOG_FS, "FS_CLOSE%m of %s, type = %u OI=%lX",
+               0x0015, pOpenInfo->pSHInfo->szFileName,
+               usType,
+               pOpenInfo);
 
    if (IsDriveLocked(pVolInfo))
       {
@@ -1225,8 +1219,7 @@ USHORT  rc = 0;
       ReleaseSH(pOpenInfo);
 
 FS_CLOSEEXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CLOSE returned %u", rc);
+   MessageL(LOG_FS, "FS_CLOSE%m returned %u", 0x8014, rc);
 
    _asm pop es;
 
@@ -1287,9 +1280,8 @@ ULONGLONG size;
       }
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_READ, %u bytes at offset %lld",
-         usBytesToRead, pos);
+   MessageL(LOG_FS, "FS_READ%m, %u bytes at offset %lld",
+            0x0016, usBytesToRead, pos);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
@@ -1848,8 +1840,7 @@ FS_READEXIT:
     if( pbCluster )
         free( pbCluster );
 
-    if (f32Parms.fMessageActive & LOG_FS)
-        Message("FS_READ returned %u (%u bytes read)", rc, *pLen);
+   MessageL(LOG_FS, "FS_READ%m returned %u (%u bytes read)", 0x8016, rc, *pLen);
 
    _asm pop es;
 
@@ -1910,9 +1901,8 @@ ULONGLONG size;
       }
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_WRITE, %u bytes at offset %lld, pData=%lx, Len=%u, ioflag %X, size = %llu",
-      usBytesToWrite, pos, pData, *pLen, usIOFlag, size);
+   MessageL(LOG_FS, "FS_WRITE%m, %u bytes at offset %lld, pData=%lx, Len=%u, ioflag %X, size = %llu",
+            0x0017, usBytesToWrite, pos, pData, *pLen, usIOFlag, size);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
@@ -2651,8 +2641,7 @@ FS_WRITEEXIT:
    if( pbCluster )
       free( pbCluster );
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_WRITE returned %u (%u bytes written)", rc, *pLen);
+   MessageL(LOG_FS, "FS_WRITE%m returned %u (%u bytes written)", 0x8017, rc, *pLen);
 
    _asm pop es;
 
@@ -2689,8 +2678,7 @@ int far pascal _loadds FS_CANCELLOCKREQUESTL(
     void far * pLockRang            /* pLockRang    */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CANCELLOCKREQUESTL - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_CANCELLOCKREQUESTL%m - NOT SUPPORTED", 0x0018);
    return ERROR_NOT_SUPPORTED;
 
    psffsi = psffsi;
@@ -2707,8 +2695,7 @@ int far pascal _loadds FS_CANCELLOCKREQUEST(
     void far * pLockRang            /* pLockRang    */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CANCELLOCKREQUEST");
+   MessageL(LOG_FS, "FS_CANCELLOCKREQUEST%m", 0x0019);
 
    return FS_CANCELLOCKREQUESTL(psffsi, psffsd, pLockRang);
 }
@@ -2759,9 +2746,8 @@ USHORT rc;
       }
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHGFILEPTRL, Mode %d - offset %lld, current offset=%lld",
-      usType, llOffset, pos);
+   MessageL(LOG_FS, "FS_CHGFILEPTRL%m, Mode %d - offset %lld, current offset=%lld",
+            0x001a, usType, llOffset, pos);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
@@ -2862,8 +2848,7 @@ FS_CHGFILEPTRLEXIT:
       }
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHGFILEPTRL returned %u", rc);
+   MessageL(LOG_FS, "FS_CHGFILEPTRL%m returned %u", 0x801a, rc);
 
    _asm pop es;
 
@@ -2904,16 +2889,14 @@ int far pascal _loadds FS_CHGFILEPTR(
       iAssign(&pos, psffsi->sfi_positionl);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHGFILEPTR, Mode %d - offset %ld, current offset=%lld",
-      usType, lOffset, pos);
+   MessageL(LOG_FS, "FS_CHGFILEPTR%m, Mode %d - offset %ld, current offset=%lld",
+            0x001b, usType, lOffset, pos);
 
    rc = FS_CHGFILEPTRL(psffsi, psffsd,
                        llOffset, usType,
                        IOFlag);
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_CHGFILEPTR returned %u", rc);
+   MessageL(LOG_FS, "FS_CHGFILEPTR%m returned %u", 0x801b, rc);
 
    return rc;
 }
@@ -2933,8 +2916,7 @@ USHORT rc;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_COMMIT, type %d", usType);
+   MessageL(LOG_FS, "FS_COMMIT%m, type %d", 0x001c, usType);
 
 #ifdef INCL_LONGLONG
    size = (ULONGLONG)psffsi->sfi_size;
@@ -3180,8 +3162,7 @@ USHORT rc;
 
 FS_COMMITEXIT:
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_COMMIT returned %u", rc);
+   MessageL(LOG_FS, "FS_COMMIT%m returned %u", 0x801c, rc);
 
    _asm pop es;
 
@@ -3200,8 +3181,7 @@ int far pascal _loadds FS_FILELOCKSL(
     unsigned long   ulFlags         /* flags    */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILELOCKSL");
+   MessageL(LOG_FS, "FS_FILELOCKSL%m - NOT SUPPORTED", 0x001d);
    return ERROR_NOT_SUPPORTED;
 
    psffsi = psffsi;
@@ -3224,8 +3204,7 @@ int far pascal _loadds FS_FILELOCKS(
     unsigned long   ulFlags         /* flags    */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILELOCKS");
+   MessageL(LOG_FS, "FS_FILELOCKS%m", 0x001e);
 
    return FS_FILELOCKSL(psffsi, psffsd,
                         pUnlockRange, pLockRange,
@@ -3252,8 +3231,7 @@ USHORT rc;
 
    pOpenInfo->pSHInfo->fMustCommit = TRUE;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_NEWSIZEL newsize = %llu", ullLen);
+   MessageL(LOG_FS, "FS_NEWSIZEL%m newsize = %llu", 0x001f, ullLen);
 
    if (psffsi->sfi_mode & OPEN_FLAGS_DASD)
       {
@@ -3288,10 +3266,9 @@ USHORT rc;
    if (!rc)
       psffsi->sfi_tstamp |= ST_SWRITE | ST_PWRITE;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_NEWSIZEL returned %u", rc);
-
 FS_NEWSIZELEXIT:
+   MessageL(LOG_FS, "FS_NEWSIZEL%m returned %u", 0x801f, rc);
+
    _asm pop es;
 
    return rc;
@@ -3316,14 +3293,12 @@ int far pascal _loadds FS_NEWSIZE(
    AssignUL(&ullLen, ulLen);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_NEWSIZEL newsize = %lu", ulLen);
+   MessageL(LOG_FS, "FS_NEWSIZE%m newsize = %lu", 0x0020, ulLen);
 
    rc = FS_NEWSIZEL(psffsi, psffsd,
                     ullLen, usIOFlag);
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_NEWSIZEL returned %u", rc);
+   MessageL(LOG_FS, "FS_NEWSIZE%m returned %u", 0x8020, rc);
 
    return rc;
 }
@@ -3550,10 +3525,10 @@ ULONGLONG size;
       Assign(&size, *(PULONGLONG)&psffsi->sfi_sizel);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEINFO for %s, usFlag = %X, level %d",
-         pOpenInfo->pSHInfo->szFileName,
-         usFlag, usLevel);
+   MessageL(LOG_FS, "FS_FILEINFO%m for %s, usFlag = %X, level %d",
+            0x0021,
+            pOpenInfo->pSHInfo->szFileName,
+            usFlag, usLevel);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
@@ -4059,8 +4034,7 @@ ULONGLONG size;
       rc = ERROR_INVALID_FUNCTION;
 
 FS_FILEINFOEXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEINFO returned %u", rc);
+   MessageL(LOG_FS, "FS_FILEINFO%m returned %u", 0x8021, rc);
 
    _asm pop es;
 
@@ -4094,8 +4068,7 @@ int i;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEIO");
+   MessageL(LOG_FS, "FS_FILEIO%m", 0x0022);
 
    //if (cbCmdList > 256)
    //   {
@@ -4226,8 +4199,7 @@ int i;
    //   }
 
 //FS_FILEIO_EXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FILEIO returned %u", rc);
+   MessageL(LOG_FS, "FS_FILEIO%m returned %u", 0x8022, rc);
 
    _asm pop es;
 
@@ -4247,8 +4219,7 @@ int far pascal _loadds FS_NMPIPE(
     char far *  pName       /* pName    */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_NMPIPE - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_NMPIPE%m - NOT SUPPORTED", 0x0023);
    return ERROR_NOT_SUPPORTED;
 
    psffsi = psffsi;

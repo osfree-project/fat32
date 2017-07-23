@@ -64,9 +64,8 @@ int far pascal _loadds FS_OPENPAGEFILE (
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_OPENPAGEFILE  pName=%s OpenMode=%x, OpenFlag=%x Attr=%x",
-              pName, OpenMode, OpenFlag, Attr);
+   MessageL(LOG_FS, "FS_OPENPAGEFILE%m  pName=%s OpenMode=%x, OpenFlag=%x Attr=%x",
+            0x0002, pName, OpenMode, OpenFlag, Attr);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
 
@@ -118,21 +117,20 @@ int far pascal _loadds FS_OPENPAGEFILE (
 
       *pcMaxReq = MAXPGREQ;
 
-      //if ((*pFlags & PGIO_FIRSTOPEN) && (swap_open_count == 1))
-      //   {
-      //   // make swap file zero-aligned
-      //   rc = FS_NEWSIZEL (psffsi, psffsd, 0LL, 0);
+      if (*pFlags & PGIO_FIRSTOPEN)
+         {
+         // make swap file zero-aligned
+         rc = FS_NEWSIZEL (psffsi, psffsd, 0LL, 0x10);
 
-      //   if (rc)
-      //      {
-      //      goto FS_OPENPAGEFILE_EXIT;
-      //      }
-      //   }
+         if (rc)
+            {
+            goto FS_OPENPAGEFILE_EXIT;
+            }
+         }
       }
 
 FS_OPENPAGEFILE_EXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_OPENPAGEFILE returned %u\n", rc);
+   MessageL(LOG_FS, "FS_OPENPAGEFILE%m returned %u\n", 0x8002, rc);
 
    _asm pop es;
 
@@ -162,8 +160,7 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_ALLOCATEPAGESPACE  size=%lu contig=%lu", ulSize, ulWantContig);
+   MessageL(LOG_FS, "FS_ALLOCATEPAGESPACE%m  size=%lu contig=%lu", 0x0003, ulSize, ulWantContig);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
 
@@ -185,7 +182,7 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
       goto FS_ALLOCATEPAGESPACE_EXIT;
       }
 
-   rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x20);
+   rc = FS_NEWSIZEL(psffsi, psffsd, ullSize, 0x10);
 
    if (rc == 0)
       {
@@ -202,8 +199,7 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
       }
 
 FS_ALLOCATEPAGESPACE_EXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_ALLOCATEPAGESPACE returned %u\n", rc);
+   MessageL(LOG_FS, "FS_ALLOCATEPAGESPACE%m returned %u\n", 0x8003, rc);
 
    _asm pop es;
 
@@ -231,8 +227,7 @@ int far pascal _loadds FS_DOPAGEIO(
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_DOPAGEIO\n");
+   MessageL(LOG_FS, "FS_DOPAGEIO%m\n", 0x0004);
 
    /* Serialize on the swap file inode.
     */
@@ -402,8 +397,7 @@ int far pascal _loadds FS_DOPAGEIO(
       }
 
 FS_DOPAGEIO_EXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_DOPAGEIO returned %u\n", rc);
+   MessageL(LOG_FS, "FS_DOPAGEIO%m returned %u\n", 0x8004, rc);
 
    //IWRITE_UNLOCK(ip);
    _asm pop  es;
@@ -478,8 +472,8 @@ void vCallStrategy2(PVOLINFO pVolInfo, struct pagereq far *pgreq)
 
    if (f32Parms.fMessageActive & LOG_FS && pgreq->pr_hdr.Count)
       Message("vCallStrategy2 drive %c:, %lu sectors",
-         pgreq->pr_hdr.Block_Dev_Unit + 'A',
-         pgreq->pr_hdr.Count);
+              pgreq->pr_hdr.Block_Dev_Unit + 'A',
+              pgreq->pr_hdr.Count);
 
    if (!pgreq->pr_hdr.Count)
       {

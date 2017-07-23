@@ -27,8 +27,7 @@ APIRET rc = 0;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDCLOSE");
+   MessageL(LOG_FS, "FS_FINDCLOSE%m", 0x0005);
 
    pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
 
@@ -98,8 +97,8 @@ PDIRENTRY1 pStreamEntry = NULL;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDFIRST for %s attr %X, Level %d, cbData %u, MaxEntries %u", pName, usAttr, usLevel, cbData, *pcMatch);
+   MessageL(LOG_FS, "FS_FINDFIRST%m for %s attr %X, Level %d, cbData %u, MaxEntries %u",
+            0x0006, pName, usAttr, usLevel, cbData, *pcMatch);
 
    usEntriesWanted = *pcMatch;
    *pcMatch  = 0;
@@ -294,9 +293,8 @@ PDIRENTRY1 pStreamEntry = NULL;
    pFindInfo->pInfo->pDirEntries =
       (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
 
-   if (f32Parms.fMessageActive & LOG_FIND)
-      Message("pInfo at %lX, pDirEntries at %lX",
-         pFindInfo->pInfo, pFindInfo->pInfo->pDirEntries);
+   MessageL(LOG_FIND, "pInfo%m at %lX, pDirEntries at %lX",
+            0x406d, pFindInfo->pInfo, pFindInfo->pInfo->pDirEntries);
 
    pFindInfo->pInfo->pNextEntry = NULL;
    memcpy(&pFindInfo->pInfo->ProcInfo, &ProcInfo, sizeof (PROCINFO));
@@ -393,9 +391,8 @@ FS_FINDFIRSTEXIT:
       FS_FINDCLOSE(pfsfsi, pfsfsd);
       }
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDFIRST returned %d (%d entries)",
-         rc, *pcMatch);
+   MessageL(LOG_FS, "FS_FINDFIRST%m returned %d (%d entries)",
+            0x8006, rc, *pcMatch);
 
    _asm pop es;
 
@@ -422,9 +419,8 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 
    pName = pName;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDFROMNAME, curpos = %lu, requested %lu",
-         pFindInfo->pInfo->ulCurEntry, ulPosition);
+   MessageL(LOG_FS, "FS_FINDFROMNAME%m, curpos = %lu, requested %lu",
+            0x0009, pFindInfo->pInfo->ulCurEntry, ulPosition);
 
    pFindInfo->pInfo->ulCurEntry = ulPosition + 1;
    return FS_FINDNEXT(pfsfsi, pfsfsd, pData, cbData, pcMatch, usLevel, usFlags);
@@ -452,8 +448,8 @@ USHORT usEntriesWanted;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDNEXT, level %u, cbData %u, MaxEntries %u", usLevel, cbData, *pcMatch);
+   MessageL(LOG_FS, "FS_FINDNEXT%m, level %u, cbData %u, MaxEntries %u",
+            0x0008, usLevel, cbData, *pcMatch);
 
    usEntriesWanted = *pcMatch;
    *pcMatch = 0;
@@ -595,9 +591,8 @@ USHORT usEntriesWanted;
 
 FS_FINDNEXTEXIT:
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDNEXT returned %d (%d entries)",
-         rc, *pcMatch);
+   MessageL(LOG_FS, "FS_FINDNEXT%m returned %d (%d entries)",
+            0x8008, rc, *pcMatch);
 
    _asm pop es;
 
@@ -681,11 +676,8 @@ USHORT usBlockIndex;
                      if (IsEASFile(szLongName))
                         rc = 1;
 
-                  if (f32Parms.fMessageActive & LOG_FIND)
-                     {
-                     if (bCheck2 != bCheck1 && strlen(szLongName))
-                        Message("Invalid LFN entry found: %s", szLongName);
-                     }
+                  if (bCheck2 != bCheck1 && strlen(szLongName))
+                     MessageL(LOG_FIND, "Invalid LFN entry found%m: %s", 0x406e, szLongName);
 
                   if (bCheck2 != bCheck1 ||
                      !strlen(szLongName))
@@ -738,8 +730,8 @@ USHORT usBlockIndex;
                      if (rc && stricmp(szShortName, szUpperName))
                         rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                      }
-                  if (!rc && f32Parms.fMessageActive & LOG_FIND)
-                     Message("%lu : %s, %s", pFindInfo->pInfo->ulCurEntry, szLongName, szShortName );
+                  if (!rc)
+                     MessageL(LOG_FIND, "%m %lu : %s, %s", 0x406f, pFindInfo->pInfo->ulCurEntry, szLongName, szShortName );
 
                   if (!rc && usLevel == FIL_STANDARD)
                      {
@@ -1842,8 +1834,7 @@ TIMESTAMP SetTimeStamp(FDATE date, FTIME time)
 ******************************************************************/
 int far pascal _loadds FS_FINDNOTIFYCLOSE( unsigned short usHandle)
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDNOTIFYCLOSE - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_FINDNOTIFYCLOSE%m - NOT SUPPORTED", 0x000a);
    return ERROR_NOT_SUPPORTED;
 
    usHandle = usHandle;
@@ -1866,8 +1857,7 @@ int far pascal _loadds FS_FINDNOTIFYFIRST(
     unsigned long   ulTimeOut   /* timeout  */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDNOTIFYFIRST - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_FINDNOTIFYFIRST%m - NOT SUPPORTED", 0x000b);
 
    return ERROR_NOT_SUPPORTED;
 
@@ -1896,8 +1886,7 @@ int far pascal _loadds FS_FINDNOTIFYNEXT(
     unsigned long    ulTimeOut  /* timeout  */
 )
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FINDNOTIFYNEXT - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_FINDNOTIFYNEXT%m - NOT SUPPORTED", 0x000c);
 
    return ERROR_NOT_SUPPORTED;
 

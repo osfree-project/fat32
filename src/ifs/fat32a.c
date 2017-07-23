@@ -96,8 +96,7 @@ int far pascal _loadds FS_ATTACH(unsigned short usFlag,     /* flag     */
                          char far * pParm,          /* pParm    */
                          unsigned short far * pLen) /* pLen     */
 {
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_ATTACH - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_ATTACH%m - NOT SUPPORTED", 0x0023);
    usFlag = usFlag;
    pDev = pDev;
    pvpfsd = pvpfsd;
@@ -149,8 +148,7 @@ PSZ      szDstLongName = NULL;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_COPY %s to %s, mode %d", pSrc, pDst, usMode);
+   MessageL(LOG_FS, "FS_COPY%m %s to %s, mode %d", 0x0025, pSrc, pDst, usMode);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -575,8 +573,7 @@ FS_COPYEXIT:
       free(pDirDstSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_COPY returned %u", rc);
+   MessageL(LOG_FS, "FS_COPY%m returned %u", 0x8025, rc);
 
    _asm pop es;
 
@@ -611,8 +608,7 @@ PSZ      szLongName = NULL;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-    Message("FS_DELETE for %s", pFile);
+   MessageL(LOG_FS, "FS_DELETE%m for %s", 0x0026, pFile);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -807,8 +803,7 @@ FS_DELETEEXIT:
       free(pDirSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_DELETE returned %u", rc);
+   MessageL(LOG_FS, "FS_DELETE%m returned %u", 0x8026, rc);
 
    _asm pop es;
 
@@ -830,9 +825,8 @@ USHORT rc;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_EXIT for PID: %X, PDB %X",
-         usPid, usPdb);
+   MessageL(LOG_FS, "FS_EXIT%m for PID: %X, PDB %X",
+            0x0027, usPid, usPdb);
 
    while (pVolInfo)
       {
@@ -852,8 +846,7 @@ USHORT rc;
       pFindInfo = (PFINFO)pVolInfo->pFindInfo;
       while (pFindInfo)
          {
-         if (f32Parms.fMessageActive & LOG_FUNCS)
-            Message("Still findinfo's allocated");
+         MessageL(LOG_FUNCS, "Still findinfo's allocated%m", 0x400e);
          rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pFindInfo, sizeof (FINFO));
          if (rc)
             {
@@ -866,8 +859,7 @@ USHORT rc;
              pFindInfo->ProcInfo.usUid == usUid &&
              pFindInfo->ProcInfo.usPdb == usPdb)
             {
-            if (f32Parms.fMessageActive & LOG_FUNCS)
-               Message("Removing a FINDINFO");
+            MessageL(LOG_FUNCS, "Removing a FINDINFO%m", 0x400f);
             if (RemoveFindEntry(pVolInfo, pFindInfo))
                free(pFindInfo);
             pFindInfo = (PFINFO)pVolInfo->pFindInfo;
@@ -913,8 +905,7 @@ USHORT rc;
       goto FS_FLUSHEXIT;
       }
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FLUSHBUF, flag = %d", usFlag);
+   MessageL(LOG_FS, "FS_FLUSHBUF%m, flag = %d", 0x0028, usFlag);
 
    if (pVolInfo->fWriteProtected)
       {
@@ -940,8 +931,7 @@ USHORT rc;
       }
 FS_FLUSHEXIT:
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FLUSHBUF returned %u", rc);
+   MessageL(LOG_FS, "FS_FLUSHBUF%m returned %u", 0x8028, rc);
 
    _asm pop es;
 
@@ -969,8 +959,8 @@ POPENINFO pOpenInfo;
 
    _asm push es;
 
-   if (usFunc != FAT32_GETLOGDATA && f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FSCTL, Func = %Xh", usFunc);
+   if (usFunc != FAT32_GETLOGDATA)
+      MessageL(LOG_FS, "FS_FSCTL%m, Func = %x", 0x0029, usFunc);
 
    rc = 0;
    if (pData && pData != MYNULL)
@@ -1328,8 +1318,8 @@ POPENINFO pOpenInfo;
 
 FS_FSCTLEXIT:
 
-   if (usFunc != FAT32_GETLOGDATA && f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FSCTL returned %u", rc);
+   if (usFunc != FAT32_GETLOGDATA)
+      MessageL(LOG_FS, "FS_FSCTL%m returned %u", 0x8029, rc);
 
    _asm pop es;
 
@@ -1352,8 +1342,7 @@ USHORT rc;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FSINFO, Flag = %d, Level = %d", usFlag, usLevel);
+   MessageL(LOG_FS, "FS_FSINFO, Flag = %d, Level = %d", 0x002a, usFlag, usLevel);
 
    pVolInfo = GetVolInfo(hVBP);
 
@@ -1420,9 +1409,8 @@ USHORT rc;
                pAlloc->cUnit = min(65526L, ulTotalSectors / pAlloc->cSectorUnit);
                pAlloc->cUnitAvail = min(65526L, ulFreeSectors / pAlloc->cSectorUnit);
 
-               if (f32Parms.fMessageActive & LOG_FUNCS)
-                  Message("DOS Free space: sc: %lu tc: %lu fc: %lu",
-                     pAlloc->cSectorUnit, pAlloc->cUnit, pAlloc->cUnitAvail);
+               MessageL(LOG_FUNCS, "DOS Free space%m: sc: %lu tc: %lu fc: %lu",
+                        0x4010, pAlloc->cSectorUnit, pAlloc->cUnit, pAlloc->cUnitAvail);
                }
             else
                {
@@ -1507,8 +1495,7 @@ USHORT rc;
 
 FS_FSINFOEXIT:
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_FSINFO returned %u", rc);
+   MessageL(LOG_FS, "FS_FSINFO%m returned %u", 0x802a, rc);
 
    _asm pop es;
 
@@ -2294,9 +2281,8 @@ PBIOSPARAMETERBLOCK pBPB;
 
    psffsd = psffsd;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_IOCTL, Cat %Xh, Func %Xh, File# %u",
-         usCat, usFunc, psffsi->sfi_selfsfn);
+   MessageL(LOG_FS, "FS_IOCTL%m, Cat %Xh, Func %Xh, File# %u",
+            0x002b, usCat, usFunc, psffsi->sfi_selfsfn);
 
    pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
 
@@ -2827,8 +2813,7 @@ PBIOSPARAMETERBLOCK pBPB;
       }
 
 FS_IOCTLEXIT:
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_IOCTL returned %u", rc);
+   MessageL(LOG_FS, "FS_IOCTL%m returned %u", 0x802b, rc);
 
    _asm pop es;
 
@@ -2843,8 +2828,7 @@ PDIRENTRY1 pDirStream = NULL;
 PSHOPENINFO pDirSHInfo = NULL;
 PSZ   pszFile;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetSetFileEAS");
+   MessageL(LOG_FUNCS, "GetSetFileEAS%m", 0x036);
 
 #ifdef EXFAT
    pDirStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
@@ -3265,8 +3249,7 @@ PSZ      szDstLongName = NULL;
 
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MOVE %s to %s", pSrc, pDst);
+   MessageL(LOG_FS, "FS_MOVE%m %s to %s", 0x002c, pSrc, pDst);
 
    pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
 
@@ -3697,8 +3680,7 @@ FS_MOVEEXIT:
       free(pDirDstSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_MOVE returned %d", rc);
+   MessageL(LOG_FS, "FS_MOVE%m returned %d", 0x802c, rc);
 
    _asm pop es;
 
@@ -3721,8 +3703,7 @@ int far pascal _loadds FS_PROCESSNAME(
 
      _asm push es;
 
-     if (f32Parms.fMessageActive & LOG_FS)
-        Message("FS_PROCESSNAME for %s", pNameBuf);
+     MessageL(LOG_FS, "FS_PROCESSNAME%m for %s", 0x002d, pNameBuf);
 
      for( p = pNameBuf; *p; p += usLen )
      {
@@ -3734,12 +3715,11 @@ int far pascal _loadds FS_PROCESSNAME(
                 p[ 1 ] = '_';
         }
      }
-
-     if (f32Parms.fMessageActive & LOG_FS)
-        Message(" FS_PROCESSNAME returned filename: %s", pNameBuf);
-
-     _asm pop es;
 #endif
+   MessageL(LOG_FS, " FS_PROCESSNAME%m returned filename: %s", 0x802d, pNameBuf);
+
+   _asm pop es;
+
    return 0;
 }
 
@@ -3759,8 +3739,7 @@ USHORT rc = 0;
 
    ulReserved = ulReserved;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_SHUTDOWN, Type = %d", usType);
+   MessageL(LOG_FS, "FS_SHUTDOWN%m, Type = %d", 0x002e, usType);
    f32Parms.fInShutDown = TRUE;
    f32Parms.fLW = FALSE;
 
@@ -3789,8 +3768,7 @@ USHORT rc = 0;
 
 //FS_SHUTDOWNEXIT:
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_SHUTDOWN returned %d", rc);
+   MessageL(LOG_FS, "FS_SHUTDOWN%m returned %d", 0x802e, rc);
 
    _asm pop es;
 
@@ -3807,8 +3785,7 @@ int far pascal _loadds FS_VERIFYUNCNAME(
 {
    _asm push es;
 
-   if (f32Parms.fMessageActive & LOG_FS)
-      Message("FS_VERIFYUNCNAME - NOT SUPPORTED");
+   MessageL(LOG_FS, "FS_VERIFYUNCNAME%m - NOT SUPPORTED", 0x002f);
    usFlag = usFlag;
    pName = pName;
 
@@ -3828,8 +3805,7 @@ INT rc;
 USHORT usSel;
 PVOID pRet;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("gdtAlloc for %lu bytes", tSize);
+   MessageL(LOG_FUNCS, "gdtAlloc%m for %lu bytes", 0x0037, tSize);
 
    if (fSwap)
       rc = FSH_SEGALLOC(SA_FRING0|SA_FSWAP, tSize, &usSel);
@@ -3858,8 +3834,7 @@ INT rc;
 USHORT usSel;
 PVOID pRet;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("ldtAlloc for %lu bytes", tSize);
+   MessageL(LOG_FUNCS, "ldtAlloc for %D bytes", 0x0038, tSize);
 
    rc = FSH_SEGALLOC(SA_FLDT | SA_FSWAP| SA_FRING3, tSize, &usSel);
    if (rc)
@@ -3888,8 +3863,7 @@ ULONG ulAddress;
 ULONG ulReserved;
 PVOID pv = &ulReserved;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("linAlloc");
+   MessageL(LOG_FUNCS, "linAlloc%m for %u bytes", 0x0039, tSize);
 
    ulFlags = VMDHA_FIXED;
    if( fHighMem )
@@ -3902,8 +3876,7 @@ PVOID pv = &ulReserved;
                 (VOID **)&pv);
    if (rc)
       {
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("ERROR: linalloc failed, rc = %d", rc);
+      MessageL(LOG_FUNCS, "ERROR: linalloc failed%m, rc = %d", 0x4015, rc);
 
       if( !fIgnore )
         CritMessage("linalloc failed, rc = %d", rc);
@@ -3922,8 +3895,7 @@ LIN    lulAddress=0UL;
 LIN    lulPhysAddr = 0UL;
 PVOID pv=NULL;
 
-    if (f32Parms.fMessageActive & LOG_FUNCS)
-        Message("linAlloc");
+    MessageL(LOG_FUNCS, "linAlloc%m for %u bytes", 0x0039, tSize);
 
     rc = DevHelp_VirtToLin(     SELECTOROF(pulPhysAddr),
                                 OFFSETOF(pulPhysAddr),
@@ -3931,8 +3903,7 @@ PVOID pv=NULL;
 
     if (rc != NO_ERROR)
     {
-        if (f32Parms.fMessageActive & LOG_FUNCS)
-            Message("ERROR: linalloc VirtToLin failed, rc = %d", rc);
+        MessageL(LOG_FUNCS, "ERROR: linalloc VirtToLin failed%m, rc = %d", 0x4015, rc);
 
         if( !fIgnore )
             CritMessage("linalloc VirtToLin failed, rc = %d", rc);
@@ -3952,8 +3923,7 @@ PVOID pv=NULL;
 
     if (rc)
     {
-        if (f32Parms.fMessageActive & LOG_FUNCS)
-            Message("ERROR: linalloc VMAlloc failed, rc = %d", rc);
+        MessageL(LOG_FUNCS, "ERROR: linalloc VMAlloc failed%m, rc = %d", 0x4016, rc);
 
         if( !fIgnore )
             CritMessage("linalloc VMAlloc failed, rc = %d", rc);
@@ -3970,8 +3940,7 @@ void freeseg(void *p)
 USHORT usSel;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("freeseg");
+   MessageL(LOG_FUNCS, "freeseg%m", 0x0040);
 
    if (!p)
       return;
@@ -4007,8 +3976,7 @@ ULONG  ulNextCluster;
 USHORT usSectorsPerBlock = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector);
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("ReadBlock %lu", ulCluster);
+   MessageL(LOG_FUNCS, "ReadBlock%m %lu", 0x0041, ulCluster);
 
    if (ulCluster < 2 || ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
@@ -4049,8 +4017,7 @@ ULONG  ulNextCluster;
 USHORT usSectorsPerBlock = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector);
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("WriteBlock");
+   MessageL(LOG_FUNCS, "WriteBlock%m, %lu", 0x0042, ulCluster);
 
    if (ulCluster < 2 || ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
@@ -4089,8 +4056,7 @@ USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector)
 ULONG  ulSec = ulSector * 3;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("ReadFatSector");
+   MessageL(LOG_FUNCS, "ReadFatSector%m", 0x0043);
 
    // read multiples of three sectors,
    // to fit a whole number of FAT12 entries
@@ -4126,8 +4092,7 @@ ULONG  ulSec = ulSector * 3;
 USHORT usFat;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("WriteFatSector");
+   MessageL(LOG_FUNCS, "WriteFatSector%m", 0x0044);
 
    // write multiples of three sectors,
    // to fit a whole number of FAT12 entries
@@ -4174,8 +4139,7 @@ USHORT ReadBmpSector(PVOLINFO pVolInfo, ULONG ulSector)
 // Read exFAT Allocation bitmap sector
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("ReadBmpSector");
+   MessageL(LOG_FUNCS, "ReadBmpSector%m", 0x0045);
 
    if (pVolInfo->ulCurBmpSector == ulSector)
       return 0;
@@ -4207,8 +4171,7 @@ USHORT WriteBmpSector(PVOLINFO pVolInfo, ULONG ulSector)
 //USHORT usBmp;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("WriteBmpSector");
+   MessageL(LOG_FUNCS, "WriteBmpSector%m", 0x0046);
 
    if (pVolInfo->ulCurBmpSector != ulSector)
       {
@@ -4423,8 +4386,7 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
 ******************************************************************/
 ULONG GetNextCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
 {
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetNextCluster for %lu", ulCluster);
+   MessageL(LOG_FUNCS, "GetNextCluster%m for %lu", 0x0047, ulCluster);
 
    if (!GetFatAccess(pVolInfo, "GetNextCluster"))
       {
@@ -4526,8 +4488,7 @@ ULONG ulBmpSector;
 #endif
 BOOL rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("ClusterInUse for %lu", ulCluster);
+   MessageL(LOG_FUNCS, "ClusterInUse%m for %lu", 0x0048, ulCluster);
 
    //if (GetFatAccess(pVolInfo, "ClusterInUse"))
    //   return FALSE;
@@ -4577,8 +4538,7 @@ BOOL MarkCluster(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
 {
 ULONG ulBmpSector;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MarkCluster for %lu", ulCluster);
+   MessageL(LOG_FUNCS, "MarkCluster%m for %lu", 0x0049, ulCluster);
 
    if (!GetFatAccess(pVolInfo, "MarkCluster"))
       {
@@ -4601,24 +4561,6 @@ ULONG ulBmpSector;
    return FALSE;
 }
 
-/******************************************************************
-*
-******************************************************************/
-/* BOOL MarkCluster(PVOLINFO pVolInfo, ULONG ulCluster, BOOL fState)
-{
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MarkCluster for %lu", ulCluster);
-
-   if (!GetFatAccess(pVolInfo, "MarkCluster"))
-      {
-      ulCluster = MarkCluster2(pVolInfo, ulCluster, fState);
-      ReleaseFat(pVolInfo);
-      return TRUE;
-      }
-
-   return FALSE;
-} */
-
 #endif
 
 /******************************************************************
@@ -4631,8 +4573,7 @@ ULONG ulCluster = 0;
 ULONG ulNextFree = 0;
 ULONG ulTotalFree;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetFreeSpace");
+   MessageL(LOG_FUNCS, "GetFreeSpace%m", 0x004a);
 
    //if (GetFatAccess(pVolInfo, "GetFreeSpace"))
    //   return 0L;
@@ -4673,25 +4614,6 @@ ULONG ulTotalFree;
 /******************************************************************
 *
 ******************************************************************/
-/* ULONG GetFreeSpace(PVOLINFO pVolInfo)
-{
-ULONG rc;
-
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetFreeSpace");
-
-   if (!GetFatAccess(pVolInfo, "GetFreeSpace"))
-      {
-      rc = GetFreeSpace2(pVolInfo);
-      ReleaseFat(pVolInfo);
-      }
-
-   return rc;
-} */
-
-/******************************************************************
-*
-******************************************************************/
 ULONG MakeFatChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulPrevCluster, ULONG ulClustersRequested, PULONG pulLast)
 {
 ULONG  ulCluster = 0;
@@ -4710,8 +4632,7 @@ BOOL   fStatus;
 #endif
 BOOL   fClean;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MakeFatChain, %lu clusters", ulClustersRequested);
+   MessageL(LOG_FUNCS, "MakeFatChain%m, %lu clusters", 0x004b, ulClustersRequested);
 
    if (!ulClustersRequested)
       return pVolInfo->ulFatEof;
@@ -4807,8 +4728,7 @@ BOOL   fClean;
             {
             if (fStartAt2)
                break;
-            if (f32Parms.fMessageActive & LOG_FUNCS)
-               Message("No contiguous block found, restarting at cluster 2");
+            MessageL(LOG_FUNCS, "No contiguous block found, restarting at cluster 2%m", 0x4023);
             ulFirstCluster = 2;
             fStartAt2 = TRUE;
             continue;
@@ -4897,13 +4817,10 @@ BOOL   fClean;
                goto MakeFatChain_Error;
             }
 
-         if (f32Parms.fMessageActive & LOG_FUNCS)
-            {
-            if (fContiguous)
-               Message("Contiguous chain returned, first = %lu", ulReturn);
-            else
-               Message("NON Contiguous chain returned, first = %lu", ulReturn);
-            }
+         if (fContiguous)
+            MessageL(LOG_FUNCS, "Contiguous chain returned, first%m = %lu", 0x4024, ulReturn);
+         else
+            MessageL(LOG_FUNCS, "NON Contiguous chain returned, first%m = %lu", 0x4025, ulReturn);
          if (pulLast)
             *pulLast = ulFirstCluster + ulClustersRequested - 1;
          return ulReturn;
@@ -4912,8 +4829,7 @@ BOOL   fClean;
       /*
          We get here only if no free chain long enough was found!
       */
-      if (f32Parms.fMessageActive & LOG_FUNCS)
-         Message("No contiguous block found, largest found is %lu clusters", ulLargestSize);
+      MessageL(LOG_FUNCS, "No contiguous block found, largest found is%m %lu clusters", 0x4026, ulLargestSize);
       fContiguous = FALSE;
 
       if (ulLargestChain != pVolInfo->ulFatEof)
@@ -4963,8 +4879,7 @@ BOOL fStatus;
 #endif
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MakeChain");
+   MessageL(LOG_FUNCS, "MakeChain%m", 0x004c);
 
    ulLastCluster = ulFirstCluster + ulSize - 1;
 
@@ -5119,8 +5034,7 @@ BOOL UpdateFSInfo(PVOLINFO pVolInfo)
 {
 PBYTE bSector;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("UpdateFSInfo");
+   MessageL(LOG_FUNCS, "UpdateFSInfo%m", 0x004d);
 
    if (pVolInfo->fFormatInProgress)
       return FALSE;
@@ -5164,8 +5078,7 @@ ULONG ulSector;
 USHORT usFat;
 PBYTE pbSector;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MarkDiskStatus, %d", fClean);
+   MessageL(LOG_FUNCS, "MarkDiskStatus%m, %d", 0x004e, fClean);
 
    if (!pVolInfo->fDiskCleanOnMount && fClean)
       return TRUE;
@@ -5303,23 +5216,6 @@ BOOL  fStatus;
 /******************************************************************
 *
 ******************************************************************/
-/* ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext)
-{
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("SetNextCluster");
-
-
-   if (GetFatAccess(pVolInfo, "SetNextCluster"))
-      return pVolInfo->ulFatEof;
-
-   ulCluster = SetNextCluster2(pVolInfo, ulCluster, ulNext);
-   ReleaseFat(pVolInfo);
-   return ulCluster;
-} */
-
-/******************************************************************
-*
-******************************************************************/
 ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext)
 {
 ULONG ulNewCluster = 0;
@@ -5327,9 +5223,7 @@ BOOL fUpdateFSInfo, fClean;
 ULONG ulReturn = 0;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("SetNextCluster");
-
+   MessageL(LOG_FUNCS, "SetNextCluster%m", 0x004f);
 
    ulReturn = ulNext;
    if (ulCluster == FAT_ASSIGN_NEW)
@@ -5440,8 +5334,7 @@ ULONG ulStartCluster;
 ULONG ulCluster;
 BOOL fStartAt2;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetFreeCluster");
+   MessageL(LOG_FUNCS, "GetFreeCluster%m", 0x0050);
 
    if (pVolInfo->pBootFSInfo->ulFreeClusters == 0L)
       return pVolInfo->ulFatEof;
@@ -5557,8 +5450,7 @@ BOOL RemoveFindEntry(PVOLINFO pVolInfo, PFINFO pFindInfo)
 PFINFO pNext;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("RemoveFindEntry");
+   MessageL(LOG_FUNCS, "RemoveFindEntry%m", 0x0051);
 
    if (pVolInfo->pFindInfo == pFindInfo)
       {
@@ -5766,6 +5658,10 @@ BYTE  bToken;
          case 'c':
             pszBuffer[0] = (char)va_arg(va, USHORT);
             pszBuffer[1] = 0;
+            break;
+         case 'm':
+            // minor ID of system trace, just skip it
+            usValue = va_arg(va, USHORT);
             break;
          default :
             strncpy(pszBuffer, pszFormat, p - pszFormat);
@@ -5995,8 +5891,7 @@ PSZ     r;
 USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                     PDIRENTRY pNew, PDIRENTRY1 pNewStream, PSZ pszName)
 {
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MakeDirEntry %s", pszName);
+   MessageL(LOG_FUNCS, "MakeDirEntry%m %s", 0x0052, pszName);
 
    if (pGI)
       {
@@ -6058,9 +5953,8 @@ BYTE szShortName[12];
 PSZ  pszUpper;
 USHORT rc;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("MakeShortName for %s, dircluster %lu",
-         pszLongName, ulDirCluster);
+   MessageL(LOG_FUNCS, "MakeShortName%m for %s, dircluster %lu",
+            0x0053, pszLongName, ulDirCluster);
 
    usLongName = LONGNAME_OFF;
    memset(szShortName, 0x20, 11);
@@ -6306,12 +6200,11 @@ USHORT rc;
 
    if (ulCluster >= 2 && ulCluster < pVolInfo->ulTotalClusters + 2)
       {
-      if (f32Parms.fMessageActive  & LOG_FUNCS)
-         Message("DeleteFatChain for cluster %lu", ulCluster);
+      MessageL(LOG_FUNCS, "DeleteFatChain%m for cluster %lu", 0x0054, ulCluster);
       }
    else
       {
-      Message("DeleteFatChain for invalid cluster %lu (ERROR)", ulCluster);
+      MessageL(LOG_FUNCS, "DeleteFatChain%m for invalid cluster %lu (ERROR)", 0x0055, ulCluster);
       return FALSE;
       }
 
@@ -6418,8 +6311,7 @@ ULONG SeekToCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster, LON
 {
 ULONG  ulSector = 0;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("SeekToCluster");
+   MessageL(LOG_FUNCS, "SeekToCluster%m", 0x0056);
 
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
@@ -6494,8 +6386,7 @@ ULONG GetLastCluster(PVOLINFO pVolInfo, ULONG ulCluster, PDIRENTRY1 pDirEntryStr
 {
 ULONG  ulReturn = 0;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetLastCluster");
+   MessageL(LOG_FUNCS, "GetLastCluster%m", 0x0057);
 
    if (!ulCluster)
       return pVolInfo->ulFatEof;
@@ -6562,8 +6453,7 @@ PBYTE  pbCluster;
 ULONG  tStart = GetCurTime();
 
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("CopyChain, cluster %lu", ulCluster);
+   MessageL(LOG_FUNCS, "CopyChain%m, cluster %lu", 0x0058, ulCluster);
 
    if (!ulCluster)
       {
@@ -6639,8 +6529,7 @@ ULONG ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 
-   if (f32Parms.fMessageActive & LOG_FUNCS)
-      Message("GetChainSize");
+   MessageL(LOG_FUNCS, "GetChainSize%m", 0x0059);
 
    if (ulCluster == 1)
       {

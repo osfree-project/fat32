@@ -34,8 +34,7 @@ PBYTE    pSrcMax;
 PFEA pSrcFea;
 PFEA pTarFea;
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usModifyEAS for %s", pszFileName);
+   MessageL(LOG_EAS, "usModifyEAS%m for %s", 0x005a, pszFileName);
 
    /*
       Do not allow ea's file files with no filename (root)
@@ -68,8 +67,7 @@ PFEA pTarFea;
    if (rc)
       return rc;
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("cbList before = %lu", pTarFeal->cbList);
+   MessageL(LOG_EAS, "cbList before%m = %lu", 0x4036, pTarFeal->cbList);
 
    pSrcMax = (PBYTE)pSrcFeal + pSrcFeal->cbList;
    pSrcFea = pSrcFeal->list;
@@ -110,9 +108,8 @@ PFEA pTarFea;
          memcpy(pTarFea, pSrcFea, usNewSize);
          pTarFeal->cbList += usNewSize;
 
-         if (f32Parms.fMessageActive & LOG_EAS)
-            Message("Inserting EA '%s' (%u,%u)", pName,
-               pSrcFea->cbName, pSrcFea->cbValue);
+         MessageL(LOG_EAS, "Inserting EA%m '%s' (%u,%u)", 0x4037, pName,
+                  pSrcFea->cbName, pSrcFea->cbValue);
          }
       else
          {
@@ -135,17 +132,15 @@ PFEA pTarFea;
          pTarFeal->cbList -= usOldSize;
          pTarFeal->cbList += usNewSize;
 
-         if (f32Parms.fMessageActive & LOG_EAS)
-            Message("Updating EA '%s' (%u,%u)", pName,
-               pSrcFea->cbName, pSrcFea->cbValue);
+         MessageL(LOG_EAS, "Updating EA%m '%s' (%u,%u)", 0x4038, pName,
+                  pSrcFea->cbName, pSrcFea->cbValue);
          }
 
       usNewSize = sizeof (FEA) + (USHORT)pSrcFea->cbName + 1 + pSrcFea->cbValue;
       pSrcFea = (PFEA)((PBYTE)pSrcFea + usNewSize);
       }
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("cbList after = %lu", pTarFeal->cbList);
+   MessageL(LOG_EAS, "cbList after%m = %lu", 0x4039, pTarFeal->cbList);
 
    if (pTarFeal->cbList > 4)
       rc = usWriteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, pTarFeal);
@@ -155,9 +150,8 @@ PFEA pTarFea;
 usStoreEASExit:
    free(pTarFeal);
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usModifyEAS for %s returned %d",
-         pszFileName, rc);
+   MessageL(LOG_EAS, "usModifyEAS%m for %s returned %d",
+            0x805a, pszFileName, rc);
 
    return rc;
 }
@@ -173,8 +167,7 @@ PDIRENTRY pDirEntry;
 PDIRENTRY1 pDirEntryStream = NULL;
 ULONG    ulCluster;
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usGetEASSize for %s", pszFileName);
+   MessageL(LOG_EAS, "usGetEASSize%m for %s", 0x005b, pszFileName);
 
    pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
    if (!pDirEntry)
@@ -229,9 +222,8 @@ usGetEASizeExit:
       free(pDirEntryStream);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usGetEASize for %s returned %d (%u bytes large)",
-         pszFileName, rc, *pulSize);
+   MessageL(LOG_EAS, "usGetEASize%m for %s returned %d (%u bytes large)",
+            0x805b, pszFileName, rc, *pulSize);
 
    return rc;
 }
@@ -249,8 +241,7 @@ PFEA     pTarFea;
 PGEALIST pGeaList;
 USHORT   usMaxSize;
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usGetEAS for %s Level %d", pszFileName, usLevel);
+   MessageL(LOG_EAS, "usGetEAS%m for %s Level %d", 0x005c, pszFileName, usLevel);
 
    /*
       Checking all the arguments
@@ -344,8 +335,7 @@ USHORT   usMaxSize;
                pTarFeal->cbList = pSrcFeal->cbList;
                goto usGetEASExit;
                }
-            if (f32Parms.fMessageActive & LOG_EAS)
-               Message("Found %s", pSrcFea + 1);
+            MessageL(LOG_EAS, "Found%m %s", 0x403c, pSrcFea + 1);
             memcpy(pTarFea, pSrcFea, usFeaSize);
             }
          else
@@ -361,8 +351,7 @@ USHORT   usMaxSize;
                goto usGetEASExit;
                }
 
-            if (f32Parms.fMessageActive & LOG_EAS)
-               Message("usGetEAS: %s not found!", pGea->szName);
+            MessageL(LOG_EAS, "usGetEAS%m: %s not found!", 0x403d, pGea->szName);
 
             pTarFea->fEA = 0x00;
             pTarFea->cbName = pGea->cbName;
@@ -391,8 +380,7 @@ USHORT   usMaxSize;
             pTarFeal->cbList = pSrcFeal->cbList;
             goto usGetEASExit;
             }
-         if (f32Parms.fMessageActive & LOG_EAS)
-            Message("Found %s (%u,%u)", pSrcFea + 1, (USHORT)pSrcFea->cbName, pSrcFea->cbValue);
+         MessageL(LOG_EAS, "Found%m %s (%u,%u)", 0x403e, pSrcFea + 1, (USHORT)pSrcFea->cbName, pSrcFea->cbValue);
          memcpy(pTarFea, pSrcFea, usFeaSize);
          pTarFea = (PFEA)((PBYTE)pTarFea + usFeaSize);
          pTarFeal->cbList += usFeaSize;
@@ -408,9 +396,8 @@ usGetEASExit:
    if (pSrcFeal)
       free(pSrcFeal);
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usGetEAS for %s returned %d (%lu bytes in EAS)",
-         pszFileName, rc, pTarFeal->cbList);
+   MessageL(LOG_EAS, "usGetEAS%m for %s returned %d (%lu bytes in EAS)",
+            0x805c, pszFileName, rc, pTarFeal->cbList);
 
    return rc;
 }
@@ -531,8 +518,7 @@ usCopyEASExit:
       free(pSrcSHInfo);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usCopyEAS for returned %d", rc);
+   MessageL(LOG_EAS, "usCopyEAS%m for returned %d", 0x805d, rc);
 
    return rc;
 }
@@ -631,8 +617,7 @@ usMoveEASExit:
       free(pTarStreamEntry);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usMoveEAS for returned %d", rc);
+   MessageL(LOG_EAS, "usMoveEAS%m for returned %d", 0x805e, rc);
 
    return rc;
 }
@@ -778,8 +763,7 @@ BOOL fFirst = TRUE;
       }
 
    pRead = (PBYTE)pFEAL;
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usReadEAS: Reading (1) cluster %lu", ulCluster);
+   MessageL(LOG_EAS, "usReadEAS%m: Reading (1) cluster %lu", 0x4041, ulCluster);
 
    rc = ReadBlock(pVolInfo, ulCluster, 0, pRead, 0);
    if (rc)
@@ -806,8 +790,7 @@ BOOL fFirst = TRUE;
       vreemd: zonder deze Messages lijkt deze routine mis te gaan.
       Optimalisatie?
    */
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usReadEAS: %u clusters used", usClustersUsed);
+   MessageL(LOG_EAS, "usReadEAS%m: %u clusters used", 0x4042, usClustersUsed);
 
    usBlocksUsed--;
    pRead += pVolInfo->ulBlockSize;
@@ -846,8 +829,7 @@ BOOL fFirst = TRUE;
          vreemd: zonder deze Messages lijkt deze routine mis te gaan.
          Optimalisatie?
       */
-         if (f32Parms.fMessageActive & LOG_EAS)
-            Message("usReadEAS: Reading (2) cluster %lu, block %lu", ulCluster, ulBlock);
+         MessageL(LOG_EAS, "usReadEAS%m: Reading (2) cluster %lu, block %lu", 0x4043, ulCluster, ulBlock);
 
          rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pRead, 0);
          if (rc)
@@ -931,9 +913,8 @@ usDeleteEASExit:
       free(pStreamEntry);
 #endif
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usDeleteEAS for %s returned %d",
-         pszFileName, rc);
+   MessageL(LOG_EAS, "usDeleteEAS%m for %s returned %d",
+            0x805f, pszFileName, rc);
 
    return rc;
 }
@@ -1238,8 +1219,7 @@ PBYTE pMax;
       if (pValue + pFea->cbValue > pMax)
          return NULL;
 #if 0
-      if (f32Parms.fMessageActive & LOG_EAS)
-         Message("FindEA: '%s'", pName);
+      MessageL(LOG_EAS, "FindEA%m: '%s'", 0x0060, pName);
 #endif
       if (pFea->cbName == (BYTE)usMaxName && !memicmp(pName, pszName, usMaxName))
          return pFea;
@@ -1293,8 +1273,7 @@ USHORT usGetEmptyEAS(PSZ pszFileName, PEAOP pEAOP)
    ULONG    ulCurrFeaLen;
    ULONG    ulCurrGeaLen;
 
-   if (f32Parms.fMessageActive & LOG_EAS)
-      Message("usGetEmptyEAS for %s with pEAOP %lX", pszFileName,pEAOP);
+   MessageL(LOG_EAS, "usGetEmptyEAS%m for %s with pEAOP %lX", 0x0061, pszFileName,pEAOP);
 
    /*
       Checking all the arguments

@@ -2,7 +2,8 @@ ROOT=..
 PROJ=ifs
 PATH=..\..\$(PROJ)
 DIRS=..\include libc
-TARGETS=$(BINROOT)\os2\boot\fat32.ifs $(BINROOT)\os2\boot\fat32.sym
+TARGETS=$(BINROOT)\os2\boot\fat32.ifs $(BINROOT)\os2\boot\fat32.sym &
+        $(BINROOT)\os2\system\trace\trc00fe.tff
 
 !include ..\makefile.mk
 
@@ -41,6 +42,8 @@ OBJS=$(PROJ_BLD)\fat32a.obj &
      $(PROJ_BLD)\ifslang.obj &
      $(PROJ_BLD)\ifsachk.obj &
      $(PROJ_BLD)\helpers.obj
+
+$(BINROOT)\os2\system\trace\trc00fe.tff:
 
 $(BINROOT)\os2\boot\fat32.ifs:
 
@@ -210,3 +213,10 @@ $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
 $(PROJ_BLD)\ifsfil32.obj: ifsfil32.c
  @echo CC       $^.
  @wcc386 $(COPT32) -fr=$^*.err -fo=$^@ $<
+
+
+$(BINROOT)\os2\system\trace\trc00fe.tff: fat32.tsf
+ @echo TRCUST   $^.
+ @trcust $[@ >nul 2>&1
+ @copy trc00fe.tff $^@ >nul 2>&1
+ @del $^. >nul 2>&1
