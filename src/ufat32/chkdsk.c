@@ -497,7 +497,8 @@ PSZ    pszType;
       {
       pCD->ulStartOfData    = pCD->BootSect.bpb.ReservedSectors +
         pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs +
-        (pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) / pCD->BootSect.bpb.BytesPerSector;
+        ((ULONG)pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) / pCD->BootSect.bpb.BytesPerSector +
+        ((((ULONG)pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) % pCD->BootSect.bpb.BytesPerSector) ? 1 : 0);
       }
 
 #ifdef EXFAT

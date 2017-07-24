@@ -3587,7 +3587,7 @@ ULONGLONG size;
          case FIL_QUERYEASFROMLIST :
          case FIL_QUERYEASFROMLISTL:
          case FIL_QUERYALLEAS:
-            usNeededSize = sizeof (EAOP);
+            usNeededSize = sizeof (EAOP); // 0x28 ???
             break;
          default                   :
             rc = ERROR_INVALID_LEVEL;

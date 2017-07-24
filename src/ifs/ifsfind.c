@@ -13,7 +13,7 @@
 #include "fat32ifs.h"
 
 static USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel);
-static BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usBlockIndex);
+static BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, ULONG ulBlockIndex);
 
 /******************************************************************
 *
@@ -83,8 +83,8 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
 USHORT rc;
 USHORT usIndex;
 USHORT usNeededLen;
-USHORT usNumClusters;
-USHORT usNumBlocks;
+ULONG  ulNumClusters;
+ULONG  ulNumBlocks;
 ULONG  ulCluster;
 ULONG  ulDirCluster;
 PSZ    pSearch;
@@ -213,7 +213,7 @@ PDIRENTRY1 pStreamEntry = NULL;
 
    pFindInfo->pSHInfo = NULL;
 
-   usNumClusters = 0;
+   ulNumClusters = 0;
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
@@ -234,11 +234,11 @@ PDIRENTRY1 pStreamEntry = NULL;
    if (ulCluster == 1)
       {
       // FAT12/FAT16 root directory size (contiguous)
-      USHORT usRootDirSize = (USHORT)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
-         (USHORT)(pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
-      usNumClusters = (pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
-         (pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
-         usRootDirSize + 1 : usRootDirSize;
+      ULONG ulRootDirSize = (ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
+         ((ULONG)pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
+      ulNumClusters = ((ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
+         ((ULONG)pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
+         ulRootDirSize + 1 : ulRootDirSize;
       }
    else
       {
@@ -253,14 +253,14 @@ PDIRENTRY1 pStreamEntry = NULL;
 
       while (ulCluster && ulCluster != pVolInfo->ulFatEof)
          {
-         usNumClusters++;
+         ulNumClusters++;
          //ulCluster = GetNextCluster(pVolInfo, pFindInfo->pSHInfo, ulCluster);
          ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
          }
       }
 
-   usNumBlocks = usNumClusters * (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
-   ulNeededSpace = sizeof (FINFO) + (usNumBlocks - 1) * sizeof (ULONG);
+   ulNumBlocks = ulNumClusters * ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+   ulNeededSpace = sizeof (FINFO) + (ulNumBlocks - 1) * sizeof (ULONG);
    ulNeededSpace += pVolInfo->ulBlockSize;
 
    GetProcInfo(&ProcInfo, sizeof ProcInfo);
@@ -287,11 +287,11 @@ PDIRENTRY1 pStreamEntry = NULL;
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
    pFindInfo->pInfo->usEntriesPerBlock = (USHORT)(pVolInfo->ulBlockSize / sizeof (DIRENTRY));
-   pFindInfo->pInfo->usBlockIndex = 0;
+   pFindInfo->pInfo->ulBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
-   pFindInfo->pInfo->usTotalBlocks = usNumBlocks;
+   pFindInfo->pInfo->ulTotalBlocks = (USHORT)ulNumBlocks; ////
    pFindInfo->pInfo->pDirEntries =
-      (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[usNumClusters]);
+      (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[ulNumClusters]);
 
    MessageL(LOG_FIND, "pInfo%m at %lX, pDirEntries at %lX",
             0x406d, pFindInfo->pInfo, pFindInfo->pInfo->pDirEntries);
@@ -306,7 +306,7 @@ PDIRENTRY1 pStreamEntry = NULL;
       // FAT12/FAT16 root directory case
       pFindInfo->pInfo->ulMaxEntry = pVolInfo->BootSect.bpb.RootDirEntries;
    else
-      pFindInfo->pInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * usNumClusters;
+      pFindInfo->pInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * ulNumClusters;
 
    if (!GetBlock(pVolInfo, pFindInfo, 0))
       {
@@ -611,7 +611,7 @@ PSZ szLongName;
 PSZ szUpperName;
 PBYTE pStart = *ppData;
 USHORT rc;
-USHORT usBlockIndex;
+ULONG  ulBlockIndex;
 
    szLongName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP);
    if (!szLongName)
@@ -644,10 +644,10 @@ USHORT usBlockIndex;
          {
          memset(szShortName, 0, sizeof(szShortName)); // vs
 
-         usBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
-         if (usBlockIndex != pFindInfo->pInfo->usBlockIndex)
+         ulBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+         if (ulBlockIndex != pFindInfo->pInfo->ulBlockIndex)
             {
-            if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
+            if (!GetBlock(pVolInfo, pFindInfo, ulBlockIndex))
                {
                rc = ERROR_SYS_INTERNAL;
                goto FillDirEntryExit;
@@ -1162,10 +1162,10 @@ USHORT usBlockIndex;
       pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
       while (pFindInfo->pInfo->ulCurEntry < pFindInfo->pInfo->ulMaxEntry)
          {
-         usBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
-         if (usBlockIndex != pFindInfo->pInfo->usBlockIndex)
+         ulBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+         if (ulBlockIndex != pFindInfo->pInfo->ulBlockIndex)
             {
-            if (!GetBlock(pVolInfo, pFindInfo, usBlockIndex))
+            if (!GetBlock(pVolInfo, pFindInfo, ulBlockIndex))
                {
                rc = ERROR_SYS_INTERNAL;
                goto FillDirEntryExit;
@@ -1898,12 +1898,12 @@ int far pascal _loadds FS_FINDNOTIFYNEXT(
    ulTimeOut = ulTimeOut;
 }
 
-BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, USHORT usBlockIndex)
+BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, ULONG ulBlockIndex)
 {
 USHORT usIndex;
 USHORT usBlocksPerCluster = (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
-USHORT usClusterIndex = usBlockIndex / usBlocksPerCluster;
-ULONG  ulBlock = usBlockIndex % usBlocksPerCluster;
+USHORT usClusterIndex = ulBlockIndex / usBlocksPerCluster;
+ULONG  ulBlock = ulBlockIndex % usBlocksPerCluster;
 USHORT usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
          (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
 USHORT usSectorsRead;
@@ -1916,20 +1916,20 @@ CHAR   fRootDir = FALSE;
       fRootDir = TRUE;
       }
 
-   if (usBlockIndex >= pFindInfo->pInfo->usTotalBlocks)
+   if (ulBlockIndex >= pFindInfo->pInfo->ulTotalBlocks)
       return FALSE;
 
    if (!pFindInfo->pInfo->rgClusters[usClusterIndex])
       {
       if (fRootDir)
          {
-         usIndex = pFindInfo->pInfo->usBlockIndex / usBlocksPerCluster;
+         usIndex = pFindInfo->pInfo->ulBlockIndex / usBlocksPerCluster;
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
             usIndex * pVolInfo->SectorsPerCluster;
          usSectorsRead = usIndex * (USHORT)pVolInfo->SectorsPerCluster;
          }
-      for (usIndex = pFindInfo->pInfo->usBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
+      for (usIndex = pFindInfo->pInfo->ulBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
          if (fRootDir)
             {
@@ -1986,6 +1986,6 @@ CHAR   fRootDir = FALSE;
    if (fRootDir)
       pFindInfo->pInfo->rgClusters[0] = 1;
 
-   pFindInfo->pInfo->usBlockIndex = usBlockIndex;
+   pFindInfo->pInfo->ulBlockIndex = ulBlockIndex;
    return TRUE;
 }

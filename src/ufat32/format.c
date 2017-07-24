@@ -491,15 +491,16 @@ int format_volume (char *path, format_params *params)
 
     if (params->bFatType < FAT_TYPE_FAT32)
         // root dir is excluded from user area on FAT12/FAT16
-        UserAreaSize -= params->sectors_per_cluster; // ???!
+        UserAreaSize -= (ULONG)dp.RootDirEnt * sizeof(DIRENTRY) / dp.BytesPerSect +
+        (((ULONG)dp.RootDirEnt * sizeof(DIRENTRY) % dp.BytesPerSect) ? 1 : 0);
 
     ClusterCount = UserAreaSize / params->sectors_per_cluster;
 
-    if ( (ClusterCount >= FAT12_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT12) ||
-         (ClusterCount >= FAT16_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT16) ||
-         (ClusterCount >= FAT32_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT32) ||
+    if ( (ClusterCount - 2 >= FAT12_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT12) ||
+         (ClusterCount - 2 >= FAT16_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT16) ||
+         (ClusterCount - 2 >= FAT32_BAD_CLUSTER && params->bFatType == FAT_TYPE_FAT32) ||
 #ifdef EXFAT
-         (ClusterCount >= EXFAT_BAD_CLUSTER && params->bFatType == FAT_TYPE_EXFAT) )
+         (ClusterCount - 2 >= EXFAT_BAD_CLUSTER && params->bFatType == FAT_TYPE_EXFAT) )
 #else
          FALSE )
 #endif

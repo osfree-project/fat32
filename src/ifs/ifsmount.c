@@ -513,9 +513,11 @@ int i;
             }
          else if (pVolInfo->bFatType < FAT_TYPE_FAT32)
             {
-            pVolInfo->ulStartOfData    = pSect->bpb.ReservedSectors +
-               pSect->bpb.SectorsPerFat * pSect->bpb.NumberOfFATs +
-               (pSect->bpb.RootDirEntries * sizeof(DIRENTRY)) / pSect->bpb.BytesPerSector;
+            PBOOTSECT0 pSect0 = (PBOOTSECT0)pSect;
+            pVolInfo->ulStartOfData    = pSect0->bpb.ReservedSectors +
+               pSect0->bpb.SectorsPerFat * pSect0->bpb.NumberOfFATs +
+               ((ULONG)pSect0->bpb.RootDirEntries * sizeof(DIRENTRY)) / pSect0->bpb.BytesPerSector +
+               ((((ULONG)pSect0->bpb.RootDirEntries * sizeof(DIRENTRY)) % pSect0->bpb.BytesPerSector) ? 1 : 0);
             }
 
          Trace("tracepoint 15%m", 0x4085);
@@ -1088,7 +1090,7 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       }
 
-   RootDirSectors = ((pbpb->RootDirEntries * 32UL) + (pbpb->BytesPerSector-1UL)) / pbpb->BytesPerSector;
+   RootDirSectors = (((ULONG)pbpb->RootDirEntries * 32UL) + (pbpb->BytesPerSector-1UL)) / pbpb->BytesPerSector;
 
    if (pbpb->SectorsPerFat)
       {

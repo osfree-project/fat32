@@ -1541,9 +1541,9 @@ ULONG  ulDirEntries = 0;
       {
       // FAT12/FAT16 root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
-         pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
-         (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+         (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
+      usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
+         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
    while (!fFound && ulCluster != pVolInfo->ulFatEof)
@@ -1601,8 +1601,8 @@ ULONG  ulDirEntries = 0;
                // reading the root directory in case of FAT12/FAT16
                ulSector += pVolInfo->SectorsPerCluster;
                usSectorsRead += pVolInfo->SectorsPerCluster;
-               if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
-                   pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+               if ((ULONG)usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
+                   (ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
                   // root directory ended
                   ulCluster = 0;
                }
@@ -6535,9 +6535,9 @@ USHORT usSectorsPerBlock;
       {
       // FAT12/FAT16 root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
-         pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
-         (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+         (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
+      usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
+         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
       usSectorsRead = 0;
       }
 
@@ -6553,8 +6553,8 @@ USHORT usSectorsPerBlock;
          // reading the root directory in case of FAT12/FAT16
          ulSector += pVolInfo->SectorsPerCluster;
          usSectorsRead += pVolInfo->SectorsPerCluster;
-         if (usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
-            pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
+         if ((ULONG)usSectorsRead * pVolInfo->BootSect.bpb.BytesPerSector >=
+            (ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY))
             // root directory ended
             ulCluster = 0;
          }
