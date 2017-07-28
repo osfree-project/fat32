@@ -4054,6 +4054,7 @@ USHORT rc;
 USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector)
 {
 ULONG  ulSec = ulSector * 3;
+USHORT usNumSec = 3;
 USHORT rc;
 
    MessageL(LOG_FUNCS, "ReadFatSector%m", 0x0043);
@@ -4062,6 +4063,18 @@ USHORT rc;
    // to fit a whole number of FAT12 entries
    // (ulSector is indeed a number of 3*512
    // bytes blocks, so, it is needed to multiply by 3)
+
+   // A 360 KB diskette has only 2 sectors per FAT
+   if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 3)
+      {
+      if (ulSector > 0)
+         return ERROR_SECTOR_NOT_FOUND;
+      else
+         {
+         ulSec = 0;
+         usNumSec = pVolInfo->BootSect.bpb.BigSectorsPerFat;
+         }
+      }
 
    if (pVolInfo->ulCurFatSector == ulSector)
       return 0;
@@ -4073,7 +4086,7 @@ USHORT rc;
       return ERROR_SECTOR_NOT_FOUND;
       }
 
-   rc = ReadSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
+   rc = ReadSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, usNumSec,
       pVolInfo->pbFatSector, 0);
    if (rc)
       return rc;
@@ -4089,6 +4102,7 @@ USHORT rc;
 USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector)
 {
 ULONG  ulSec = ulSector * 3;
+USHORT usNumSec = 3;
 USHORT usFat;
 USHORT rc;
 
@@ -4098,6 +4112,18 @@ USHORT rc;
    // to fit a whole number of FAT12 entries
    // (ulSector is indeed a number of 3*512
    // bytes blocks, so, it is needed to multiply by 3)
+
+   // A 360 KB diskette has only 2 sectors per FAT
+   if (pVolInfo->BootSect.bpb.BigSectorsPerFat < 3)
+      {
+      if (ulSector > 0)
+         return ERROR_SECTOR_NOT_FOUND;
+      else
+         {
+         ulSec = 0;
+         usNumSec = pVolInfo->BootSect.bpb.BigSectorsPerFat;
+         }
+      }
 
    if (pVolInfo->ulCurFatSector != ulSector)
       {
@@ -4115,7 +4141,7 @@ USHORT rc;
 
    for (usFat = 0; usFat < pVolInfo->BootSect.bpb.NumberOfFATs; usFat++)
       {
-      rc = WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, 3,
+      rc = WriteSector(pVolInfo, pVolInfo->ulActiveFatStart + ulSec, usNumSec,
          pVolInfo->pbFatSector, 0);
       if (rc)
          return rc;

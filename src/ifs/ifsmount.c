@@ -515,7 +515,7 @@ int i;
             {
             PBOOTSECT0 pSect0 = (PBOOTSECT0)pSect;
             pVolInfo->ulStartOfData    = pSect0->bpb.ReservedSectors +
-               pSect0->bpb.SectorsPerFat * pSect0->bpb.NumberOfFATs +
+               (ULONG)pSect0->bpb.SectorsPerFat * pSect0->bpb.NumberOfFATs +
                ((ULONG)pSect0->bpb.RootDirEntries * sizeof(DIRENTRY)) / pSect0->bpb.BytesPerSector +
                ((((ULONG)pSect0->bpb.RootDirEntries * sizeof(DIRENTRY)) % pSect0->bpb.BytesPerSector) ? 1 : 0);
             }

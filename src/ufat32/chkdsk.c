@@ -2821,6 +2821,7 @@ ULONG  ulRet = 0;
 BOOL ReadFATSector(PCDINFO pCD, ULONG ulSector)
 {
 ULONG  ulSec = ulSector * 3;
+USHORT usNumSec = 3;
 ULONG rc;
 
    // read multiples of three sectors,
@@ -2828,10 +2829,22 @@ ULONG rc;
    // (ulSector is indeed a number of 3*512
    // bytes blocks, so, it is needed to multiply by 3)
 
+   // A 360 KB diskette has only 2 sectors per FAT
+   if (pCD->BootSect.bpb.BigSectorsPerFat < 3)
+      {
+      if (ulSector > 0)
+         return ERROR_SECTOR_NOT_FOUND;
+      else
+         {
+         ulSec = 0;
+         usNumSec = pCD->BootSect.bpb.BigSectorsPerFat;
+         }
+      }
+
    if (pCD->ulCurFATSector == ulSector)
       return TRUE;
 
-   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSec, 3,
+   rc = ReadSector(pCD, pCD->ulActiveFatStart + ulSec, usNumSec,
       (PBYTE)pCD->pbFATSector);
    if (rc)
       return FALSE;

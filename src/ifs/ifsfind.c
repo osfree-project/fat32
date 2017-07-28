@@ -234,9 +234,9 @@ PDIRENTRY1 pStreamEntry = NULL;
    if (ulCluster == 1)
       {
       // FAT12/FAT16 root directory size (contiguous)
-      ULONG ulRootDirSize = (ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) /
+      ULONG ulRootDirSize = ((ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) /
          ((ULONG)pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector);
-      ulNumClusters = ((ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY) %
+      ulNumClusters = (((ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY)) %
          ((ULONG)pVolInfo->SectorsPerCluster * pVolInfo->BootSect.bpb.BytesPerSector)) ?
          ulRootDirSize + 1 : ulRootDirSize;
       }
@@ -254,8 +254,8 @@ PDIRENTRY1 pStreamEntry = NULL;
       while (ulCluster && ulCluster != pVolInfo->ulFatEof)
          {
          ulNumClusters++;
-         //ulCluster = GetNextCluster(pVolInfo, pFindInfo->pSHInfo, ulCluster);
-         ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
+         ulCluster = GetNextCluster(pVolInfo, pFindInfo->pSHInfo, ulCluster);
+         //ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
          }
       }
 
@@ -289,7 +289,7 @@ PDIRENTRY1 pStreamEntry = NULL;
    pFindInfo->pInfo->usEntriesPerBlock = (USHORT)(pVolInfo->ulBlockSize / sizeof (DIRENTRY));
    pFindInfo->pInfo->ulBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
-   pFindInfo->pInfo->ulTotalBlocks = (USHORT)ulNumBlocks; ////
+   pFindInfo->pInfo->ulTotalBlocks = ulNumBlocks;
    pFindInfo->pInfo->pDirEntries =
       (PDIRENTRY)(&pFindInfo->pInfo->rgClusters[ulNumClusters]);
 
@@ -1949,8 +1949,8 @@ CHAR   fRootDir = FALSE;
          else
             {
             pFindInfo->pInfo->rgClusters[usIndex + 1] =
-               //GetNextCluster( pVolInfo, pFindInfo->pSHInfo, pFindInfo->pInfo->rgClusters[usIndex] );
-               GetNextCluster( pVolInfo, NULL, pFindInfo->pInfo->rgClusters[usIndex] );
+               GetNextCluster( pVolInfo, pFindInfo->pSHInfo, pFindInfo->pInfo->rgClusters[usIndex] );
+               //GetNextCluster( pVolInfo, NULL, pFindInfo->pInfo->rgClusters[usIndex] );
             }
 
          if (!pFindInfo->pInfo->rgClusters[usIndex + 1])
