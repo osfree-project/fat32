@@ -161,7 +161,7 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG )) ////
+      if( TranslateName(pVolInfo, 0L, NULL, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
          strcpy( szLongName, pName );
 
       pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
@@ -179,7 +179,7 @@ USHORT rc;
          goto FS_OPENCREATEEXIT;
          }
 
-      ulDirCluster = FindDirCluster(pVolInfo, ////
+      ulDirCluster = FindDirCluster(pVolInfo,
          pcdfsi,
          pcdfsd,
          pName,
@@ -509,7 +509,7 @@ USHORT rc;
          *pfGenFlag = 0;
          if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
             {
-            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf);
+            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf); //////
             if (rc)
                {
                free(szLongName);
@@ -3858,7 +3858,7 @@ ULONGLONG size;
                rc = 0;
                }
             else
-               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, pEA);
+               rc = usGetEAS(pVolInfo, usLevel, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, pEA); //////
             break;
             }
          default :

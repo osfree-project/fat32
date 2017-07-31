@@ -19,7 +19,7 @@
 PRIVATE PFEA   FindEA(PFEALIST pFeal, PSZ pszName, USHORT usMaxName);
 PRIVATE USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate);
 PRIVATE USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST pFEAL);
-PRIVATE USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PSZ * pszEASName);
+PRIVATE USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PSZ * pszEASName);
 
 
 /************************************************************************
@@ -143,7 +143,7 @@ PFEA pTarFea;
    MessageL(LOG_EAS, "cbList after%m = %lu", 0x4039, pTarFeal->cbList);
 
    if (pTarFeal->cbList > 4)
-      rc = usWriteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, pTarFeal);
+      rc = usWriteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, pTarFeal); ////// rc=2
    else
       rc = usDeleteEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName);
 
@@ -186,7 +186,7 @@ ULONG    ulCluster;
 
    *pulSize = sizeof (ULONG);
 
-   rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
+   rc = GetEASName(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pszEAName);
    if (rc)
       goto usGetEASizeExit;
 
@@ -449,10 +449,10 @@ PSHOPENINFO pSrcSHInfo = NULL;
       }
 #endif
 
-   rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
+   rc = GetEASName(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, pszSrcFile, &pszSrcEAName);
    if (rc)
       goto usCopyEASExit;
-   rc = GetEASName(pVolInfo, ulTarDirCluster, pszTarFile, &pszTarEAName);
+   rc = GetEASName(pVolInfo, ulTarDirCluster, pDirTarSHInfo, pszTarFile, &pszTarEAName);
    if (rc)
       goto usCopyEASExit;
 
@@ -563,10 +563,10 @@ PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
       }
 #endif
 
-   rc = GetEASName(pVolInfo, ulSrcDirCluster, pszSrcFile, &pszSrcEAName);
+   rc = GetEASName(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, pszSrcFile, &pszSrcEAName);
    if (rc)
       goto usMoveEASExit;
-   rc = GetEASName(pVolInfo, ulTarDirCluster, pszTarFile, &pszTarEAName);
+   rc = GetEASName(pVolInfo, ulTarDirCluster, pDirTarSHInfo, pszTarFile, &pszTarEAName);
    if (rc)
       goto usMoveEASExit;
 
@@ -734,7 +734,7 @@ BOOL fFirst = TRUE;
 
    *ppFEAL = NULL;
 
-   rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
+   rc = GetEASName(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pszEAName);
    if (rc)
       goto usReadEASExit;
 
@@ -884,7 +884,7 @@ ULONG    ulCluster;
       }
 #endif
 
-   rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
+   rc = GetEASName(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pszEAName);
    if (rc)
       return rc;
 
@@ -975,7 +975,7 @@ PSHOPENINFO pSHInfo = NULL;
       }
 #endif
 
-   rc = GetEASName(pVolInfo, ulDirCluster, pszFileName, &pszEAName);
+   rc = GetEASName(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, &pszEAName);
    if (rc)
       goto usWriteEASExit;
 
@@ -1174,7 +1174,7 @@ PSHOPENINFO pSHInfo = NULL;
    if (fCritical)
       rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_CRITICAL_EAS);
    else
-      rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_EAS);
+      rc = MarkFileEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, FILE_HAS_EAS); ////// rc=2
 
 usWriteEASExit:
    if (pDirEntry)
@@ -1229,7 +1229,7 @@ PBYTE pMax;
    return NULL;
 }
 
-USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PSZ * pszEASName)
+USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PSZ * pszEASName)
 {
    if (strlen(pszFileName) > FAT32MAXPATH - 4)
       return ERROR_FILENAME_EXCED_RANGE;
@@ -1238,7 +1238,7 @@ USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFileName, PSZ * 
    if (!(*pszEASName))
       return ERROR_NOT_ENOUGH_MEMORY;
 
-   if( TranslateName( pVolInfo, ulDirCluster, pszFileName, *pszEASName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName( pVolInfo, ulDirCluster, pDirSHInfo, pszFileName, *pszEASName, TRANSLATE_SHORT_TO_LONG ))
        strcpy(*pszEASName, pszFileName);
 
    strcat(*pszEASName, EA_EXTENTION);

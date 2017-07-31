@@ -84,7 +84,7 @@ PSZ      szDirLongName;
             }
             memset(pOpenInfo, 0, sizeof (OPENINFO));
 
-            if( TranslateName(pVolInfo, 0L, pDir, szDirLongName, TRANSLATE_SHORT_TO_LONG ))
+            if( TranslateName(pVolInfo, 0L, NULL, pDir, szDirLongName, TRANSLATE_SHORT_TO_LONG ))
                strcpy( szDirLongName, pDir );
 
             pOpenInfo->pSHInfo = GetSH( szDirLongName, pOpenInfo);
@@ -504,7 +504,7 @@ PSHOPENINFO pSHInfo = NULL;
       }
 
 #if 1
-   if( TranslateName(pVolInfo, 0L, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szLongName, pName );
 
    rc = MY_ISCURDIRPREFIX( szLongName );
@@ -514,7 +514,7 @@ PSHOPENINFO pSHInfo = NULL;
    rc = FSH_ISCURDIRPREFIX(pName);
    if (rc)
       goto FS_RMDIREXIT;
-   rc = TranslateName(pVolInfo, 0L, pName, szName, TRANSLATE_AUTO);
+   rc = TranslateName(pVolInfo, 0L, NULL, pName, szName, TRANSLATE_AUTO);
    if (rc)
       goto FS_RMDIREXIT;
    rc = FSH_ISCURDIRPREFIX(szName);

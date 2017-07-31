@@ -405,7 +405,7 @@ IMPORT USHORT fGetSetVolLabel(PVOLINFO pVolInfo, USHORT usFlag, PSZ pszVolLabel,
 IMPORT USHORT fGetAllocBitmap(PVOLINFO pVolInfo, PULONG pulFirstCluster, PULONGLONG pullLen);
 IMPORT USHORT fGetUpCaseTbl(PVOLINFO pVolInfo, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum);
 IMPORT void SetSHInfo1(PVOLINFO pVolInfo, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
-IMPORT USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usMode);
+IMPORT USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszPath, PSZ pszTarget, USHORT usMode);
 IMPORT VOID DoLW(PVOLINFO pVolInfo, PLWOPTS pOptions);
 IMPORT VOID DoEmergencyFlush(PLWOPTS pOptions);
 IMPORT VOID Yield(void);

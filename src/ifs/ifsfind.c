@@ -1308,7 +1308,8 @@ ULONG  ulBlockIndex;
                      {
                      PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
 
-                     if (*pcbData < sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     //if (*pcbData < sizeof (FILEFNDBUF4L) - CCHMAXPATHCOMP + strlen(szLongName) + 1)
+                     if (*pcbData < sizeof (FILEFNDBUF4L) + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;

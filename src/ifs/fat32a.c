@@ -257,10 +257,10 @@ PSZ      szDstLongName = NULL;
       goto FS_COPYEXIT;
       }
 
-   if( TranslateName(pVolInfo, 0L, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szSrcLongName, pSrc );
 
-   if( TranslateName(pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szDstLongName, pDst );
 
    if (!stricmp( szSrcLongName, szDstLongName ))
@@ -683,7 +683,7 @@ PSZ      szLongName = NULL;
       goto FS_DELETEEXIT;
       }
 
-   if( TranslateName(pVolInfo, 0L, pFile, szLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pFile, szLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szLongName, pFile );
 
    pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
@@ -924,10 +924,14 @@ USHORT rc;
       goto FS_FLUSHEXIT;
       }
 
-   if (!MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount))
+   if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
       {
-      rc = ERROR_SECTOR_NOT_FOUND;
-      goto FS_FLUSHEXIT;
+      // ignore dirty status on floppies (and FAT12)
+      if (!MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount))
+         {
+         rc = ERROR_SECTOR_NOT_FOUND;
+         goto FS_FLUSHEXIT;
+         }
       }
 FS_FLUSHEXIT:
 
@@ -1272,7 +1276,7 @@ POPENINFO pOpenInfo;
             }
          if (pVolInfo)
          {
-            TranslateName(pVolInfo, 0L, (PSZ)pParm, szShortPath, TRANSLATE_LONG_TO_SHORT);
+            TranslateName(pVolInfo, 0L, NULL, (PSZ)pParm, szShortPath, TRANSLATE_LONG_TO_SHORT);
             if( strlen( szShortPath ) >= cbData )
             {
                 free(szShortPath);
@@ -2511,38 +2515,45 @@ PBIOSPARAMETERBLOCK pBPB;
                break;
 
             case DSK_SETDEVICEPARAMS :
+               {
+               #define IODC_SP_MEDIA 2
+               typedef struct
+                  {
+                  BYTE bCmdInfo;
+                  BYTE bUnit;
+                  } ParamPkt;
+
+               ParamPkt *pkt;
+
                if (pcbData)
                   *pcbData = sizeof (BIOSPARAMETERBLOCK);
                hDEV = GetVolDevice(pVolInfo);
 
                pBPB = (PBIOSPARAMETERBLOCK)pData;
 
-               pVolInfo->SectorsPerCluster = pBPB->bSectorsPerCluster;
-               pVolInfo->BootSect.bpb.ReservedSectors = pBPB->usReservedSectors;
-               pVolInfo->BootSect.bpb.NumberOfFATs = pBPB->cFATs;
-               if (pVolInfo->bFatType < FAT_TYPE_FAT32)
-                  {
-                  pVolInfo->BootSect.bpb.RootDirEntries = pBPB->cRootEntries;
-                  pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBPB0)pBPB)->SectorsPerFat;
-                  }
-               else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
-                  {
-                     pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBPB)pBPB)->BigSectorsPerFat;
-                  }
+               pkt = (ParamPkt *)pParm;
+
+               // flip IODC_SP_MEDIA (2) bit, for kernel not to call SetVPB
+               // (otherwise, the kernel will hurt VPB when doing loaddskf
+               // on a floppy device)
+               pkt->bCmdInfo &= ~IODC_SP_MEDIA;
 
                rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
                   usCat, usFunc, pParm, cbParm, pData, cbData);
-               if (!rc) {
 
-                  if (pcbData) {
-                    *pcbData = sizeof (BIOSPARAMETERBLOCK);
-                  }
+               if (!rc)
+                  {
+                  if (pcbData)
+                     {
+                     *pcbData = sizeof (BIOSPARAMETERBLOCK);
+                     }
 
-                  if (pcbParm) {
-                    *pcbParm = cbParm;
+                  if (pcbParm)
+                     {
+                     *pcbParm = cbParm;
+                     }
                   }
                }
-
                break;
 
             default  :
@@ -3342,10 +3353,10 @@ PSZ      szDstLongName = NULL;
       goto FS_MOVEEXIT;
       }
 
-   if( TranslateName(pVolInfo, 0L, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pSrc, szSrcLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szSrcLongName, pSrc );
 
-   if( TranslateName(pVolInfo, 0L, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
+   if( TranslateName(pVolInfo, 0L, NULL, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szDstLongName, pDst );
 
    pOISrc = malloc(sizeof (OPENINFO));
@@ -3533,7 +3544,7 @@ PSZ      szDstLongName = NULL;
          free(szName);
          goto FS_MOVEEXIT;
          }
-      rc = TranslateName(pVolInfo, 0L, pSrc, szName, TRANSLATE_AUTO);
+      rc = TranslateName(pVolInfo, 0L, NULL, pSrc, szName, TRANSLATE_AUTO);
       if (rc)
          {
          free(szName);
@@ -3760,7 +3771,10 @@ USHORT rc = 0;
             usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
 
             UpdateFSInfo(pVolInfo);
-            MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+            if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
+               {
+               MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+               }
          }
       }
    else /* usType == SD_COMPLETE */
@@ -6247,7 +6261,7 @@ USHORT rc;
       if (!GetFatAccess(pVolInfo, "DeleteFatChain"))
          {
          ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
-         ReadBmpSector(pVolInfo, ulSector);
+         ReadBmpSector(pVolInfo, ulBmpSector);
          ReleaseFat(pVolInfo);
          }
       }

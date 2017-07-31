@@ -32,10 +32,6 @@ VOID   ReleaseBuf2(PVOLINFO pVolInfo);
 USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName);
 VOID   ReleaseBuf3(PVOLINFO pVolInfo);
 
-static ULONG ulSemRWBuf1 = 0UL;
-static ULONG ulSemRWBuf2 = 0UL;
-static ULONG ulSemRWBuf3 = 0UL;
-
 
 /******************************************************************
 *
@@ -644,7 +640,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
 }
 
 
-USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
+USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
 {
 BYTE szShortName[13];
 PSZ  pszLongName;
@@ -664,6 +660,10 @@ ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 ULONG  ulDirEntries = 0;
+DIRENTRY1 Dir;
+USHORT usNumSecondary;
+USHORT usFileAttr;
+ULONG  ulRet;
 
    MessageL(LOG_FUNCS, "TranslateName%m: %s", 0x0034, pszPath);
 
@@ -768,85 +768,202 @@ ULONG  ulDirEntries = 0;
 
             while (usMode == MODE_SCAN && pDir < pDirEnd)
                {
-               if (pDir->bAttr == FILE_LONGNAME)
+#ifdef EXFAT
+               if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
                   {
-                  fGetLongName(pDir, pszLongName, FAT32MAXPATHCOMP, &bCheck);
-                  }
-               else if ((pDir->bAttr & 0x0F) != FILE_VOLID)
-                  {
-
-                  MakeName(pDir, szShortName, sizeof szShortName);
-                  FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
-
-                  if (bCheck != GetVFATCheckSum(pDir))
-                     memset(pszLongName, 0, FAT32MAXPATHCOMP);
-
-                   /* support for the FAT32 variation of WinNT family */
-                   if( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
-                   {
-                       PBYTE pDot;
-
-                       MakeName( pDir, pszLongName, sizeof( pszLongName ));
-                       pDot = strchr( pszLongName, '.' );
-
-                       if( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
-                       {
-                           if( pDot )
-                               *pDot = 0;
-
-                           strlwr( pszLongName );
-
-                           if( pDot )
-                               *pDot = '.';
-                       }
-
-                       if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
-                           strlwr( pDot + 1 );
-                   }
-
-                  if (!strlen(pszLongName))
-                     strcpy(pszLongName, szShortName);
-                  FSH_UPPERCASE(pszLongName, FAT32MAXPATHCOMP, pszUpperName);
-
-                  if (usTranslate == TRANSLATE_LONG_TO_SHORT) /* OS/2 session, translate to DOS */
+#endif
+                  if (pDir->bAttr == FILE_LONGNAME)
                      {
-                     if (!stricmp(pszUpperName, pszUpperPart) ||
-                         !stricmp(szShortName,  pszUpperPart))
-                        {
-                        strcat(pszTarget, szShortName);
-                        pszTarget += strlen(pszTarget);
-                        fFound = TRUE;
-                        }
+                     fGetLongName(pDir, pszLongName, FAT32MAXPATHCOMP, &bCheck);
                      }
-                  else /* translate from DOS to OS/2 */
+                  else if ((pDir->bAttr & 0x0F) != FILE_VOLID)
                      {
-                     if (!stricmp(szShortName,  pszUpperPart) ||
-                         !stricmp(pszUpperName, pszUpperPart))
-                        {
-                        strcat(pszTarget, pszLongName);
-                        pszTarget += strlen(pszTarget);
-                        fFound = TRUE;
-                        }
-                     }
+                     MakeName(pDir, szShortName, sizeof szShortName);
+                     FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
 
-                  if (fFound)
-                     {
-                     ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
-                     ulCluster &= pVolInfo->ulFatEof;
-                     if (strlen(pszPath))
+                     if (bCheck != GetVFATCheckSum(pDir))
+                        memset(pszLongName, 0, FAT32MAXPATHCOMP);
+
+                     /* support for the FAT32 variation of WinNT family */
+                     if ( !*pszLongName && HAS_WINNT_EXT( pDir->fEAS ))
                         {
-                        if (pDir->bAttr & FILE_DIRECTORY)
+                        PBYTE pDot;
+
+                        MakeName( pDir, pszLongName, sizeof( pszLongName ));
+                        pDot = strchr( pszLongName, '.' );
+
+                        if ( HAS_WINNT_EXT_NAME( pDir->fEAS )) /* name part is lower case */
                            {
-                           usMode = MODE_START;
-                           break;
+                              if( pDot )
+                                  *pDot = 0;
+
+                              strlwr( pszLongName );
+
+                              if( pDot )
+                                  *pDot = '.';
                            }
-                        ulCluster = pVolInfo->ulFatEof;
+
+                        if( pDot && HAS_WINNT_EXT_EXT( pDir->fEAS )) /* ext part is lower case */
+                            strlwr( pDot + 1 );
                         }
+
+                     if (!strlen(pszLongName))
+                        strcpy(pszLongName, szShortName);
+                     FSH_UPPERCASE(pszLongName, FAT32MAXPATHCOMP, pszUpperName);
+
+                     if (usTranslate == TRANSLATE_LONG_TO_SHORT) /* OS/2 session, translate to DOS */
+                        {
+                        if (!stricmp(pszUpperName, pszUpperPart) ||
+                            !stricmp(szShortName,  pszUpperPart))
+                           {
+                           strcat(pszTarget, szShortName);
+                           pszTarget += strlen(pszTarget);
+                           fFound = TRUE;
+                           }
+                        }
+                     else /* translate from DOS to OS/2 */
+                        {
+                        if (!stricmp(szShortName,  pszUpperPart) ||
+                            !stricmp(pszUpperName, pszUpperPart))
+                           {
+                           strcat(pszTarget, pszLongName);
+                           pszTarget += strlen(pszTarget);
+                           fFound = TRUE;
+                           }
+                        }
+
+                     if (fFound)
+                        {
+                        ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                        ulCluster &= pVolInfo->ulFatEof;
+                        if (strlen(pszPath))
+                           {
+                           if (pDir->bAttr & FILE_DIRECTORY)
+                              {
+                              usMode = MODE_START;
+                              break;
+                              }
+                           ulCluster = pVolInfo->ulFatEof;
+                           }
+                        usMode = MODE_RETURN;
+                        break;
+                        }
+                     memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                     }
+#ifdef EXFAT
+                  }
+               else
+                  {
+                  PDIRENTRY1 pDir1 = (PDIRENTRY1)pDir;
+
+                  if (pDir1->bEntryType == ENTRY_TYPE_EOD)
+                     {
+                     ulCluster = pVolInfo->ulFatEof;
                      usMode = MODE_RETURN;
                      break;
                      }
-                  memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                  else if (pDir1->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
+                     {
+                     if (pDir1->bEntryType == ENTRY_TYPE_FILE_NAME)
+                        {
+                        usNumSecondary--;
+                        fGetLongName1(pDir1, pszLongName, FAT32MAXPATHCOMP);
+
+                        if (!usNumSecondary)
+                           {
+                           //MakeName(pDir1, szShortName, sizeof szShortName);
+                           //FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
+
+                           //if (bCheck != GetVFATCheckSum(pDir1))
+                           //   memset(pszLongName, 0, FAT32MAXPATHCOMP);
+#if 0
+                           /* support for the FAT32 variation of WinNT family */
+                           if ( !*pszLongName && HAS_WINNT_EXT( pDir1->u.File.fEAS ))
+                              {
+                              PBYTE pDot;
+
+                              MakeName( pDir1, pszLongName, sizeof( pszLongName ));
+                              pDot = strchr( pszLongName, '.' );
+
+                              if ( HAS_WINNT_EXT_NAME( pDir->u.File.fEAS )) /* name part is lower case */
+                                 {
+                                 if( pDot )
+                                    *pDot = 0;
+
+                                 strlwr( pszLongName );
+
+                                 if( pDot )
+                                    *pDot = '.';
+                                 }
+
+                              if ( pDot && HAS_WINNT_EXT_EXT( pDir->u.File.fEAS )) /* ext part is lower case */
+                                 strlwr( pDot + 1 );
+                              }
+#endif
+                           //if (!strlen(pszLongName))
+                           //   strcpy(pszLongName, szShortName);
+                           FSH_UPPERCASE(pszLongName, FAT32MAXPATHCOMP, pszUpperName);
+
+                           if (usTranslate == TRANSLATE_LONG_TO_SHORT) /* OS/2 session, translate to DOS */
+                              {
+                              MakeShortName(pVolInfo, ulDirCluster, pszUpperName, szShortName);
+                              if (
+                                   ( !stricmp(pszUpperName, pszUpperPart) ||
+                                     !stricmp(szShortName,  pszUpperPart) ) )
+                                 {
+                                 strcat(pszTarget, szShortName);
+                                 pszTarget += strlen(pszTarget);
+                                 fFound = TRUE;
+                                 }
+                              }
+                           else /* translate from DOS to OS/2 */
+                              {
+                              if (//!stricmp(szShortName,  pszUpperPart) ||
+                                  !stricmp(pszUpperName, pszUpperPart))
+                                 {
+                                 strcat(pszTarget, pszLongName);
+                                 pszTarget += strlen(pszTarget);
+                                 fFound = TRUE;
+                                 }
+                              }
+
+                           if (fFound)
+                              {
+                              //ulCluster = (ULONG)pDir->wClusterHigh * 0x10000L + pDir->wCluster;
+                              //ulCluster &= pVolInfo->ulFatEof;
+                              ulCluster = ulRet;
+                              if (strlen(pszPath))
+                                 {
+                                 if (pDir1->u.File.usFileAttr & FILE_DIRECTORY)
+                                    {
+                                    usMode = MODE_START;
+                                    break;
+                                    }
+                                 ulCluster = pVolInfo->ulFatEof;
+                                 }
+                              usMode = MODE_RETURN;
+                              break;
+                              }
+                           //memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                           }
+                        }
+                     else if (pDir1->bEntryType == ENTRY_TYPE_STREAM_EXT)
+                        {
+                        usNumSecondary--;
+                        ulRet = pDir1->u.Stream.ulFirstClus;
+                        //if (pDirEntryStream)
+                        //   memcpy(pDirEntryStream, pDir1, sizeof(DIRENTRY1));
+                        }
+                     else if (pDir1->bEntryType == ENTRY_TYPE_FILE)
+                        {
+                        usNumSecondary = pDir1->u.File.bSecondaryCount;
+                        usFileAttr = pDir1->u.File.usFileAttr;
+                        memcpy(&Dir, pDir1, sizeof (DIRENTRY1));
+                        memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                        }
+                     }
                   }
+#endif
                pDir++;
                ulDirEntries++;
                if (ulCluster == 1 && ulDirEntries > pVolInfo->BootSect.bpb.RootDirEntries)
@@ -868,7 +985,9 @@ ULONG  ulDirEntries = 0;
                ulCluster = 0;
             }
          else
-            ulCluster = GetNextCluster(pVolInfo, NULL, ulCluster);
+            {
+            ulCluster = GetNextCluster(pVolInfo, pDirSHInfo, ulCluster);
+            }
          if (!ulCluster)
             ulCluster = pVolInfo->ulFatEof;
          if (ulCluster == pVolInfo->ulFatEof)
@@ -1534,6 +1653,7 @@ USHORT    rc;
                //   }
                //else
                //   {
+               //Message("md000aa: ulCluster=%lx, ulBlock=%lu", ulCluster, ulBlock);
                   rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pDir2, usIOMode);
                   ulBytesToRead = pVolInfo->ulBlockSize;
                //   }

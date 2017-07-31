@@ -363,7 +363,7 @@ USHORT rc;
             goto FS_PATHINFOEXIT;
             }
 
-         if( TranslateName( pVolInfo, 0L, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
+         if( TranslateName( pVolInfo, 0L, NULL, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
             strcpy( szFullName, pName );
          }
 
