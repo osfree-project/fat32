@@ -205,9 +205,9 @@ $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
     DOSPUTMESSAGE DOSCALLS.383, &
     DOSEXECPGM DOSCALLS.144, &
     Dos32FlatDS DOSCALLS.370, &
-    _TKSSBase MVDM.2, &
-    KernThunkStackTo16 KEE.40, &
-    KernThunkStackTo32 KEE.41
+    _TKSSBase MVDM.2
+#    KernThunkStackTo16 KEE.40, &
+#    KernThunkStackTo32 KEE.41
  @%append $@ @$[@
 
 $(PROJ_BLD)\ifsfil32.obj: ifsfil32.c

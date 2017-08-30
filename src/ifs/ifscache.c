@@ -295,8 +295,8 @@ char far *p;
    rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
    if (rc)
       {
-      CritMessage("FAT32: ReadSector of sector %ld (%d sectors) failed, rc = %u",
-         ulSector, usSectors, rc);
+      //CritMessage("FAT32: ReadSector of sector %ld (%d sectors) failed, rc = %u",
+      //   ulSector, usSectors, rc);
       Message("ERROR: ReadSector of sector %ld (%d sectors) failed, rc = %u",
          ulSector, usSectors, rc);
       }
@@ -389,7 +389,7 @@ char *p;
       pVolInfo->ulLastDiskTime = GetCurTime();
       rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
       if (rc && rc != ERROR_WRITE_PROTECT )
-         CritMessage("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
+         Message("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
             ulSector, nSectors, rc);
       fDirty = FALSE;
       }
@@ -587,7 +587,7 @@ PCACHEBASE2 pBase2;
                 if (f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold)
                 {
                     BOOL fMsg = f32Parms.fMessageActive;
-                    CritMessage("FAT32:No free sectors in cache! (run MONITOR now!)");
+                    //CritMessage("FAT32:No free sectors in cache! (run MONITOR now!)");
                     Message("ERROR: fStoreSector - No sectors available!");
                     Message("       %u sectors are dirty", f32Parms.usDirtySectors);
                     f32Parms.fMessageActive = fMsg;
@@ -795,7 +795,7 @@ PCACHE   pCache;
                pVolInfo->ulLastDiskTime = GetCurTime();
             }
          else
-            CritMessage("FAT32: Error %u in WriteCacheSector", rc);
+            Message("FAT32: Error %u in WriteCacheSector", rc);
 
          return rc;
          }
@@ -1101,7 +1101,7 @@ USHORT rc;
    if (rc)
       {
       Message("ERROR: SemRequest GetReadAccess Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetReadAccess Failed, rc = %d!", rc);
+      //CritMessage("FAT32: SemRequest GetReadAccess Failed, rc = %d!", rc);
       Message("GetReadAccess Failed for %s, rc = %d", pszName, rc);
       return rc;
       }

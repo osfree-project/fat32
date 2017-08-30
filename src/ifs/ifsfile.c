@@ -509,7 +509,7 @@ USHORT rc;
          *pfGenFlag = 0;
          if (f32Parms.fEAS && pEABuf && pEABuf != MYNULL)
             {
-            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf); //////
+            rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, (PEAOP)pEABuf);
             if (rc)
                {
                free(szLongName);
@@ -601,8 +601,8 @@ USHORT rc;
          else
             {
             PDIRENTRY1 pDirEntry1 = (PDIRENTRY1)pDirEntry;
-            pDirEntry1->bEntryType = ENTRY_TYPE_FILE;
-            pDirEntryStream->bEntryType = ENTRY_TYPE_STREAM_EXT;
+            //pDirEntry1->bEntryType = ENTRY_TYPE_FILE;
+            //pDirEntryStream->bEntryType = ENTRY_TYPE_STREAM_EXT;
             pDirEntry1->u.File.usFileAttr = (BYTE)(usAttr & (FILE_READONLY | FILE_HIDDEN | FILE_SYSTEM | FILE_ARCHIVED));
             pDirEntry1->u.File.fEAS = FILE_HAS_NO_EAS;
             pDirEntryStream->u.Stream.ulFirstClus = 0;
@@ -720,8 +720,8 @@ USHORT rc;
                else
                   {
                   PDIRENTRY1 pDirEntry1 = (PDIRENTRY1)pDirEntry;
-                  pDirEntry1->bEntryType = ENTRY_TYPE_FILE;
-                  pDirEntryStream->bEntryType = ENTRY_TYPE_STREAM_EXT;
+                  //pDirEntry1->bEntryType = ENTRY_TYPE_FILE;
+                  //pDirEntryStream->bEntryType = ENTRY_TYPE_STREAM_EXT;
                   pDirEntryStream->u.Stream.ulFirstClus = ulCluster;
 #ifdef INCL_LONGLONG
                   pDirEntryStream->u.Stream.ullValidDataLen = size;
@@ -755,7 +755,9 @@ USHORT rc;
                {
                ulCluster = 0;
                rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                  pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
+                  pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, usIOMode);
+               //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+               //   pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
                if (!rc)
                   rc = ERROR_DISK_FULL;
                free(pDirOld);
@@ -767,7 +769,9 @@ USHORT rc;
                }
             }
          rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
+            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, usIOMode);
+         //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+         //   pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
          if (rc)
             {
             free(pDirOld);
@@ -1003,12 +1007,12 @@ FS_OPENCREATEEXIT:
       free(pDirEntryStream);
    if (pDirStream)
       free(pDirStream);
-   if (pDirSHInfo)
-      free(pDirSHInfo);
 #endif
 
    if (rc && pOpenInfo)
       {
+      if (pOpenInfo->pDirSHInfo)
+         free(pOpenInfo->pDirSHInfo);
       if (pOpenInfo->pSHInfo)
          ReleaseSH(pOpenInfo);
       else
@@ -1082,7 +1086,7 @@ USHORT rc;
          rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pOI2, sizeof (OPENINFO));
          if (rc)
             {
-            CritMessage("FAT32: Protection VIOLATION (OpenInfo) in ReleaseSH! (SYS%d)", rc);
+            //CritMessage("FAT32: Protection VIOLATION (OpenInfo) in ReleaseSH! (SYS%d)", rc);
             Message("FAT32: Protection VIOLATION (OpenInfo) in ReleaseSH! (SYS%d)", rc);
             return FALSE;
             }
@@ -1095,7 +1099,7 @@ USHORT rc;
          }
       if (!pOI2)
          {
-         CritMessage("FAT32: ReleaseSH: Error cannot find OI for %s!", pSH->szFileName);
+         //CritMessage("FAT32: ReleaseSH: Error cannot find OI for %s!", pSH->szFileName);
          Message("FAT32: ReleaseSH: Error cannot find OI for %s!", pSH->szFileName);
          }
       }
@@ -1119,7 +1123,7 @@ USHORT rc;
          rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pSH2, sizeof (SHOPENINFO));
          if (rc)
             {
-            CritMessage("FAT32: Protection VIOLATION (SHOpenInfo) in ReleaseSH! (SYS%d)", rc);
+            //CritMessage("FAT32: Protection VIOLATION (SHOpenInfo) in ReleaseSH! (SYS%d)", rc);
             Message("FAT32: Protection VIOLATION (SHOpenInfo) in ReleaseSH! (SYS%d)", rc);
             return FALSE;
             }
@@ -1132,7 +1136,7 @@ USHORT rc;
          }
       if (!pSH2)
          {
-         CritMessage("FAT32: ReleaseSH: Error cannot find SH for %s!", pSH->szFileName);
+         //CritMessage("FAT32: ReleaseSH: Error cannot find SH for %s!", pSH->szFileName);
          Message("FAT32: ReleaseSH: Error cannot find SH for %s!", pSH->szFileName);
          }
       }
@@ -1197,7 +1201,7 @@ USHORT  rc = 0;
       if (!pVolInfo->ulOpenFiles)
          {
          Message("FAT32 - FS_CLOSE: Error openfile count would become negative!");
-         CritMessage("FAT32 - FS_CLOSE: Error openfile count would become negative!");
+         //CritMessage("FAT32 - FS_CLOSE: Error openfile count would become negative!");
          }
       else
          pVolInfo->ulOpenFiles--;
@@ -1216,7 +1220,12 @@ USHORT  rc = 0;
       }
 
    if (usType == FS_CL_FORSYS)
+      {
+      if (pOpenInfo->pDirSHInfo)
+         free(pOpenInfo->pDirSHInfo);
+
       ReleaseSH(pOpenInfo);
+      }
 
 FS_CLOSEEXIT:
    MessageL(LOG_FS, "FS_CLOSE%m returned %u", 0x8014, rc);
@@ -2258,7 +2267,7 @@ ULONGLONG size;
                 if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
                 {
                     Message("FS_WRITE (INIT) No next cluster available!");
-                    CritMessage("FAT32: FS_WRITE (INIT) No next cluster available!");
+                    //CritMessage("FAT32: FS_WRITE (INIT) No next cluster available!");
                 }
             }
         }
@@ -2282,7 +2291,7 @@ ULONGLONG size;
         if (pOpenInfo->ulCurCluster == pVolInfo->ulFatEof)
         {
             Message("FS_WRITE (INIT2) No next cluster available!");
-            CritMessage("FAT32: FS_WRITE (INIT2) No next cluster available!");
+            //CritMessage("FAT32: FS_WRITE (INIT2) No next cluster available!");
             rc = ERROR_INVALID_HANDLE;
             goto FS_WRITEEXIT;
         }
@@ -3018,7 +3027,7 @@ USHORT rc;
          if (!pszFile)
             {
             Message("FS_COMMIT, cannot find \\ in '%s'", pOpenInfo->pSHInfo->szFileName);
-            CritMessage("FAT32:FS_COMMIT, cannot find \\ in '%s'!", pOpenInfo->pSHInfo->szFileName);
+            //CritMessage("FAT32:FS_COMMIT, cannot find \\ in '%s'!", pOpenInfo->pSHInfo->szFileName);
             return 1;
             }
          pszFile++;
@@ -3142,7 +3151,7 @@ USHORT rc;
             }
 
          rc = ModifyDirectory(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, MODIFY_DIR_UPDATE,
-            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOFlag);
+            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, usIOFlag);
          if (!rc)
             psffsi->sfi_tstamp = 0;
          if (pDirEntry)
@@ -3446,7 +3455,7 @@ ULONGLONG size;
       ulCluster = pOpenInfo->pSHInfo->ulLastCluster;
       if (ulCluster == pVolInfo->ulFatEof)
          {
-         CritMessage("FAT32: Lastcluster empty in NewSize!");
+         //CritMessage("FAT32: Lastcluster empty in NewSize!");
          Message("FAT32: Lastcluster empty in NewSize!");
          return ERROR_SECTOR_NOT_FOUND;
          }
@@ -3559,7 +3568,7 @@ ULONGLONG size;
    if (!pszFile)
       {
       Message("FS_FILEINFO, cannot find \\!");
-      CritMessage("FAT32:FS_FILEINFO, cannot find \\!");
+      //CritMessage("FAT32:FS_FILEINFO, cannot find \\!");
       return 1;
       }
    pszFile++;
@@ -4238,7 +4247,7 @@ USHORT rc;
    rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pOpenInfo, sizeof (OPENINFO));
    if (rc)
       {
-      CritMessage("FAT32: Protection VIOLATION (OpenInfo) in GetOpenInfo! (SYS%d)", rc);
+      //CritMessage("FAT32: Protection VIOLATION (OpenInfo) in GetOpenInfo! (SYS%d)", rc);
       Message("FAT32: Protection VIOLATION (OpenInfo) in GetOpenInfo!(SYS%d)", rc);
       return NULL;
       }

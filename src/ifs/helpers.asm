@@ -78,8 +78,8 @@ LinToGdtSel macro sel, lin, size
     call    far ptr [eax]
 endm
 
-extern KernThunkStackTo16 :near
-extern KernThunkStackTo32 :near
+;extern KernThunkStackTo16 :near
+;extern KernThunkStackTo32 :near
 extern _Device_Help       :near
 extern _TKSSBase          :near
 extern Dos32FlatDS        :near
@@ -200,7 +200,7 @@ pcb16    equ <dword ptr ebp - 10h>
       int  3
       SaveCRegs
 
-      call KernThunkStackTo16
+      ;call KernThunkStackTo16
 
       jmp  far ptr FS32_READ_16
 
@@ -267,7 +267,7 @@ FS32_READ_32:
       mov  ds, ax
       mov  es, ax
 
-      call KernThunkStackTo32
+      ;call KernThunkStackTo32
 
       RestCRegs    
 

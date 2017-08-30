@@ -427,7 +427,9 @@ PSZ      szDstLongName = NULL;
          }
 
       rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_DELETE,
-                           pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
+                           pTarEntry, NULL, pTarStreamEntry, NULL, pszDstFile, 0);
+      //rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_DELETE,
+      //                     pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto FS_COPYEXIT;
 
@@ -523,7 +525,8 @@ PSZ      szDstLongName = NULL;
    /*
       modify new entry
    */
-   rc2 = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_UPDATE, pTarEntry, pDirEntry, pTarStreamEntry, pDirStreamEntry, NULL, 0);
+   rc2 = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_UPDATE, pTarEntry, pDirEntry, pTarStreamEntry, pDirStreamEntry, pszDstFile, 0);
+   //rc2 = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_UPDATE, pTarEntry, pDirEntry, pTarStreamEntry, pDirStreamEntry, NULL, 0);
    if (rc2 && !rc)
       rc = rc2;
 
@@ -771,7 +774,9 @@ PSZ      szLongName = NULL;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-                        pDirEntry, NULL, pDirEntryStream, NULL, NULL, 0);
+                        pDirEntry, NULL, pDirEntryStream, NULL, pszFile, 0);
+   //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
+   //                     pDirEntry, NULL, pDirEntryStream, NULL, NULL, 0);
    if (rc)
       goto FS_DELETEEXIT;
 
@@ -3200,7 +3205,9 @@ USHORT rc;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-      pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
+      pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszFile, 0);
+   //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
+   //   pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
 
 SetFileSizeExit:
    if (pDirEntry)
@@ -3599,7 +3606,8 @@ PSZ      szDstLongName = NULL;
       First delete old
    */
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, pszDstFile, 0);
+   //rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, NULL, 0);
    if (rc)
       goto FS_MOVEEXIT;
 
@@ -3639,7 +3647,9 @@ PSZ      szDstLongName = NULL;
          pDirNew->wClusterHigh = HIUSHORT(ulDstDirCluster);
 
          rc = ModifyDirectory(pVolInfo, ulCluster, NULL,
-            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, NULL, NULL, NULL, 0);
+            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, NULL, NULL, "..", 0);
+         //rc = ModifyDirectory(pVolInfo, ulCluster, NULL,
+         //   MODIFY_DIR_UPDATE, pDirEntry, pDirNew, NULL, NULL, NULL, 0);
          free(pDirNew);
          if (rc)
             goto FS_MOVEEXIT;
@@ -3893,7 +3903,7 @@ PVOID pv = &ulReserved;
       MessageL(LOG_FUNCS, "ERROR: linalloc failed%m, rc = %d", 0x4015, rc);
 
       if( !fIgnore )
-        CritMessage("linalloc failed, rc = %d", rc);
+        Message("linalloc failed, rc = %d", rc);
 
       return 0xFFFFFFFF;
       }
@@ -3920,7 +3930,7 @@ PVOID pv=NULL;
         MessageL(LOG_FUNCS, "ERROR: linalloc VirtToLin failed%m, rc = %d", 0x4015, rc);
 
         if( !fIgnore )
-            CritMessage("linalloc VirtToLin failed, rc = %d", rc);
+            Message("linalloc VirtToLin failed, rc = %d", rc);
 
         return rc;
     }
@@ -3940,7 +3950,7 @@ PVOID pv=NULL;
         MessageL(LOG_FUNCS, "ERROR: linalloc VMAlloc failed%m, rc = %d", 0x4016, rc);
 
         if( !fIgnore )
-            CritMessage("linalloc VMAlloc failed, rc = %d", rc);
+            Message("linalloc VMAlloc failed, rc = %d", rc);
 
     }
     return rc;
@@ -3962,7 +3972,7 @@ USHORT rc;
    rc = MY_PROBEBUF(PB_OPREAD, p, 1);
    if (rc)
       {
-      CritMessage("FAT32: freeseg: protection violation!");
+      //CritMessage("FAT32: freeseg: protection violation!");
       Message("ERROR: freeseg: protection violation");
       return;
       }
@@ -3971,8 +3981,7 @@ USHORT rc;
    rc = FSH_SEGFREE(usSel);
    if (rc)
       {
-      CritMessage("FAT32: FSH_SEGFREE failed for selector %X", usSel);
-      Message("ERROR: FSH_SEGFREE failed");
+      Message("FAT32: FSH_SEGFREE failed for selector %X", usSel);
       }
    else
       f32Parms.usSegmentsAllocated--;
@@ -3994,8 +4003,8 @@ USHORT rc;
 
    if (ulCluster < 2 || ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
-      CritMessage("ERROR: Cluster %lu does not exist on disk %c:",
-         ulCluster, pVolInfo->bDrive + 'A');
+      //CritMessage("ERROR: Cluster %lu does not exist on disk %c:",
+      //   ulCluster, pVolInfo->bDrive + 'A');
       Message("ERROR: Cluster %lu (%lX) does not exist on disk %c:",
          ulCluster, ulCluster, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
@@ -4035,8 +4044,8 @@ USHORT rc;
 
    if (ulCluster < 2 || ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
-      CritMessage("ERROR: Cluster %ld does not exist on disk %c:",
-         ulCluster, pVolInfo->bDrive + 'A');
+      //CritMessage("ERROR: Cluster %ld does not exist on disk %c:",
+      //   ulCluster, pVolInfo->bDrive + 'A');
       Message("ERROR: Cluster %ld does not exist on disk %c:",
          ulCluster, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
@@ -4095,7 +4104,7 @@ USHORT rc;
 
    if (ulSec >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
       {
-      CritMessage("ERROR: ReadFatSector: Sector %lu too high", ulSec);
+      //CritMessage("ERROR: ReadFatSector: Sector %lu too high", ulSec);
       Message("ERROR: ReadFatSector: Sector %lu too high", ulSec);
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -4141,14 +4150,14 @@ USHORT rc;
 
    if (pVolInfo->ulCurFatSector != ulSector)
       {
-      CritMessage("FAT32: WriteFatSector: Sectors do not match!");
+      //CritMessage("FAT32: WriteFatSector: Sectors do not match!");
       Message("ERROR: WriteFatSector: Sectors do not match!");
       return ERROR_SECTOR_NOT_FOUND;
       }
 
    if (ulSec >= pVolInfo->BootSect.bpb.BigSectorsPerFat)
       {
-      CritMessage("ERROR: WriteFatSector: Sector %ld too high", ulSec);
+      //CritMessage("ERROR: WriteFatSector: Sector %ld too high", ulSec);
       Message("ERROR: WriteFatSector: Sector %ld too high", ulSec);
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -4187,7 +4196,7 @@ USHORT rc;
    if (ulSector >= (pVolInfo->ulAllocBmpLen + pVolInfo->BootSect.bpb.BytesPerSector - 1)
          / pVolInfo->BootSect.bpb.BytesPerSector)
       {
-      CritMessage("ERROR: ReadBmpSector: Sector %lu too high", ulSector);
+      //CritMessage("ERROR: ReadBmpSector: Sector %lu too high", ulSector);
       Message("ERROR: ReadBmpSector: Sector %lu too high", ulSector);
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -4215,7 +4224,7 @@ USHORT rc;
 
    if (pVolInfo->ulCurBmpSector != ulSector)
       {
-      CritMessage("FAT32: WriteBmpSector: Sectors do not match!");
+      //CritMessage("FAT32: WriteBmpSector: Sectors do not match!");
       Message("ERROR: WriteBmpSector: Sectors do not match!");
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -4223,7 +4232,7 @@ USHORT rc;
    if (ulSector >= (pVolInfo->ulAllocBmpLen + pVolInfo->BootSect.bpb.BytesPerSector - 1)
          / pVolInfo->BootSect.bpb.BytesPerSector)
       {
-      CritMessage("ERROR: WriteBmpSector: Sector %ld too high", ulSector);
+      //CritMessage("ERROR: WriteBmpSector: Sector %ld too high", ulSector);
       Message("ERROR: WriteBmpSector: Sector %ld too high", ulSector);
       return ERROR_SECTOR_NOT_FOUND;
       }
@@ -4965,7 +4974,7 @@ USHORT rc;
             if (ulNewCluster)
 #endif
                {
-               CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+               //CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
                Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
                return ERROR_SECTOR_NOT_FOUND;
                }
@@ -4989,7 +4998,7 @@ USHORT rc;
             fStatus = GetBmpEntry(pVolInfo, ulCluster);
             if (fStatus)
                {
-               CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+               //CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
                Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
                return ERROR_SECTOR_NOT_FOUND;
                }
@@ -5017,7 +5026,7 @@ USHORT rc;
          ulNewCluster = GetFatEntry(pVolInfo, ulCluster);
          if (ulNewCluster && pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
-            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+            //CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
             Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
             return ERROR_SECTOR_NOT_FOUND;
             }
@@ -5046,7 +5055,7 @@ USHORT rc;
          fStatus = GetBmpEntry(pVolInfo, ulCluster);
          if (fStatus)
             {
-            CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
+            //CritMessage("FAT32:MakeChain:Cluster %lx is not free!", ulCluster);
             Message("ERROR:MakeChain:Cluster %lx is not free!", ulCluster);
             return ERROR_SECTOR_NOT_FOUND;
             }
@@ -5100,7 +5109,7 @@ PBYTE bSector;
          return TRUE;
          }
       }
-   CritMessage("UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
+   //CritMessage("UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
    Message("ERROR: UpdateFSInfo for %c: failed!", pVolInfo->bDrive + 'A');
 
    free(bSector);
@@ -5504,7 +5513,7 @@ USHORT rc;
       rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pNext, sizeof (FINDINFO));
       if (rc)
          {
-         CritMessage("FAT32: Protection VIOLATION in RemoveFindEntry! (SYS%d)", rc);
+         //CritMessage("FAT32: Protection VIOLATION in RemoveFindEntry! (SYS%d)", rc);
          Message("FAT32: Protection VIOLATION in RemoveFindEntry! (SYS%d)", rc);
          return FALSE;
          }
@@ -5516,7 +5525,7 @@ USHORT rc;
          }
       pNext = (PFINFO)pNext->pNextEntry;
       }
-   CritMessage("FAT32: RemoveFindEntry: Entry not found!");
+   //CritMessage("FAT32: RemoveFindEntry: Entry not found!");
    Message("ERROR: RemoveFindEntry: Entry not found!");
    return FALSE;
 }
@@ -6622,15 +6631,15 @@ PDIRENTRY pMax, pDirBlock2 = pDirBlock;
 
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize)
 {
-PDIRENTRY1 pMax, pDirBlock2 = pDirBlock;
-
-   pMax = (PDIRENTRY1)((PBYTE)pDirBlock + ulSize);
-   while (pDirBlock != pMax)
-      {
-      if (pDirBlock->bEntryType == ENTRY_TYPE_EOD)
-         pDirBlock->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
-      pDirBlock++;
-      }
+//PDIRENTRY1 pMax, pDirBlock2 = pDirBlock;
+//
+//   pMax = (PDIRENTRY1)((PBYTE)pDirBlock + ulSize);
+//   while (pDirBlock != pMax)
+//      {
+//      if (pDirBlock->bEntryType == ENTRY_TYPE_EOD)
+//         pDirBlock->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
+//      pDirBlock++;
+//      }
 }
 
 #endif
@@ -6758,7 +6767,7 @@ BOOL bLoop;
 PDIRENTRY1 CompactDir1(PDIRENTRY1 pStart, ULONG ulSize, USHORT usEntriesNeeded)
 {
 // CompactDir version for exFAT
-PDIRENTRY1 pTar, pMax, pFirstFree;
+PDIRENTRY1 pTar, pMax, pFirstFree, pStart2;
 USHORT usFreeEntries;
 BOOL bLoop;
 
@@ -6768,46 +6777,28 @@ BOOL bLoop;
    usFreeEntries = 0;
    while (( pFirstFree != pStart ) || bLoop )
       {
-      BYTE bSecondaries;
-      //if (!(pFirstFree - 1)->bFileName[0])
-      if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_EOD )
-         {
+      if ( !((pFirstFree - 1)->bEntryType & ENTRY_TYPE_IN_USE_STATUS) )
          usFreeEntries++;
-         bSecondaries = 0;
-         }
-      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_STREAM_EXT )
-         {
-         usFreeEntries++;
-         bSecondaries++;
-         }
-      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE_NAME )
-         {
-         usFreeEntries++;
-         bSecondaries++;
-         }
-      else if ( (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE )
-         {
-         if ((pFirstFree - 1)->u.File.bSecondaryCount == bSecondaries)
-            {
-            pFirstFree += bSecondaries;
-            usFreeEntries -= bSecondaries;
-            bSecondaries = 0;
-            break;
-            }
-         else
-            {
-            usFreeEntries++;
-            bSecondaries = 0;
-            }
-         }
       else
          break;
+
       bLoop = FALSE;
       pFirstFree--;
       }
 
-   //if ((( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bAttr != FILE_LONGNAME)
-   if ( (( pFirstFree == pStart ) && !bLoop ) || (pFirstFree - 1)->bEntryType == ENTRY_TYPE_FILE_NAME)
+   pStart2 = pStart;
+   while (( pStart2 != pFirstFree ))
+      {
+      if ( pStart2->bEntryType == ENTRY_TYPE_EOD )
+         break;
+
+      pStart2++;
+      }
+
+   if (pStart2 != pFirstFree)
+      return pStart2;
+
+   if ( (( pFirstFree == pStart ) && !bLoop ) || ((pFirstFree - 1)->bEntryType & ENTRY_TYPE_IN_USE_STATUS))
       {
       if (usFreeEntries >= usEntriesNeeded)
          return pFirstFree;
@@ -6827,7 +6818,7 @@ BOOL bLoop;
    while ((( pStart != pFirstFree ) || bLoop ) && usFreeEntries < usEntriesNeeded)
       {
       //if (pStart->bFileName[0] && pStart->bFileName[0] != DELETED_ENTRY)
-      if (pStart->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
+      if ((pStart->bEntryType != ENTRY_TYPE_EOD) && (pStart->bEntryType & ENTRY_TYPE_IN_USE_STATUS))
          {
          if (pTar != pStart)
             *pTar = *pStart;
@@ -6844,6 +6835,7 @@ BOOL bLoop;
 #if 1
       USHORT usEntries = 0;
       PDIRENTRY1 p;
+      int i;
 
       for( p = pStart; ( p != pFirstFree ) /*|| bLoop */; p++ )
         {
@@ -6855,8 +6847,12 @@ BOOL bLoop;
       memmove(pTar, pStart, (pFirstFree - pStart) * sizeof (DIRENTRY));
 #endif
       pFirstFree -= usFreeEntries;
+      // Mark free entries as deleted
       //memset(pFirstFree, DELETED_ENTRY, usFreeEntries * sizeof (DIRENTRY));
-      memset(pFirstFree, ENTRY_TYPE_EOD, usFreeEntries * sizeof (DIRENTRY));
+      for (p = pFirstFree, i = 0; i < usFreeEntries; i++, p++)
+         {
+         p->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
+         }
       }
 
    return pFirstFree;
@@ -6876,7 +6872,7 @@ USHORT rc;
       if (rc == ERROR_SEM_TIMEOUT)
          {
          Message("ERROR: Timeout on semaphore for %s", pszText);
-         rc = CritMessage("FAT32: Timeout on semaphore for %s", pszText);
+         //rc = CritMessage("FAT32: Timeout on semaphore for %s", pszText);
          if (rc != CE_RETRETRY)
             rc = ERROR_SEM_TIMEOUT;
          else
@@ -6928,7 +6924,7 @@ USHORT rc;
    if (rc)
       {
       Message("ERROR: SemRequest GetFatAccess Failed, rc = %d!", rc);
-      CritMessage("FAT32: SemRequest GetFatAccess Failed, rc = %d!", rc);
+      //CritMessage("FAT32: SemRequest GetFatAccess Failed, rc = %d!", rc);
       Message("GetFatAccess Failed for %s, rc = %d", pszName, rc);
       return rc;
       }

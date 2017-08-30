@@ -388,8 +388,8 @@ int far pascal _loadds FS_DOPAGEIO(
          rc = FSH_DOVOLIO( op, DVIO_ALLACK, pVolInfo->hVBP, (char far *)pgcmd->Addr, &usSectors, fsbno );
          if (rc)
             {
-            CritMessage("FAT32: DOPAGEIO of sector %ld (%d sectors) failed, rc = %u",
-               fsbno, usSectors, rc);
+            //FatalMessage("FAT32: DOPAGEIO of sector %ld (%d sectors) failed, rc = %u",
+            //   fsbno, usSectors, rc);
             Message("ERROR: DOPAGEIO of sector %ld (%d sectors) failed, rc = %u",
                fsbno, usSectors, rc);
             }

@@ -312,9 +312,9 @@ ULONG    ulBlock;
       {
       pDir1 = (PDIRENTRY1)pbCluster;
 
-      pDir1->bEntryType = ENTRY_TYPE_FILE;
+      //pDir1->bEntryType = ENTRY_TYPE_FILE;
       pDir1->u.File.usFileAttr = FILE_DIRECTORY;
-      (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+      //(pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
       (pDir1+1)->u.Stream.bAllocPossible = 1;
       (pDir1+1)->u.Stream.bNoFatChain = 0;
 #ifdef INCL_LONGLONG
@@ -678,7 +678,9 @@ PSHOPENINFO pSHInfo = NULL;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-      pDirEntry, NULL, pStreamEntry, NULL, NULL, DVIO_OPWRTHRU);
+      pDirEntry, NULL, pStreamEntry, NULL, pszFile, DVIO_OPWRTHRU);
+   //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
+   //   pDirEntry, NULL, pStreamEntry, NULL, NULL, DVIO_OPWRTHRU);
    if (rc)
       goto FS_RMDIREXIT;
 

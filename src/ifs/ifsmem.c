@@ -50,7 +50,7 @@ USHORT rc;
       rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pHeapStart, HEAP_SIZE);
       if (rc)
          {
-         CritMessage("FAT32: Protection VIOLATION in CheckHeap (SYS%d)", rc);
+         //CritMessage("FAT32: Protection VIOLATION in CheckHeap (SYS%d)", rc);
          Message("FAT32: Protection VIOLATION in CheckHeap (SYS%d)", rc);
          return;
          }
@@ -59,7 +59,7 @@ USHORT rc;
       while (pWork < pHeapEnd)
          pWork += BlockSize(pWork) + sizeof (ULONG);
       if (pWork != pHeapEnd)
-         CritMessage("FAT32: Heap corruption found!");
+         FatalMessage("FAT32: Heap corruption found!");
       }
 }
 
@@ -119,7 +119,7 @@ if( tSize > 0 )
          rgpSegment[usSel] = gdtAlloc(HEAP_SIZE, TRUE);
          if (!rgpSegment[usSel])
             {
-            CritMessage("FAT32: No gdtSelector for heap!");
+            FatalMessage("FAT32: No gdtSelector for heap!");
             pRet = NULL;
             goto malloc_exit;
             }
@@ -161,7 +161,7 @@ USHORT rc;
    rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pHeapStart, HEAP_SIZE);
    if (rc)
       {
-      CritMessage("FAT32: Protection VIOLATION in FindFreeSpace (SYS%d)", rc);
+      //CritMessage("FAT32: Protection VIOLATION in FindFreeSpace (SYS%d)", rc);
       Message("FAT32: Protection VIOLATION in FindFreeSpace (SYS%d)", rc);
       return NULL;
       }
@@ -229,7 +229,7 @@ USHORT rc;
       }
    if (usSel == MAX_SELECTORS)
       {
-      CritMessage("FAT32: %lX not found in free!", pntr);
+      //CritMessage("FAT32: %lX not found in free!", pntr);
       Message("FAT32: %lX not found in free!", pntr);
       ReleaseMemAccess();
       return;
@@ -241,7 +241,7 @@ USHORT rc;
    rc = MY_PROBEBUF(PB_OPREAD, (PBYTE)pHeapStart, HEAP_SIZE);
    if (rc)
       {
-      CritMessage("FAT32: Protection VIOLATION in free (SYS%d)", rc);
+      //CritMessage("FAT32: Protection VIOLATION in free (SYS%d)", rc);
       Message("FAT32: Protection VIOLATION in free (SYS%d)", rc);
       ReleaseMemAccess();
       return;
@@ -274,7 +274,7 @@ USHORT rc;
       }
    if (pWork >= pHeapEnd)
       {
-      CritMessage("FAT32: ERROR: Address not found in free");
+      //CritMessage("FAT32: ERROR: Address not found in free");
       Message("ERROR: Address not found in free");
       ReleaseMemAccess();
       return;
