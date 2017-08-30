@@ -751,8 +751,8 @@ extra work&per.
  7&per.Removeable drivesFAT32 
 .br 
 
-:p.Should you need to use the /M parameter with PARTFILT you should know the the 
-sequence numbers used as arguments are different from the normal order OS/2 uses&per. 
+:p.Should you need to use the /M parameter with PARTFILT you should know that the 
+sequence of numbers used as arguments are different from the normal order OS/2 uses&per. 
 Here&apos.s where F32PARTS cFAT32omes along&per. F32PARTS shows the seq# as used by 
 PARTFILT&per. See below&per.FAT32 
 
@@ -1023,8 +1023,8 @@ Reboot&per.
 
 :p.:hp2.Formatting FAT32 Volumes :ehp2.
 
-:p.Formatting FAT32 can be done numerous ways&per.  Presently, the only way to 
-format a volume FAT32 under either eComStation or OS/2 is to use DFSee and F32blank 
+:p.Formatting FAT32 can be done numerous ways&per.  Recently, the only way to 
+format a volume FAT32 under either eComStation or OS/2 was to use DFSee and F32blank 
 together&per. The procedure is as follows&colon. 
 
 :p. 1&per.Find out the volume relevant data&colon. Heads, Sectors, Starting point 
@@ -1047,7 +1047,7 @@ as not empty, then you MUST reboot and check it again&per.
 the job&per. 
 .br 
 
-:p.If this is too complicated for some people, the USB media can be formatted 
+:p.If this is too complicated for some people, the USB media can also be formatted 
 using one of the Window&apos.s versions&per. Each Windows version has it own built in 
 limitations&per. 
 
@@ -1066,7 +1066,24 @@ limitations&per.
 .br 
 Partition Commander versions 8 and 9 (Limitations unknown) 
 .br 
+
+:p. Since FAT32&per.IFS 0&per.10, new FORMAT routine is supported&per. We ported to OS/2 a
+Windows program called Fat32Format&per. Now it enhanced to support all FAT flavours 
+supported, that is&colon. FAT12, FAT16, FAT32, EXFAT&per.
+.br
+
+:p. The procedure of formatting is straightforward&colon. you just use FORMAT&per.COM
+with /FS&colon.<file system type>
+
+.br
   
+:p. Where <file system type> is one of the following&colon. FAT12|FAT16|FAT32|EXFAT
+
+:p. Note that, by specifying the "FAT" file system type to FORMAT&per.COM,
+you still can access IBM's standard FAT FORMAT routine, which supports checking for bad
+sectors and formatting on physical level (our format supports only "quick"/"high-level" format
+at the moment, but it has its own advantages too).
+
 :h1 id=34 res=30033.Installation/Deinstallation
 
 :p.:hp2.INSTALL/DEINSTALL&colon. :ehp2.
@@ -1133,7 +1150,7 @@ FAT32&per.IFS &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT
 .br 
 
 .br 
-UFAT32&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+UUNIFAT&per.DLL and forwarders &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
 .br 
 
 .br 
@@ -1303,24 +1320,44 @@ directories) indicated in the WarpIN database&per.
 :p.If you installed the FAT32 driver versions 0&per.95 or earlier either 
 manually or using WarpIN, copy the following files to your &bsl.OS2 directory&colon. 
 
-:p.FAT32&per.IFS 
+:p.CACHEF32&per.EXE 
 .br 
-FAT32&per.TXT 
-.br 
-CACHEF32&per.EXE 
+DISKDUMP&per.EXE 
 .br 
 F32STAT&per.EXE 
 .br 
-F32MON&per.EXE 
-
-:p.Copy the following file to your &bsl.OS2&bsl.DLL directory&colon. 
+F32PARTS&per.EXE 
 .br 
-UFAT32&per.DLL 
+F32MON&per.EXE 
+.br
+F32CHK&per.EXE
+.br
+FAT32CHK&per.EXE
+.br
+FAT32FMT&per.EXE
+.br
+FAT32SYS&per.EXE
+.br
+
+:p.Copy the following files to your &bsl.OS2&bsl.DLL directory&colon. 
+ 
+:p.UUNIFAT&per.DLL / UFAT12&per.DLL / UFAT16&per.DLL/ UFAT32&per.DLL / UEXFAT&per.DLL
+
+:p.Copy the following files to your &bsl.OS2&bsl.BOOT&colon.
+
+:p.FAT32&per.IFS
+.br
+
+:p.Copy documentation files to your &bsl.OS2&bsl.DOCS&bsl.FAT32 directory&colon.
+.br
+
+:p.Copy *&per.INF files to your &bsl.OS2&bsl.BOOT directory&colon.
+.br
 
 :p.There is a document for Korean based on version 0&per.94 document&per.  This 
 is not needed unless you are Korean&per. 
-.br 
-FAT32&per.KOR 
+ 
+:p.FAT32&per.KOR 
 
 :p.The following file is a patched version of the &osq.country&per.sys&osq. from 
 WSEB fixpack 2&per.  Strangely, &osq.country&per.sys&osq. of WSeB contains the wrong 
@@ -1331,22 +1368,22 @@ On non-Korean systems, replacement of the country&per.sys is not necessary, but
 can be done if the installer wants without any harm to their systems&per. To use, 
 rename the &osq.country&per.sys&osq. found in OS2&bsl.SYSTEM directory and replace it 
 with the &osq.country&per.kor&osq., renaming it &osq.country&per.sys&osq.&per. 
-.br 
-COUNTRY&per.KOR 
+ 
+:p.COUNTRY&per.KOR 
 .br 
 
 :p.This script adds Korean CODEPAGE support for non-Korean systems&per. Copy it 
 to a location listed in the PATH statement of your config&per.sys&per.  Add its 
 location to the STARTUP&per.CMD found in your root directory&per.  If you have no STARTUP
 &per.CMD, make one&per. 
-.br 
-CACHEF32&per.CMD 
+ 
+:p.CACHEF32&per.CMD 
 
 :p.Make the following changes to the CONFIG&per.SYS&colon. 
 
-:p.IFS=x&colon.&bsl.OS2&bsl.FAT32&per.IFS [:link reftype=hd refid=43.options:elink.] 
-.br 
-(Install this one anywhere AFTER IFS=HPFS&per.IFS) 
+:p.IFS=x&colon.&bsl.OS2&bsl.BOOT&bsl.FAT32&per.IFS [:link reftype=hd refid=43.options:elink.] 
+ 
+:p.(Install this one anywhere AFTER IFS=HPFS&per.IFS) 
 
 :p.CALL=x&colon.&bsl.OS2&bsl.CACHEF32&per.EXE [:link reftype=hd refid=46.options:elink.] 
 
@@ -1361,9 +1398,10 @@ CACHEF32&per.CMD
 
 :p.:link reftype=hd refid=45.CACHEF32&per.EXE :elink.
 
-:p.:link reftype=hd refid=47.CHKDSK UFAT32&per.DLL :elink.
+:p.:link reftype=hd refid=47.UUNIFAT&per.DLL and forwarders :elink.
 
 :p.:link reftype=hd refid=49.F32MON&per.EXE :elink.
+
 .br 
 
 :h2 id=41 res=30039.Files in this Version
@@ -1381,7 +1419,9 @@ CACHEF32&per.CMD
 
 :p.:hp2.:link reftype=hd refid=45.CACHEF32&per.EXE :elink.:ehp2.The cache helper program&per. 
 
-:p.:hp2.:link reftype=hd refid=47.UFAT32&per.DLL :elink.:ehp2.The module needed to run CHKDSK on FAT32 partition&per. 
+:p.:hp2.:link reftype=hd refid=47.UUNIFAT&per.DLL and forwarders :elink.:ehp2.Modules needed to run CHKDSK/FORMAT/SYS on FAT32 partition&per. 
+
+:p.:hp2.:link reftype=hd refid=20047.F32CHK&per.EXE :elink.:ehp2. A boot disk autocheck helper&per. 
 
 :p.:hp2.:link reftype=hd refid=50.F32STAT&per.EXE :elink.:ehp2. A program to change the DIRTY flag of FAT32 partitions&per. 
 
@@ -1390,6 +1430,12 @@ CACHEF32&per.CMD
 
 :p.:hp2.:link reftype=hd refid=26.F32PARTS&per.EXE :elink.:ehp2.(Formerly DISKINFO&per.EXE) A diagnostic program that will 
 scan for and show all partitions&per. 
+
+:p.:hp2.:link reftype=hd refid=20048.FAT32FMT&per.EXE :elink.:ehp2.Disk formatter standalone version&per. 
+
+:p.:hp2.:link reftype=hd refid=20049.FAT32CHK&per.EXE :elink.:ehp2.Disk checker standalone version&per. 
+
+:p.:hp2.:link reftype=hd refid=20050.FAT32SYS&per.EXE :elink.:ehp2.Boot loader installer standalone version&per. 
 
 :p.:hp2.* FAT32&per.KOR :ehp2. Is a document for Korean based on version 0&per.94 document
 &per. 
@@ -1480,16 +1526,20 @@ the missing 64-bit fields for file size and position on older systems&per.
 :p.:hp2./FAT[&colon.<drive letter list>] :ehp2.Enable FAT12/FAT16 support&per. You can optionally specify the drive
 letters which are needed to mount&per. (Like /fat&colon.abcd or /fat&colon.*)&per. 
 
-:p.:hp2./EXFAT[&colon.<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
-letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*)&per. There is an early support for exFAT
-filesystems&per. So far, only displaying the directory listing, and walking dirs work&per. Reading/writing files
-still doesn't work because no allocation bitmap support, yet&per.
+:p.:hp2./FAT32&colon.<drive letter list> :ehp2.Enable FAT32 support for a list of drive letters&per.
 
-:p.:hp2.Note&colon.  :ehp2.If /FAT or /EXFAT switches are not specified, only FAT32 disks are mounted
+:p.:hp2./EXFAT[&colon.<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
+letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*)&per. There is an support for exFAT
+filesystems&per. (beta-quality)&per.
+
+:p.:hp2.Note&colon.  :ehp2.If /FAT or /EXFAT or /FAT32 switches are not specified, all FAT32 disks are mounted
 by default&per. FAT12/FAT16 should work on any media&per. Floppies can be mounted too&per. Also, so far, we tested
 a CD with FAT16 filesystem burned on it, it works too&per. We just created the test filesystem with QSINIT, with 
 2048 bytes per sector (QSINIT supports such an option), then saved it as an image and burned it as a standard
-ISO image&per.
+ISO image&per. Also, virtual floppy or hard disk should work too&per. So far, the following drivers were successfully
+tested with fat32.ifs&colon. VDISK&per.SYS by IBM (included into each OS/2 system), VFDISK&per.SYS by Daniela Engert and Lars
+Erdmann, and SVDISK&per.SYS by Albert J. Shan, HD4DISK&per.ADD by _dixie_ (included with QSINIT boot loader)&per. The latter
+is successfully tested both with FAT32 PAE ramdisks and with EXFAT ramdisks in lower memory&per.
 
 .br 
 
@@ -1641,23 +1691,41 @@ The /FL option was removed in version 0&per.98&per.
 :p.:link reftype=launch object='e.exe' data='e.exe config.sys'.:hp3.EDIT YOUR CONFIG&per.SYS :ehp3.:elink.
 .br 
   
-:h2 id=47 res=30044.UFAT32.DLL
+:h2 id=47 res=30044.UUNIFAT.DLL and forwarders
 
-:p.:hp2.UFAT32&per.DLL:ehp2. Is FAT32 file system utility DLL&per. It currently supports CHKDSK, 
-FORMAT and SYS commands&per. 
+:p.:hp2.UUNIFAT&per.DLL and four forwarder DLL&apos.s&colon. UFAT12/FAT16/FAT32/UEXFAT :ehp2. UUNIFAT&per.DLL is FAT file system utility DLL&per. It currently supports CHKDSK, 
+FORMAT and SYS commands&per. Previously, there was one DLL, UFAT32&per.DLL and it supported only FAT32 filesystem&per. Now FAT32&per.IFS supports
+different kinds of FAT, like&colon. FAT12, FAT16, FAT32, EXFAT&per. Since then, all functionality was moved to a single UUNIFAT&per.DLL&per.
+If user calls "format d: /fs&colon.fat12", UFAT12&per.DLL is loaded&per. UFAT12 forwards all calls to the same routines in UUNIFAT&per. So,
+all filesystems are handled by UUNIFAT&per.DLL&per. Note that all four kinds of FAT are handled by a single code, because they are very
+similar, and use the same routines, with a few differencies&per. So creating four almost identical DLL&apos.s is a bad idea, the same way as
+creating four IFS drivers for each FAT flavour&per.
 
 :h3 id=30047 res=31045.CHKDSK
 
 :p.:hp2.CHKDSK:ehp2.  
 
-:p.The UFAT32&per.DLL CHKDSK routine is called by chkdsk.com whenever it is issued 
-for a FAT32 drive&per.
+:p.The UUNIFAT&per.DLL CHKDSK routine is called by chkdsk.com whenever it is issued 
+for a FAT drive&per.
+
+:p.When CHKDSK is started, there are two lines like this&colon.
+
+:p.:hp2.The type of file system for the disk is FAT32&per. :ehp2.
+
+:p.This one is on the second line&per. And then, after a couple of lines there&apos.s another like
+
+:p.:hp2.The type of file system for the disk is exFAT&per. :ehp2.
+
+:p.The former is output by CHKDSK&per.COM frontend program and it shows the IFS name&colon. FAT32&per.
+
+:p.The latter is output by UUNIFAT&per.DLL and is the autodetected actual file system type&per. It can
+be used to see the actual FS name, when you&apos.re in trouble&per.
 
 :p.For CHKDSK the following options are implemented&colon. 
 
 :p.:hp7.Options :ehp7.:hp7.Description :ehp7.
 
-:p.:hp2./F :ehp2.Fixes problems (Currently UFAT32&per.DLL only fixes lost clusters, and an 
+:p.:hp2./F :ehp2.Fixes problems (Currently UUNIFAT&per.DLL only fixes lost clusters, and an 
 incorrect free space count&per.) 
 
 :p.:hp2./C :ehp2.Causes lost clusters to be automatically converted to files if the drive 
@@ -1670,7 +1738,7 @@ was in an inconsistent state at boot (No questions asked)&per.
 :p.:hp2./P :ehp2.Serves for using with a PM frontend, like pmchkdsk.exe&per. If specified, it writes
 additional messages to stdout, then a PM frontend parses them and updates its controls&per.
 
-:p.:hp2.Note&colon. :ehp2.At the moment, CHKDSK supports checking FAT12/FAT16/FAT32 filesystems&per.
+:p.:hp2.Note&colon. :ehp2.At the moment, CHKDSK supports checking FAT12/FAT16/FAT32/EXFAT filesystems&per.
 
 .br 
   
@@ -1726,17 +1794,19 @@ handling of FAT32&per.IFS&per. See the description of :link reftype=hd refid=50.
 
 :p.:hp2.FORMAT:ehp2.  
 
-:p.The UFAT32&per.DLL FORMAT routine is called by format.com whenever it is issued 
-for a FAT32 drive&per. 
+:p.The UUNIFAT&per.DLL FORMAT routine is called by format&per.com frontend program whenever it is issued 
+for a FAT filesystem&per. 
 
-:p.Also, there are UFAT12&per.DLL, UFAT16&per.DLL, UEXFAT&per.DLL, which are forwarders to UFAT32&per.DLL&per. They
-are needed to support formatting with "/fs&colon.fat12", "/fs&colon.fat16", "/fs&colon.exfat" switches&per. All functionality
+:p.Except for UUNIFAT&per.DLL, there are UFAT12&per.DLL, UFAT16&per.DLL, UFAT32&per.DLL, UEXFAT&per.DLL, which are forwarders to UUNIFAT&per.DLL&per. They
+are needed to support formatting with "/fs&colon.fat12", "/fs&colon.fat16", "/fs&colon.fat32", "/fs&colon.exfat" switches&per. All functionality
 is implemented in the main DLL, and is redirected to it&per.
 
-:p.The FORMAT routine was ported to OS/2 from Windows platform and extended to support FAT12 and FAT16 filesystems&per.
+:p.The FORMAT routine was ported to OS/2 from Windows platform and extended to support FAT12, FAT16 and EXFAT filesystems&per.
 The Fat32Format program was used as a base, see http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm &per.
 
-:p.For CHKDSK the following options are implemented&colon.
+:p. The Fat32Format program is licensed as GPL too, like FAT32&per.IFS is&per.
+
+:p.For FORMAT the following options are implemented&colon.
 
 :p.:hp7.Options :ehp7.:hp7.Description :ehp7.
 
@@ -1809,12 +1879,27 @@ supported&colon.
 :p.For FAT32, maximum is 128 sectors per cluster -- 64K clusters&per. More than 64K per cluster is
 not allowed by FAT32 spec&per. Clusters, larger than 64KB, are supported by exFAT&per. Up to 32 MB clusters
 are supported&per. For FAT12/FAT16/FAT32, clusters should be, generally, less than or equal to 32 KB,
-but WinNT supported a FAT32 variant with 64 KB per cluster&per. Fat32&per.ifs supports large clusters, too,
-by splitting clusters, larger than 32 KB to 32 KB or lesser blocks&per. (There is a limitation of a 16-bit
-driver, which is the case for fat32&per.ifs, that we cannot allocate more than 64 KB of memory at once, so,
-we need to split to smaller blocks)&per.
+but WinNT supported a FAT32 variant with 64 KB per cluster&per. Note that Win9x could behave unpredictably
+in case it tries to mount a FAT drive with 64 KB cluster&per. This is because number of clusters in these OS&apos.es
+is a signed byte, so a division by zero could occur&per. So, if you use DOS/Win9x, please avoid using 64 KB clusters&per.
+Fat32&per.ifs supports large clusters, too, by splitting clusters, larger than 32 KB to 32 KB or lesser blocks&per.
+(There is a limitation of a 16-bit driver, which is the case for fat32&per.ifs, that we cannot allocate more than 64 KB
+of memory at once, so, we need to split to smaller blocks)&per.
 
-:p. FAT32 supports 2 TB max&per. volume size &per.
+:p.FAT12 supports 32 MB max&per. volume size, 4 GB max&per. file size&per.
+.br
+FAT16 supports 2 GB max&per. volume size, 4 GB max&per. file size&per.
+.br
+FAT32 supports 8 TB max&per. volume size, 4 GB max&per. file size&per.
+.br
+exFAT supports 128 PB max&per. volume size, 16 EB max&per. file size&per.
+.br
+
+:p. Note that if we&apos.ll increase a cluster size to 64 KB (instead of a 32 KB), then maximum volume size for
+FAT12/16/32 will increase twice&per. Also note that if using a standard MBR partition scheme, the maximum volume size
+for FAT32 and exFAT should be reduced to 2 TB (it is limited with a 32-bit LBA in partition table)&per. If we&apos.ll
+use GPT partition table, then we can use larger volume sizes (but note that OS/2 is limited to an MBR partition
+scheme, yet)&per.
 
 :p.:hp2./FS&colon.FAT12|FAT16|FAT32|EXFAT :ehp2.FAT12/FAT16 disks can be formatted using FORMAT or checked using CHKDSK too&per.
 For FORMAT, "/fs&colon.fat12" or "/fs&colon.fat16" needs to be specified too&per. "format d: /fs&colon.fat" still invokes
@@ -1822,14 +1907,15 @@ the standard IBM's FAT format routine&per. So, if you want our new FORMAT routin
 or "/fs&colon.fat16" instead of "/fs&colon.fat"&per. Also, "/fs&colon.fat32" is supported for formatting into FAT32&per.
 If the "/fs" switch is not specified, the filesystem FAT12/FAT16/FAT32/exFAT is chosen based on the volume size&per. If it is
 less than 4 MB, it is FAT12&per. If it is less than 2 GB, it is FAT16&per. If it is less than 32 GB, it is FAT32&per.
-And if it is larger than 32 GB, exFAT is chosen by default&per. But formatting to exFAT is not supported at the moment&per.
+And if it is larger than 32 GB, exFAT is chosen by default&per. Formatting to exFAT is supported too&per. For that,
+you should specify "/fs&colon.exfat" (possibly, together with /c&colon.<cluster size>)&per.
 
 :h3 id=30049 res=31047.SYS
 
 :p.:hp2.SYS:ehp2.  
 
-:p.The UFAT32&per.DLL SYS routine is called by sysinstx.com whenever it is issued 
-for a FAT32 drive&per. 
+:p.The UUNIFAT&per.DLL SYS routine is called by sysinstx.com whenever it is issued 
+for a FAT drive&per. 
 
 :p.The SYS command has no parameters. At this time, it only writes the bootblock
 and several FreeLDR main files&per. No OS2BOOT is installed at this moment as it is not yet
@@ -1837,23 +1923,34 @@ implemented&per. You can add more files from standard FreeLDR installation, if y
 
 :p.The SYS command is supported for FAT12/FAT16/FAT32 at the moment&per.
 
-:p.
-:h2 id=20047 res=30044.F32CHK.EXE
-
-:p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
-
-:p.F32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
-the same parameters as CHKDSK itself&per. It is run by FAT32&per.IFS init routine&per.
-
-:p.
-:h2 id=20048 res=30044.FAT32FMT.EXE
+:h2 id=20048 res=30044.FAT32FMT&per.EXE
 
 :p.:hp2.FAT32FMT&per.EXE&colon. :ehp2.
 
 :p.FAT32FMT&per.EXE is a standalone version of Fat32Format&per. It is equivalent to FORMAT routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30048.FORMAT&per.EXE :elink. for more info)&per.
 
-:p.
+:h2 id=20049 res=30044.FAT32CHK&per.EXE
+
+:p.:hp2.FAT32CHK&per.EXE&colon. :ehp2.
+
+:p.FAT32CHK&per.EXE is a standalone version of FAT CHKDSK&per. It is equivalent to CHKDSK routine and
+takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30047.CHKDSK&per.EXE :elink. for more info)&per.
+
+:h2 id=20050 res=30044.FAT32SYS&per.EXE
+
+:p.:hp2.FAT32SYS&per.EXE&colon. :ehp2.
+
+:p.FAT32SYS&per.EXE is a standalone version of FAT SYS/SYSINSTX&per. It is equivalent to SYS routine and
+takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30049.SYSINSTX&per.EXE :elink. for more info)&per.
+
+:h2 id=20047 res=30044.F32CHK&per.EXE
+
+:p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
+
+:p.F32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
+the same parameters as CHKDSK itself&per. It is run by FAT32&per.IFS init routine&per.
+
 :h2 id=49 res=30046.F32MON.EXE (formerly MONITOR.EXE)
 
 :p.:hp2.F32MON&per.EXE (formerly MONITOR&per.EXE)&colon. :ehp2.  
@@ -1980,6 +2077,10 @@ Windows 95 (OSR2) and later Windows versions, SCANDISK will be started&per.
 :p.:link reftype=hd refid=66.DRIVER INTERFACE :elink.
 
 :p.:link reftype=hd refid=69.PERFORMANCE :elink.
+
+:p.:link reftype=hd refid=20069.FAQ :elink.
+
+:p.:link reftype=hd refid=20070.TIPS/HOWTO&apos.s :elink.
 .br 
 
 :h2 id=53 res=30050.Limitations
@@ -2043,6 +2144,23 @@ FAT32 volumes can be legally generated only for media over 512 MB, which is beyo
 the size of most of the current Flash media, such as those found in digital cameras
 &per. 
 
+:p.:hp2.Note&colon.:ehp2. The above paragraph is obsolete these days&per. The days when flash disk
+sizes were about 512 MB have gone many years ago&per. Now flash disks are some tens of GB in size&per.
+So, for current media sizes, FAT32 is optimal file system&per. Or, exFAT could be used too, for carrying
+large files, bigger than 4 GB&per. But since FAT32&per.IFS now supports VFAT on FAT12/FAT16 volumes, the
+old FAT16 flash disks with sizes like 512 MB can be used with FAT32&per.IFS too&per. This is tested successfully
+too&per. For example, I have two flash sticks, one is 512 MB, the second is 2 GB&per. Both working like a charm&per.
+
+:p.Also, there were FAT16-only old mp3 players, like I had in the beginning of 2000&apos.s&per. It's size was 256 MB
+ant it was formatted with FAT16&per. It looks that FAT32 is unsupported by the firmware&per. These days, I copied files
+via WPS with creating the &per.LONGNAME EA&apos.s, then used vfat2ea utility to convert &per.LONGNAME EA&apos.s to VFAT
+LFN&apos.s&per. Now this technique is obsolete&per. FAT16 with VFAT LFN&apos.s can be directly supported by FAT32&per.IFS&per.
+
+:p.FAT32&per.IFS should work with any fixed or removable media of any size&per. So far, it is tested by me with disks up to
+1 TB in size&per. I have a 1 TB USB 2.5" removable hard disk formatted with FAT32, for backup and exchange purposes&per. Everything
+works fine&per. Also, nothing prevents to use disks up to 2 TB (with MBR partition scheme&per. With exFAT, or GPT partition scheme,
+it could be even larger&per.)&per.
+
 :p.For LVM systems, one would also need to assign a volume letter to the drive 
 before accessing the files on it&per. 
 
@@ -2060,6 +2178,10 @@ eComStation web site or IBM&apos.s Software Choice&per. If you are still unable 
 your Removable media, download Chris Wohlgemuth&apos.s USB driver package and 
 replace the IBM mass storage device with Chris&apos.s driver&per.  Be sure and read the 
 documentation on using his driver(s)&per. 
+
+:p.:hp2.Addition&colon.:ehp2. Nowadays, the above sources of drivers are obsolete&per. Chris
+Wohlgemuth&apos.s USB drivers are obsolete too&per. Please use Lars&apos. Erdmann&apos.s USB
+drivers from Hobbes (search them by "usbdrv" keyword)&per.
 
 :p.See :link reftype=hd refid=56.GETTING THE FAT32 DRIVER TO WORK WITH REMOVABLE MEDIA :elink.  
 :h3 id=55 res=30078.Types of USB Mass Storage Devices
@@ -2079,9 +2201,15 @@ limitations&colon. -OS2DASD&per.DMD must be at a certain level for large drives 
 recognized&per. -Also, volumes must be created (and have sticky drive letters assigned if 
 they are to be accessed) either from existing partitions, or from unassigned space 
 areas within the &osq.disk&osq.&per. Partitions on these devices should also have 
-their proper types set (i&per.e&per. 0B/0C for FAT32, 07 for HPFS/NTFS, 06 for FAT16, 
+their proper types set (i&per.e&per. 0B/0C for FAT32, 07 for HPFS/NTFS/exFAT, 06 for FAT16, 
 etc&per.) in order to avoid problems&per.   
+
+:p. With recent versions of Lars&apos. Erdmann&apos.s USB drivers, Large floppies with FAT/FAT32/EXFAT filesystem
+can be emulated on USBMSD driver level&per. The driver just emulates the 1st track with MBR and partition table, and
+DLAT sector with LVM info&per. This allows to see Large Floppy media created by Windows, with FAT32&per.IFS&per.
+
 :h3 id=56 res=30076.Getting the FAT32 Driver to Work with Removable Media
+
 :hp2.GETTING THE FAT32 DRIVER TO WORK WITH REMOVABE MEDIA :ehp2.
 
 :p.The below link to an archive VOICE newsletter is a good source for 
@@ -2148,7 +2276,7 @@ CODEPAGE&per.
 
 :p.By default Windows long file names (VFAT) are stored in UNICODE&per. 
 
-:p.Since Warp 3 (fixpack 26?) OS/2 contains NLS support&per. :link reftype=hd refid=45.CACHEF32&per.&per.
+:p.Since Warp 3 (fixpack 26?) OS/2 contains NLS support&per. :link reftype=hd refid=45.CACHEF32&per.
 EXE :elink.
 
 :p.Keep in mind that a table for only ONE codepage is loaded&per. Should you 
@@ -2506,6 +2634,148 @@ performance problems with :link reftype=hd refid=42.FAT32&per.IFS:elink.&per.
 :p.For best performance it is advised to keep the disk as defragmented as 
 possible&per. Use Windows 9x or later versions defrag to defrag the disk&per. 
 
+:h2 id=20069 res=30063.FAQ
+
+:p.:hp2.FAQ&colon. :ehp2.
+
+:p.:hp2.Q:ehp2.&colon. Why did you not created three different IFS drivers for FAT, FAT32, EXFAT?
+.br
+:hp2.A:ehp2.&colon. Because all FAT flavours are very similar&per. Many code used by each of them is common&per. The differencies
+are minor&per. FAT drives differ from FAT32 ones only in that&colon. 1) BIOS parameter block is different, 2) Root
+directory is located in reserved area, so it is not assigned cluster numbers. We were needed to handle FAT root directory
+specially, while in FAT32 it starts in common cluster heap area, usually, with cluster no&per. 2&per. 3) FAT entries
+in FAT12 are 12-bit (so, two FAT entries compose three bytes)&per. In FAT32 they are all 32-bit&per. Otherwise, all three
+FAT flavours are the same&per. VFAT long filenames are the same in FAT12/16/32&per. Only EXFAT has different LFN format&per.
+Many code is common&per. So, creating three or four almost identical drivers is a waste of machine
+resources and unneeded duplication&per. EXFAT is more different that the first three FS&apos.es&per. It has different boot
+sector structure, different FAT bitness (it is 32-bit, like FAT32 is, but it uses all 32 bits of each FAT entry&per. FAT32
+uses only first 28 bits of a FAT entry&per. The 4 most significant bits are zeroes&per.)&per. Also, it introduces a bitmap
+for tracking a free space, which is used for that, instead of a FAT table. FAT table is not used at all if a file is marked
+as non-fragmented. So, no need to follow a FAT chain if a file is non-fragmented. You just need to know a starting cluster,
+and a file length, to correctly read such a file&per. And finally, EXFAT uses different directory entry format, than the
+first three FAT flavours&per. But still, the amount of modifications is not too big: fat32.ifs without EXFAT support is just
+less than 20 KBytes smaller than a full-featured version&per. Also note that for the same reasons, FAT32&per.IFS uses a common
+UUNIFAT&per.DLL utility DLL with four forwarders&colon. UFAT12&per.DLL, UFAT16&per.DLL, UFAT32&per.DLL, UEXFAT&per.DLL&per.
+
+.br
+:p.:hp2.Q:ehp2.&colon. Why FAT32&per.IFS always shows a file system name being FAT32? Why not show the actual file system type?
+.br
+:hp2.A:ehp2.&colon. What is shown in file managers&apos. info panels is a value returned by a DosQueryFSAttach API&per. It is
+taken by the kernel from an IFS&apos. FS_NAME exported variable&per. (Please read about it in IFS&per.INF file)&per. This value
+is 8 bytes long and should not change since IFS is initialized&per. So, we are unable to change it to the "actual" file system
+name&per. It is a string used for IFS identification&per. If an IFS supports more than one filesystem, this variable should be 
+the same&per. Examples of such IFS&apos.es are Netdrive and vfat-os2&per.ifs&per. Netdrive always show "Netdrive" as its 
+identification&per. Vfat-os2&per.ifs used the "vfat" word for that purpose&per. Except for VFAT drives, it also supported
+limited read only NTFS access&per. But the IFS identification still was "vfat"&per. The same is done by FAT32&per.IFS&per.
+There were suggestions to divide it to three different IFS drivers, for FAT, FAT32 and EXFAT&per. But this is not feasible
+for the reasons, mentioned in previous question/answer&per.
+
+.br
+:p.:hp2.Q:ehp2.&colon. How do I determine the actual file system type of my media?
+.br
+:hp2.A:ehp2.&colon. The only means to determine the actual file system type is to run CHKDSK (probably, without the /f 
+parameter)&per. Then you can see the actual FS type is its report, at the beginning (please, look at 
+:link reftype=hd refid=30047.CHKDSK :elink. article)&per. After a report header appears, you can press "Ctrl-C" to interrupt CHKDSK&per.
+
+.br
+:p.:hp2.Q:ehp2.&colon. Why did you supported EXFAT? It is proprietary Microsoft technology and they extort money from anybody
+using this technology in his products&per. Do you fear Microsoft?
+.br
+:hp2.A:ehp2.&colon. Yes, we are beware the money extortion (called a license fees) from Micro$oft side&per. Nobody is insured 
+from that&per. But, for free software, which is FAT32&per.IFS, it should be no problem&per. Free versions of Linux, like Debian
+is, are safely distributing a (FUSE) version of their EXFAT driver&per. Commercial Linux vendors, Like SuSe and Redhat, are paying
+MS license fees, it seems (or don't distribute an EXFAT driver with their OS&apos.es)&per. Arca Noae, being a commercial OS/2 vendor,
+wants to be as far as possible from patented MS stuff&per. But we made, by their request, a version of FAT32&per.IFS without an
+EXFAT support&per. We hope it will be sufficient to them to avoid MS claims&per. Anyway, MS caused the IT industry to use their 
+patented proprietary EXFAT on SDXC cards (all SD cards larger than 32 GB)&per. So, if we'll not have support for it in our OS,
+we would not use any newer devices with OS/2, like cameras, video registrators, smartphones etc. With FAT32 only, we should stick
+with files not exceeding 4 GB (fat32.ifs now supports up to 4 GB&per. Previously, it supported only 2 GB files, because it is a 16-bit 
+driver&per. Now with EXFAT support, more than 4 GB is supported, so it should be not a problem)&per. Without support for files
+> 4GB, the video recording in newer cameras would be limited with about 30 mins of video&per. This is if you use high quality recording&per.
+Additionally, some devices are not guaranteed to support FAT32 on SDXC&per. They could support EXFAT only, and this could be
+a big problem without EXFAT support&per. So, EXFAT support is important, indeed, despite the fact that it is patented and
+proprietary&per.
+
+.br
+:p.:hp2.Q:ehp2.&colon. Why cannot I seek beyond a 2 GB limit on large files?
+.br
+:hp2.A:ehp2.&colon. Because support for 64-bit seek seems to be incomplete for 16-bit IFS drivers&per. The sequential
+file access works (I can copy big files to/from a FAT32/exFAT drive, but I cannot enter big &per.zip files, for example)&per.
+For that, there is a FS_CHGFILEPTRL export in FAT32&per.IFS, but it does not get called by a kernel&per. The kernel calls
+the standard FS_CHGFILEPTR entry point, which is limited to max&per 2 GB file position&per. The file position gets truncated&per.
+The 32-bit FS32_CHGFILEPTRL function with 32-bit IFS&apos.es, though, works&per. This seems to be an unfinished feature&per. So,
+I see two solutions here&colon. 1) convert FAT32&per.IFS to a 32-bit driver, or, at least, export some necessary 32-bit
+entry points&per. 2) modify OS/2 kernel so that it will call FS_CHGFILEPTRL, as required&per. The latter variant is possible
+if I'd convince OS/4 developers to do such an enhancement&per. But it will not work for those who stick with IBM&apos.s kernels&per.
+
+:h2 id=20070 res=30063.TIPS/HOWTO&apos.s
+
+:p.:link reftype=hd refid=200700.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs :elink.
+
+:p.:link reftype=hd refid=200701.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks :elink.
+.br 
+
+:h3 id=200700 res=30063.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
+
+.br
+:p.:hp2.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.&colon. 
+.br
+.br
+:p. It was discovered by me, that standard FAT OS2DUMP can be used to dump to a 4 GB FAT16 partition with 64 KB
+clusters&per. So, you create a 4 GB partition, with BIOS type 6 (FAT16 BIG), and a volume label "SADUMP"&per.
+Such a file system can be created with a command&colon.
+
+.br.br
+
+:p.:hp2. format /fs&colon.fat16 /c&colon.128 :ehp2.
+
+.br.br
+
+:p. Where 128 is the number of sectors per cluster&colon. 64 KB == 128 sectors&per.
+
+:p. Then you add the line&colon.
+
+.br.br
+
+:p.:hp2. TRAPDUMP=R0,I&colon. :ehp2.
+
+.br.br
+
+:p. to your CONFIG&per.SYS (where I&colon. is your 4 GB FAT16 drive) and reboot&per. You can test if creating
+the standalone dump begins by pressing a Ctrl-Alt-NumLock-NumLock (or Ctrl-Alt-F10-F10)&per.
+
+:p. The dumps of > 2GB are created successfully&per. I have 4 GB of RAM and a 3.7 GB dump file
+creates just fine&per. The 4 GB FAT16 SADUMP partition is mounted fine by FAT32&per.IFS too&per.
+It can then be copied to a JFS partition and viewed by pmdf&per.exe&per.
+
+:p. Note that at the moment, in FAT32&per.IFS, 64-bit seek does not work because a FS_CHGFILEPTRL
+routine does not gets called by the kernel&per. It looks that Scott Garfinkle not finished his 64-bit
+file support for 16-bit IFS&apos.es, which he began making with DUMPFS&per.IFS&per.
+
+:p. DUMPFS&per.IFS is a pure 16-bit IFS with support of files larger than 2 GB&per. Like with FAT32&per.IFS,
+big files can be copied successfully from a DUMPFS drive, but cannot be seeked beyond the 2 GB limit&per.
+It looks that Scott implemented some minimal functionality and did not finished the seek support&per.
+So, the 64-bit seek works only for 32-bit IFS-es, at the moment&per.
+
+:p. As you could notice, you can now use FAT32&per.IFS instead of DUMPFS&per.IFS&per. 
+
+:p. The only problem with this is that if your machine has 4 GB of RAM, the full memory dump takes 
+about a 30 minutes, which is very long&per. So, I'd advice to limit the available RAM to say, 512 MB,
+using a QSINIT loader (aka "Tetris")&per. This can be achieved by adding a ",memlimit=512" string to
+kernel parameters&per. After taking a dump, you can remove the "memlimit" string from os2ldr&per.ini,
+or leave it in a special menu item line which is used specially for dumping memory&per.
+
+:h3 id=200701 res=30063.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks:ehp2.
+
+:p.:hp2.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks :ehp2.
+
+:p. These drivers should work ok with latest FAT32&per.IFS versions&per. There are no special tips, everything
+should work out of the box&per. You just enable FAT support in FAT32&per.IFS via the /fat command line switch&per.
+FAT32&per.IFS then should mount on all FAT drives, including physical and virtual floppies&per. Also, FAT32 or exFAT
+ramdisks, like PAE ramdisk, or any other &per.ADD-based virtual harddisk, should work&per. Successfully tested so far
+are FORMAT/CHKDSK/SYSINSTX/LOADDSKF/SAVEDSKF/DISKCOPY on such drives&per. It should work the same way IBM&apos.s FAT works,
+the bonus feature is VFAT long file names support&per.
+
 :p.
 :h1 id=70 res=30064.Trouble Shooting
 :artwork name='img3.bmp' align=center. 
@@ -2656,7 +2926,7 @@ else can you do to get rid of the LINALLOC FAILED message? :ehp2.
 .br 
 Don&apos.t use VFdisk 
 .br 
-Add the the statement EARLYMEMINIT=TRUE to the config&per.sys file&per. 
+Add the statement EARLYMEMINIT=TRUE to the config&per.sys file&per. 
 
 :p.This setting allows device drivers, etc&per., access to the memory above 16mb 
 early in boot&per. Previously, this was only available after Device Driver and IFS 
@@ -2922,7 +3192,7 @@ pointing to the same file as long name&per.
 .br 
 When /EAS is disabled, FAT32&per.IFS now pass empty EA&per. 
 .br 
-Changed UFAT32 to find volume labelFAT32 in ROOT directory not in bootsector
+Changed UFAT32 to find volume label FAT32 in ROOT directory not in bootsector
 &per. 
 .br 
 Changed UFAT32 to report &apos.file allocation error&apos. as long name&per. 
@@ -3633,6 +3903,10 @@ been fixed&per.
 
 :p.FAT32 IFS&colon. :hp9.ftp&colon.//ftp&per.netlabs&per.org/pub/FAT32 :ehp9.
 
+:p.FAT32&per.IFS Netlabs project page&colon. http&colon.//trac&per.netlabs&per.org/fat32/
+
+:p.Builds archive&colon. ftp&colon.//osfree&per.org/upload/fat32/
+
 :p.:hp2.Contact&colon. :ehp2.  
 
 :p.Adrian Gschwend at :hp9.ktk&atsign.netlabs&per.org :ehp9.if you have some FAT32 patches, 
@@ -3671,7 +3945,7 @@ issues dealing with the WarpIN script and FAT32 code
 
 :p.-IBM VAC 3 
 
-:p.-OS/2 Toolkit 4&per.5 (included with OS/2 ACP/MCPs and eCS) 
+:p.-OS/2 Toolkit 4&per.5 (included with OS/2 ACP/MCP and eCS) 
 
 :p.-IBM DDK sources and tools (freely available at IBM&apos.s DDK site) 
 
@@ -3679,6 +3953,17 @@ issues dealing with the WarpIN script and FAT32 code
 
 :p.-the System utilities (including link&per.exe) 
 .br 
+
+:p.:hp2.REQUIREMENTS for version 0&per.10&colon. :ehp2.
+
+:p.-OpenWatcom (version 1.9 is ok)
+
+:p.-OS/2 Toolkit 4.5 (included with OS/2 ACP/MCP and eCS).
+
+:p.-Awk interpreter for converting Watcom map files to VAC map files
+
+:p.-FAT32 source code. 
+.br
 
 :p.:hp2.Note&colon.  :ehp2.Although IBM DDK souces and tools are free, you will have to 
 register at the IBM DDK site if you have not already done so&per. 
@@ -3705,7 +3990,7 @@ register at the IBM DDK site if you have not already done so&per.
 
 :p.:hp2.COMPILING&colon. :ehp2.
 
-:p.To get a build going, you&apos.ll need several things; 
+:p.To get a build going, you&apos.ll need several things&colon. 
 
 :p.You should have VisualAge installed and it&apos.s environment variables set
 &per.  Then set these 3 variables&colon. 
@@ -3722,10 +4007,61 @@ SET IBMC=d&colon.&bsl.ibmc
 :p.Then run the make&per.cmd script, and if all goes well you should have a 
 fresh build of FAT32&per.IFS&per. 
 
-:p.:hp2.Note&colon.  :ehp2.There are many warning when compiling FAT32&per. Most of them are 
+:p.:hp2.Note&colon.  :ehp2.There are many warnings when compiling FAT32&per. Most of them are 
 &apos.optimizing&apos. warnings or &apos.unreference variable&apos. warnings&per. 
 Essentially, these warnings mean that certain functions cannot be optimized and that some 
 vars/const are never referenced&per. The resulting binaries work however&per. 
+
+:p.:hp2.COMPILING version 0&per.10&colon. :ehp2.
+
+:p.To get a build going, you'll need several things;
+
+:p.You should have Watcom C installed and it&apos.s environment variables set&per. You&apos.ll need to take the buildw&per.cmd
+file in the sources root directory and modify the following environment variables&per.
+
+:p.set WATCOM=f&colon.\dev\watcom
+.br
+set TOOLKIT=f&colon.\os2tk45
+.br
+
+:p.Correct the paths as necessary&per. Buildw&per.cmd also calls %watcom%\owsetenv&per.cmd&per. This file must exist
+and contain the usual Watcom environment, like this&colon.
+
+:p.SET PATH=f&colon.\dev\watcom\BINW;%PATH%
+.br
+SET PATH=f&colon.\dev\watcom\BINP;%PATH%
+.br
+SET BEGINLIBPATH=f&colon.\dev\watcom\binp\dll
+.br
+SET INCLUDE=f&colon.\dev\watcom\H\OS2;%INCLUDE%
+.br
+SET INCLUDE=f&colon.\dev\watcom\H;%INCLUDE%
+.br
+SET WATCOM=f&colon.\dev\watcom
+.br
+SET EDPATH=f&colon.\dev\watcom\EDDAT
+.br
+SET WIPFC=f&colon.\dev\watcom\WIPFC
+.br
+
+:p.Then run the _wcc&per.cmd script, and if all goes well you should have a fresh build of FAT32&per.IFS&per.
+There are also buildi&per.cmd for ICC and buildm&per.cmd for MSC in the root directory&per. They are called by
+_icc&per.cmd or _msc&per.cmd in each subdir&per. So, to build sources in each subdir, you need just tap Enter
+on _wcc&per.cmd/_msc&per.cmd/_icc&per.cmd&per.
+
+:p.Also note that for creating *&per.sym files for fat32 binaries, you&apos.ll need the awk interpreter (awk&per.exe)&per.
+You can use GNU awk (GAWK) for that&per. To install it, use
+
+:p.:hp2.yum install gawk :ehp2.
+
+:p.to install it from yum/rpm repository&per. The binary is called gawk&per.exe, so you may need to create a symlink
+gawk&per.exe -> awk&per.exe&per. For creating the *&per.sym file, the Watcom map file (*&per.wmp) is taken&per.
+Then it gets converted to a VAC map file (*&per.map) by mapsym&per.awk AWK script&per. And finally, mapsym&per.exe
+from OS/2 Toolkit is used to convert *&per.map to *&per.sym&per.
+
+:p.:hp2.Note:ehp2. that all you need for compiling the sources is Watcom installation&per. DDK is not needed as all needed
+headers are present in the sources&per. The only external things needed are awk&per.exe from yum repo and mapsym&per.exe
+from OS/2 Toolkit&per. 
 
 :p.:link reftype=hd refid=74.REQUIREMENTS :elink.
 
