@@ -3,7 +3,6 @@
 #define INCL_DOSMISC
 #include <os2.h>
 
-#include "extboot.h"
 #include "portable.h"
 #include "fat32def.h"
 

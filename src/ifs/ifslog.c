@@ -13,8 +13,6 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-#include "infoseg.h"
-
 #define LOGBUF_SIZE 8192
 
 #define serial_hw_port 0x3f8

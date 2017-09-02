@@ -12,10 +12,6 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-#include "devhdr.h"
-#include "devcmd.h"
-#include "sas.h"
-
 /*
 **  Request Packet Header
 */
