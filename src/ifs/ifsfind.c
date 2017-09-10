@@ -1197,6 +1197,10 @@ ULONGLONG ullSize;
 
                if (!usNumSecondary)
                   {
+                  //BYTE bCheck2 = GetVFATCheckSum(pDir);
+                  //MakeName(pDir, szShortName, sizeof szShortName);
+                  //FSH_UPPERCASE(szShortName, sizeof szShortName, szShortName);
+
                   // last file name entry
                   strcpy(szUpperName, szLongName);
                   //FSH_UPPERCASE(szUpperName, sizeof szUpperName, szUpperName);
@@ -1219,6 +1223,9 @@ ULONGLONG ullSize;
 
                   if (f32Parms.fEAS && IsEASFile(szLongName))
                      rc = 1;
+
+                  //if( !pFindInfo->pInfo->fLongNames )
+                  //   strcpy( szLongName, szShortName );
 
                   /*
                      Check for MUST HAVE attributes

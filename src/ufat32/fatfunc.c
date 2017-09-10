@@ -4194,7 +4194,7 @@ void FileSetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENIN
       {
       // write EAs
       EAOP eaop;
-      BYTE pBuf[sizeof(FEALIST) + 8 + 4 + sizeof(ULONGLONG)];
+      BYTE pBuf[sizeof(FEALIST) + 13 + 4 + sizeof(ULONGLONG)];
       PFEALIST pfealist = (PFEALIST)pBuf;
       APIRET rc;
 
@@ -4205,12 +4205,12 @@ void FileSetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENIN
       eaop.fpFEAList = pfealist;
       pfealist->cbList = sizeof(pBuf);
       pfealist->list[0].fEA = FEA_NEEDEA; // critical EA
-      strcpy((PBYTE)((PFEA)pfealist->list + 1), "FAT+FSZ");
-      pfealist->list[0].cbName  = 8 - 1;
+      strcpy((PBYTE)((PFEA)pfealist->list + 1), "FAT_PLUS_FSZ");
+      pfealist->list[0].cbName  = 13 - 1;
       pfealist->list[0].cbValue = 4 + sizeof(ULONGLONG);
-      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 8) = EAT_BINARY;  // EA type
-      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 10) = 8;          // length
-      *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 12) = ullSize; // value
+      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 13) = EAT_BINARY;  // EA type
+      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 15) = 8;          // length
+      *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 17) = ullSize; // value
 
       rc = usModifyEAS(pCD, ulDirCluster, pDirSHInfo, pszFile, &eaop);
       }
@@ -4233,9 +4233,9 @@ void FileGetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENIN
       {
       // read EAs
       EAOP eaop;
-      BYTE pBuf1[sizeof(GEALIST) + 7];
+      BYTE pBuf1[sizeof(GEALIST) + 12];
       PGEALIST pgealist = (PGEALIST)pBuf1;
-      BYTE pBuf2[sizeof(FEALIST) + 8 + 4 + sizeof(ULONGLONG)];
+      BYTE pBuf2[sizeof(FEALIST) + 13 + 4 + sizeof(ULONGLONG)];
       PFEALIST pfealist = (PFEALIST)pBuf2;
       APIRET rc;
       int i;
@@ -4245,9 +4245,9 @@ void FileGetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENIN
       memset(pfealist, 0, sizeof(pBuf2));
       eaop.fpGEAList = pgealist;
       eaop.fpFEAList = pfealist;
-      pgealist->cbList = sizeof(GEALIST) + 7;
-      pgealist->list[0].cbName = 7;
-      strcpy(pgealist->list[0].szName, "FAT+FSZ");
+      pgealist->cbList = sizeof(GEALIST) + 12;
+      pgealist->list[0].cbName = 12;
+      strcpy(pgealist->list[0].szName, "FAT_PLUS_FSZ");
       pfealist->cbList = sizeof(pBuf2);
 
       rc = usGetEAS(pCD, FIL_QUERYEASFROMLISTL, ulDirCluster, pDirSHInfo, pszFile, &eaop);
@@ -4255,6 +4255,6 @@ void FileGetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENIN
       if (rc)
          return;
 
-      *pullSize = *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 12);
+      *pullSize = *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 17);
       }
 }
