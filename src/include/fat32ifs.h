@@ -348,6 +348,8 @@ IMPORT USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCH
 IMPORT USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 IMPORT PVOLINFO GetVolInfo(USHORT hVBP);
 IMPORT VOID   MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
+void FileSetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, ULONGLONG ullSize);
+void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, PULONGLONG pullSize);
 IMPORT BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
 IMPORT BOOL   fGetLongName1(PDIRENTRY1 pDir, PSZ pszName, USHORT wMax);
 FDATE GetDate1(TIMESTAMP ts);

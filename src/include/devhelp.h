@@ -368,7 +368,7 @@
     "jc      error" \
     "les     bx, [esp+12]" \
     "mov     es:[bx], eax" \
-    "xor    ax, ax" \
+    "xor     ax, ax" \
     "error:" \
     value [ax] \
     parm caller nomemory [] \

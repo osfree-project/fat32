@@ -669,8 +669,9 @@ USHORT rc;
       {
 #endif
       if( HAS_OLD_EAS( pNewEntry->fEAS ))
-           pNewEntry->fEAS = FILE_HAS_NO_EAS;
-      pNewEntry->fEAS = ( BYTE )(( pNewEntry->fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+           pNewEntry->fEAS &= FILE_NO_EAS_MASK;
+      pNewEntry->fEAS = ( BYTE )(( pNewEntry->fEAS & FILE_NO_EAS_MASK ) | fEAS );
+      //pNewEntry->fEAS = ( BYTE )(( pNewEntry->fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
 #ifdef EXFAT
       }
    else
@@ -678,9 +679,10 @@ USHORT rc;
       PDIRENTRY1 pNewEntry1 = (PDIRENTRY1)pNewEntry;
       if( HAS_OLD_EAS( pNewEntry1->u.File.fEAS ) )
          {
-         pNewEntry1->u.File.fEAS = FILE_HAS_NO_EAS;
+         pNewEntry1->u.File.fEAS &= FILE_NO_EAS_MASK;
          }
-      pNewEntry1->u.File.fEAS = ( BYTE )(( pNewEntry1->u.File.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
+      pNewEntry1->u.File.fEAS = ( BYTE )(( pNewEntry1->u.File.fEAS & FILE_NO_EAS_MASK ) | fEAS );
+      //pNewEntry1->u.File.fEAS = ( BYTE )(( pNewEntry1->u.File.fEAS & FILE_HAS_WINNT_EXT ) | fEAS );
       }
 #endif
 

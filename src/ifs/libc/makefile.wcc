@@ -13,6 +13,9 @@ OBJS=$(PROJ_BLD)\mem.obj &
      $(PROJ_BLD)\i4m.obj &
      $(PROJ_BLD)\i8d086.obj &
      $(PROJ_BLD)\i8m086.obj &
+     $(PROJ_BLD)\i8ls086.obj &
+     $(PROJ_BLD)\i8rs086.obj &
+     $(PROJ_BLD)\u8rs086.obj &
      $(PROJ_BLD)\pia.obj &
      $(PROJ_BLD)\pts.obj &
      $(PROJ_BLD)\ptc.obj &

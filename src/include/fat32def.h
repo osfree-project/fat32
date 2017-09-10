@@ -167,7 +167,11 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define MAX_EA_SIZE ((ULONG)65536)
 #define EA_EXTENTION " EA. SF"
 #define FILE_HAS_NO_EAS             0x00
-#define FILE_HAS_EAS                0x40
+#define FILE_NO_EAS_MASK            0x3F   // no EAs AND mask
+#define FILE_SIZE_MASK              7ULL   // FAT+: three lower bits (size)
+#define FILE_SIZE_EA                0x20   // FAT+: file size in EAs
+#define FILE_HAS_EAS                0x40   // file EAs in "file .EA SF" file
+#define FILE_EA_DATA_SF_EAS         0x80   // file EAs in "ea data. sf" file
 #define FILE_HAS_CRITICAL_EAS       0x80
 #define FILE_HAS_OLD_EAS            0xEA
 #define FILE_HAS_OLD_CRITICAL_EAS   0xEC
@@ -314,6 +318,7 @@ CHAR   fLargeFiles;
 CHAR   fReadonly;
 CHAR   fFat;
 CHAR   fExFat;
+CHAR   fFatPlus;
 } F32PARMS, *PF32PARMS;
 
 typedef struct _Options
@@ -416,7 +421,7 @@ USHORT usChar3[2];
 typedef struct _FileSizeStruct
 {
 BYTE   szFileName[FAT32MAXPATH];
-ULONG  ulFileSize;
+ULONGLONG ullFileSize;
 } FILESIZEDATA, *PFILESIZEDATA;
 
 typedef struct _MarkFileEASBuf

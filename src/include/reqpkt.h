@@ -205,7 +205,6 @@
     UCHAR FuncCode;
  } RPSAVERESTORE, FAR *PRPSAVERESTORE;
 
-
  //
  // Shutdown
  //

@@ -109,7 +109,6 @@
     unsigned long FSDRef;                         /* FSD ref. got from ATTACH   */
  };
 
-
  #define IOFL_WRITETHRU	    0x10
  #define IOFL_NOCACHE	    0x20
 
@@ -708,7 +707,7 @@
     char far *pName
  );
 
-#define FOC_NEEDEAS      0x1
+ #define FOC_NEEDEAS      0x1
 
  int far pascal _loadds FS_OPENCREATE(
     struct cdfsi far *pcdfsi,

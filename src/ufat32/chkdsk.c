@@ -27,8 +27,8 @@ MSG_1306, AvailableClusters
 #include <stdarg.h>
 #include <conio.h>
 
-#include "portable.h"
 #include "fat32c.h"
+#include "portable.h"
 
 #define STACKSIZE 0x20000
 
@@ -109,6 +109,8 @@ USHORT fGetAllocBitmap(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen);
 USHORT fGetUpCaseTbl(PCDINFO pCD, PULONG pulFirstCluster, PULONGLONG pullLen, PULONG pulChecksum);
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
 APIRET DelFile(PCDINFO pCD, PSZ pszFilename);
+void FileGetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, PULONGLONG pullSize);
+void FileSetSize(PCDINFO pCD, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, ULONGLONG ullSize);
 
 USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
 
@@ -1399,11 +1401,14 @@ USHORT usSectorsRead;
 
             if (pCD->fDetailed == 2)
                {
+               ULONGLONG ullSize;
+               FileGetSize(pCD, pDir, ulDirCluster, NULL, szLongName, &ullSize);
+
                show_message("%-13.13s", 0, 0, 1, MakeName(pDir, szShortName, sizeof(szShortName)));
                if (pDir->bAttr & FILE_DIRECTORY)
                   show_message("<DIR>      ", 0, 0, 0);
                else
-                  show_message("%10lu ", 0, 0, 1, pDir->ulFileSize);
+                  show_message("%10llu ", 0, 0, 1, ullSize);
 
                show_message("%s ", 0, 0, 1, szLongName);
                }
@@ -1452,6 +1457,7 @@ USHORT usSectorsRead;
                ULONG ulDirCluster, ulFileCluster;
                DIRENTRY DirEntry;
                PSZ pszFile;
+               ULONGLONG ullSize;
 
                strcpy(Mark.szFileName, pbPath);
                strcat(Mark.szFileName, EA_EXTENTION);
@@ -1467,6 +1473,9 @@ USHORT usSectorsRead;
                   if (ulFileCluster == pCD->ulFatEof)
                      rc = ERROR_FILE_NOT_FOUND;
                   }
+
+               FileGetSize(pCD, &DirEntry, ulDirCluster, NULL, pszFile, &ullSize);
+
                if (rc)
                   {
                   show_message("%s is marked having EAs, but the EA file (%s) is not found. (SYS%4.4u)\n",
@@ -1484,7 +1493,7 @@ USHORT usSectorsRead;
                         show_message("SYS%4.4u: Unable to correct problem\n", 2416, 0, 1, rc);
                      }
                   }
-               else if (!DirEntry.ulFileSize)
+               else if (!ullSize)
                   {
                   show_message("%s is marked having EAs, but the EA file (%s) is empty\n", 0, 0, 2, pbPath, Mark.szFileName);
                   show_message("File marked having EAs, but the EA file (%s) is empty\n", 2420, 0, 1, Mark.szFileName);
@@ -1505,11 +1514,13 @@ USHORT usSectorsRead;
 
             if (!(pDir->bAttr & FILE_DIRECTORY))
                {
-               ulClustersNeeded = pDir->ulFileSize / pCD->ulClusterSize +
-                  (pDir->ulFileSize % pCD->ulClusterSize ? 1:0);
+               ULONGLONG ullSize;
+               FileGetSize(pCD, pDir, ulDirCluster, NULL, pbPath, &ullSize);
+               ulClustersNeeded = ullSize / pCD->ulClusterSize +
+                  (ullSize % pCD->ulClusterSize ? 1:0);
                ulClustersUsed = GetClusterCount(pCD,((ULONG)pDir->wClusterHigh * 0x10000 + pDir->wCluster) & pCD->ulFatEof, NULL, pbPath);
                pEA = strstr(pbPath, EA_EXTENTION);
-               if (f32Parms.fEAS && pEA && pDir->ulFileSize)
+               if (f32Parms.fEAS && pEA && ullSize)
                   {
                   ULONG rc;
 
@@ -1636,7 +1647,7 @@ USHORT usSectorsRead;
                      if (lastchar(fs.szFileName) != '\\')
                         strcat(fs.szFileName, "\\");
                      strcat(fs.szFileName, MakeName(pDir, szShortName, sizeof(szShortName)));
-                     fs.ulFileSize = ulClustersUsed * pCD->ulClusterSize;
+                     fs.ullFileSize = ulClustersUsed * pCD->ulClusterSize;
                      rc = SetFileSize(pCD, (PFILESIZEDATA)&fs);
                      strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
                      if (rc)
@@ -2264,7 +2275,7 @@ BOOL fEAS;
                         if (lastchar(fs.szFileName) != '\\')
                            strcat(fs.szFileName, "\\");
                         strcat(fs.szFileName, MakeName((PDIRENTRY)pDir, szShortName, sizeof(szShortName))); ////
-                        fs.ulFileSize = ulClustersUsed * pCD->ulClusterSize;
+                        fs.ullFileSize = ulClustersUsed * pCD->ulClusterSize;
                         rc = SetFileSize(pCD, (PFILESIZEDATA)&fs);
                         strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
                         if (rc)

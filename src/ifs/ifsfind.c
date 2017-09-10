@@ -612,6 +612,7 @@ PSZ szUpperName;
 PBYTE pStart = *ppData;
 USHORT rc;
 ULONG  ulBlockIndex;
+ULONGLONG ullSize;
 
    szLongName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP);
    if (!szLongName)
@@ -779,8 +780,10 @@ ULONG  ulBlockIndex;
                      pfFind->fdateLastAccess = pDir->wAccessDate;
                      pfFind->fdateLastWrite = pDir->wLastWriteDate;
                      pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+
+                     FileGetSize(pVolInfo, pDir, pFindInfo->pInfo->rgClusters[0], pFindInfo->pSHInfo, szLongName, &ullSize);
 #ifdef INCL_LONGLONG
-                     pfFind->cbFile = pDir->ulFileSize;
+                     pfFind->cbFile = ullSize;
                      pfFind->cbFileAlloc =
                         (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                         (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -788,7 +791,7 @@ ULONG  ulBlockIndex;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                     iAssignUL(&pfFind->cbFile, ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
@@ -880,8 +883,10 @@ ULONG  ulBlockIndex;
                      pfFind->fdateLastAccess = pDir->wAccessDate;
                      pfFind->fdateLastWrite = pDir->wLastWriteDate;
                      pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+
+                     FileGetSize(pVolInfo, pDir, pFindInfo->pInfo->rgClusters[0], pFindInfo->pSHInfo, szLongName, &ullSize);
 #ifdef INCL_LONGLONG
-                     pfFind->cbFile = pDir->ulFileSize;
+                     pfFind->cbFile = ullSize;
                      pfFind->cbFileAlloc =
                         (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                         (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -889,7 +894,7 @@ ULONG  ulBlockIndex;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                     iAssignUL(&pfFind->cbFile, ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
@@ -1043,8 +1048,10 @@ ULONG  ulBlockIndex;
                      pfFind->fdateLastAccess = pDir->wAccessDate;
                      pfFind->fdateLastWrite = pDir->wLastWriteDate;
                      pfFind->ftimeLastWrite = pDir->wLastWriteTime;
+
+                     FileGetSize(pVolInfo, pDir, pFindInfo->pInfo->rgClusters[0], pFindInfo->pSHInfo, szLongName, &ullSize);
 #ifdef INCL_LONGLONG
-                     pfFind->cbFile = pDir->ulFileSize;
+                     pfFind->cbFile = ullSize;
                      pfFind->cbFileAlloc =
                         (pfFind->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                         (pfFind->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -1052,7 +1059,7 @@ ULONG  ulBlockIndex;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, pDir->ulFileSize);
+                     iAssignUL(&pfFind->cbFile, ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);

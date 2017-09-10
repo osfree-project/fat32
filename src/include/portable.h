@@ -342,4 +342,42 @@ typedef FLAGS *         PFLAGS ;    /* pf */
 
 typedef void _far *     PFVOID ;    /* p Far Pointer to near void */
 
+#ifndef __OS2__
+
+#define ERROR_EA_LIST_TOO_LONG          256
+
+#define FEA_NEEDEA   0x80
+#define EAT_BINARY   0xFFFE
+
+#define FIL_QUERYEASFROMLIST   3
+#define FIL_QUERYEASFROMLISTL 13
+
+typedef struct _GEA {
+    BYTE cbName;
+    CHAR szName[1];
+} GEA, *PGEA;
+
+typedef struct _GEALIST {
+    ULONG cbList;
+    GEA list[1];
+} GEALIST, *PGEALIST;
+
+typedef struct _FEA {
+    BYTE fEA;
+    BYTE cbName;
+    USHORT cbValue;
+} FEA, *PFEA;
+
+typedef struct _FEALIST {
+    ULONG cbList;
+    FEA list[1];
+} FEALIST, *PFEALIST;
+
+typedef struct _EAOP {
+    PGEALIST fpGEAList;
+    PFEALIST fpFEAList;
+    ULONG    oError;
+} EAOP, *PEAOP;
+#endif
+
 #endif

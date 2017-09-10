@@ -37,6 +37,93 @@ VOID   ReleaseBuf3(PVOLINFO pVolInfo);
 /******************************************************************
 *
 ******************************************************************/
+void FileSetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, ULONGLONG ullSize)
+{
+   pDirEntry->ulFileSize = ullSize & 0xffffffff;
+
+   if (f32Parms.fFatPlus)
+      {
+      ULONGLONG ullTmp;
+      ullTmp = (ULONGLONG)(pDirEntry->fEAS);
+      ullTmp |= ((ullSize >> 32) & FILE_SIZE_MASK);
+      pDirEntry->fEAS = (BYTE)ullTmp;
+      pDirEntry->fEAS &= ~FILE_SIZE_EA;
+      }
+
+   if ( f32Parms.fFatPlus && f32Parms.fEAS && (ullSize >> 35) )
+      {
+      // write EAs
+      EAOP eaop;
+      BYTE pBuf[sizeof(FEALIST) + 8 + 4 + sizeof(ULONGLONG)];
+      PFEALIST pfealist = (PFEALIST)pBuf;
+      APIRET rc;
+
+      pDirEntry->fEAS |= FILE_SIZE_EA | FILE_HAS_EAS;
+
+      memset(&eaop, 0, sizeof(eaop));
+      memset(pfealist, 0, sizeof(pBuf));
+      eaop.fpFEAList = pfealist;
+      pfealist->cbList = sizeof(pBuf);
+      pfealist->list[0].fEA = FEA_NEEDEA; // critical EA
+      strcpy((PBYTE)((PFEA)pfealist->list + 1), "FAT+FSZ");
+      pfealist->list[0].cbName  = 8 - 1;
+      pfealist->list[0].cbValue = 4 + sizeof(ULONGLONG);
+      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 8) = EAT_BINARY;  // EA type
+      *(PUSHORT)((PBYTE)((PFEA)pfealist->list + 1) + 10) = 8;          // length
+      *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 12) = ullSize; // value
+
+      rc = usModifyEAS(pVolInfo, ulDirCluster, pDirSHInfo, pszFile, &eaop);
+      }
+}
+
+
+/******************************************************************
+*
+******************************************************************/
+void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
+                 PSHOPENINFO pDirSHInfo, PSZ pszFile, PULONGLONG pullSize)
+{
+   *pullSize = pDirEntry->ulFileSize;
+
+   if (f32Parms.fFatPlus)
+      {
+      *pullSize |= (((ULONGLONG)(pDirEntry->fEAS) & FILE_SIZE_MASK) << 32);
+      }
+
+   if ( f32Parms.fFatPlus && f32Parms.fEAS && (pDirEntry->fEAS & FILE_SIZE_EA) )
+      {
+      // read EAs
+      EAOP eaop;
+      BYTE pBuf1[sizeof(GEALIST) + 7];
+      PGEALIST pgealist = (PGEALIST)pBuf1;
+      BYTE pBuf2[sizeof(FEALIST) + 8 + 4 + sizeof(ULONGLONG)];
+      PFEALIST pfealist = (PFEALIST)pBuf2;
+      APIRET rc;
+      int i;
+
+      memset(&eaop, 0, sizeof(eaop));
+      memset(pgealist, 0, sizeof(pBuf1));
+      memset(pfealist, 0, sizeof(pBuf2));
+      eaop.fpGEAList = pgealist;
+      eaop.fpFEAList = pfealist;
+      pgealist->cbList = sizeof(GEALIST) + 7;
+      pgealist->list[0].cbName = 7;
+      strcpy(pgealist->list[0].szName, "FAT+FSZ");
+      pfealist->cbList = sizeof(pBuf2);
+
+      rc = usGetEAS(pVolInfo, FIL_QUERYEASFROMLISTL, ulDirCluster, pDirSHInfo, pszFile, &eaop);
+
+      if (rc)
+         return;
+
+      *pullSize = *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 12);
+      }
+}
+
+
+/******************************************************************
+*
+******************************************************************/
 ULONG FindDirCluster(PVOLINFO pVolInfo,
    struct cdfsi far * pcdfsi,       /* pcdfsi   */
    struct cdfsd far * pcdfsd,       /* pcdfsd   */

@@ -2045,6 +2045,17 @@ APIRET rc = 0;
          f32Parms.fReadonly = TRUE;
          }
 
+      p = strstr(szArguments, "/plus");
+      if (!p)
+         p = strstr(szArguments, "-plus");
+      if (p)
+         {
+         // enable FAT+ support
+         f32Parms.fFatPlus = TRUE;
+         // need Large Files support too
+         f32Parms.fLargeFiles = TRUE;
+         }
+
       p = strstr(szArguments, "/fat:");
       if (!p)
          p = strstr(szArguments, "-fat:");
@@ -3011,7 +3022,12 @@ USHORT   usNr;
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
 #endif
-         pDirEntry->ulFileSize += pVolInfo->ulClusterSize;
+         {
+         ULONGLONG ullSize;
+         FileGetSize(pVolInfo, pDirEntry, pVolInfo->BootSect.bpb.RootDirStrtClus, NULL, szFileName, &ullSize);
+         ullSize += pVolInfo->ulClusterSize;
+         FileSetSize(pVolInfo, pDirEntry, pVolInfo->BootSect.bpb.RootDirStrtClus, NULL, szFileName, ullSize);
+         }
 #ifdef EXFAT
       else
          {
@@ -3129,10 +3145,10 @@ USHORT rc;
    if (ulCluster == pVolInfo->ulFatEof)
       return ERROR_FILE_NOT_FOUND;
    if (!ulCluster)
-      pFileSize->ulFileSize = 0L;
+      pFileSize->ullFileSize = 0L;
 
-   ulClustersNeeded = pFileSize->ulFileSize / pVolInfo->ulClusterSize;
-   if (pFileSize->ulFileSize % pVolInfo->ulClusterSize)
+   ulClustersNeeded = pFileSize->ullFileSize / pVolInfo->ulClusterSize;
+   if (pFileSize->ullFileSize % pVolInfo->ulClusterSize)
       ulClustersNeeded++;
 
 #ifdef EXFAT
@@ -3142,7 +3158,7 @@ USHORT rc;
       }
 #endif
 
-   if (pFileSize->ulFileSize > 0 )
+   if (pFileSize->ullFileSize > 0 )
       {
       ulClustersUsed = 1;
       while (ulClustersUsed < ulClustersNeeded)
@@ -3156,7 +3172,7 @@ USHORT rc;
          ulClustersUsed++;
          }
       if (ulCluster == pVolInfo->ulFatEof)
-         pFileSize->ulFileSize = ulClustersUsed * pVolInfo->ulClusterSize;
+         pFileSize->ullFileSize = ulClustersUsed * pVolInfo->ulClusterSize;
       else
          SetNextCluster(pVolInfo, ulCluster, pVolInfo->ulFatEof);
       }
@@ -3168,26 +3184,26 @@ USHORT rc;
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
 #endif
-      pDirNew->ulFileSize = pFileSize->ulFileSize;
+      FileSetSize(pVolInfo, pDirNew, ulDirCluster, pDirSHInfo, pszFile, pFileSize->ullFileSize);
 #ifdef EXFAT
       }
    else
       {
 #ifdef INCL_LONGLONG
-      pDirStreamNew->u.Stream.ullValidDataLen = pFileSize->ulFileSize;
+      pDirStreamNew->u.Stream.ullValidDataLen = pFileSize->ullFileSize;
       pDirStreamNew->u.Stream.ullDataLen =
-         (pFileSize->ulFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-         ((pFileSize->ulFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
+         (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #else
-      AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFileSize->ulFileSize);
-      AssignUL(pDirStreamNew->u.Stream.ullDataLen,
-         (pFileSize->ulFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-         ((pFileSize->ulFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0));
+      Assign(pDirStreamNew->u.Stream.ullValidDataLen, pFileSize->ullFileSize);
+      Assign(pDirStreamNew->u.Stream.ullDataLen,
+         (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0));
 #endif
       }
 #endif
 
-   if (!pFileSize->ulFileSize)
+   if (!pFileSize->ullFileSize)
       {
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)

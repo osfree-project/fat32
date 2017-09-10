@@ -489,8 +489,8 @@ USHORT rc;
 
                if (!(pDirEntry->bAttr & FILE_DIRECTORY))
                   {
+                  FileGetSize(pVolInfo, pDirEntry, ulDirCluster, pDirSHInfo, pszFile, (PULONGLONG)&pfStatus->cbFile);
 #ifdef INCL_LONGLONG
-                  pfStatus->cbFile = pDirEntry->ulFileSize;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -498,7 +498,6 @@ USHORT rc;
                   {
                   LONGLONG llRest;
 
-                  iAssignUL(&pfStatus->cbFile, pDirEntry->ulFileSize);
                   pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
                   pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
                   llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
@@ -637,8 +636,8 @@ USHORT rc;
                pfStatus->ftimeLastWrite = pDirEntry->wLastWriteTime;
                if (!(pDirEntry->bAttr & FILE_DIRECTORY))
                   {
+                  FileGetSize(pVolInfo, pDirEntry, ulDirCluster, pDirSHInfo, pszFile, (PULONGLONG)&pfStatus->cbFile);
 #ifdef INCL_LONGLONG
-                  pfStatus->cbFile = pDirEntry->ulFileSize;
                   pfStatus->cbFileAlloc =
                      (pfStatus->cbFile / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
                      (pfStatus->cbFile % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
@@ -646,7 +645,6 @@ USHORT rc;
                   {
                   LONGLONG llRest;
 
-                  iAssignUL(&pfStatus->cbFile, pDirEntry->ulFileSize);
                   pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
                   pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
                   llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
