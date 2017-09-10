@@ -430,24 +430,25 @@ USHORT rc;
                   pDirEntryStream->u.Stream.ulFirstClus = ulCluster;
 #ifdef INCL_LONGLONG
                   pDirEntryStream->u.Stream.ullValidDataLen = size;
-                  pDirEntryStream->u.Stream.ullDataLen =
-                     (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-                     (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  pDirEntryStream->u.Stream.ullDataLen = size;
+                  //   (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
                   {
                   ULONGLONG ullRest;
 
                   Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-                  pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
-                  pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
-                  ullRest = ModUL(size, pVolInfo->ulClusterSize);
+                  Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+                  //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
+                  //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+                  //ullRest = ModUL(size, pVolInfo->ulClusterSize);
 
-                  if (NeqUL(ullRest, 0))
-                     AssignUL(&ullRest, pVolInfo->ulClusterSize);
-                  else
-                     AssignUL(&ullRest, 0);
+                  //if (NeqUL(ullRest, 0))
+                  //   AssignUL(&ullRest, pVolInfo->ulClusterSize);
+                  //else
+                  //   AssignUL(&ullRest, 0);
 
-                  pDirEntryStream->u.Stream.ullDataLen = Add(DirEntryStream.u.Stream.ullDataLen, ullRest);
+                  //pDirEntryStream->u.Stream.ullDataLen = Add(DirEntryStream.u.Stream.ullDataLen, ullRest);
                   }
 #endif
                   pDirEntryStream->u.Stream.bAllocPossible = 1;
@@ -721,25 +722,26 @@ USHORT rc;
                   pDirEntryStream->u.Stream.ulFirstClus = ulCluster;
 #ifdef INCL_LONGLONG
                   pDirEntryStream->u.Stream.ullValidDataLen = size;
-                  pDirEntryStream->u.Stream.ullDataLen =
-                     (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-                     (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+                  pDirEntryStream->u.Stream.ullDataLen = size;
+                  //   (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                  //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
                   {
 
                   ULONGLONG ullRest;
 
                   Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-                  pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
-                  pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
-                  ullRest = ModUL(size, pVolInfo->ulClusterSize);
+                  Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+                  //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
+                  //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+                  //ullRest = ModUL(size, pVolInfo->ulClusterSize);
 
-                  if (NeqUL(ullRest, 0))
-                     AssignUL(&ullRest, pVolInfo->ulClusterSize);
-                  else
-                     AssignUL(&ullRest, 0);
+                  //if (NeqUL(ullRest, 0))
+                  //   AssignUL(&ullRest, pVolInfo->ulClusterSize);
+                  //else
+                  //   AssignUL(&ullRest, 0);
 
-                  pDirEntryStream->u.Stream.ullDataLen = Add(pDirEntryStream->u.Stream.ullDataLen, ullRest);
+                  //pDirEntryStream->u.Stream.ullDataLen = Add(pDirEntryStream->u.Stream.ullDataLen, ullRest);
                   }
 #endif
                   pDirEntryStream->u.Stream.bAllocPossible = 1;
@@ -3067,24 +3069,25 @@ USHORT rc;
 
 #ifdef INCL_LONGLONG
             pDirEntryStream->u.Stream.ullValidDataLen = size;
-            pDirEntryStream->u.Stream.ullDataLen =
-               (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-               (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+            pDirEntryStream->u.Stream.ullDataLen = size;
+            //   (size / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+            //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
             {
             ULONGLONG ullRest;
 
             Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-            pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
-            pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
-            ullRest = ModUL(size, pVolInfo->ulClusterSize);
+            Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+            //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
+            //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+            //ullRest = ModUL(size, pVolInfo->ulClusterSize);
 
-            if (NeqUL(ullRest, 0))
-               AssignUL(&ullRest, pVolInfo->ulClusterSize);
-            else
-               AssignUL(&ullRest, 0);
+            //if (NeqUL(ullRest, 0))
+            //   AssignUL(&ullRest, pVolInfo->ulClusterSize);
+            //else
+            //   AssignUL(&ullRest, 0);
 
-            pDirEntryStream->u.Stream.ullDataLen = Add(pDirEntryStream->u.Stream.ullDataLen, ullRest);
+            //pDirEntryStream->u.Stream.ullDataLen = Add(pDirEntryStream->u.Stream.ullDataLen, ullRest);
             }
 #endif
             pDirEntryStream->u.Stream.bAllocPossible = 1;

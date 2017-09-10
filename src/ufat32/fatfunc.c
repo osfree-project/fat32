@@ -3208,9 +3208,9 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    else
       {
       DirStreamNew.u.Stream.ullValidDataLen = pFileSize->ullFileSize;
-      DirStreamNew.u.Stream.ullDataLen =
-         (pFileSize->ullFileSize / pCD->ulClusterSize) * pCD->ulClusterSize +
-         ((pFileSize->ullFileSize % pCD->ulClusterSize) ? pCD->ulClusterSize : 0);
+      DirStreamNew.u.Stream.ullDataLen = pFileSize->ullFileSize;
+      //   (pFileSize->ullFileSize / pCD->ulClusterSize) * pCD->ulClusterSize +
+      //   ((pFileSize->ullFileSize % pCD->ulClusterSize) ? pCD->ulClusterSize : 0);
       }
 #endif
 
@@ -4067,9 +4067,9 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
                PDIRENTRY1 pNewEntryStream = (PDIRENTRY1)&NewEntryStream;
                pNewEntryStream->u.Stream.ulFirstClus = ulCluster;
                pNewEntryStream->u.Stream.ullValidDataLen = cbBuf;
-               pNewEntryStream->u.Stream.ullDataLen =
-                  (cbBuf / pCD->ulClusterSize) * pCD->ulClusterSize +
-                  ((cbBuf % pCD->ulClusterSize) ? pCD->ulClusterSize : 0);
+               pNewEntryStream->u.Stream.ullDataLen = cbBuf;
+               //   (cbBuf / pCD->ulClusterSize) * pCD->ulClusterSize +
+               //   ((cbBuf % pCD->ulClusterSize) ? pCD->ulClusterSize : 0);
                }
 #endif
          }

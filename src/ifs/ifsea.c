@@ -1035,14 +1035,14 @@ PSHOPENINFO pSHInfo = NULL;
 
 #ifdef INCL_LONGLONG
          pDirStreamNew->u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
-         pDirStreamNew->u.Stream.ullDataLen =
-            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+         pDirStreamNew->u.Stream.ullDataLen = pDirStreamNew->u.Stream.ullValidDataLen;
+         //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
          AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(pDirStreamNew->u.Stream.ullDataLen, 
-            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
+         AssignUL(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+         //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif
          }
 #endif
@@ -1107,14 +1107,14 @@ PSHOPENINFO pSHInfo = NULL;
          pDirStreamNew->u.Stream.bNoFatChain = 0;
 #ifdef INCL_LONGLONG
          pDirStreamNew->u.Stream.ullValidDataLen = (ULONGLONG)pFEAL->cbList;
-         pDirStreamNew->u.Stream.ullDataLen =
-            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
+         pDirStreamNew->u.Stream.ullDataLen = pDirStreamNew->u.Stream.ullValidDataLen;
+         //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
          AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(pDirStreamNew->u.Stream.ullDataLen, 
-            (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-            (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
+         AssignUL(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+         //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+         //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif
          }
 #endif

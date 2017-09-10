@@ -1525,10 +1525,14 @@ ULONGLONG ullSize;
                   PFILEFNDBUF pfFind = (PFILEFNDBUF)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = 
+                     (pDir->u.Stream.ullValidDataLen / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     ((pDir->u.Stream.ullValidDataLen % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #else
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+                  pfFind->cbFileAlloc = 
+                     (pDir->u.Stream.ullValidDataLen.ulLo / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     ((pDir->u.Stream.ullValidDataLen.ulLo % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #endif
                   }
                else if (usLevel == FIL_STANDARDL)
@@ -1536,10 +1540,10 @@ ULONGLONG ullSize;
                   PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = pDir->u.Stream.ullValidDataLen;
 #else
                   iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
-                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
 #endif
                   }
                else if (usLevel == FIL_QUERYEASIZE)
@@ -1547,10 +1551,12 @@ ULONGLONG ullSize;
                   PFILEFNDBUF2 pfFind = (PFILEFNDBUF2)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = pDir->u.Stream.ullValidDataLen;
 #else
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+                  pfFind->cbFileAlloc = 
+                     (pDir->u.Stream.ullValidDataLen.ulLo / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     ((pDir->u.Stream.ullValidDataLen.ulLo % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #endif
                   }
                else if (usLevel == FIL_QUERYEASIZEL)
@@ -1558,10 +1564,10 @@ ULONGLONG ullSize;
                   PFILEFNDBUF4L pfFind = (PFILEFNDBUF4L)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = pDir->u.Stream.ullValidDataLen;
 #else
                   iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
-                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
 #endif
                   }
                else if (usLevel == FIL_QUERYEASFROMLIST)
@@ -1569,10 +1575,12 @@ ULONGLONG ullSize;
                   PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = pDir->u.Stream.ullValidDataLen;
 #else
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen.ulLo;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen.ulLo;
+                  pfFind->cbFileAlloc = 
+                     (pDir->u.Stream.ullValidDataLen.ulLo / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+                     ((pDir->u.Stream.ullValidDataLen.ulLo % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #endif
                   }
                else if (usLevel == FIL_QUERYEASFROMLISTL)
@@ -1580,10 +1588,10 @@ ULONGLONG ullSize;
                   PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
 #ifdef INCL_LONGLONG
                   pfFind->cbFile = pDir->u.Stream.ullValidDataLen;
-                  pfFind->cbFileAlloc = pDir->u.Stream.ullDataLen;
+                  pfFind->cbFileAlloc = pDir->u.Stream.ullValidDataLen;
 #else
                   iAssign(&pfFind->cbFile, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
-                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullDataLen);
+                  iAssign(&pfFind->cbFileAlloc, *(PLONGLONG)&pDir->u.Stream.ullValidDataLen);
 #endif
                   }
                }

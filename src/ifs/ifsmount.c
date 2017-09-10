@@ -118,7 +118,6 @@ int i;
                }
             }
 
-         Trace("tracepoint 1%m", 0x4071);
          if (!hDupVBP)   /* initial mounting of the volume */
             {
             pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
@@ -137,7 +136,6 @@ int i;
 
             pVolInfo->bFatType = GetFatType(pSect);
 
-            Trace("tracepoint 2%m", 0x4072);
             if (pVolInfo->bFatType == FAT_TYPE_NONE)
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
@@ -145,7 +143,6 @@ int i;
                goto FS_MOUNT_EXIT;
                }
 
-            Trace("tracepoint 3%m", 0x4073);
             if ( (pVolInfo->bFatType < FAT_TYPE_FAT32) &&
                  ((! f32Parms.fFat) || ! (fat_mask & (1UL << pvpfsi->vpi_drive))) )
                {
@@ -154,7 +151,6 @@ int i;
                goto FS_MOUNT_EXIT;
                }
 
-            Trace("tracepoint 4%m", 0x4074);
             if ( (pVolInfo->bFatType == FAT_TYPE_FAT32) &&
                  ! (fat32_mask & (1UL << pvpfsi->vpi_drive)) )
                {
@@ -164,7 +160,6 @@ int i;
                }
 
 #ifdef EXFAT
-            Trace("tracepoint 5%m", 0x4075);
             if ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) &&
                  ((! f32Parms.fExFat) || ! (exfat_mask & (1UL << pvpfsi->vpi_drive))) )
                {
@@ -174,7 +169,6 @@ int i;
                }
 #endif
 
-            Trace("tracepoint 6%m", 0x4076);
             switch (pVolInfo->bFatType)
                {
                case FAT_TYPE_FAT12:
@@ -207,7 +201,6 @@ int i;
 #endif
                }
 
-            Trace("tracepoint 7%m", 0x4077);
             rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
             if (rc)
                {
@@ -215,13 +208,11 @@ int i;
                rc = ERROR_GEN_FAILURE;
                goto FS_MOUNT_EXIT;
                }
-            Trace("tracepoint 8%m", 0x4078);
             *((PVOLINFO *)pvpfsd->vpd_work) = pVolInfo;
             *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
 
             pVolInfo->pNextVolInfo = NULL;
 
-            Trace("tracepoint 9%m", 0x4079);
             if (!pGlobVolInfo)
                {
                pGlobVolInfo = pVolInfo;
@@ -237,14 +228,12 @@ int i;
                }
 
                // check for 0xf6 symbol (is the BPB erased?)
-               Trace("tracepoint a%m", 0x407a);
                for (i = 0; i < sizeof(BOOTSECT0); i++)
                   {
                   if (pBoot[i] != 0xf6)
                      break;
                   }
 
-               Trace("tracepoint b%m", 0x407b);
                if (i == sizeof(BOOTSECT0))
                   {
                   // erased by 0xf6
@@ -258,7 +247,6 @@ int i;
                      break;
                   }
 
-               Trace("tracepoint c%m", 0x407c);
                if (i == sizeof(BOOTSECT0))
                   {
                   // erased by 0x00
@@ -284,7 +272,6 @@ int i;
                      }
                   }
 
-               Trace("tracepoint d%m", 0x407d);
                if (! fValidBoot)
                   {
                   // construct the Serial No and Volume label
@@ -292,14 +279,12 @@ int i;
                   pvpfsi->vpi_vid = GetVolId();
                   }
 
-               Trace("tracepoint e%m", 0x407e);
                if (! fNewBoot)
                   {
                   memcpy(pvpfsi->vpi_text, "UNLABELED  ", sizeof(pSect->VolumeLabel));
                   pvpfsi->vpi_vid = GetVolId();
                   }
 
-               Trace("tracepoint f%m", 0x407f);
                if (pVolInfo->bFatType < FAT_TYPE_FAT32)
                   {
                   PBOOTSECT0 pSect0 = (PBOOTSECT0)pSect;
@@ -440,7 +425,6 @@ int i;
                         pSect0->bpb.Heads = 1;
                      }
 
-                     Trace("tracepoint 10%m", 0x4080);
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = ((PBOOTSECT0)pSect)->bpb.BytesPerSector;
@@ -451,7 +435,6 @@ int i;
                   }
                else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
                   {
-                     Trace("tracepoint 11%m", 0x4081);
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
@@ -463,7 +446,6 @@ int i;
 #ifdef EXFAT
                else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
                   {
-                     Trace("tracepoint 12%m", 0x4082);
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
@@ -481,7 +463,6 @@ int i;
             for a first time mount it's an initializaton
             for the n-th remount it's a reinitialization of the old VPB
          */
-         Trace("tracepoint 13%m", 0x4083);
          memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
 
 #ifdef EXFAT
@@ -493,7 +474,6 @@ int i;
             pVolInfo->ulActiveFatStart = ((PBOOTSECT1)pSect)->ulFatOffset;
 #endif
 
-         Trace("tracepoint 14%m", 0x4084);
 #ifdef EXFAT
          if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
@@ -516,13 +496,11 @@ int i;
                ((((ULONG)pSect0->bpb.RootDirEntries * sizeof(DIRENTRY)) % pSect0->bpb.BytesPerSector) ? 1 : 0);
             }
 
-         Trace("tracepoint 15%m", 0x4085);
          pVolInfo->pBootFSInfo = (PBOOTFSINFO)(pVolInfo + 1);
          pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
          pVolInfo->ulCurFatSector = -1L;
          pVolInfo->pbFatBits = (PBYTE)pVolInfo->pbFatSector + SECTOR_SIZE * 8 * 3;
          
-         Trace("tracepoint 16%m", 0x4086);
 #ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
             {
@@ -555,7 +533,6 @@ int i;
 #endif
 
          // size of a subcluster block
-         Trace("tracepoint 17%m", 0x4087);
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
 
          pVolInfo->hVBP    = hVBP;
@@ -567,7 +544,6 @@ int i;
 
          pVolInfo->fFormatInProgress = FALSE;
 
-         Trace("tracepoint 18%m", 0x4088);
          if (usDefaultRASectors == 0xFFFF)
             pVolInfo->usRASectors = (USHORT)(pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 2;
          else
@@ -581,7 +557,6 @@ int i;
             pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4;
 #endif
 
-         Trace("tracepoint 19=%m", 0x4089);
          if (pVolInfo->bFatType == FAT_TYPE_FAT32 && pSect->bpb.FSinfoSec != 0xFFFF)
             {
             ReadSector(pVolInfo, pSect->bpb.FSinfoSec, 1, pVolInfo->pbFatSector, DVIO_OPNCACHE);
@@ -590,7 +565,6 @@ int i;
          else
             memset(pVolInfo->pBootFSInfo, 0, sizeof (BOOTFSINFO));
 
-         Trace("tracepoint 1a%m", 0x408a);
          if (pVolInfo->bFatType < FAT_TYPE_FAT32)
             {
             if (fNewBoot)
@@ -612,7 +586,6 @@ int i;
             // force calculating the free space
             pVolInfo->BootSect.bpb.FSinfoSec = 0xFFFF;
             }
-         Trace("tracepoint 1b%m", 0x408b);
          if (pVolInfo->bFatType == FAT_TYPE_FAT32)
             {
             if (fNewBoot)
@@ -631,7 +604,6 @@ int i;
                memcpy(pVolInfo->BootSect.FileSystem, "EXFAT   ", 8);
                }
 
-         Trace("tracepoint 1c%m", 0x408c);
 #ifdef INCL_LONGLONG
             pVolInfo->BootSect.bpb.BigTotalSectors = (ULONG)((PBOOTSECT1)pSect)->ullVolumeLength; ////
 #else
@@ -646,19 +618,15 @@ int i;
 
          pVolInfo->BootSect.ulVolSerial = pvpfsi->vpi_vid;
 
-         Trace("tracepoint 1d%m", 0x408d);
          if (! pVolInfo->BootSect.bpb.BigSectorsPerFat)
             // if partition is small
             pVolInfo->BootSect.bpb.BigSectorsPerFat = pVolInfo->BootSect.bpb.SectorsPerFat;
 
-         Trace("tracepoint 1e%m", 0x408e);
          pVolInfo->ulTotalClusters =
             (pVolInfo->BootSect.bpb.BigTotalSectors - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster;
 
-         Trace("tracepoint 1f%m", 0x408f);
          if (pVolInfo->bFatType == FAT_TYPE_FAT32)
             {
-            if (pSect->bpb.ExtFlags & 0x0080)
                {
                pVolInfo->ulActiveFatStart +=
                   pSect->bpb.BigSectorsPerFat * (pSect->bpb.ExtFlags & 0x000F);
@@ -673,7 +641,7 @@ int i;
 
             if (((PBOOTSECT1)pSect)->usVolumeFlags & VOL_FLAG_ACTIVEFAT)
                {
-               pVolInfo->ulActiveFatStart += ((PBOOTSECT1)pSect)->ulFatLength; ////
+               pVolInfo->ulActiveFatStart += ((PBOOTSECT1)pSect)->ulFatLength;
                }
 
             fGetAllocBitmap(pVolInfo, &pVolInfo->ulAllocBmpCluster, &ullLen);
@@ -694,46 +662,38 @@ int i;
             }
 #endif
 
-         Trace("tracepoint 20%m", 0x4090);
          if (fValidBoot)
             {
             char pszVolLabel[11];
             USHORT usSize = 11;
 
-            Trace("tracepoint 21%m", 0x4091);
             memset(pszVolLabel, 0, sizeof(pszVolLabel));
             memset(pvpfsi->vpi_text, 0, sizeof(pvpfsi->vpi_text));
 
-            Trace("tracepoint 22%m", 0x4092);
             fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
             // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
             // over 0 sector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
             // (see MarkDiskStatus)
             pVolInfo->ulCurFatSector = 0xffff;
 
-            Trace("tracepoint 23%m", 0x4093);
             if (! pszVolLabel || ! *pszVolLabel)
                strcpy(pvpfsi->vpi_text, "UNLABELED  ");
             else
                strcpy(pvpfsi->vpi_text, pszVolLabel);
             
-            Trace("tracepoint 24%m", 0x4094);
             memset(pVolInfo->BootSect.VolumeLabel, 0, sizeof(pVolInfo->BootSect.VolumeLabel));
             memcpy(pVolInfo->BootSect.VolumeLabel, pvpfsi->vpi_text, sizeof(pVolInfo->BootSect.VolumeLabel));
             }
 
-         Trace("tracepoint 25%m", 0x4095);
          rc = CheckWriteProtect(pVolInfo);
          if (rc && rc != ERROR_WRITE_PROTECT)
             {
             Message("Cannot access drive, rc = %u", rc);
             goto FS_MOUNT_EXIT;
             }
-         Trace("tracepoint 26%m", 0x4096);
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
 
-         Trace("tracepoint 27%m", 0x4097);
          if (f32Parms.fCalcFree ||
             pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
           /*!pVolInfo->fDiskClean ||*/
@@ -742,7 +702,6 @@ int i;
             GetFreeSpace(pVolInfo);
             }
 
-         Trace("tracepoint 28%m", 0x4098);
          pDevCaps  = pvpfsi->vpi_pDCS;
          pVolChars = pvpfsi->vpi_pVCS;
 
@@ -752,26 +711,21 @@ int i;
          //   pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
          //   }
 
-         Trace("tracepoint 29%m", 0x4099);
          if ( pVolChars && (pVolChars->VolDescriptor & VC_REMOVABLE_MEDIA) )
             pVolInfo->fRemovable = TRUE;
 
-         Trace("tracepoint 2a%m", 0x409a);
          if (! pVolInfo->fRemovable)
             pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
          else
             // ignore disk status on floppies
             pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = TRUE;
 
-         Trace("tracepoint 2b%m", 0x409b);
          if (!pVolInfo->fDiskCleanOnMount && f32Parms.fMessageActive & LOG_FS)
             Message("DISK IS DIRTY!");
 
-         Trace("tracepoint 2c%m", 0x409c);
          if (pVolInfo->fWriteProtected)
             pVolInfo->fDiskCleanOnMount = TRUE;
 
-         Trace("tracepoint 2d%m", 0x409d);
          if (pDevCaps && f32Parms.fMessageActive & LOG_FS)
             {
             if (pDevCaps->Capabilities & GDC_DD_Read2)
@@ -790,7 +744,6 @@ int i;
                Message(">16M supported");
             }
 
-         Trace("tracepoint 2e%m", 0x409e);
          if (pDevCaps && pDevCaps->Strategy2)
             {
             if (f32Parms.fMessageActive & LOG_FS)
@@ -803,7 +756,6 @@ int i;
             pVolInfo->pfnPriority = (STRATFUNC)pDevCaps->ChgPriority;
             }
 
-         Trace("tracepoint 2f%m", 0x409f);
          rc = 0;
          break;
 

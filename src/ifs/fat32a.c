@@ -3191,14 +3191,14 @@ USHORT rc;
       {
 #ifdef INCL_LONGLONG
       pDirStreamNew->u.Stream.ullValidDataLen = pFileSize->ullFileSize;
-      pDirStreamNew->u.Stream.ullDataLen =
-         (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-         ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
+      pDirStreamNew->u.Stream.ullDataLen = pDirStreamNew->u.Stream.ullValidDataLen;
+      //   (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+      //   ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #else
       Assign(pDirStreamNew->u.Stream.ullValidDataLen, pFileSize->ullFileSize);
-      Assign(pDirStreamNew->u.Stream.ullDataLen,
-         (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
-         ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0));
+      Assign(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+      //   (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
+      //   ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0));
 #endif
       }
 #endif
