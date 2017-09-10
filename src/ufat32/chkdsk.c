@@ -1540,7 +1540,13 @@ USHORT usSectorsRead;
                         ULONG ulDirCluster, ulFileCluster;
                         ULONG ulDstFileCluster;
                         PSZ pszFile;
+                        PSZ pszBaseName;
 
+                        pszBaseName = strrchr(Mark.szFileName, '\\');
+                        if (pszBaseName)
+                           {
+                           strcpy(Mark.szFileName, pszBaseName + 1);
+                           }
                         strcat(Mark.szFileName, ".EA");
                         rc = MarkVolume(pCD, TRUE);
                         if (rc == TRUE)
