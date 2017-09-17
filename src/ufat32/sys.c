@@ -45,7 +45,7 @@ struct _fat32buf
     UCHAR PartitionNr;
     UCHAR zero1;
     CHAR FS[16];
-    CHAR Data4[8192-(60+1024)];
+    CHAR Data4[28*512-(60+1024)];
 } fat32buf;
 
 struct _fatbuf
@@ -57,6 +57,33 @@ struct _fatbuf
     CHAR Boot_Code[448];
     USHORT Boot_End;
 } fatbuf;
+
+struct _exfatbuf
+{
+    // Bootsector (sector 0 = 512 bytes)
+    CHAR jmp1[3];
+    CHAR Oem_Id[8];
+    CHAR Bpb[53];
+    CHAR Bpb2[56];
+    CHAR Boot_Code[381];
+    USHORT FSD_LoadSeg;
+    USHORT FSD_Entry;
+    UCHAR FSD_Len;
+    ULONG FSD_Addr;
+    USHORT Boot_End;
+    // ldr starts from sector 1
+    USHORT jmp2;
+    USHORT FS_Len;
+    USHORT Preldr_Len;
+    UCHAR Force_Lba;
+    UCHAR Bundle;
+    CHAR data2[4];
+    CHAR data3[30];
+    UCHAR PartitionNr;
+    UCHAR zero1;
+    CHAR FS[16];
+    CHAR Data4[512*12-(60+512)];
+} exfatbuf;
 
 // preldr0 header
 struct _ldr0hdr
@@ -86,15 +113,38 @@ static void usage(char *s)
                 "Make a disk system.\n\n", 0, 0, 1, s);
 }
 
+#ifdef EXFAT
+
+ULONG Chksum(const char *data, int bytes)
+{
+   ULONG sum = 0; 
+   int i;
+
+   for (i = 0; i < bytes; i++)
+   {
+      if (i == 106 || i == 107 || i == 112)
+         continue;
+
+      sum = (sum << 31) | (sum >> 1) + data[i];
+   }
+
+   return sum;
+}
+
+#endif
+
 void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 {
   ULONG cbSize, ulAction, cbActual, cbOffActual;
+  ULONG chksum;
+  PULONG p;
   struct extbpb dp;
   char   file[20];
   char   *drive = rgArgv[1];
   FILE   *fd;
   HANDLE  hf;
   APIRET rc;
+  int i;
 
   show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
 
@@ -134,24 +184,89 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   if (fs_type == FAT_TYPE_EXFAT)
   {
     /* exFAT */
-    /* exFAT bootblock is not yet implemented */
-    show_message("Not yet implemented.\n", 0, 0, 0);
+    // copy bootsector to exfatbuf
+    memcpy(&exfatbuf, &fat32buf, dp.BytesPerSect);
+
+    // copy bootsector to buffer (skipping JMP, OEM ID and BPB)
+    memcpy(&exfatbuf.Boot_Code, (char *)bootsec_ex + 11 + 109, sizeof(bootsec_ex) - 11 - 109);
+
+    strncpy(&exfatbuf.jmp1, bootsec, 3);
+    strncpy(&exfatbuf.Oem_Id, "EXFAT   ", 8);
+
+    // FSD load segment
+    exfatbuf.FSD_LoadSeg = 0x0800;
+    // FSD entry point
+    exfatbuf.FSD_Entry = 0;
+
+    // FSD length in sectors
+    exfatbuf.FSD_Len = (dp.BytesPerSect*10) / dp.BytesPerSect;
+
+    // FSD offset in sectors
+    exfatbuf.FSD_Addr = 1; 
+    // copy the mini pre-loader
+    memcpy((char *)&exfatbuf.jmp2, preldr_mini, sizeof(preldr_mini));
+    // copy FSD
+    memcpy((char *)&exfatbuf.jmp2 + sizeof(preldr_mini), fat_mdl, sizeof(fat_mdl));
+    // FSD length
+    exfatbuf.FS_Len = sizeof(fat_mdl);
+    // pre-loader length
+    exfatbuf.Preldr_Len = sizeof(preldr_mini);
+    // FSD and pre-loaded are bundled
+    exfatbuf.Bundle = 0x80;
+    // partition number (not used ATM)
+    exfatbuf.PartitionNr = 0;
+    // FS name
+    strncpy(&exfatbuf.FS, "fat", 3);
+    exfatbuf.FS[3] = 0;
+
+    // write checksum
+    chksum = Chksum((char *)&exfatbuf, sizeof(exfatbuf) - dp.BytesPerSect);
+
+    p = (PULONG)((PBYTE)&exfatbuf + dp.BytesPerSect*11);
+
+    for (i = 0; i < dp.BytesPerSect / 4; i++, p++)
+    {
+       *p = chksum;
+    }
+
+    rc = WriteSect(hf, 0, sizeof(exfatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&exfatbuf);
+
+    if (rc)
+    {
+      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      show_message("%s\n", 0, 0, 1, get_error(rc));
+      return;
+    }
+
+    /* rc = WriteSect(hf, 12, sizeof(exfatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&exfatbuf);
+
+    if (rc)
+    {
+      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      show_message("%s\n", 0, 0, 1, get_error(rc));
+      return;
+    } */
   }
-  else
-#endif
+  else if (fs_type == FAT_TYPE_FAT32)
+#else
   if (fs_type == FAT_TYPE_FAT32)
+#endif
   {
     /* FAT32 */
     // copy bootsector to buffer (skipping JMP, OEM ID and BPB)
     memcpy(&fat32buf.Boot_Code, (char *)bootsec + 11 + 79, sizeof(bootsec) - 11 - 79);
-    // copy OEM ID
+
+    strncpy(&fat32buf.jmp1, bootsec, 3);
     strncpy(&fat32buf.Oem_Id, "[osFree]", 8);
+
     // FSD load segment
     fat32buf.FSD_LoadSeg = 0x0800;
     // FSD entry point
     fat32buf.FSD_Entry = 0;
+
     // FSD length in sectors
-    fat32buf.FSD_Len = (8192 - 1024) / 512;
+    fat32buf.FSD_Len = (28*512 - 1024) / 512;
+
     // FSD offset in sectors
     fat32buf.FSD_Addr = 2; 
     // copy the mini pre-loader
@@ -205,10 +320,10 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   unlock_drive(hf);
   close_drive(hf);
 
-#ifdef EXFAT
-  if (fs_type == FAT_TYPE_EXFAT)
-    return;
-#endif
+//#ifdef EXFAT
+//  if (fs_type == FAT_TYPE_EXFAT)
+//    return;
+//#endif
 
   // create subdirs
   memset(file, 0, sizeof(file));
