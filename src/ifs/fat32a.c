@@ -1964,6 +1964,12 @@ APIRET rc = 0;
       if (p)
          f32Parms.fEAS = TRUE;
 
+      p = strstr(szArguments, "/eas2");
+      if (!p)
+         p = strstr(szArguments, "-eas2");
+      if (p)
+         f32Parms.fEAS2 = TRUE;
+
       p = strstr( szArguments, "/h");
       if( !p )
         p = strstr( szArguments, "-h");

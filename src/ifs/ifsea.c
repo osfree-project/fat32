@@ -16,10 +16,15 @@
 #include "fat32ifs.h"
 
 
+USHORT usCopyEAS2(PVOLINFO pVolInfo, ULONG ulSrcDirCluster, PSZ pszSrcFile, PSHOPENINFO pDirSrcSHInfo,
+                  ULONG ulTarDirCluster, PSZ pszTarFile, PSHOPENINFO pDirTarSHInfo);
+
 PRIVATE PFEA   FindEA(PFEALIST pFeal, PSZ pszName, USHORT usMaxName);
 PRIVATE USHORT usReadEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST * ppFEAL, BOOL fCreate);
 PRIVATE USHORT usWriteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PFEALIST pFEAL);
 PRIVATE USHORT GetEASName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PSZ * pszEASName);
+
+extern F32PARMS f32Parms;
 
 
 /************************************************************************
@@ -448,6 +453,13 @@ PSHOPENINFO pSrcSHInfo = NULL;
       goto usCopyEASExit;
       }
 #endif
+
+   if (f32Parms.fEAS2)
+      {
+      rc = usCopyEAS2(pVolInfo, ulSrcDirCluster, pszSrcFile, pDirSrcSHInfo,
+                      ulTarDirCluster, pszTarFile, pDirTarSHInfo);
+      goto usCopyEASExit;
+      }
 
    rc = GetEASName(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, pszSrcFile, &pszSrcEAName);
    if (rc)

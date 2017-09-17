@@ -39,6 +39,7 @@ OBJS=$(PROJ_BLD)\fat32a.obj &
      $(PROJ_BLD)\ifsswap.obj &
      $(PROJ_BLD)\ifsmem.obj &
      $(PROJ_BLD)\ifsea.obj &
+     $(PROJ_BLD)\ifsea2.obj &
      $(PROJ_BLD)\ifslang.obj &
      $(PROJ_BLD)\ifsachk.obj &
      $(PROJ_BLD)\helpers.obj

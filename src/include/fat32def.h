@@ -296,6 +296,7 @@ ULONG  ulBufferIdle;
 ULONG  ulMaxAge;
 USHORT fMessageActive;
 USHORT fEAS;
+BYTE   fEAS2;
 BYTE   szVersion[10];
 
 USHORT fLW;
@@ -526,9 +527,46 @@ ULONG       rgulSize[MAX_LOST_CHAINS];
 
 } CDINFO, *PCDINFO;
 
+//
+// 'ea data. sf' defs:
+//
+
+#define EADATA_MAGIC 0xDE
+#define EA_MAGIC     0xAE
+
+#define BASE_TBL_ENTRIES       240
+#define HANDLES_PER_BASE_ENTRY 128
+#define EA_HANDLE_UNUSED       0xffff
+
+#define EA_DATA_FILE  "EA DATA. SF"
+#define EA_IDX_FILE   "EA IDX. SF"
+
+typedef struct _EA_INDEX_REC
+{
+ULONG  ulCluster;
+USHORT usEAHandle;
+USHORT usResvd;
+} EA_INDEX_REC, *PEA_INDEX_REC;
+
+typedef struct _EADATA_HEADER
+{
+USHORT eh_sig;                        // EADATA_MAGIC
+USHORT eh_resvd1;                     // zeroes
+USHORT eh_resvd2[14];                 // zeroes
+USHORT eh_base_tbl[BASE_TBL_ENTRIES]; // base table
+USHORT eh_offset_tbl[1];              // offset table
+} EADATA_HEADER;
+
+typedef struct _EADATA_ENTRY
+{
+USHORT  ea_sig;           // EA_MAGIC
+USHORT  ea_handle;        // EA handle of this entry
+ULONG   ea_crit_eas;      // number of critical EAS
+BYTE    ea_filename[14];  // our own filename
+ULONG   ea_strt_clus;     // starting cluster of oriinal file (it is zero in IBM's FAT, but not in ours)
+FEALIST ea_feal;          // EA data (FEALIST structure follows)
+} EADATA_ENTRY, *PEADATA_ENTRY;
+
 #pragma pack()
-
-
-
 
 #endif
