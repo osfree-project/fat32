@@ -1532,6 +1532,8 @@ letters which are needed to mount&per. (Like /fat&colon.abcd or /fat&colon.*)&pe
 letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*)&per. There is an support for exFAT
 filesystems&per. (beta-quality)&per.
 
+:p.:hp2./PLUS :ehp2. Enable FAT+ support (large files, bigger than 4 GB)&per.
+
 :p.:hp2.Note&colon.  :ehp2.If /FAT or /EXFAT or /FAT32 switches are not specified, all FAT32 disks are mounted
 by default&per. FAT12/FAT16 should work on any media&per. Floppies can be mounted too&per. Also, so far, we tested
 a CD with FAT16 filesystem burned on it, it works too&per. We just created the test filesystem with QSINIT, with 
@@ -2713,6 +2715,10 @@ if I'd convince OS/4 developers to do such an enhancement&per. But it will not w
 :p.:link reftype=hd refid=200700.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs :elink.
 
 :p.:link reftype=hd refid=200701.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks :elink.
+
+:p.:link reftype=hd refid=200702.Support for files > 4 GB on FAT/FAT32 (FAT+) :elink.
+
+:p.:link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
 .br 
 
 :h3 id=200700 res=30063.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
@@ -2775,6 +2781,54 @@ FAT32&per.IFS then should mount on all FAT drives, including physical and virtua
 ramdisks, like PAE ramdisk, or any other &per.ADD-based virtual harddisk, should work&per. Successfully tested so far
 are FORMAT/CHKDSK/SYSINSTX/LOADDSKF/SAVEDSKF/DISKCOPY on such drives&per. It should work the same way IBM&apos.s FAT works,
 the bonus feature is VFAT long file names support&per.
+
+:h3 id=200702 res=30063.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
+
+:p.:hp2.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
+
+:p. DOS people were always limited with FAT filesystem (FAT12/FAT16/FAT32) and it was always a big problem
+that the file size is limited to a 32-bit value in FAT&per. Video files and VM images are known examples of
+big files, for which a 32-bit value (which limits the file size to 4 GB) is insufficient&per. So, DR-DOS developers
+found out a way to store the files bigger than 4 GB on FAT volumes&per. The specification was called FAT+&per.
+This specification (http&colon.//www&per.fdos&per.org/kernel/fatplus&per.txt) adds 6 more bits to a file size
+by using some reserved bits in the directory entry&per. 2^(32+6) == 256 GB is maximum file size allowed. The FAT
+chain size itself is not limited by the FAT spec, limited is only the file size, which is addressed in the FAT+ spec&per.
+
+:p.The reserved byte is 12-th from the beinning of a directory entry. Two bits of this byte, 3rd and 4th are
+reserved by WinNT for specifying that the file name or extension of this file is lower case (no LFN&apos.s are used,
+the file has 8&per.3 filename)&per. The bits 6th and 7th are used by fat32&per.ifs for marking file as having EA&apos.s
+or having critical EA&apos.s&per. For files having EA&apos.s, bits 6th and 7th are occupied too&per. So, bit 5th now
+means that the file size is set in special EA&per. The FAT+, version 3 spec suggests to use a FAT+FSZ EA for storing
+the 64-bit size value in EA&apos.s&per. As I can see, "+" sign in the EA name gives a ERROR_INVALID_EA_NAME error
+when trying to manipulate with such a file&per. So, I decided to use the FAT_PLUS_FSZ EA instead (which violates
+current spec, but it seems the spec is incorrect here, because it sugests to use an invalid EA name)&per.
+
+:p. So far, FAT+ support is now working&per. I was able to create a 40 GB file indeed, and it could be copied to
+another volume&per. The FAT+ support is enabled by the "/plus" command line switch&per. Note that /plus switch 
+enables large files support too&per. Also, storing files with more than 35-bit size requires EA support (/eas switch)
+to be enabled&per. 35-bit size uses bits 0-2 of 12th reserved byte (EA mark byte)&per. 2^35 == 32 GB is the maximum
+file size with EA&apos.s disabled&per.
+
+:h3 id=200703 res=30063.Notes on large floppy media&per. :ehp2.
+
+:p.:hp2.Notes on large floppy media&per. :ehp2.
+
+:p. Media without any partitions created, but with a single file system, is called Large Floppy&per.
+Such media has no partition table and is beginning from a boot sector, like ordinary floppy disk, but
+it is much larger (some gigabytes)&per.
+
+:p. Such media is frequently created by Windows&per. As it was known, OS2DASD&per.DMD/OS2LVM&per.DMD think
+that large floppies must be < 2 GB and formatted with FAT16&per. So, when OS/2 sees a big floppy, it mounts
+the kernel FAT driver onto it&per. So, there is currently no way to make OS/2 properly understand Large Floppies,
+except for OS2DASD/OS2LVM rewriting&per.
+
+:p. But there is a workaround created by Lars Erdmann in his version of usbmsd&per.add&per. Lars emulates the
+0 track together with partition table and DLAT sector with LVM info with default drive letter&per. So, the system
+actually sees some emulated partitionable medium, instead of the Large Floppy&per. This is done transparently
+when usbmsd&per.add sees the media beginning from the boot sector&per. Such media can be repartitioned by
+erasing the boot sector with zeroes&per. Then usbmsd&per.add disables emulation and it then works as usual&per.
+
+:p.Large floppies can be safely formatted with FAT16/FAT32/exFAT and used with fat32&per.ifs&per.
 
 :p.
 :h1 id=70 res=30064.Trouble Shooting
