@@ -1507,6 +1507,11 @@ free space info was not stored on disk&per.
 :p.:hp2./CACHE&colon.nnnn :ehp2.Specifies the cache size in kilobytes&per. If omitted the 
 default cache size is 1024KB&per. Maximum cache size is 2048KB&per. *   
 
+.br 
+
+:p.:hp2.Note&colon.  :ehp2.Cache memory is allocated as FIXED memory, so if you have less 
+than 16MB a setting of 512KB or less for this option is suggested&per.
+
 :p.:hp2./AUTOCHECK&colon.<drive letter list> :ehp2.Specifies the drive letters to check on boot&per. If /AUTOCHECK&colon.* 
 is specified, CHKDSK will check all FAT32 disks for dirty flag present, and if it is, CHKDSK is run on that drive&per.
 The drive letters can be specified also one by one, like this: /AUTOCHECK&colon.cdwx&per. Also, there's the possibility
@@ -1542,11 +1547,6 @@ ISO image&per. Also, virtual floppy or hard disk should work too&per. So far, th
 tested with fat32.ifs&colon. VDISK&per.SYS by IBM (included into each OS/2 system), VFDISK&per.SYS by Daniela Engert and Lars
 Erdmann, and SVDISK&per.SYS by Albert J. Shan, HD4DISK&per.ADD by _dixie_ (included with QSINIT boot loader)&per. The latter
 is successfully tested both with FAT32 PAE ramdisks and with EXFAT ramdisks in lower memory&per.
-
-.br 
-
-:p.:hp2.Note&colon.  :ehp2.Cache memory is allocated as FIXED memory, so if you have less 
-than 16MB a setting of 512KB or less for this option is suggested&per.
 
 :p.:hp2./MONITOR :ehp2.Set F32MON ON by default&per. If omitted F32MON is OFF&per. See :link reftype=hd refid=49.
 F32MON&per.EXE :elink.for more information&per. 

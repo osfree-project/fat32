@@ -44,12 +44,12 @@ PRIVATE ULONG CheckFiles(PCDINFO pCD);
 PRIVATE ULONG CheckFreeSpace(PCDINFO pCD);
 PRIVATE ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCluster);
 PRIVATE ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile);
-PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile);
+PRIVATE BOOL   MarkCluster(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile);
 PRIVATE PSZ    MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 PRIVATE ULONG fGetVolLabel(PCDINFO pCD, PSZ pszVolLabel);
 PRIVATE BOOL   fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax);
 BOOL   ClusterInUse(PCDINFO pCD, ULONG ulCluster);
-PRIVATE BOOL RecoverChain(PCDINFO pCD, ULONG ulCluster);
+PRIVATE BOOL RecoverChain(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo);
 PRIVATE BOOL LostToFile(PCDINFO pCD, ULONG ulCluster, ULONG ulSize);
 PRIVATE BOOL ClusterInChain(PCDINFO pCD, ULONG ulStart, ULONG ulCluster);
 
@@ -577,7 +577,7 @@ PSZ    pszType;
          ((pCD->ulAllocBmpLen % pCD->ulClusterSize) ? 1 : 0);
       for (i = 0; i < ulBitmapClusters; i++)
           {
-          MarkCluster(pCD, ulBitmapFirstCluster + i, "Allocation Bitmap");
+          MarkCluster(pCD, ulBitmapFirstCluster, ulBitmapFirstCluster + i, NULL, "Allocation Bitmap");
           }
       pCD->ulBmpStartSector = pCD->ulStartOfData +
          (pCD->ulAllocBmpCluster - 2) * pCD->SectorsPerCluster;
@@ -591,7 +591,7 @@ PSZ    pszType;
          ((pCD->ulUpcaseTblLen % pCD->ulClusterSize) ? 1 : 0);
       for (i = 0; i < ulUpCaseClusters; i++)
           {
-          MarkCluster(pCD, ulUpCaseFirstCluster + i, "UpCase Table");
+          MarkCluster(pCD, ulUpCaseFirstCluster, ulUpCaseFirstCluster + i, NULL, "UpCase Table");
           }
       }
 #endif
@@ -690,6 +690,25 @@ PSZ    pszType;
    rc = CheckFreeSpace(pCD);
    pCD->FSInfo.ulFreeClusters = pCD->ulFreeClusters;
 
+#ifdef EXFAT
+   if (pCD->bFatType == FAT_TYPE_EXFAT)
+      {
+      // write back the bitmap
+      ULONG ulCluster = ulBitmapFirstCluster;
+      char *pBuf = pCD->pFatBits;
+      while (ulCluster != pCD->ulFatEof)
+         {
+         ReadCluster(pCD, ulCluster, pBuf);
+         ulCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
+         if (!ulCluster)
+            {
+            ulCluster = pCD->ulFatEof;
+            }
+         pBuf += pCD->ulClusterSize;
+         }
+      }
+#endif
+
    if (pCD->fFix)
       {
       ULONG ulFreeBlocks;
@@ -780,7 +799,6 @@ ChkDskMainExit:
       }
 
    mem_free((void *)pCD->pFatBits, usBlocks * 4096);
-   //free((void *)pCD->pFatBits);
 #ifdef EXFAT
    if (pCD->bFatType == FAT_TYPE_EXFAT)
       mem_free((void *)pCD->pbFatBits, pCD->BootSect.bpb.BytesPerSector);
@@ -960,7 +978,7 @@ ULONG dummy = 0;
       if (ulNext == pCD->ulFatBad)
          {
          pCD->ulBadClusters++;
-         MarkCluster(pCD, ulCluster+2, "Bad sectors");
+         MarkCluster(pCD, ulCluster+2, ulCluster+2, NULL, "Bad sectors");
          }
       else if (!ulNext)
          {
@@ -969,7 +987,7 @@ ULONG dummy = 0;
               (pCD->bFatType == FAT_TYPE_EXFAT && !ClusterInUse2(pCD, ulCluster+2)) )
 #endif
             {
-            MarkCluster(pCD, ulCluster+2, "Free space");
+            MarkCluster(pCD, ulCluster+2, ulCluster+2, NULL, "Free space");
             pCD->ulFreeClusters++;
             }
          }
@@ -991,7 +1009,7 @@ ULONG dummy = 0;
 
                   fMsg = TRUE;
                   }
-               RecoverChain(pCD, ulCluster+2);
+               RecoverChain(pCD, ulCluster+2, NULL);
                }
             }
          }
@@ -1322,7 +1340,7 @@ USHORT usSectorsRead;
                if (pCD->fFix)
                   {
                   // mark it as deleted
-                  pPrevDir = pDir - 1;
+                  pPrevDir = pDir;
                   while (pPrevDir->bAttr == FILE_LONGNAME &&
                          pPrevDir->bFileName[0] &&
                          pPrevDir->bFileName[0] != 0xE5)
@@ -1331,6 +1349,8 @@ USHORT usSectorsRead;
                      pPrevDir--;
                      }
                   fModified = TRUE;
+
+                  show_message("This has been corrected\n", 2439, 0, 0);
                   }
                else
                   pCD->ulErrorCount++;
@@ -1547,6 +1567,7 @@ USHORT usSectorsRead;
                            {
                            strcpy(Mark.szFileName, pszBaseName + 1);
                            }
+
                         strcat(Mark.szFileName, ".EA");
                         rc = MarkVolume(pCD, TRUE);
                         if (rc == TRUE)
@@ -1749,13 +1770,57 @@ USHORT usSectorsRead;
                if (!memicmp(pDir->bFileName,      ".          ", 11))
                   {
                   if (ulCluster != ulDirCluster)
+                     {
                      show_message(". entry in %s is incorrect!\n", 2430, 0, 1, pszPath);
+                     if (pCD->fFix)
+                        {
+                        pDir->wCluster = ulDirCluster & 0xffff;
+
+                        if (pCD->bFatType == FAT_TYPE_FAT32)
+                           pDir->wClusterHigh = ulDirCluster >> 16;
+
+                        if (ulDirCluster == 1)
+                           {
+                           // reading root directory on FAT12/FAT16
+                           ulSector = pCD->BootSect.bpb.ReservedSectors +
+                           pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs +
+                           ((((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize) / pCD->BootSect.bpb.BytesPerSector;
+                           WriteSector(pCD, ulSector, pCD->SectorsPerCluster, pbCluster + (((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize);
+                           }
+                        else
+                           WriteCluster(pCD, ulDirCluster, pbCluster + (((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize);
+
+                        show_message("This has been corrected\n", 2439, 0, 0);
+                        }
+                     }
                   }
                else if (!memicmp(pDir->bFileName, "..         ", 11))
                   {
                   if (ulCluster != ulParentDirCluster)
+                     {
                      show_message(".. entry in %s is incorrect! (%lX %lX)\n", 2431, 0, 3,
-                        pszPath, ulCluster, ulParentDirCluster);
+                                  pszPath, ulCluster, ulParentDirCluster);
+                     if (pCD->fFix)
+                        {
+                        pDir->wCluster = ulParentDirCluster & 0xffff;
+
+                        if (pCD->bFatType == FAT_TYPE_FAT32)
+                           pDir->wClusterHigh = ulParentDirCluster >> 16;
+
+                        if (ulDirCluster == 1)
+                           {
+                           // reading root directory on FAT12/FAT16
+                           ulSector = pCD->BootSect.bpb.ReservedSectors +
+                           pCD->BootSect.bpb.SectorsPerFat * pCD->BootSect.bpb.NumberOfFATs +
+                           ((((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize) / pCD->BootSect.bpb.BytesPerSector;
+                           WriteSector(pCD, ulSector, pCD->SectorsPerCluster, pbCluster + (((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize);
+                           }
+                        else
+                           WriteCluster(pCD, ulDirCluster, pbCluster + (((char *)pDir - pbCluster) / pCD->ulClusterSize) * pCD->ulClusterSize);
+
+                        show_message("This has been corrected\n", 2439, 0, 0);
+                        }
+                     }
                   }
                else
                   {
@@ -2280,7 +2345,7 @@ BOOL fEAS;
                         strcpy(fs.szFileName, pszPath);
                         if (lastchar(fs.szFileName) != '\\')
                            strcat(fs.szFileName, "\\");
-                        strcat(fs.szFileName, MakeName((PDIRENTRY)pDir, szShortName, sizeof(szShortName))); ////
+                        strcat(fs.szFileName, MakeName((PDIRENTRY)pDir, szShortName, sizeof(szShortName)));
                         fs.ullFileSize = ulClustersUsed * pCD->ulClusterSize;
                         rc = SetFileSize(pCD, (PFILESIZEDATA)&fs);
                         strcpy( strrchr( fs.szFileName, '\\' ) + 1, szLongName );
@@ -2511,6 +2576,7 @@ ULONG CheckDir(PCDINFO pCD, ULONG ulDirCluster, PSZ pszPath, ULONG ulParentDirCl
 ULONG GetClusterCount(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile)
 {
 ULONG ulCount;
+ULONG ulFirstCluster = ulCluster;
 ULONG ulNextCluster;
 BOOL  fCont = TRUE;
 BOOL  fShown = FALSE;
@@ -2540,7 +2606,7 @@ BOOL  fShown = FALSE;
    while (ulCluster != pCD->ulFatEof)
       {
       ulNextCluster = GetNextCluster(pCD, pSHInfo, ulCluster, FALSE);
-      if (!MarkCluster(pCD, ulCluster, pszFile))
+      if (!MarkCluster(pCD, ulFirstCluster, ulCluster, pSHInfo, pszFile))
          return ulCount;
       ulCount++;
 
@@ -2585,7 +2651,7 @@ BOOL  fShown = FALSE;
    return ulCount;
 }
 
-BOOL MarkCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszFile)
+BOOL   MarkCluster(PCDINFO pCD, ULONG ulFirstCluster, ULONG ulCluster, PSHOPENINFO pSHInfo, PSZ pszFile)
 {
 ULONG ulOffset;
 USHORT usShift;
@@ -2596,7 +2662,34 @@ BYTE bMask;
       show_message("%1 is cross-linked on cluster %2\n", 0, 1343, 2,
          TYPE_STRING, pszFile,
          TYPE_LONG, ulCluster);
-      pCD->ulErrorCount++;
+
+      if (pCD->fFix)
+         {
+         ULONG ulCluster2 = ulFirstCluster;
+
+         // unmark all file clusters
+         while (ulCluster2 != pCD->ulFatEof)
+            {
+            // clear bit in the bitmap
+            ulOffset = (ulCluster2 - 2) / 8;
+            usShift = (USHORT)((ulCluster2 - 2) % 8);
+            bMask = (BYTE)(1 << usShift);
+            pCD->pFatBits[ulOffset] &= ~bMask;
+
+            ulCluster2 = GetNextCluster(pCD, pSHInfo, ulCluster2, FALSE);
+            if (!ulCluster2)
+               ulCluster2 = pCD->ulFatEof;
+            }
+
+         // @todo We're saving the second file to FOUNDXXX. How to determine the very 1st one?
+         RecoverChain(pCD, ulFirstCluster, pSHInfo);
+         // delete the file itself
+         DelFile(pCD, pszFile);
+         show_message("This has been corrected\n", 2439, 0, 0);
+         }
+      else
+         pCD->ulErrorCount++;
+
       return FALSE;
       }
 
@@ -2605,6 +2698,7 @@ BYTE bMask;
    usShift = (USHORT)(ulCluster % 8);
    bMask = (BYTE)(1 << usShift);
    pCD->pFatBits[ulOffset] |= bMask;
+
    return TRUE;
 }
 
@@ -2871,7 +2965,7 @@ ULONG rc;
    return TRUE;
 }
 
-BOOL RecoverChain(PCDINFO pCD, ULONG ulCluster)
+BOOL RecoverChain(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo)
 {
 ULONG  ulSize;
 USHORT usIndex;
@@ -2892,17 +2986,17 @@ USHORT usIndex;
          ULONG ulNext = ulCluster;
          while (ulNext != pCD->rgulLost[usIndex])
             {
-            MarkCluster(pCD, ulNext, "Lost cluster");
+            MarkCluster(pCD, ulCluster, ulNext, pSHInfo, "Lost cluster");
             pCD->rgulSize[usIndex]++;
             pCD->ulLostClusters++;
-            ulNext = GetNextCluster(pCD, NULL, ulNext, FALSE);
+            ulNext = GetNextCluster(pCD, pSHInfo, ulNext, FALSE);
             }
          pCD->rgulLost[usIndex] = ulCluster;
          return TRUE;
          }
       }
 
-   ulSize = GetClusterCount(pCD, ulCluster, NULL, "Lost data");
+   ulSize = GetClusterCount(pCD, ulCluster, pSHInfo, "Lost data");
    if (pCD->usLostChains < MAX_LOST_CHAINS)
       {
       pCD->rgulLost[pCD->usLostChains] = ulCluster;
