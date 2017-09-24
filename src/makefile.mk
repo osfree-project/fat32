@@ -349,7 +349,8 @@ $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
 
 .ipf.inf: .autodepend
  @echo IPFC     $^.
- @$(IPFC) -i $< -o $(BINROOT)$^@ >nul 2>&1
+ @ipfc -i $< $(BINROOT)$^@ >nul 2>&1
+ #@wipfc -i $< -o $(BINROOT)$^@ >nul 2>&1
 
 .wmp.map:
  @echo MAPCNV   $^.

@@ -643,6 +643,7 @@ FS_CHGFILEPTR, FS_CHGFILEPTRL.
 
 :p.The format of the OS/2 FS_ATTRIBUTE is defined in Figure 1-4 and the 
 definition list that follows it&per.   
+
 :cgraphic.
 :font facename='Courier' size=12x12. 31  30  29  28  27  26  25  24  23  22  21  20  19  18  17  16
 ÚÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄÂÄÄÄ¿
@@ -651,33 +652,85 @@ definition list that follows it&per.
 ³ A ³ r ³ r ³ r ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³
 ³ t ³ s ³ s ³ s ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³
 ÃÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄÅÄÄÄ´
-³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ L ³ F ³ U ³ R ³
-³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ v ³ I ³ N ³ e ³
-³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ l ³ / ³ C ³ m ³
-³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ 7 ³ O ³   ³ t ³
+³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ R ³ L ³ P ³ L ³ F ³ U ³ R ³
+³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ e ³ R ³ S ³ v ³ I ³ N ³ e ³
+³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ s ³ G ³ V ³ l ³ / ³ C ³ m ³
+³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ v ³ F ³ R ³ 7 ³ O ³   ³ t ³
 ÀÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÁÄÄÄÙ
  15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0
 
 :ecgraphic.
+
 :font facename=default.
 :p.:hp2.Figure 1-4&per. OS/2 FSD Attribute :ehp2.  
+
 :p.:hp2.Bits :ehp2.:hp2.Description :ehp2.  
+
 :p.31 :hp2.FSD Additional attributes&per. :ehp2.If 1, FSD has additional attributes&per. If 
 0, FS_ATTRIBUTE is the only FSD attribute information&per.   
+
 :p.30-28 :hp2.VERSION NUMBER - FSD version number&per. :ehp2.  
-:p.27-4 :hp2.RESERVED :ehp2.  
+
+:p.27-:color fc=darkcyan.6:color fc=default. :hp2.RESERVED :ehp2.  
+
+:color fc=darkcyan.
+:p.5 :hp2.LARGEFILE :ehp2.:color fc=darkcyan. - FSD supports large files with lengths larger than 2 GB&per. The sfi_sizel
+and sfi_positionl fields are valid&per. They specify the 64-bit file length and 64-bit file position,
+respectively&per.
+
+:p.If LARGEFILE bit is specified, the kernel will call the following additional FSD entry points instead&colon.
+
+:p.FS_CANCELLOCKREQUESTL
+
+:p.FS_CHGFILEPTRL
+
+:p.FS_FILELOCKSL
+
+:p.FS_NEWSIZEL
+
+:p.Except for FS_ATTRIBUTE, there is also FS32_ATTRIBUTE exported FSD variable&per. If it is exported, the FSD is
+considered to be a 32-bit FSD by the kernel&per. FS32_ATTRIBUTE may be an alias to FS_ATTRIBUTE&per. Both of them
+contain the same bit flags&per. When FS32_ATTRIBUTE is exported, the following new FSD exports are called by the
+kernel&colon.
+
+:p.FS32_READ
+
+:p.FS32_READFILEATCACHE
+
+:p.FS32_RETURNFILECACHE
+
+:p.FS32_CHGFILEPTR (for seek with signed 32-bit position)
+
+:p.FS32_CHGFILEPTRL (for seek with signed 64-bit position)
+
+:p.FS32_WRITE
+
+:p.Also, functions like FS_FINDFIRST/FS_FINDNEXT/FS_PATHINFO/FS_FILEINFO get called with FIL_STANDARDL/FIL_QUERYEASIZEL/
+FIL_QUERUYEASFROMLISTL, instead of FIL_STANDARD/FIL_QUERYEASIZE/FIL_QUERUYEASFROMLIST&per.
+
+:p.4 :hp2.PIPESVR :ehp2.:color fc=darkcyan. - FSD supports remote named pipes&per. If this bit is set, the kernel
+will call FS_NMPIPE FSD entry point for pipes residing on remote servers&per.
+
+:color fc=default.
+
 :p.3 :hp2.LEVEL7 - QPathInfo Level 7 bit&per. :ehp2.Set if FSD is case-preserving&per. If 
 this bit is set, the kernel will call the FS_PATHINFO entry point with a level equal 
 to 7&per. The output buffer is to be filled with a case-preserved copy of the path 
 that was passed in by the user&per.   
+
 :p.2 :hp2.FILEIO - File I/O bit&per. :ehp2.Set if FSD wants to see file locking/unlocking 
 operations and compacted file I/O operations&per. If not set, the file I/O calls will be 
 broken up into individual lock/unlock/read/write/seek calls and the FSD will not see 
 the lock/unlock calls&per. FSDs that do not support file locking can set this bit 
 to enable compacted file I/O operations&per.   
+
 :p.1 :hp2.UNC - Universal Naming Convention bit&per. :ehp2.Set if FSD supports the 
 Universal Naming Convention&per. OS/2 Version 2&per.0 supports multiple loaded UNC 
 redirectors&per.   
+
+:p.:color fc=darkcyan.When UNC flag is set, the FSD gets passed the UNC pathnames to FS_OPENCREATE/FS_FINDFIRST/FS_PATHINFO and 
+also FS_VERIFYUNCNAME is called to verify the UNC server ownership by a FSD&per.:color fc=default.
+
 :p.0 :hp2.REMOTE - Remote File System (Redirector)&per. :ehp2.This bit tells the system 
 whether the FSD uses static or dynamic media attachment&per. Local FSDs always use 
 dynamic media attachment&per. Remote FSDs always use static media attachment&per. This 
@@ -2532,15 +2585,19 @@ range&per.
 :p.:hp2.ATOMIC Bit 1 :ehp2.:color fc=darkcyan.on indicates an atomic lock request&per. If the lock range 
 equals the unlock range, an atomic lock will occur&per. If the ranges are not equal, 
 an error will be returned&per.   
+
 :p.All other bits (2-31) are reserved and must be zero&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Remarks :ehp2.:font facename=default.:color fc=darkcyan.
+
 :p.This entry point was added to support the 32-bit DosSetFileLocks API&per.   
+
 :p.If the lock and unlock range lengths are both zero, an error, ERROR_LOCK_
 VIOLATION will be returned to the caller&per. If only a lock is desired, pUnLockRange can 
 be NULL or both FileOffset and RangeLength should be set to zero when the call is 
 made&per. The opposite is true for an unlock&per.   
+
 :p.When the atomic bit is not set, the unlock occurs first then the lock is 
 performed&per. If an error occurs on the unlock, an error is returned and the lock is not 
 performed&per. If an error occurs on the lock, an error is returned and the unlock 
@@ -2551,10 +2608,13 @@ support atomic lock functions&per. If error ERROR_ATOMIC_LOCK_NOT_SUPPORTED is r
 , the application should do an unlock and lock the range using nonatomic 
 operations&per. The application should also be sure to refresh its internal buffers prior 
 to making any modifications&per.   
+
 :p.Closing a file with locks still in force causes the locks to be released in 
 no defined order&per.   
+
 :p.Terminating a process with a file open and having issued locks on that file 
 causes the file to be closed and the locks to be released in no defined order&per.   
+
 :p.The figure below describes the level of access granted when the accessed 
 region is locked&per. The locked regions can be anywhere in the logical file&per. 
 Locking beyond end-of-file is not an error&per. It is expected that the time in which 
@@ -2563,7 +2623,9 @@ locked regions&per. Access to the locked regions is not duplicated across the
 DosExecPgm system call&per. The proper method for using locks is not to rely on being 
 denied read or write access, but attempting to lock the region desired and examining 
 the error code&per.   
+
 :p.:hp2.Locked Access Table :ehp2.:font facename='Courier' size=12x12.
+
 :cgraphic.
 :color fc=default.:color bc=default.:color fc=darkcyan.
  Action               Exclusive Lock                 Shared Lock
@@ -2578,6 +2640,7 @@ the error code&per.
 
 
 :ecgraphic.
+
 :font facename=default.
 :p.The locked access table has the actions on the left as to whether owners or 
 non-owners of a file do either reads or writes of files that have exclusive or 
@@ -2588,9 +2651,12 @@ ranges&per.
 :h2 id=57.FS_FINDCLOSE - Directory Read (Search) Close
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Provides the mechanism for an FSD to release resources allocated on behalf of 
 FS_FINDFIRST and FS_FINDNEXT&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDCLOSE(pfsfsi, pfsfsd)
 
@@ -2598,25 +2664,36 @@ struct fsfsi far * pfsfsi;
 struct fsfsd far * pfsfsd;
 
 :ecgraphic.
+
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.pfsfsi is a pointer to the file-system-independent file search structure&per.   
+
 :p.The FSD should not update this structure&per.   
+
 :p.pfsfsd is a pointer to the file-system-dependent file search structure&per.   
+
 :p.The FSD may use this to store information about continuation of its search
 &per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.DosFindClose has been called on the handle associated with the search buffer
 &per. Any file system related information may be released&per.   
+
 :p.If FS_FINDFIRST for a particular search returns an error, an FS_FINDCLOSE for 
 that search will not be issued&per.   
-:h2 id=58.FS_FINDFIRST - Find First Matching File Name
+
+:h2 id=58.FS_FINDFIRST - Find First Matching File Name:color fc=darkcyan.(s):color fc=default.
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
-:p.Find first occurrence of a file name in a directory&per.   
+
+:p.Find first occurrence:color fc=darkcyan.(s):color fc=default. of a file name:color fc=darkcyan.(s):color fc=default. in a directory&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDFIRST(pcdfsi, pcdfsd, pName, iCurDirEnd, attr, pfsfsi,
                             pfsfsd, pData, cbData, pcMatch, level, flags)
@@ -2633,65 +2710,91 @@ unsigned short cbData;
 unsigned short far * pcMatch;
 unsigned short level;
 unsigned short flags;
-
 :ecgraphic.
+
 :font facename=default.
+
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
-:p.pcdfsi is a pointer to the file-system-independent working directory 
-structure&per.   
-:p.pcdfsd is a pointer to the file-system-dependent working directory structure
-&per.   
+
+:p.pcdfsi is a pointer to the file-system-independent working directory structure&per.
+
+:p.pcdfsd is a pointer to the file-system-dependent working directory structure&per.   
+
 :p.pName is a pointer to the ASCIIZ name of the file or directory&per.   
+
 :p.Wildcard characters are allowed only in the last component&per. The FSD does 
 not need to validate this pointer&per.   
+
 :p.iCurDirEnd is the index of the end of the current directory in pName&per.   
-:p.This is used to optimize FSD path processing&per. If iCurDirEnd == -1 there 
-is no current directory relevant to the name text, that is, a device&per.   
+
+:p.This :color fc=darkcyan.is provided to allow optimizations of:color fc=default. FSD path processing&per. 
+If iCurDirEnd == -1 there is no current directory relevant to the name text, that is, a device&per.   
+
 :p.attr is a bit field that governs the match&per.   
+
 :p.Any directory entry whose attribute bit mask is a subset of attr and whose 
-name matches that in pName should be returned&per. For example, an attribute of 
-system and hidden is passed in&per. A file with the same name and an attribute of 
-system is found&per. This file is returned&per. A file with the same name and no 
-attributes (a regular file) is also returned&per. The attributes read-only and file-
-archive will not be passed in and should be ignored when comparing directory attributes
-&per.   
+name matches that in pName should be returned&per. :color fc=darkcyan.The attr field is two byte
+sized attribute bit masks&per.  The least significant byte contains the "may have" bits&per. For example, 
+a "may have" attribute of system and hidden is passed in&per.:color fc=default. A file with the same name 
+and an attribute of system is found&per. This file is returned&per. A file with the same name and no 
+attributes (a regular file) is also returned&per. :color fc=darkcyan.The "may have" attributes read-only 
+and file-archive will not be passed in and should be ignored when comparing directory attributes&per. The most 
+significant byte contains the "must have" bits&per. A file with a matching name must also have the attributes in the
+"must have" bits to be returned&per. See the OS/2 Version 3&per.0 Control Program Programming Reference for 
+more information about the attribute field under DosFindFirst&per.:color fc=default.
+
 :p.The value of attr passed to the FSD will be valid&per. The bit 0x0040 
 indicates a non-8&per.3 filename format&per. It should be treated the same way as system 
-and hidden attributes are&per.   
+and hidden attributes are&per. :color fc=darkcyan.You should not return a file name that 
+does not conform to 8&per.3 filename format if this bit is not set in the "may have" bits&per.
+:color fc=default.
+
 :p.pfsfsi is a pointer to the file-system-independent file-search structure&per.   
+
 :p.The FSD should not update this structure&per.   
+
 :p.pfsfsd is a pointer to the file-system-dependent file-search structure&per.   
-:p.The FSD may use this to store information about continuation of the search
-&per.   
+
+:p.The FSD may use this to store information about continuation of the search&per.   
+
 :p.pData is the address of the application data area&per.   
+
 :p.Addressing of this data area is not validated by the kernel (see FSH_PROBEBUF
-)&per. The FSD will fill in this area with a set of packed, variable- length 
+)&per. The FSD will fill in this area with a set of packed, variable-length 
 structures that contain the requested data and matching file name&per.   
+
 :p.cbData is the length of the application data area in bytes&per.   
+
 :p.pcMatch is a pointer to the number of matching entries&per.   
+
 :p.The FSD returns, at most, this number of entries; the FSD returns in this 
 parameter the number of entries actually placed in the data area&per.   
+
 :p.The FSD does not need to validate this pointer&per.   
+
 :p.level is the information level to be returned&per.   
-:p.Level selects among a series of data structures to be returned&per. The level 
-passed to the FSD is valid&per.   
+
+:p.Level selects among a series of data structures to be returned&per. :color fc=darkcyan.(see below)
+:color fc=default. The level passed to the FSD is valid&per.   
+
 :p.flags indicates whether to return file-position information&per.   
-:p.flags == 0 indicates that file-position information should not be returned 
-and the information format described under DosFindFirst should be used&per. 
+
+:p.flags == :color fc=darkcyan.FF_NOPOS (0x00):color fc=default. indicates that file-position information 
+should not be returned :color fc=darkcyan.(see below):color fc=default.
 .br 
-flags == 1 indicates that file-position information should be returned and the 
+flags == :color fc=darkcyan.FF_GETPOS (0x01):color fc=default. indicates that file-position information should be returned and the 
 information format described below should be used&per.   
+
 :p.The flag passed to the FSD has a valid value&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
-:p.For flags == 1, the FSD must store in the first DWORD of the per-file 
-attributes structure adequate information to allow the search to be resumed from the file 
-by calling FS_FINDFROMNAME&per. For example, an ordinal representing the file
-&apos.s position in the directory could be stored&per. If the filename must be used to 
-restart the search, the DWORD may be left blank&per.   
-:p.For level 0x0001 and flags == 0, directory information for FS_FINDFIRST is 
-returned in the following format&colon.   
+
+:color fc=darkcyan.
+The find structure passed back to the user is the structure defined for the
+16 bit DosFindFirst API with some modification if the flags parameter is set&per.
+The basic, level one FILEFINDBUF structure is:color fc=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.struct FileFindBuf {
     unsigned short dateCreate;
@@ -2706,11 +2809,18 @@ returned in the following format&colon.
     unsigned char  cbName;
     unsigned char  szName[];
 }
-
 :ecgraphic.
+
+:p.For flags == 1, the FSD must store in the first DWORD of the per-file attributes structure adequate 
+information :color fc=darkcyan.that in addition with the file name will allow:color fc=default. to be resumed 
+from the file by calling FS_FINDFROMNAME&per. For example, an ordinal representing the file
+&apos.s position in the directory could be stored&per. If the filename must be used to 
+restart the search, the DWORD may be left blank&per.   
+
 :font facename=default.
 :p.For level 0x0001 and flags == 1, directory information for FS_FINDFIRST is 
 returned in the following format&colon.   
+
 :cgraphic.
 :font facename='Courier' size=12x12.struct FileFromFindBuf {
     long           position;    /* position given to FSD on following */
@@ -2727,38 +2837,99 @@ returned in the following format&colon.
     unsigned char  cbName;
     unsigned char  szName[];
 }
-
 :ecgraphic.
+
 :font facename=default.
 :p.The other information levels have similar format, with the position the first 
-field in the structure for flags == 1&per.   
+field in the structure for flags == 1&per. :color fc=darkcyan.For level 0x0002 and flags == 1,
+directory information for FS_FINDFIRST is returned in the following format&colon.
+
+:cgraphic.
+:font facename='Courier' size=12x12.struct FileFromFindBuf  {
+    long              position;  /* this field is not present if flags */
+                                 /* is 0                               */
+    unsigned short  dateCreate;
+    unsigned short  timeCreate;
+    unsigned short  dateAccess;
+    unsigned short  timeAccess;
+    unsigned short   dateWrite;
+    unsigned short   timeWrite;
+    long                 cbEOF;
+    long               cbAlloc;
+    unsigned short        attr;
+    unsigned long       cbList;  /* size of EAs for the file           */
+    unsigned char       cbName;
+    unsigned char     szName";
+}
+:ecgraphic.
+
+For level 0x0003 and flags == 1, the directory information for FS_FINDFIRST
+is a bit more complicated&per. An EAOP structure will be located at the beginning 
+of pData&per. You should start filling in the data after the EAOP structure&per. 
+The data format is&colon.
+
+:cgraphic.
+:font facename='Courier' size=12x12.struct FileFromFindBuf  {
+    long              position;  /* this field is not present if flags */
+                                 /* is 0.                              */
+    unsigned short  dateCreate;
+    unsigned short  timeCreate;
+    unsigned short  dateAccess;
+    unsigned short  timeAccess;
+    unsigned short   dateWrite;
+    unsigned short   timeWrite;
+    long                 cbEOF;
+    long               cbAlloc;
+    unsigned short        attr;
+    FEALIST            fealist;  /* this is a variable length field    */
+    unsigned char       cbName;
+    unsigned char     szName";
+}
+:ecgraphic.
+
+:p.For a description of the FEALIST structure, see "FEAs" on page 1-10&per.
+
+:color fc=default.
+
 :p.If the non-8&per.3 filename format bit is set in the attributes of a file 
 found by FS_FINDFIRST/NEXT/FROMNAME, it must be turned off in the copy of the 
 attributes returned in pData&per.   
+
 :p.If FS_FINDFIRST for a particular search returns an error, an FS_FINDCLOSE for 
 that search will not be issued&per.   
+
 :p.Sufficient information to find the next matching directory entry must be 
 saved in the fsfsd data structure&per.   
+
 :p.In the case where directory entry information overflows the pData area, the 
 FSD should be able to continue the search from the entry which caused the overflow 
 on the next FS_FINDNEXT or FS_FINDFROMNAME&per.   
+
 :p.In the case of a global search in a directory, the first two entries in that 
 directory as reported by the FSD should be &apos.&per.&apos. and &apos.&per.&per.&apos. (
-current and the parent directories&per.   
-:p.The example above just shows the effect of flags == 1 on a level 1 filefind 
-record; level 2 and level 3 filefind records are similarly affected&per.   
-:p.:hp2.Note&colon.   :ehp2.The FSD will be called with the FINDFIRST/FINDFROMNAME interface 
+current and the parent directories)&per.   
+
+:p.:hp2.NOTE&colon.   :ehp2.The FSD will be called with the FINDFIRST/FINDFROMNAME interface 
 when the 32-bit DosFindFirst/DosFindNext APIs are called&per. THIS IS A CHANGE FROM 
 1&per.X IFS interface for redirector FSDs&per. The kernel will also be massaging 
 the find records so that they appear the way the caller expects&per. Redirectors 
 who have to resume searches should take this information into account&per. (i&per.e
 &per. You might want to reduce the size of the buffer sent to the server, so that the 
 position fields can be added to the beginning of all the find records)&per.   
+
+:p.:hp2.APPLICATION NOTE&colon.   :ehp2.:color fc=darkcyan.Some applications have been coded to expect behavior
+beyond the architectural requirements&per. For example, there are applications that require DosFindFirst to 
+return an entry for a file that has been open-created, but which has never been closed&per. You can debate whether a file
+truly exists until it has been closed, but unless the applications are changed they will still not work&per. 
+Consequently, it is recommended that FSDs exhibit this behavior&per.:color fc=default.
+
 :h2 id=59.FS_FINDFROMNAME - Find matching file name starting from name
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Find occurrence of a file name in a directory starting from a position or 
 name&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDFROMNAME(pfsfsi, pfsfsd, pData, cbData, pcMatch, level,
@@ -2776,42 +2947,57 @@ unsigned short flags;
 
 :ecgraphic.
 :font facename=default.
+
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.pfsfsi is a pointer to the file-system-independent file search structure&per. 
 The FSD should not update this structure&per.   
+
 :p.pfsfsd is a pointer to the file-system-dependent file search structure&per. 
 The FSD may use this to store information about continuation of the search&per.   
+
 :p.pData is the address of the application data area&per.   
+
 :p.Addressing of this data area has not been validated by the kernel (see FSH_
 PROBEBUF)&per. The FSD will fill in this area with a set of packed, variable- length 
 structures that contain the requested data and matching file names in the format required 
 for DosFindFirst/DosFindNext&per.   
+
 :p.cbData is the length of the application data area in bytes&per.   
+
 :p.pcMatch is a pointer to the number of matching entries&per. The FSD will 
 return at most this number of entries&per. The FSD will store into it the number of 
 entries actually placed in the data area&per. The FSD does not need to validate this 
 pointer&per.   
+
 :p.level is the information level to be returned&per. Level selects among a 
 series of structures of data to be returned&per. The level passed to the FSD is valid
 &per.   
+
 :p.position is the file-system-specific information about where to restart the 
 search from&per. This information was returned by the FSD in the ResultBuf for an FS_
 FINDFIRST/FS_FINDNEXT/FS_FINDFROMNAME call&per.   
+
 :p.pName is the filename from which to continue the search&per. The FSD does not 
 need to validate this pointer&per.   
+
 :p.flags indicates whether to return file position information&per. The flag 
 passed to the FSD has a valid value&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.The FSD may use the position or filename to determine the position > from 
 which to resume the directory search&per. The FSD need not return position if it uses 
 name and vice versa&per.   
+
 :p.For flags == 1, the FSD must store in the position field adequate information 
 to allow the search to be resumed from the file by calling FS_FINDFROMNAME&per. 
 See FS_FINDFIRST for a description of the data format&per.   
+
 :p.The FSD must ensure that enough information is stored in the fsfsd data 
 structure to enable it to continue the search&per.   
+
 :p.:hp2.Note&colon.   :ehp2.The FSD will be called with the FINDFIRST/FINDFROMNAME interface 
 when the 32-bit DosFindFirst/DosFindNext APIs are called&per. THIS IS A CHANGE FROM 
 1&per.X IFS interface for redirector FSDs&per. The kernel will also be massaging 
@@ -2822,8 +3008,11 @@ position fields can be added to the beginning of all the find records)&per.
 :h2 id=60.FS_FINDNEXT - Find next matching file name.
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Find the next occurrence of a file name in a directory&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDNEXT(pfsfsi, pfsfsd, pData, cbData, pcMatch, level,
                            flags)
@@ -2837,71 +3026,99 @@ unsigned short level;
 unsigned short flags;
 
 :ecgraphic.
+
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.pfsfsi is a pointer to the file-system-independent file-search structure&per. 
 The FSD should not update this structure&per.   
+
 :p.pfsfsd is a pointer to the file-system-dependent file-search structure&per. 
 The FSD may use this to store information about continuation of the search&per.   
+
 :p.pData is the address of the application area&per.   
+
 :p.Addressing of this data area is not validated by the kernel (see FSH_PROBEBUF
 )&per. The FSD fills in this area with a set of packed, variable- length 
 structures that contain the requested data and matching file names&per.   
+
 :p.cbData is the length of the application data area in bytes&per.   
+
 :p.pcMatch is a pointer to the number of matching entries&per.   
+
 :p.The FSD returns, at most, this number of entries&per. The FSD returns the the 
 number of entries actually placed in the data area in this parameter&per.   
+
 :p.The FSD does not need to validate this pointer&per.   
+
 :p.level is the information level to be returned&per.  Level selects among a 
 series of structures of data to be returned&per. The level passed to the FSD is valid
 &per.   
+
 :p.flags indicates whether to return file-position information&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.For flags == -1, the FSD must store in the position field adequate 
 information to allow the search to be resumed from the file by calling FS_FINDFROMNAME&per. 
 See FS_FINDFIRST for a description of the data format&per.   
+
 :p.The level passed to FS_FINDNEXT is the same level as that passed to FS_
 FINDFIRST to initiate the search&per.   
+
 :p.Sufficient information to find the next matching directory entry must be 
 saved in the fsfsd data structure&per.   
+
 :p.The FSD should take care of the case where the pData area overflow may occur
 &per. FSDs should be able to start the search from the same entry for the next FS_
 FINDNEXT as the one for which the overflow occurred&per.   
+
 :p.In the case of a global search in a directory, the first two entries in that 
 directory as reported by the FSD should be &apos.&per.&apos. and &apos.&per.&per.&apos. (
 current and parent directories)&per.   
+
 :h2 id=61.FS_FINDNOTIFYCLOSE - Close Find-Notify Handle
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Closes the association between a Find-Notify handle and a DosFindNotifyFirst 
 or DosFindNotifyNext function&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDNOTIFYCLOSE(handle)
 
 unsigned short handle;
 
 :ecgraphic.
+
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.handle is the directory handle&per.   
+
 :p.This handle was returned by the FSD on a previous FS_FINDNOTIFYFIRST or FS_
 FINDNOTIFYNEXT call&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.Provides the mechanism for an FSD to release resources allocated on behalf of 
 FS_FINDNOTIFYFIRST and FS_FINDNOTIFYNEXT&per.   
+
 :p.FS_FINDNOTIFYFIRST returns a handle to the find-notify request&per. FS_
 FINDNOTIFYCLOSE closes the handle associated with that find-notify request and releases file 
 system information related to that handle&per.   
 :h2 id=62.FS_FINDNOTIFYFIRST - Monitor a directory for changes.
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Start monitoring a directory for changes&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDNOTIFYFIRST(pcdfsi, pcdfsd, pName, iCurDirEnd, attr,
                                   pHandle, pData, cbData, pcMatch, level,
@@ -2919,54 +3136,80 @@ unsigned short level;
 unsigned long timeout;
 
 :ecgraphic.
+
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.pcdfsi is a pointer to the file-system-independent working directory 
 structure&per.   
-:p.pcdfsd is a pointer to the file-system-dependent working directory structure
-&per.   
+
+:p.pcdfsd is a pointer to the file-system-dependent working directory structure&per.
+
 :p.pName is a pointer to the ASCIIZ name of the file or directory&per.   
+
 :p.Wildcard characters are allowed only in the last component&per. The FSD does 
 not need to verify this pointer&per.   
+
 :p.iCurDirEnd is the index of the end of the current directory in pName&per.   
+
 :p.This is used to optimize FSD path processing&per. If iCurDirEnd == -1 there 
 is no current directory relevant to the name text, that is, a device&per.   
+
 :p.attr is the bit field that governs the match&per.   
+
 :p.Any directory entry whose attribute bit mask is a subset of attr and whose 
 name matches that in pName should be returned&per. See FS_FINDFIRST for an 
 explanation&per.   
+
 :p.pHandle is a pointer to the handle for the find-notify request&per.   
+
 :p.The FSD allocates a handle for the find-notify request, that is, a handle to 
 the directory monitoring continuation information, and stores it here&per. This 
 handle is passed to FS_FINDNOTIFYNEXT to continue directory monitoring&per.   
+
 :p.The FSD does not need to verify this pointer&per.   
+
 :p.pData is the address of the application data area&per.   
+
 :p.Addressing of this data area is not validated by the kernel (see FSH_PROBEBUF
 )&per. The FSD fills in this area with a set of packed, variable- length 
 structures that contain the requested data and matching file names&per.   
+
 :p.cbData is the length of the application data area in bytes&per.   
+
 :p.pcMatch is a pointer to the number of matching entries&per.   
+
 :p.The FSD returns, at most, this number of entries&per. The FSD returns in this 
 parameter the number of entries actually placed in the data area&per.   
+
 :p.The FSD does not need to verify this pointer&per.   
+
 :p.level is the information level to be returned&per.   
+
 :p.Level selects among a series of data structures to be returned&per. See the 
 description of DosFindNotifyFirst in the :hp1.OS/2 Version 2&per.0 Control Program Programming 
 Reference :ehp1.for more information&per.   
+
 :p.The level passed to the FSD is valid&per.   
+
 :p.timeout is the time-out in milliseconds&per.   
+
 :p.The FSD waits until either the time-out has expired, the buffer is full, or 
 the specified number of entries has been returned before returning to the caller
 &per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.None&per.   
 :h2 id=63.FS_FINDNOTIFYNEXT - Resume reporting directory changes
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Resume reporting of changes to a file or directory&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
+
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FINDNOTIFYNEXT(handle, pData, cbData, pcMatch, level,
                                  timeout)
@@ -2979,42 +3222,60 @@ unsigned short level;
 unsigned long timeout;
 
 :ecgraphic.
+
 :font facename=default.
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.handle is the handle to the find-notify request&per.   
+
 :p.This handle was returned by the FSD and is associated with a previous FS_
 FINDNOTIFYFIRST or FS_FINDNOTIFYNEXT call&per.   
+
 :p.pData is the address of the application data area&per.   
+
 :p.Addressing of this data area is not validated by the kernel (see FSH_PROBEBUF
 )&per. The FSD fills in this area with a set of packed, variable- length 
 structures that contain the requested data and matching file names&per.   
+
 :p.cbData is the length of the application data area in bytes&per.   
+
 :p.pcMatch is a pointer to the number of matching entries&per.   
+
 :p.The FSD returns, at most, this number of entries&per. The FSD returns in this 
 parameter the number of entries actually placed in the data area&per.   
+
 :p.The FSD does not need to verify this pointer&per.   
+
 :p.level is the information level to be returned&per.   
+
 :p.Level selects among a series of data structures to be returned&per. See the 
 description of DosFindNotifyFirst in the :hp1.OS/2 Version 2&per.0 Control Program Programming 
 Reference :ehp1.for more information&per.   
+
 :p.The level passed to the FSD is valid&per.   
+
 :p.timeout is the time-out in milliseconds&per.   
+
 :p.The FSD waits until either the time-out has expired, the buffer is full, or 
 the specified number of entries has been returned before returning to the caller
 &per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.pcMatch is the number of changes required to directories or files that match 
 the pName target and attr specified during a related, previous FS_FINDNOTIFYFIRST
 &per. The file system uses this field to return the number of changes that actually 
 occurred since the issue of the present FS_FINDNOTIFYNEXT&per.   
+
 :p.The level passed to FS_FINDNOTIFYNEXT is the same level as that passed to FS_
 FINDNOTIFYFIRST to initiate the search&per.   
 :h2 id=64.FS_FLUSHBUF - Commit file buffers
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
+
 :p.Flushes cache buffers for a specific volume&per.   
+
 :p.:font facename='Helv' size=18x18.:hp2.Calling Sequence :ehp2.:font facename=default.
 :cgraphic.
 :font facename='Courier' size=12x12.int far pascal FS_FLUSHBUF(hVPB, flag)
@@ -3024,18 +3285,25 @@ unsigned short flag;
 
 :ecgraphic.
 :font facename=default.
+
 :p.:font facename='Helv' size=18x18.:hp2.Where :ehp2.:font facename=default.
+
 :p.hVPB is the handle to the volume for flush&per.   
+
 :p.flag is used to indicate discarding of cached data&per.   
+
 :p.flag == 0 indicates cached data may be retained&per. 
 .br 
 flag == 1 indicates the FSD will discard any cached data after flushing it to 
 the specified volume&per.   
+
 :p.All other values are reserved&per. 
 .br 
 
 :p.:font facename='Helv' size=18x18.:hp2.Remarks :ehp2.:font facename=default.
+
 :p.None&per.   
+
 :h2 id=65.FS_FSCTL - File System Control
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
