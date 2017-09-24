@@ -44,7 +44,7 @@ Addtions by Valery V. Sedletski
 
 .br
 
-Jun 2017
+Sep 2017
 
 :elines.
 :font facename=default.
@@ -84,7 +84,7 @@ GSA ADP Schedule Contract with IBM Corp&per.
 documentation&per. 
 :p.July, 1993   
 
-:p.Additions done by V. Sedletski on Jun 2017, all such additions are marked
+:p.Additions done by V. Sedletski on Sep 2017, all such additions are marked
 in cyan, to distinguish them from IBM's text.
 
 :h1 id=5.Installable File System Mechanism
@@ -1282,7 +1282,7 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=46.FS_CHGFILEPTR:elink.        Move a file&apos.s position pointer      ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :color fc=darkcyan.
- :link reftype=hd refid=87.FS_CHGFILEPTRL:elink.       Move a file&apos.s position pointer      ALL
+ :link reftype=hd refid=1087.FS_CHGFILEPTRL:elink.       Move a file&apos.s position pointer      ALL
  :color fc=default.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=47.FS_CLOSE:elink.             Release a file handle               ALL
@@ -1306,12 +1306,12 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=56.FS_FILELOCKS:elink.         Request a file record lock/unlock   FILE I/O
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :color fc=darkcyan.
- :link reftype=hd refid=93.FS_FILELOCKSL:elink.        Request a file record lock/unlock   FILE I/O
+ :link reftype=hd refid=1093.FS_FILELOCKSL:elink.        Request a file record lock/unlock   FILE I/O
  :color fc=default.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=57.FS_FINDCLOSE:elink.         Directory search close              ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=58.FS_FINDFIRST:elink.         Find first matching filename        ALL
+ :link reftype=hd refid=58.FS_FINDFIRST:elink.         Find first matching filename(s)     ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=59.FS_FINDFROMNAME:elink.      Find matching filename from name    ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -1342,7 +1342,7 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=72.FS_NEWSIZE:elink.           Change a file&apos.s logical size        ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :color fc=darkcyan.
- :link reftype=hd refid=91.FS_NEWSIZEL:elink.          Change a file&apos.s logical size        ALL
+ :link reftype=hd refid=1091.FS_NEWSIZEL:elink.          Change a file&apos.s logical size        ALL
  :color fc=default.
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :link reftype=hd refid=73.FS_NMPIPE:elink.            Do a named pipe operation           ALL
@@ -1368,17 +1368,17 @@ conventions&per.   :font facename='Courier' size=12x12.
  :link reftype=hd refid=83.FS_WRITE:elink.             Write data to a file                ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
  :color fc=darkcyan.
- :link reftype=hd refid=84.FS32_READ:elink.            Read data from a file               ALL
+ :link reftype=hd refid=1084.FS32_READ:elink.            Read data from a file               ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=85.FS32_READFILEATCACHE:elink. Read file from cache                ALL
+ :link reftype=hd refid=1085.FS32_READFILEATCACHE:elink. Read file from cache                ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=86.FS32_RETURNFILECACHE:elink. Return file cache                   ALL
+ :link reftype=hd refid=1086.FS32_RETURNFILECACHE:elink. Return file cache                   ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=88.FS32_CHGFILEPTR:elink.      Move a file&apos.s position pointer      ALL
+ :link reftype=hd refid=1088.FS32_CHGFILEPTR:elink.      Move a file&apos.s position pointer      ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=89.FS32_CHGFILEPTRL:elink.     Move a file&apos.s position pointer      ALL
+ :link reftype=hd refid=1089.FS32_CHGFILEPTRL:elink.     Move a file&apos.s position pointer      ALL
  컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
- :link reftype=hd refid=90.FS32_WRITE:elink.           Write data to a file                ALL
+ :link reftype=hd refid=1090.FS32_WRITE:elink.           Write data to a file                ALL
  :color fc=default.
 
 :ecgraphic.
@@ -1583,7 +1583,7 @@ request of an outstanding FS_FILELOCKS call&per. If two threads in a process are
 blocked on a lock range and a cancel request is issued by another thread, both blocked 
 threads will be released&per.   
 
-:h2 id=44.FS_CANCELLOCKREQUESTL - Cancel file record lock request
+:h2 id=1044.FS_CANCELLOCKREQUESTL - Cancel file record lock request
 
 :p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
 :p.Cancels an outstanding FS_FILELOCKSL request on a file&per. Version for a 64-bit file position.
@@ -1832,7 +1832,7 @@ requests&per.
 :p.The information passed in IOflag is what was set for the handle during a 
 DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
 
-:h2 id=87.FS_CHGFILEPTRL - Move a file's position pointer
+:h2 id=1087.FS_CHGFILEPTRL - Move a file's position pointer
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
@@ -2531,7 +2531,7 @@ shared locks set&per. A range to be locked for exclusive access must first be cl
 of any locked subranges or locked any locked subranges or locked overlapping 
 ranges&per.   
 
-:h2 id=93.FS_FILELOCKSL - Request a file record lock/unlock
+:h2 id=1093.FS_FILELOCKSL - Request a file record lock/unlock
 
 :p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
 :p.Locks and/or unlocks a range (record)  in a opened file&per. Version for a 64-bit file offset.
@@ -2686,7 +2686,7 @@ struct fsfsd far * pfsfsd;
 :p.If FS_FINDFIRST for a particular search returns an error, an FS_FINDCLOSE for 
 that search will not be issued&per.   
 
-:h2 id=58.FS_FINDFIRST - Find First Matching File Name:color fc=darkcyan.(s):color fc=default.
+:h2 id=58.FS_FINDFIRST - Find First Matching File Name(s)
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
 
@@ -3799,7 +3799,7 @@ in that any data written to the block device must be put out on the medium befor
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
 
-:h2 id=91.FS_NEWSIZEL - Change File's Logical Size
+:h2 id=1091.FS_NEWSIZEL - Change File's Logical Size
 
 :p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.
 :color fc=darkcyan.
@@ -4566,7 +4566,7 @@ in that any data written to the block device must be put out on the medium befor
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
 
-:h2 id=84.FS32_READ - Read from a File
+:h2 id=1084.FS32_READ - Read from a File
 
 :p.:font facename='Helv' size=18x18.:color fc=darkcyan.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
 :p.Read the specified number of bytes from a file to a buffer location&per. Version for 32-bit IFS'es. Handles a 64-bit
@@ -4615,7 +4615,7 @@ in that any data written to the block device must be put out on the medium befor
 the device driver returns&per. The no-cache bit, on the other hand, is an advisory 
 bit that says whether the data being transferred is worth caching or not&per.   
 
-:h2 id=85.FS32_READFILEATCACHE - Read file from cache
+:h2 id=1085.FS32_READFILEATCACHE - Read file from cache
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
@@ -4682,7 +4682,7 @@ typedef struct _KernPageList
 
 :p.none, yet&per.
 
-:h2 id=86.FS32_RETURNFILECACHE - Return file cache
+:h2 id=1086.FS32_RETURNFILECACHE - Return file cache
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
@@ -4727,7 +4727,7 @@ typedef struct _KernPageList
 
 :p.none, yet&per.
 
-:h2 id=87.FS32_CHGFILEPTR - Move a file's position pointer
+:h2 id=1088.FS32_CHGFILEPTR - Move a file's position pointer
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
@@ -4779,7 +4779,7 @@ requests&per.
 :p.The information passed in IOflag is what was set for the handle during a 
 DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
 
-:h2 id=88.FS32_CHGFILEPTRL - Move a file's position pointer
+:h2 id=1089.FS32_CHGFILEPTRL - Move a file's position pointer
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.:color fc=darkcyan.
@@ -4831,7 +4831,7 @@ requests&per.
 :p.The information passed in IOflag is what was set for the handle during a 
 DosOpen/DosOpen2 operation, or by a DosSetFHandState call&per.   
 
-:h2 id=89.FS32_WRITE - Write to a file
+:h2 id=1090.FS32_WRITE - Write to a file
 
 :color fc=darkcyan.
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -5205,6 +5205,7 @@ segment boundaries&per.
 FSD&per.   
 :p.:hp2.Note&colon.   :ehp2.OS/2 does not validate input parameters&per. Therefore, an FSD 
 should call FSH_PROBEBUF where appropriate&per.   
+
 :h2 id=89.FSH_CRITERROR - Signal hard error to daemon
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -5345,6 +5346,7 @@ this helper&per.
 :p.FSH_DEVIOCTL may block&per.   
 :p.:hp2.Note&colon.   :ehp2.OS/2 does not validate input parameters&per. Therefore, an FSD 
 should call FSH_PROBEBUF where appropriate&per.   
+
 :h2 id=91.FSH_DOVOLIO - Transfer volume-based sector-oriented I/O
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.
@@ -5519,6 +5521,7 @@ is not available at the API level&per.
 :p.System does normal volume checking for this request&per.   
 :p.:hp2.Note&colon.   :ehp2.OS/2 does not validate input parameters&per. An FSD, therefore, 
 should call FSH_PROBEBUF where appropriate&per.   
+
 :h2 id=93.FSH_FINDCHAR - Find first occurrence of character in string
 
 :p.:font facename='Helv' size=18x18.:hp2.Purpose :ehp2.:font facename=default.

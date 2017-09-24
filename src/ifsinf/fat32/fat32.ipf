@@ -30,6 +30,8 @@ contributor
 .br 
 -David Graser&colon. creator of the FAT32&per.INF file 
 .br 
+-Lars Erdmann&colon. developer
+.br
 -Valery V. Sedletski&colon. FAT32 IFS version 0.10 developer
 .br 
 
@@ -112,9 +114,9 @@ also required to boot to your Win9x partition&per. If the FAT32 partition contai
 data that you wish to manage, then use LVM to create a &osq.compatibility volume
 &osq.&per. It is also possible to run Windows programs from a bootable or 
 compatibility volume using ODIN&per.  After the creation of the volumes, assign them drive 
-letters&per. :hp8.
+letters&per.
 
-:p.:hp2.Warning&colon. :ehp2.:ehp0.:hp8.Do not use DANIDASD&per.DMD, PARTFILT&per.FLT, or the modified 
+:p.:hp2.Warning&colon. :ehp2.:hp8.Do not use DANIDASD&per.DMD, PARTFILT&per.FLT, or the modified 
 OS2DASD&per.DMD with these systems! :ehp8.
 :p.
 :p.
@@ -553,7 +555,7 @@ release can be found on Hobbes at&colon.
 :p.:hp9.http&colon.//hobbes&per.nmsu&per.edu/pub/os2/system/drivers/filesys/os2fat32
 &per.zip :ehp9.
 
-:p.&per.:link reftype=hd refid=20.INSTALLATION :elink.
+:p.:link reftype=hd refid=20.INSTALLATION :elink.
 .br 
 
 :h4 id=20 res=30019.Installation
@@ -1107,7 +1109,7 @@ at the moment, but it has its own advantages too).
 :p.The latest version of WarpIN is required and can be downloaded from&colon. 
 
 :lines align=center.
-:p.:hp9.:hp2.http&colon.//www&per.xworkplace&per.org:ehp2.:ehp0.
+:hp2.http&colon.//www&per.xworkplace&per.org:ehp2.
 .br 
 :elines.
 
@@ -1925,35 +1927,35 @@ implemented&per. You can add more files from standard FreeLDR installation, if y
 
 :p.The SYS command is supported for FAT12/FAT16/FAT32 at the moment&per.
 
-:h2 id=20048 res=30044.FAT32FMT&per.EXE
+:h2 id=20048 res=32044.FAT32FMT&per.EXE
 
 :p.:hp2.FAT32FMT&per.EXE&colon. :ehp2.
 
 :p.FAT32FMT&per.EXE is a standalone version of Fat32Format&per. It is equivalent to FORMAT routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30048.FORMAT&per.EXE :elink. for more info)&per.
 
-:h2 id=20049 res=30044.FAT32CHK&per.EXE
+:h2 id=20049 res=32045.FAT32CHK&per.EXE
 
 :p.:hp2.FAT32CHK&per.EXE&colon. :ehp2.
 
 :p.FAT32CHK&per.EXE is a standalone version of FAT CHKDSK&per. It is equivalent to CHKDSK routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30047.CHKDSK&per.EXE :elink. for more info)&per.
 
-:h2 id=20050 res=30044.FAT32SYS&per.EXE
+:h2 id=20050 res=32046.FAT32SYS&per.EXE
 
 :p.:hp2.FAT32SYS&per.EXE&colon. :ehp2.
 
 :p.FAT32SYS&per.EXE is a standalone version of FAT SYS/SYSINSTX&per. It is equivalent to SYS routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30049.SYSINSTX&per.EXE :elink. for more info)&per.
 
-:h2 id=20047 res=30044.F32CHK&per.EXE
+:h2 id=20047 res=32047.F32CHK&per.EXE
 
 :p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
 
 :p.F32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
 the same parameters as CHKDSK itself&per. It is run by FAT32&per.IFS init routine&per.
 
-:h2 id=49 res=30046.F32MON.EXE (formerly MONITOR.EXE)
+:h2 id=49 res=32048.F32MON.EXE (formerly MONITOR.EXE)
 
 :p.:hp2.F32MON&per.EXE (formerly MONITOR&per.EXE)&colon. :ehp2.  
 
@@ -2636,7 +2638,7 @@ performance problems with :link reftype=hd refid=42.FAT32&per.IFS:elink.&per.
 :p.For best performance it is advised to keep the disk as defragmented as 
 possible&per. Use Windows 9x or later versions defrag to defrag the disk&per. 
 
-:h2 id=20069 res=30063.FAQ
+:h2 id=20069 res=32063.FAQ
 
 :p.:hp2.FAQ&colon. :ehp2.
 
@@ -2704,13 +2706,13 @@ proprietary&per.
 :hp2.A:ehp2.&colon. Because support for 64-bit seek seems to be incomplete for 16-bit IFS drivers&per. The sequential
 file access works (I can copy big files to/from a FAT32/exFAT drive, but I cannot enter big &per.zip files, for example)&per.
 For that, there is a FS_CHGFILEPTRL export in FAT32&per.IFS, but it does not get called by a kernel&per. The kernel calls
-the standard FS_CHGFILEPTR entry point, which is limited to max&per 2 GB file position&per. The file position gets truncated&per.
+the standard FS_CHGFILEPTR entry point, which is limited to max&per. 2 GB file position&per. The file position gets truncated&per.
 The 32-bit FS32_CHGFILEPTRL function with 32-bit IFS&apos.es, though, works&per. This seems to be an unfinished feature&per. So,
 I see two solutions here&colon. 1) convert FAT32&per.IFS to a 32-bit driver, or, at least, export some necessary 32-bit
 entry points&per. 2) modify OS/2 kernel so that it will call FS_CHGFILEPTRL, as required&per. The latter variant is possible
 if I'd convince OS/4 developers to do such an enhancement&per. But it will not work for those who stick with IBM&apos.s kernels&per.
 
-:h2 id=20070 res=30063.TIPS/HOWTO&apos.s
+:h2 id=20070 res=32064.TIPS/HOWTO&apos.s
 
 :p.:link reftype=hd refid=200700.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs :elink.
 
@@ -2721,7 +2723,7 @@ if I'd convince OS/4 developers to do such an enhancement&per. But it will not w
 :p.:link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
 .br 
 
-:h3 id=200700 res=30063.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
+:h3 id=200700 res=32065.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
 
 .br
 :p.:hp2.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.&colon. 
@@ -2771,7 +2773,7 @@ using a QSINIT loader (aka "Tetris")&per. This can be achieved by adding a ",mem
 kernel parameters&per. After taking a dump, you can remove the "memlimit" string from os2ldr&per.ini,
 or leave it in a special menu item line which is used specially for dumping memory&per.
 
-:h3 id=200701 res=30063.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks:ehp2.
+:h3 id=200701 res=32066.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks:ehp2.
 
 :p.:hp2.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks :ehp2.
 
@@ -2782,7 +2784,7 @@ ramdisks, like PAE ramdisk, or any other &per.ADD-based virtual harddisk, should
 are FORMAT/CHKDSK/SYSINSTX/LOADDSKF/SAVEDSKF/DISKCOPY on such drives&per. It should work the same way IBM&apos.s FAT works,
 the bonus feature is VFAT long file names support&per.
 
-:h3 id=200702 res=30063.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
+:h3 id=200702 res=32067.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
 
 :p.:hp2.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
 
@@ -2809,7 +2811,7 @@ enables large files support too&per. Also, storing files with more than 35-bit s
 to be enabled&per. 35-bit size uses bits 0-2 of 12th reserved byte (EA mark byte)&per. 2^35 == 32 GB is the maximum
 file size with EA&apos.s disabled&per.
 
-:h3 id=200703 res=30063.Notes on large floppy media&per. :ehp2.
+:h3 id=200703 res=32068.Notes on large floppy media&per. :ehp2.
 
 :p.:hp2.Notes on large floppy media&per. :ehp2.
 
@@ -2986,7 +2988,7 @@ else can you do to get rid of the LINALLOC FAILED message? :ehp2.
 early in boot&per. Previously, this was only available after Device Driver and IFS 
 initialization was completed&per. This setting requires an OS2KRNL dated 2002 or later&per. :color fc=default.:color bc=default.:hp8.
 
-:p.:hp2.Warning&colon. :ehp2.:ehp0.:hp8.This setting has various implications when enabled&per. 
+:p.Warning&colon. This setting has various implications when enabled&per.
 
 :p. 1&per.Don&apos.t use with ISA cards with (busmaster-) DMA features&per. 
 .br 
@@ -4134,7 +4136,7 @@ from OS/2 Toolkit&per.
 Version 2&per.1, February 1999 
 .br 
 
-:p.Copyright (C) 1991, 1999 Free Software Foundation,
+Copyright (C) 1991, 1999 Free Software Foundation,
 .br 
 Inc&per.
 .br 
