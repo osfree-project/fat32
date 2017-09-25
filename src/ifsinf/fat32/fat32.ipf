@@ -3074,6 +3074,1342 @@ Netlabs or the Yahoo FAT32USER group&per.
 
 :p.:hp2.HISTORY&colon. :ehp2.  
 
+:p.:hp2.Version 0&per.10&colon. :ehp2.
+
+:p.:hp2.Revision r313 (valerius, Mon, 25 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. fat32&per.inf, ifs&per.inf&colon. Fixed errors and warnings in the IPF code&per.
+:eul.
+
+:p.:hp2.Revision r312 (valerius, Sun, 24 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. ifs&per.inf&colon. Additions to documentation&per.
+:eul.
+
+:p.:hp2.Revision r311 (valerius, Mon, 22 Sep 2017)&colon. :ehp2.
+
+:p. CHKDSK fixes/enhancements
+:ul compact.
+:li. Support for fixing crosslinked clusters.
+:li. Support for fixing incorrect "&per." and "&per.&per." entries (wrong cluster number)&per.
+:eul.
+
+:p.:hp2.Revision r310 (valerius, Sun, 17 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. fat32.ifs&colon. Preliminary changes for /eas2 switch (ea data&per. sf support)&per.
+:eul.
+
+:p.:hp2.Revision r309 (valerius, Sun, 17 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. SYS&colon. Add preliminary exFAT support (bootblock does not fit into 8 sectors, yet)&per.
+:eul.
+
+:p.:hp2.Revision r308 (valerius, Sun, 17 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. fat32&per.inf&colon Documentation update&per.
+:eul.
+
+:p.:hp2.Revision r307 (valerius, Mon, 11 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Add forgotten file&per.
+:eul.
+
+:p.:hp2.Revision r306 (valerius, Sun, 10 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Fix for #58&colon. lost EA files are recovered with paths prepended to a longname&per.
+:eul.
+
+:p.:hp2.Revision r305 (valerius, Sun, 10 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. 64-bit bit ops&colon. Add forgotten assembler files&per.
+:li. FAT+&colon. Change FAT+FSZ EA to FAT_PLUS_FSZ, to avoid ERROR_INVALID_EA_NAME error
+ when copying this file&per.
+:eul.
+
+:p.:hp2.Revision r304 (valerius, Sun, 10 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Delete unneeded tracepoints from FS_MOUNT&per.
+:li. Make ulDataLen equal to ulValidDataLen on exFAT (instead of being equal
+ to rounded up to a cluster size value)&per.
+:eul.
+
+:p.:hp2.Revision r303 (valerius, Sun, 10 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. FAT+ support in the IFS and CHKDSK&per.
+:eul.
+
+:p.:hp2.Revision r302 (valerius, Sun, 10 Sep 2017)&colon. :ehp2.
+
+:ul compact.
+:li. change IBM's DDK headers to our own ones&per.
+:eul.
+
+:p.:hp2.Revision r301 (valerius, Wed, 30 Aug 2017)&colon. :ehp2.
+
+:p. fat32.ifs&colon. exFAT fixes
+
+:ul compact.
+:li. Avoid using CritMessage, because it&colon. 1) terminates calling program, with general
+ use 2) Shows an unremovable popup, when in boot time&per. So, avoid using CritMesage&per.
+:li. Add a filename argument to ModifyDirectory(MODIFY_DIR_UPDATE), instead of NULL, so
+ that it should look up dir entries without a cluster name (zero-size files) correctly&per.
+ So, always pass pszFile argument&per.
+:li. Fix CompactDir1, so it is now correctly compacts the directory&per.
+:li. TranslateName fixes for exFAT case&per.
+:li. ModifyDirectory fixes (support for dir entry set crossing the block boundary), exFAT case
+:li. Disable importing two KEE calls (repair Merlin/Warp3 compatibility)
+:li. free up the pDirSHInfo on file close (was on FS_OPENCREATE exit), so that, no trap when
+  it is accessed on FS_COMMIT after being freed&per.
+:eul.
+
+:p.:hp2.Revision r300 (valerius, Wed, 30 Aug 2017)&colon. :ehp2.
+
+:p. &per.INF documentation additions and corrections
+.br
+
+:p.:hp2.Revision r299 (valerius, Mon, 31 Jul 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Make TranslateName implementation for exFAT&per.
+:li. Fix loaddskf on a FAT12 floppy mounted by fat32&per.ifs&per. So, SetVPB
+  kernel routine, which overwrote vpfsd with FAT-specific data, doesnt
+  gets called, and hence, no IPE when fat32&per.ifs detects it&per. Also, prevent
+  calling MarkDiskStatus in FS_FLUSHBUF and FS_SHUTDOWN on FAT12 removables,
+  this avoids another trap in DoVolIO kernel routine when doing FS_FLASHBUF&per.
+:li. Fix a typo in DeleteFatChain, so ulBmpSector is used, instead of ulSector&per.
+:eul.
+ 
+:p.:hp2.Revision r298 (valerius, Fri, 28 Jul 2017)&colon. :ehp2.
+
+:p. A fix for sectros per FAT < 3&per. Now it should work with 360 KB diskettes&per.
+.br
+
+:p.:hp2.Revision r297 (valerius, Tue, 25 Jul 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Change USHORT to ULONG in some places, to avoid overflow in case of FAt12/FAT16
+ partitions with a 64 KB cluster&per. Otherwise we could get division by zero in some
+ cases&per.
+:eul.
+ 
+:p.:hp2.Revision r296 (valerius, Sun, 23 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Add system trace support&per.
+.br
+
+:p.:hp2.Revision r295 (valerius, Thu, 20 Jul 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Disable Lars Erdman&apos.s code for searching DevCaps and Strat2 routine if
+ it is normally not found&per. This found strat2 even in case no strat2 is
+ presented by the disk driver (like hd4disk&per.add with an "/1" parameter)&per.
+:li. Consider using fSilent flag when loading Unicode Translate Table, instead of
+ being always verbose&per.
+:li. Set pVolInfo->fDiskClean to FALSE in WriteSector if Dirty flag in the 1th FAT
+ element is set to not do it on every WriteSector call&per.
+:li. Swapping code updates
+:li. FS_FILEIO implementation
+:eul.
+ 
+:p.:hp2.Revision r294 (valerius, Mon, 17 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. exFAT fixes&per.
+
+:ul compact.
+:li. Add required parentheses in functions for calculating checksums&per.
+ Now checksums should be ok&per.
+:li. Fix a bug with deleting file while renaming it&per.
+:eul.
+
+:p.:hp2.Revision r293 (valerius, Sun, 16 Jul 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. Revert previous commit, as it is wrong&per. params->sectors_per_cluster fit large cluster 
+numbers, while dp&per.SectorsPerCluster is not&per. And it can be zero&per.
+.br
+
+:p.:hp2.Revision r292 (valerius, Sun, 16 Jul 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. Use dp&per.SectorsPerCluster instead of params->sectors_per_cluster (it may be zero in some 
+cases, so it cause FORMAT trap)&per.
+.br
+
+:p.:hp2.Revision r292 (valerius, Sun, 16 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Some minor fixes
+
+:ul compact.
+:li. Initialize several variables to NULL&per. So that, no error occurs
+ when it tries to free() these variables&per. This fixes ERROR_NOT_COPY returned
+ in FM/2 and the file manager copies everything well between two FAT drives&per.
+:li. Trying to fix errors with swapping
+:li. Minimize FAT access semaphore acquiring time&per. So, less probability for
+ timeouts on the semaphore&per.
+:eul.
+
+:p.:hp2.Revision r290 (valerius, Mon, 10 Jul 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Fix a buffer overrun in FS_READ&per.
+:li. Fix seconds vs twosecs error in timestamps&per.
+:li. Fix erroneous counting of files in the directory on
+ file delete in FS_RMDIR&per. Wrong nomber of files counted&per.
+:eul.
+
+:p.:hp2.Revision r289 (valerius, Thu, 06 Jul 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Fix skipping 2nd cluster on exFAT when cluster size is 128+ KB when
+ reading and writing files&per.
+:li. Make FORMAT create FS'es with 128 KB or more clusters&per. Support the case
+ with a very small (1kb or so) clusters, when the allocation bitmap uses
+ many clusters, so they don't fit into one FAT sector&per.
+:li. Add support for adding timestamps for files created by CHKDSK&per.
+:eul.
+
+:p.:hp2.Revision r288 (valerius, Tue, 04 Jul 2017)&colon. :ehp2.
+
+:p. FORMAT: Make volumes formatted with our FORMAT, understandable by winxp exFAT driver&per.
+.br
+
+:p.:hp2.Revision r287 (valerius, Tue, 04 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix seeking to a cluster for exFAT&per. Now archives are entered correctly&per.
+.br
+
+:p.:hp2.Revision r286 (valerius, Mon, 03 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix some problems remained in previous revision&per.
+
+:ul compact.
+:li. Fix a trap 000d caused by unzeroed variables&per.
+:li. Move check for bad sectors from ReadSector to ReadBlock and
+ WriteBlock&per.
+:li. Fix allocating new clusters in SetNextCluster in exFAT code&per.
+:li. Change unlink() to DelFile() and avoid calling filesystem
+ access functions in CHKDSK when FS is not accessible&per.
+:eul.
+
+:p.:hp2.Revision r285 (valerius, Sun, 02 Jul 2017)&colon. :ehp2.
+
+:p. ifs&per.inf&colon. Documentation updates&per.
+.br
+
+:p.:hp2.Revision r284 (valerius, Sun, 02 Jul 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Make more conservative stack usage&per.
+
+:ul compact.
+:li. Use less stack space&per. Change all local buffers to dynamically
+  allocated buffers&per. This should fix kernel stack overflow errors&per.
+:eul.
+
+:p.:hp2.Revision r283 (valerius, Tue, 20 Jun 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Additional exFAT-related fixes&per.
+.br
+
+:p.:hp2.Revision r282 (valerius, Sun, 18 Jun 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Different exFAT-related additions for CHKDSK
+:li. Return "unimplemented" on SYSINSTX attempts
+:li. Attempts to fix traps in malloc() in exFAT CHKDSK code&per. It appears 
+ that heap is corrupted somewhere&per. Also, added experimental mem_alloc2() function,
+ to allocate memory via a CHKDSK&per.SYS driver (non-working, yet)&per.
+:eul.
+
+:p.:hp2.Revision r281 (valerius, Sun, 18 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Identtify itself as FAT32, not UNIFAT anymore&per.
+
+:ul compact.
+:li. Some programs treat FAT32 drives specially and know nothing about UNIFAT&per.
+ Though it is wrong, I don't want break such programs&per. So, since now, I disable
+ IFS identification as UNIFAT&per. Now it should be FAT32, as previous&per.
+:li. Return back the bad sectors checking in ReadSector2, and return ERROR_SECTOR_NOT_FOUND
+ to avoid reading zero sectors&per.
+:eul.
+
+:p.:hp2.Revision r280 (valerius, Wed, 14 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Some previously forgotten fixes&per.
+
+:ul compact.
+:li. Move InitCache back from FS_INIT to FS_MOUNT (as it uses some
+ DevHelp&apos.s which cannot be used in r3 context)&per.
+:li. More proper handling of exFAT dir entries in two places&per.
+:li. Some forgotten declarations in headers&per.
+:eul.
+
+:p.:hp2.Revision r279 (erdmann, Tue, 13 Jun 2017)&colon. :ehp2.
+
+:p. merge Valerys changes
+.br
+
+:p.:hp2.Revision r278 (valerius, Tue, 13 Jun 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. prepare CHKDSK for exFAT support&per.
+.br
+
+:p.:hp2.Revision r277 (valerius, Tue, 13 Jun 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. repair PMCHKDSK&per.
+.br
+
+:p.:hp2.Revision r276 (valerius, Thu, 08 Jun 2017)&colon. :ehp2.
+
+:p. CHKDSK: Fix CHKDSK logic error, introduced in previous commit&per.
+
+:ul compact.
+:li. Fix incorrect logic in ChkDskMain&colon. CHKDSK has quit instead of checking
+  the disk&per.
+:eul.
+
+:p.:hp2.Revision r275 (valerius, Thu, 08 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix minor error occured with MSC&per.
+.br
+
+:p.:hp2.Revision r274 (valerius, Thu, 08 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Define whether to use static or dynamic buffers via a define&per.
+
+:ul compact.
+:li. If USE_STATIC_BUFS is set, use static variables for sector buffers in
+ ReadSector2, FindPathCluster0/1, ModifyDirectory0/1, TranslateBuffer&per.
+ Access to these buffers is got via a semaphore&per. If USE_STATIC_BUFS is
+ not set, create buffers via malloc and dispose of them via free&per. Here,
+ the problem with trap in malloc is present&per. There is a trap 0008 somewhere
+ in FSH_SEGALOC, maybe because of too much selectors allocated (a hypothesis)&per.
+ Possible solution&colon. rewrite malloc/free to use less selectors (not to
+ allocate a selector to each small piece of memory, try to cover more memory
+ by a single selector)&per.
+:li. Disk autocheck enhancements&per. In f32chk.exe, add checks for pointer to 
+ argv[i] != 0 when parsing CHKDSK command line&per. Don&apos.t output &apos.\n&apos.&apos.s after
+ checking each disk&per. Make output look more beautiful&per.
+:eul.
+
+:p.:hp2.Revision r273 (valerius, Wed, 07 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Split fat32&per.c to two files, to avoid the Segment too large error&per.
+.br
+
+:p.:hp2.Revision r272 (valerius, Sun, 04 Jun 2017)&colon. :ehp2.
+
+:p. build system&colon. Fix a minor build error with cmd.exe as a shell&per.
+.br
+
+:p.:hp2.Revision r271 (valerius, Sat, 03 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Use dynamically allocated buffers for the time being&per.
+.br
+
+:p.:hp2.Revision r270 (erdmann, Fri, 02 Jun 2017)&colon. :ehp2.
+
+:p. revert change in ReadSector2&colon. it&apos.s possible to read from before the actual data sectors (reading FAT for example)
+.br
+
+:p.:hp2.Revision r269 (erdmann, Thu, 01 Jun 2017)&colon. :ehp2.
+
+:p. merging Valerys changes
+.br
+
+:p.:hp2.Revision r268 (valerius, Thu, 01 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. #ifdef the unused variables out&per. Enable/disable exFAT support in MSC makefile&per.
+.br
+
+:p.:hp2.Revision r267 (valerius, Thu, 01 Jun 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix broken edits from r266&per.
+.br
+
+:p.:hp2.Revision r266 (valerius, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. Enable creating the builds without exFAT support&per.
+.br
+
+:p.:hp2.Revision r265 (erdmann, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. fixing "GetChainSize" (usSectorsRead was not properly initialized, also throw away all garbage), move 
+macros "Cluster2Sector" and "Sector2Cluster" into the central header file
+.br
+
+:p.:hp2.Revision r264 (erdmann, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. fixing a fatal hang in "ReadSector2" but we still fail to execute successfully because the requested sector 
+sometimes is located before the start of the partition which it should not be&per.&per.&per.
+.br
+
+:p.:hp2.Revision r263 (erdmann, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. readd "SemRequest" routine
+.br
+
+:p.:hp2.Revision r262 (erdmann, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. merging Valerys changes to allow building with MS C
+.br
+
+:p.:hp2.Revision r261 (erdmann, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. properly preset some return values
+.br
+
+:p.:hp2.Revision r260 (valerius, Wed, 31 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Make MSC build working
+
+:ul compact.
+:li. Add missing "else" statement in "vsprintf"&per. So that, "%llx" format string is now processed
+ correctly&per.
+:li. Support for compilers without "long long" type support&per. In particular, fixed build with
+ MSC compiler&per.
+:li. Trying to fix problems with traps when intensively using malloc/free&per. Now I changed buffers,
+ allocated via malloc, in several places, to static buffers&per. For example, in ReadSector,
+ FindPathCluster, ModifyDirectory, TranslateName&per. The buffers are accessed by acquiring 
+ a corresponding semaphore&per. However, it slows down the performance&per.
+:eul.
+
+:p.:hp2.Revision r259 (erdmann, Fri, 26 May 2017)&colon. :ehp2.
+
+:p. set CPU type properly to support "pause" instruction
+.br
+
+:p.:hp2.Revision r258 (erdmann, Fri, 26 May 2017)&colon. :ehp2.
+
+:p. implementing spinlocks (we need something that can be called nested which the OS provided ones won&apos.t support), 
+also move definitions of routines "GetFatAccess" and "ReleaseFat" to common header file "fat32ifs&per.h" so that we don&apos.t 
+have to change the prototype at two different places
+.br
+
+:p.:hp2.Revision r257 (erdmann, Tue, 23 May 2017)&colon. :ehp2.
+
+:p. remove all Windows related build products
+.br
+
+:p.:hp2.Revision r256 (erdmann, Tue, 23 May 2017)&colon. :ehp2.
+
+:p. merging Valerys latest changes
+.br
+
+:p.:hp2.Revision r255 (valerius, Fri, 19 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix file creation&per. (There were Entry type not set)&per.
+.br
+
+:p.:hp2.Revision r254 (valerius, Wed, 17 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Return back the old variant of pre-DOS-4&per.0 FAT BPB detection&per. Otherwise NTFS volumes 
+could be erroneously mounted&per.
+.br
+
+:p.:hp2.Revision r253 (valerius, Wed, 17 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Move several fields from FINDINFO to FINFO, so now FINDINFO does not exceed the limit of 24 bytes&per.
+.br
+
+:p.:hp2.Revision r252 (erdmann, Tue, 16 May 2017)&colon. :ehp2.
+
+:p. revert change in "FS_FILEINFO"&colon. if largefile support is active, psffsi->sfi_sizel is also used for FIL_STANDARD 
+and FIL_QUERYEASIZE
+.br
+
+:p.:hp2.Revision r251 (erdmann, Tue, 16 May 2017)&colon. :ehp2.
+
+:p. Created branch lars&per.
+.br
+
+:p.:hp2.Revision r250 (valerius, Sun, 14 May 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Fixes for #40 with FS_FINDFIRST/FS_FINDNEXT regarding FIL_QUERYEASFROMLIST/FIL_QUERYEASFROMLISTL&colon.
+ return a minimum required FEALIST (otherwise a loop calling FS_FINDNEXT is onserved)&per.
+:li. The same fixes for exFAT case
+:li. Fix returning EA's on exFAT&per. Now WPS window with exFAT disk is opened successfully (but WPS
+ still traps then, because creating files does not work - it tries to create WP ROOT&per. SF)
+ Author&colon. Lars Erdmann (with exFAT-related fixes by valerius)&per.
+:eul.
+
+:p.:hp2.Revision r249 (valerius, Mon, 08 May 2017)&colon. :ehp2.
+
+:ul compact.
+:li. Additional fixes in FS_MOUNT regarding the Volume Label and Serial number setting
+:li. Identify itself as UNIFAT if /fat or /exfat are set, instead of FAT32 (to avoid
+ confusion when FAT16 drives are reported as being FAT32)
+:li. Added several forgotten changes regarding FIL_QUERYEASFROMLISTL vs FIL_QUERYEASFROMLIST
+:eul.
+
+:p.:hp2.Revision r248 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. exFAT support in FORMAT&per.
+.br
+
+:p.:hp2.Revision r247 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Additional exFAT-related fixes&per.
+.br
+
+:p.:hp2.Revision r246 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&per. Additional exFAT-related fixes&per.
+.br
+
+:p.:hp2.Revision r245 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. FS_MOUNT fixes&colon. support for diskettes without a BPB and VolLabel/VolSerNo-related fixes&per.
+.br
+
+:p.:hp2.Revision r244 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Use dup VPB only if special magic is present&per.
+.br
+
+:p.:hp2.Revision r243 (valerius, Tue, 02 May 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Use dup VPB only if special magic is present&per.
+.br
+
+:p.:hp2.Revision r242 (valerius, Sun, 23 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Additional exFAT-related enhancements&per.
+.br
+
+:p.:hp2.Revision r241 (valerius, Wed, 19 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. exFAT-related updates&per.
+.br
+
+:p.:hp2.Revision r240 (valerius, Wed, 19 Apr 2017)&colon. :ehp2.
+
+:p. docs&colon. Documentation update&per.
+.br
+
+:p.:hp2.Revision r239 (valerius, Wed, 19 Apr 2017)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Check for recommended BPB if no real one&per.
+.br
+
+:p.:hp2.Revision r238 (valerius, Wed, 12 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. exFAT support&colon. Support for FS_FSINFO/FS_CHDIR and FS_FIND[FIRST/NEXT/CLOSE]&per.
+.br
+
+:p.:hp2.Revision r237 (valerius, Wed, 12 Apr 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. Autodetect the FAT type based on disk size&per.
+.br
+
+:p.:hp2.Revision r236 (valerius, Sun, 09 Apr 2017)&colon. :ehp2.
+
+:p. cachef32&per.exe&colon. Force FAT12/FAT16 disks remount on cachef32 start (so, we got fat32&per.ifs mounted on them)&per.
+.br
+
+:p.:hp2.Revision r235 (valerius, Sun, 09 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix MarkDiskStatus (disk status was written into incorrect FAT sector)&per.
+.br
+
+:p.:hp2.Revision r234 (valerius, Sat, 08 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Don&apos.t set disk status after checking/formatting disk&per.
+
+:p. Don&apos.t update dirty flag after CHKDSK/FORMAT/etc, so we don&apos.t get an
+error during unmount, and then, we don&apos.t get a SIGKILL signal when
+doing DSK_REDETERMINEMEDIA ioctl on remount&per. So, now CHKDSK/FORMAT
+terminates successfully&per.
+.br
+
+:p.:hp2.Revision r233 (valerius, Fri, 07 Apr 2017)&colon. :ehp2.
+
+:p. SYS&colon. SYS support for FAT12/FAT16&per.
+.br
+
+:p.:hp2.Revision r232 (valerius, Fri, 07 Apr 2017)&colon. :ehp2.
+
+:p. docs&colon. Add notes&per.txt&per.
+.br
+
+:p.:hp2.Revision r231 (valerius, Fri, 07 Apr 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. Make FORMAT support formatting to FAT12/FAT16&per.
+.br
+
+:p.:hp2.Revision r230 (valerius, Fri, 07 Apr 2017)&colon. :ehp2.
+
+:p. Non-512 byte sector compatibility fixes&per. Now it works with CD&apos.s with FAT filesystem too&per.
+.br
+
+:p.:hp2.Revision r229 (valerius, Wed, 05 Apr 2017)&colon. :ehp2.
+
+:p. Read three sectors of FAT at once (to read a whole number of FAT12 entries)&per.
+.br
+
+:p.:hp2.Revision r228 (valerius, Wed, 05 Apr 2017)&colon. :ehp2.
+
+:p. build system&colon. Fix deps in makefiles&per.
+.br
+
+:p.:hp2.Revision r227 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Correct a small syntax error&per.
+.br
+
+:p.:hp2.Revision r226 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. FAT12/FAT16 fixes&per.
+.br
+
+:p.:hp2.Revision r225 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per..ifs&colon. FAT12/FAT16 fixes&per.
+.br
+
+:p.:hp2.Revision r224 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. build system&colon. Build system improvements&per.
+.br
+
+:p.:hp2.Revision r223 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. 32-bit entry points&per. Add forgotten file&per.
+.br
+
+:p.:hp2.Revision r222 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. build system&colon. Compress binaries with lxlite&per.
+.br
+
+:p.:hp2.Revision r221 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Save lost cluster chains into a separate directory&per.
+.br
+
+:p.:hp2.Revision r220 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Succeed the IFS init in case of Merlin kernels and large file support is enabled&per.
+.br
+
+:p.:hp2.Revision r219 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. FS utilities&colon. move unicode translate table loading to UFAT32&per.DLL and export it&per.
+.br
+
+:p.:hp2.Revision r218 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. FS utilities&colon. move unicode translate table loading to UFAT32&per.DLL and export it&per.
+.br
+
+:p.:hp2.Revision r217 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per..ifs&colon. Autocheck enhancements&per.
+.br
+
+:p.:hp2.Revision r216 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Preliminary changes to add the 32-bit entry points&per.
+.br
+
+:p.:hp2.Revision r215 (valerius, Sun, 02 Apr 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Add forgotten file&per.
+.br
+
+:p.:hp2.Revision r214 (valerius, Fri, 17 Mar 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Add command line switches to set mounted disks lists/masks&per.
+.br
+
+:p.:hp2.Revision r213 (valerius, Fri, 16 Mar 2017)&colon. :ehp2.
+
+:p. Add FAT12/FAT16 support&per.
+
+:p. Refactor code to support generic FAT, including FAT12/FAT16/FAT32/exFAT&per.
+This time, add support for FAT12/FAT16 to fat32&per.ifs and CHKDSK&per.
+.br
+
+:p.:hp2.Revision r212 (valerius, Sun, 12 Mar 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix looping when inserting a directory entry&per.
+.br
+
+:p.:hp2.Revision r211 (valerius, Sat, 11 Mar 2017)&colon. :ehp2.
+
+:p. util&colon. Rename again diskinfo -> f32parts, remove diskdump from packages&per.
+.br
+
+:p.:hp2.Revision r210 (valerius, Sat, 11 Mar 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix uninitialized variable&per.
+.br
+
+:p.:hp2.Revision r209 (valerius, Sat, 11 Mar 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix #25&per. (executable file corruption)&per.
+.br
+
+:p.:hp2.Revision r208 (valerius, Sat, 11 Mar 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Support for subcluster blocks&per.
+
+:p. Read or write clusters by blocks of 32 KB or less&per. This allows to use clusters,
+bigger than 32 KB&per. So that, 64 KB clusters in FAT32, or clusters up to 32 MB in
+exFAT, could be supported with a 16-bit FAT driver&per.
+.br
+
+:p.:hp2.Revision r207 (valerius, Thu, 02 Mar 2017)&colon. :ehp2.
+
+:p. UFAT32.DLL&colon. Add 16-bit signal handler&per.
+
+:p. Add 16-bit signal handler, in case we&apos.re using 16-bit frontend
+program&per. So that, we can interrupt it by Ctrl-C and disk will
+remount&per. Add Help for CHKDSK and SYS&per. Run CHKDSK/SYS only in 
+case the disk is FAT32 (check BPB for "FAT32   " string)&per.
+.br
+
+:p.:hp2.Revision r206 (valerius, Tue, 28 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Support for creating chkdsk&per.old&per.
+.br
+
+:p.:hp2.Revision r205 (valerius, Tue, 28 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Enhancements for messages output to log&per.
+.br
+
+:p.:hp2.Revision r204 (valerius, Mon, 20 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Fix date/time when creating/modifying dir&per. entries&per.
+.br
+
+:p.:hp2.Revision r203 (valerius, Mon, 20 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Try not to use SECTORIO ioctl&per.
+
+:p. Try not to use SECTORIO ioctl, use ordinary byte mode,
+instead of sector mode&per. Also, recode win32 API error descriptions 
+from ANSI to OEM codepage&per. And, use a buffer with zero padding
+for filename, when calling MakeDirEntry()&per.
+
+:p.:hp2.Revision r202 (valerius, Sat, 18 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. More sector size related changes&per.
+.br
+
+:p.:hp2.Revision r201 (valerius, Sat, 18 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Fix CHKDSK after r198&per.
+
+:p. The bootsector was read when sector size in BPB was uninitialized&per.
+So, do get_drive_params() first&per.
+
+:p.:hp2.Revision r200 (valerius, Fri, 17 Feb 2017)&colon. :ehp2.
+
+:p. Build system&colon. include those &per.wmp lines to &per.map, which have address with + at the end&per.
+.br
+
+:p.:hp2.Revision r199 (valerius, Fri, 17 Feb 2017)&colon. :ehp2.
+
+:p. FORMAT&colon. Don&apos.t set partition type if disk is GPT&per.
+.br
+
+:p.:hp2.Revision r198 (valerius, Fri, 17 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Use sector size from BPB instead of hardcoded SECTOR_SIZE&per.
+.br
+
+:p.:hp2.Revision r197 (valerius, Thu, 16 Feb 2017)&colon. :ehp2.
+
+:p. SYS&colon. Add dummy os2boot&per.
+.br
+
+:p.:hp2.Revision r196 (valerius, Thu, 16 Feb 2017)&colon. :ehp2.
+
+:p. packages&colon. Packaging fix&per.
+.br
+
+:p.:hp2.Revision r195 (valerius, Thu, 16 Feb 2017)&colon. :ehp2.
+
+:p. SYS&colon. Add SYS standalone version&per.
+.br
+
+:p.:hp2.Revision r194 (valerius, Thu, 16 Feb 2017)&colon. :ehp2.
+
+:p. Add f32chk directory, which was not committed, for some reason&per.
+.br
+
+:p.:hp2.Revision r193 (valerius, Thu, 16 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Make FORMAT and CHKDSK more portable&per. 
+
+:p. Make FS utilities more portable&per. Move all system-depemdent functions to os2&per.c&per.
+Add CHKDSK standalone version&per. Also, FORMAT and CHKDSK now successfully build
+for win32 target&per. Rename fat32chk&per.exe to f32chk&per.exe&per. Now CHKDSK and FORMAT
+standalone versions are called fat32chk&per.exe and fat32fmt&per.exe, for consistency&per.
+Add win32 makefile&per.
+.br
+
+:p.:hp2.Revision r192 (valerius, Tue, 14 Feb 2017)&colon. :ehp2.
+
+:p. build system&colon. Add forgotten changes from previous commit&per.
+.br
+
+:p.:hp2.Revision r191 (valerius, Tue, 14 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon Use more portable API&apos.s&per.
+
+:p. Use libc and other system-independent interfaces instead of OS/2 API&apos.s&per. This should
+be useful to create DOS and win32 versions of CHKDSK and SYSINSTX, together with
+FORMAT&per. Also, done some code cleanup&per.
+.br
+
+:p.:hp2.Revision r190 (valerius, Mon, 13 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Change more messages to standard oso001&per.msg messages&per.
+.br
+
+:p.:hp2.Revision r189 (valerius, Mon, 13 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Change more messages to standard oso001&per.msg messages&per.
+.br
+
+:p.:hp2.Revision r188 (valerius, Mon, 13 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Manage all messages (to screen/CHKDSK log file, from oso001&per.msg and other messages) 
+from one point&per.
+.br
+
+:p.:hp2.Revision r187 (valerius, Mon, 13 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Make UFAT32&per.DLL silent if we&apos.re doing autocheck and FS is clean&per.
+.br
+
+:p.:hp2.Revision r186 (valerius, Mon, 13 Feb 2017)&colon. :ehp2.
+
+:p. UFAT32&per.DLL&colon. Support for CHKDSK/FORMAT /P command line switch&per.
+.br
+
+:p.:hp2.Revision r185 (valerius, Sun, 12 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK, fat32&per.ifs&colon. Change USHORT->ULONG in several places, to support 64k clusters&per.
+.br
+
+:p.:hp2.Revision r184 (valerius, Sat, 11 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Allow read/write/setfileptr on volumes opened in DASD mode&per.
+.br
+
+:p.:hp2.Revision r183 (valerius, Sat, 11 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Add missing braces&per.
+.br
+
+:p.:hp2.Revision r182 (valerius, Sat, 11 Feb 2017)&colon. :ehp2.
+
+:p. partfilt&per.flt&colon. Eliminate compiler warnings&per.
+.br
+
+:p.:hp2.Revision r181 (valerius, Sat, 11 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Don&apos.t use file API&apos.s in CHKDSK&per.
+
+:p. Avoid using API&apos.s like DosQueryPathInfo in CHKDSK, because the volume
+is remounted in MOUNT_ACCEPT mode and file API&apos.s are unavailable, and
+an attempt to use them may lead to a trap&per. Use internaal CHKDSK 
+functions instead&per.
+.br
+
+:p.:hp2.Revision r180 (valerius, Sat, 11 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Deny access to a volume if it is mounted in MOUNT_ACCEPT mode, thus avoiding a trap&per.
+.br
+
+:p.:hp2.Revision r179 (valerius, Fri, 10 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Enable creating of chkdsk&per.log without using DosWrite&per.
+
+:p. Add support for creating a file by CHKDSK on it&apos.s own, without using file
+API&apos.s like DosWrite, thus avoiding the use of IFS services&per. So, we can use 
+this at autocheck time, when IFS is not initialized, yet&per.
+.br
+
+:p.:hp2.Revision r178 (valerius, Fri, 10 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Allow opening a dirty volume with OPEN_FLAGS_DASD to allow checking/formatting it&per.
+.br
+
+:p.:hp2.Revision r177 (valerius, Fri, 10 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Don&apos.t let trying to insert a new entry in a full directory cluster, and thus, exceeding 
+a segment limit (which could lead to a trap)&per.
+.br
+
+:p.:hp2.Revision r176 (valerius, Fri, 10 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix failing to discover large file API presence&per.
+.br
+
+:p.:hp2.Revision r175 (valerius, Mon, 06 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. CHKDSK log support&per.
+.br
+
+:p.:hp2.Revision r174 (valerius, Sun, 05 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Add fflush(stdout) for the user to see the lost clusters message&per.
+.br
+
+:p.:hp2.Revision r173 (valerius, Sun, 05 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Set timestamp for recovered lost chains&per.
+.br
+
+:p.:hp2.Revision r172 (valerius, Sun, 05 Feb 2017)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Don&apos.t allow disk access if it is dirty&per.
+.br
+
+:p.:hp2.Revision r171 (valerius, Sun, 05 Feb 2017)&colon. :ehp2.
+
+:p. CHKDSK&colon. Update CHKDSK messages&per.
+.br
+
+:p.:hp2.Revision r170 (valerius, Sat, 24 Dec 2016)&colon. :ehp2.
+
+:p. build system&colon. Fixed bldlevel string&per.
+.br
+
+:p.:hp2.Revision r169 (valerius, Sun, 04 Dec 2016)&colon. :ehp2.
+
+:p. build system&colon. Another WarpIN packaging bug fixed&per.
+.br
+
+:p.:hp2.Revision r168 (valerius, Sun, 04 Dec 2016)&colon. :ehp2.
+
+:p. build system&colon. Minor WarpIN packaging bug fixed&per.
+.br
+
+:p.:hp2.Revision r167 (valerius, Sun, 04 Dec 2016)&colon. :ehp2.
+
+:p. build system&colon. Separate &per.sym files to additional WarpIN package&per.
+.br
+
+:p.:hp2.Revision r166 (komh, Sat, 26 Nov 2016)&colon. :ehp2.
+
+:p. Move branches/fat32-0&per.10 to trunk
+
+:p. valerius merged all changes of trunk to 0&per.10 branch, and many
+improvements are applied to 0&per.10 branch&per.
+
+:p. So move trunk to branches/trunk-old for a backup, and 0&per.10 branch to
+trunk&per.
+
+:p. See ticket #26 for details&per.
+.br
+
+:p.:hp2.Revision r165 (komh, Sat, 26 Nov 2016)&colon. :ehp2.
+
+:p. Move trunk to branches/trunk-old
+
+:p. valerius merged all changes of trunk to 0&per.10 branch, and many
+improvements are applied to 0&per.10 branch&per.
+
+So move trunk to branches/trunk-old for a backup, and 0&per.10 branch to
+trunk&per.
+
+:p. See ticket #26 for details&per.
+.br
+
+:p.:hp2.Revision r164 (valerius, Mon, 21 Nov 2016)&colon. :ehp2.
+
+:p. docs&colon. Documentation update&per.
+.br
+
+:p.:hp2.Revision r163 (valerius, Mon, 21 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Update FS status (clean/dirty) on shutdown, continue with next volumes if something 
+went wrong with the current one&per.
+.br
+
+:p.:hp2.Revision r162 (valerius, Wed, 16 Nov 2016)&colon. :ehp2.
+
+:p. build system&colon. Small enhancements&per.
+.br
+
+:p.:hp2.Revision r161 (valerius, Tue, 15 Nov 2016)&colon. :ehp2.
+
+:p. build system&colon. Fix broken ufat32&per.dll build&per.
+.br
+
+:p.:hp2.Revision r160 (valerius, Tue, 15 Nov 2016)&colon. :ehp2.
+
+:p. build system&colon. Support for separate build and source dirs, and also, autopackaging&per.
+.br
+
+:p.:hp2.Revision r159 (valerius, Mon, 14 Nov 2016)&colon. :ehp2.
+
+:p. bldsystem&colon. Minor changes to bldlevel creation&per.
+.br
+
+:p.:hp2.Revision r158 (valerius, Mon, 14 Nov 2016)&colon. :ehp2.
+
+:p. build system&colon. Automatically add extra info to bldlevel of each binary&per.
+.br
+
+:p.:hp2.Revision r157 (valerius, Sun, 13 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Avoid to enable large files support to prevent a trap when accessing sfi_sizel/sfi_positionl 
+if kernel does not support DosOpenL & Co&per.
+.br
+
+:p.:hp2.Revision r156 (valerius, Thu, 10 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix for trap 000d in ReadSector when trying to allocate a buffer for a 64k cluster&per.
+.br
+
+:p.:hp2.Revision r155 (valerius, Thu, 10 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix for division by zero on a JFS partition on mount, when booting from a fat32 medium&per.
+.br
+
+:p.:hp2.Revision r154 (valerius, Thu, 10 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Code cleanup and formatting in FS_MOUNT&per.
+.br
+
+:p.:hp2.Revision r153 (valerius, Mon, 07 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Return ERROR_INVALID_PARAMETER, like hpfs&per.ifs does&per.
+.br
+
+:p.:hp2.Revision r152 (valerius, Mon, 07 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Files up to 4 GB support&per.
+
+:p.:hp2.Revision r151 (valerius, Mon, 07 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Check if size/file pos&per. does not exceed 2 or 4 Gb&per.
+.br
+
+:p.:hp2.Revision r150 (valerius, Fri, 04 Nov 2016)&colon. :ehp2.
+
+:p. Support for 64 KB clusters&per.
+.br
+
+:p.:hp2.Revision r149 (valerius, Wed, 02 Nov 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Prevent blocking in FSH_SETVOLUME when remounting after format&per.
+.br
+
+:p.:hp2.Revision r148 (valerius, Thu, 27 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix for ERROR_SEM_TIMEOUT error in f32mon&per.exe&per.
+.br
+
+:p.:hp2.Revision r147 (valerius, Thu, 27 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Code style fix&per.
+.br
+
+:p.:hp2.Revision r146 (valerius, Wed, 26 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Some previously uncommitted changes flush (FS_IOCTL code didn&apos.t went through, for some reason)&per.
+.br
+
+:p.:hp2.Revision r145 (valerius, Wed, 26 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&per. Some previously uncommitted changes flush&per.
+.br
+
+:p.:hp2.Revision r144 (valerius, Wed, 26 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Some previously uncommitted changes flush&per.
+.br
+
+:p.:hp2.Revision r143 (valerius, Wed, 26 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Use QSINIT/OS4LDR log, if it is detected, otherwise send a string directly 
+to a com port&per.
+.br
+
+:p.:hp2.Revision r142 (valerius, Wed, 26 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Add support for QSINIT/OS4LDR log buffer&per.
+.br
+
+:p.:hp2.Revision r141 (valerius, Sun, 23 Oct 2016)&colon. :ehp2.
+
+:p.fat32.ifs&colon. Temporarily disable lazy write start in FAT32_STARTLW ioctl worker&per.
+.br
+
+:p.:hp2.Revision r140 (valerius, Sun, 23 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Always do flush volume etc&per. on FS unmount&per.
+.br
+
+:p.:hp2.Revision r139 (valerius, Sun, 23 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Add start/stop lazy write ioctls&per.
+.br
+
+:p.:hp2.Revision r138 (valerius, Sun, 23 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Some error checking&per.
+.br
+
+:p.:hp2.Revision r137 (valerius, Sun, 23 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Add reserved sectors command line option&per.
+.br
+
+:p.:hp2.Revision r136 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
+
+:p. Merge changes with trunk&per.
+.br
+
+:p.:hp2.Revision r135 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon Preliminary swap support (not working atm)&per.
+.br
+
+:p.:hp2.Revision r134 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
+
+:p. makefiles&colon. Use version string in makefile&per.mk, and other makefiles including it&per.
+.br
+
+:p.:hp2.Revision r133 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Use sector mode for formatting&per..
+.br
+
+:p.:hp2.Revision r132 (valerius, Sat, 08 Oct 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Add checks for removables to be unmounted&per.
+.br
+
+:p.:hp2.Revision r131 (valerius, Mon, 07 Oct 2016)&colon. :ehp2.
+
+:p. scripts&colon. Add @echo off&per.
+.br
+
+:p.:hp2.Revision r130 (valerius, Mon, 07 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Added FAT32_SECTORIO ioctl for better speed&per.
+.br
+
+:p.:hp2.Revision r129 (valerius, Mon, 07 Oct 2016)&colon. :ehp2.
+
+:p. format&colon. Fix format failing on already FAT32 formatted drives&per.
+.br
+
+:p.:hp2.Revision r128 (valerius, Mon, 07 Oct 2016)&colon. :ehp2.
+
+:p. scripts&colon. Make a single environment-setting script in the root dir, and others calling it&per.
+.br
+
+:p.:hp2.Revision r127 (valerius, Mon, 05 Sep 2016)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Added missing recover&per.c&per.
+.br
+
+:p.:hp2.Revision r126 (valerius, Sun, 04 Sep 2016)&colon. :ehp2.
+
+:p. Additional autocheck on boot changes&per.
+.br
+
+:p.:hp2.Revision r125 (valerius, Sun, 04 Sep 2016)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Fix for reading/writing sectors&colon. Correct the amount of bytes to 
+write on the current iteration&per.
+.br
+
+:p.:hp2.Revision r124 (valerius, Wed, 24 Aug 2016)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Add partition type modifying to FAT32&per.
+.br
+
+:p.:hp2.Revision r123 (valerius, Wed, 24 Aug 2016)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Add preliminary SYS command&per.
+.br
+
+:p.:hp2.Revision r122 (valerius, Wed, 24 Aug 2016)&colon. :ehp2.
+
+:p. Makefiles&colon. Add root makefile&per. Add clean target&per.
+.br
+
+:p.:hp2.Revision r121 (valerius, Wed, 24 Aug 2016)&colon. :ehp2.
+
+:p. Makefiles&colon Add root makefile&per. Add clean target&per.
+.br
+
+:p.:hp2.Revision r120 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
+
+:p. ufat32&per.dll&colon. Make CHKDSK to set volume clean&per.
+.br
+
+:p.:hp2.Revision r119 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Delete forgotten debug messages from FS_DELETE&per.
+.br
+
+:p.:hp2.Revision r118 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
+
+:p. Fix trap in FS_DELETE when rewriting files and disk is dirty&per.
+.br
+
+:p.:hp2.Revision r117 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
+
+:p. FAT32 autocheck on init&per. Remived ioctl and fsctl calls to fat32&per.ifs from CHKDSK and ported 
+the corresponding code from fat32.ifs to CHKDSK&per.
+.br
+
+:p.:hp2.Revision r116 (valerius, Wed, 17 Aug 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fixed bldlevel strings&per.
+.br
+
+:p.:hp2.Revision r115 (valerius, Wed, 17 Aug 2016)&colon. :ehp2.
+
+:p. fat32&per.ifs&colon. Fix a trap after FS_MOUNT on REDETERMINEMEDIA ioctl&per. Added push es/pop es 
+on enter/exit of each top-level IFS routine&per.
+.br
+
+:p.:hp2.Revision r114 (valerius, Sat, 02 Jul 2016)&colon. :ehp2.
+
+:p. fat32-0&per.10&colon. Ticket #16 fixed&per. added floating point support inlining and initinstance/terminstance&per.
+.br
+
+:p.:hp2.Revision r113 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Additional __loadds to _loadds
+.br
+
+:p.:hp2.Revision r112 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. AWK script OW->VAC for map files update
+.br
+
+:p.:hp2.Revision r111 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Build &per.cmd files for convenience
+.br
+
+:p.:hp2.Revision r110 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Misc non-important files
+.br
+
+:p.:hp2.Revision r109 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Change __loadds to _loadds
+.br
+
+:p.:hp2.Revision r108 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Makefile changes for ufat32&per.dll
+.br
+
+:p.:hp2.Revision r107 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Makefile changes for ufat32&per.dll
+.br
+
+:p.:hp2.Revision r106 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Makefile changes for FS utilities
+.br
+
+:p.:hp2.Revision r105 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. newer fat32&per.txt
+.br
+
+:p.:hp2.Revision r104 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Added &per.ipf files of ifs and fat32 &per.inf&apos.s
+.br
+
+:p.:hp2.Revision r103 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Minor headers changes
+.br
+
+:p.:hp2.Revision r102 (valerius, Mon, 04 Jan 2016)&colon. :ehp2.
+
+:p. Make partfilt.flt build with OW and MSC
+.br
+
+:p.:hp2.Revision r101 (valerius, Sun, 22 Mar 2015)&colon. :ehp2.
+
+:p. Made format progress percent indicator working&per.
+.br
+
+:p.:hp2.Revision r100 (valerius, Sun, 22 Mar 2015)&colon. :ehp2.
+
+:p. Made ufat32&per.dll (FORMAT) reformat-friendly&per. Now fat, fat32, hpfs, jfs could be reformatted 
+from each one to each other&per.
+.br
+
+:p.:hp2.Revision r99 (valerius, Fri, 27 Feb 2015)&colon. :ehp2.
+
+:p. A minor fix of Fat32Format for Win32 case&per.
+.br
+
+:p.:hp2.Revision r98 (valerius, Fri, 27 Apr 2015)&colon. :ehp2.
+
+:p. Updated ufat32&per.dll fo Fat32Format 1&per.07&per. Eliminated some minor bugs&per. The bug with 
+kernel trap when formatting the fat32 partition when booted from another fat32 partition&per.
+.br
+
+:p.:hp2.Revision r97 (valerius, Wed, 30 Apr 2014)&colon. :ehp2.
+
+:p. Initial branch 0&per.10 commit. Now added the FORMAT routine (adopted Fat32format from Win32)&per. 
+It is 32-bit&per. Also, CHKDSK routine made 32-bit, plus small 16-bit wrappers for calling from usual frontends, 
+like chkdsk&per.exe/format&per.exe&per. Added fixes to the IFS needed to support (re-)formatting to/from FAT32&per.
+Also, from now, all parts can be compiled by OpenWatcom wcc[386] and wasm&per.
+.br
+
+:p.:hp2.Revision r96 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+
+:p.Fix a non-sector IO problem on a smaller volume than 2GB&per.
+.br
+
+:p.:hp2.Revision r95 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+
+:p. Fix a non-sector IO problem on a smaller volume than 2GB&per.
+.br
+
+:p.:hp2.Revision r94 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+
+:p. Convert a size from in bytes to in sectors when user request sector io on a less volume than 2GB&per.
+.br
+
+:p.:hp2.Revision r93 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+
+:p. Convert a size from in bytes to in sectors when user request sector io on a less volume than 2GB&per.
+.br
+
+:p.:hp2.Revision r92 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+
+:p. Support OPEN_FLAGS_DASD correctly on the devices larger than 2GB using sector IO like HPFS&per.
+.br
+
+:p.:hp2.Revision r91 (valerius, Sat, 13 Dec 2008)&colon. :ehp2.
+
+:p. Support OPEN_FLAGS_DASD correctly on the devices larger than 2GB using sector IO like HPFS&per.
+.br 
+
 :p.:hp2.Version 0&per.9&per.13&colon. :ehp2.
 
 :p.Fixed the problem that a program trying to READ/WRITE from/to memory object  
