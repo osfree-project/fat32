@@ -690,25 +690,6 @@ PSZ    pszType;
    rc = CheckFreeSpace(pCD);
    pCD->FSInfo.ulFreeClusters = pCD->ulFreeClusters;
 
-#ifdef EXFAT
-   if (pCD->bFatType == FAT_TYPE_EXFAT)
-      {
-      // write back the bitmap
-      ULONG ulCluster = ulBitmapFirstCluster;
-      char *pBuf = pCD->pFatBits;
-      while (ulCluster != pCD->ulFatEof)
-         {
-         ReadCluster(pCD, ulCluster, pBuf);
-         ulCluster = GetNextCluster(pCD, NULL, ulCluster, FALSE);
-         if (!ulCluster)
-            {
-            ulCluster = pCD->ulFatEof;
-            }
-         pBuf += pCD->ulClusterSize;
-         }
-      }
-#endif
-
    if (pCD->fFix)
       {
       ULONG ulFreeBlocks;

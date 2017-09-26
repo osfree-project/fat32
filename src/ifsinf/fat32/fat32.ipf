@@ -76,20 +76,6 @@ cannot make eCS and OS/2 recognize them&per. There are several ways this is done
 systems should be readily accessible after this FAT32 driver is installed and loaded
 &per. 
 
-:p.While format support as in the command line &osq.format F&colon. /FS&colon.
-FAT32&osq. is planned, it is not implemented in FAT32&per.IFS yet&per. Until then, to 
-format FAT32 partitions, an advanced disk tool like DFSee and the F32Blank utility 
-available at Hobbes are needed&per. 
-
-:p.FAT32 support is somewhat limited in OS/2 world&colon. we have an IFS that 
-allows us to read/write data from and to FAT32 partitions, but we cannot format them
-&per. FAT32 Blanker somewhat fills this gap, with the help of advanced disk utilities 
-such as DFSee&per. 
-
-:p.As usage of this is somewhat complicated, perhaps you would prefer to format 
-them under FreeDOS or one of the Windows operating systems&per.  Another alternative 
-is to use a program like Partition Commander 8 or 9 to format volumes FAT32&per. 
-
 :p.  
 :h2 id=3 res=30003.Logical Volume Manager (LVM)
 
@@ -522,7 +508,7 @@ reports are perhaps not *that* welcome &per.&per.&per.
 
 :p.PARTFILT is based on the excellent work of Deon van der Westhuysen&per. Henk 
 Kelder made only minor modifications to it&per. The source code is available under GPL 
-conditions and can now be download from the Netlabs&per. 
+conditions and can now be downloaded from the Netlabs&per. 
 
 :p.Also, once PARTFILT is installed FDISK, Partition Magic and other Partition 
 tools can no longer be trusted&per. Do not use these tools once PARTFILT is installed
@@ -1179,10 +1165,9 @@ Korean support)
 
 :p.WarpIN also adds the following lines to the config&per.sys file&colon. 
 
-:p.IFS=X&colon.&bsl.TOOLS&bsl.SYSTEM&bsl.BIN&bsl.FAT32&per.IFS /CACHE&colon.2048 
-/Q 
+:p.IFS=X&colon.&bsl.TOOLS&bsl.SYSTEM&bsl.BIN&bsl.FAT32&per.IFS /cache&colon.2048 /h /q /ac&colon.* /largefiles
 .br 
-CALL=X&colon.&bsl.TOOLS&bsl.SYSTEM&bsl.BIN&bsl.CACHEF32&per.EXE 
+CALL=X&colon.&bsl.TOOLS&bsl.SYSTEM&bsl.BIN&bsl.CACHEF32&per.exe /f /p&colon.2 /m&colon.50000 /b&colon.250 /d&colon.5000
 
 :p.Where X&colon. is the partition that the IFS will be installed to&per. 
 
@@ -1354,6 +1339,10 @@ FAT32SYS&per.EXE
 .br
 
 :p.Copy *&per.INF files to your &bsl.OS2&bsl.BOOT directory&colon.
+.br
+IFS&perINF
+.br
+FAT32&per.INF
 .br
 
 :p.There is a document for Korean based on version 0&per.94 document&per.  This 
@@ -2219,8 +2208,206 @@ DLAT sector with LVM info&per. This allows to see Large Floppy media created by 
 :p.The below link to an archive VOICE newsletter is a good source for 
 information&per. 
 
-:p.:hp9.http&colon.//www&per.os2voice&per.org/VNL/past_issues/VNL0606H/feature_2&per.
-html :ehp9.  
+:p.:hp9.http&colon.//www&per.os2voice&per.org/VNL/past_issues/VNL0606H/feature_2&per.html :ehp9.  
+
+:p. 1&per. Your motherboard bios must support USB devices&per. Make sure USB support is enabled in
+the motherboard bios&per.
+
+:p. 2&per. The USB drivers by IBM work best with the most recent os2krnl, os2ldr, and ibmdasd
+drivers&per. Install them next if you have not already done so&per.
+
+:p. 3&per. Always update to IBM&apos.s latest USB drivers&per. Reboot and test USB devices&per. If they work,
+you need go no further&per. If not, proceed to to next step&per.
+
+:p. 4&per. Check to make sure that you have lines similar to those listed below in your config&per.sys&per.
+I like using the /V option because it tells one whether the necessary drivers are loaded
+or not at bootup&per.  The /V option can always be removed later when your USB device are
+working properly&per.
+
+:p.REM BASEDEV=USEUHCD.SYS /V
+.br
+BASEDEV=USBOHCD.SYS /V
+.br
+BASEDEV=USBOHCD.SYS /V
+.br
+BASEDEV=USBEHCD.SYS /V
+.br
+BASEDEV=USBD.SYS
+.br
+BASEDEV=USBHID.SYS
+.br
+BASEDEV=USBMSD.ADD /FLOPPIES:0 /REMOVABLES:2 /V
+.br
+rem BASEDEV=USBCDROM.ADD
+.br
+
+:p. Keep a copy of the file "hcimonit.exe" in a directory found in your config&per.sys Path statement&per.
+This file normally comes with the IBM&apos.s USB drivers&per. This program will list the type of host
+controllers found on your system&per.  At a command prompt, type "hcimonit.exe"&per.
+
+:p. In the example below, this computer has 2 USB OHCI host controllers and 1 USB EHCI host
+controller&per.  Thus, the following three lines would need to be found and if, not added
+to the config&per.sys file&per.
+
+:p.BASEDEV=USBOHCD.SYS /V
+.br
+BASEDEV=USBOHCD.SYS /V
+.br
+BASEDEV=USBEHCD.SYS /V
+.br
+
+:p. 5&per. Create a compatibility volume using LVM if you have not already done so&per. Check to see if
+your drive is recognized by LVM&per. Removable drives usually have an * instead of a drive letter&per.
+I suggest that you assign a permanent drive letter&per. I have found that some USB media won&apos.t be
+recognized unless they are assigned a drive letter&per. If your media still is not recognized, go
+to next step&per.
+
+:p. 6&per. If the drive worked in the past, try running "chkdsk <drive>&colon. /F"&per.  Continue on if your
+drive still doesn&apos.t work&per.
+
+:p. 7&per. Check to see if you have the following statement in your config&per.sys file&per.
+
+:p.BASEDEV=OS2PCARD.DMD
+.br
+
+:p. If it does exist, try remming it out and rebooting&per. Try your USB devices again&per. If your USB
+devices are found and functioning properly, you need go no further&per.
+
+:p.:hp2.Note&colon. :ehp2. It has been reported that the Card bus 8 driver does not conflict with the USB drivers&per.
+However, other problems are introduced&per. eCS 1&per.2 comes with the Card bus 5 driver&per. Thus, if you
+are using eCS 1&per.2, you will either need to rem out the driver or install the Card bus 8 driver&per.
+If you still don&apos.t have your device(s) working, read further&per.
+
+:p. 8&per. Some USB flash media comes with security software&per. With this software on the media, the drive(s)
+cannot be read by the IBM drivers (LVM included)&per. To overcome this, try the following&per.
+
+:p. a&per. Get to a Windows machine and reformat the drive&per.
+
+:p. b&per. Then boot to DFSee (in my opinion, this is a must utility for every eCS and OS/2 user)&per.
+If you don&apos.t have it, download the latest version&per. It can be used in demo mode&per.
+
+:p. c&per. Using DFSee, create a new Master Boot Record with the tables erased&per.
+
+:p.DFSOS2&per.EXE > Mode=fdisk > New MBR code, ERASE tables > Select the correct drive > OK
+
+:p.:hp2.Note&colon. :ehp2.   You possibly could skip step A and start with B&per. I have not tried it&per.
+
+:p. 9&per. Use LVM to create a new partition&per. LVM (Logical Volume Manager) in this instance refers to
+either the command line LVM or the WPS LVMGUI&per. Using the command line LVM, the partition must
+be created while in "Physical View"&per.  Using the LVMGUI, the partition can be created from either
+"Logical or Physical views"&per.
+
+:p. 10&per. Make the drive Primary&per.
+
+:p.11&per. Using LVM, make the media a compatibility volume&per. Using the command line LVM, the capibility
+volume must be created in "Logical View"&per. LVMGUI can create the volume from either "Physical or
+Logical" views&per.
+
+:p.LVMGUI > Volume > Create Volume > Create non-bootable volume > Create Compatibility Volume
+
+:p.12&per.Format the drive&per.
+
+:p.The media can be formatted FAT, HPFS, FAT32, or JFS&per. Formatting FAT32 can be done numerous ways&per.
+Presently, the only way to format a volume FAT32 under either eComStation or OS/2 is to use DFSee
+and F32blank together&per. The procedure is as follows&colon.
+
+:p. a&per. Find out the volume relevant data&colon. Heads, Sectors, Starting point and Size using DFSee
+.br
+ b&per. Feed F32Blank with that data to generate a file with blank FATs suitable for the volume
+.br
+ c&per. Detach the volume (with LVM it&apos.s called &apos.hide&apos. or similar)
+.br
+ d&per. Use DFSee to overwrite the volume with the file contents, using "wrim"&per.
+.br
+ e&per. Attach again the volume&per.
+.br
+ f&per. If after this you can&apos.t read/write properly the volume or it appears as not empty, then
+   you MUST reboot and check it again&per.
+.br
+ g&per. If you don&apos.t like DFSee go and find something else capable of doing the job&per.
+.br
+
+:p.If this is too complicated for some people, the USB media can be formatted using one of the
+Windows versions&per. Each Windows version has it own built in limitations&per.
+
+:p.Win95R2 <= 16 GB
+.br
+Windows 98 second addition - Volumes < 128 GB and > 512 MB
+.br
+Windows ME - 512 GB to 2 TB.
+.br
+Windows XP <= 32 GB.
+.br
+
+:p.:hp2.Other formatting alternatives :ehp2.
+
+:p.FreeDOS <= 16 GB
+.br
+Partition Commander versions 8 and 9 (Limitations unknown)
+.br
+
+:p.:hp2.Note&colon. :ehp2. After formatting, always run chkdsk under eCS if using the OS/2 FAT32 driver&per. This
+is probably true for any filesystem used&per.
+
+:p.If you still cannot get your drive to work, you can try the next steps&per.
+
+:p.13&per. Download Chris Wohlgemuth&apos.s USB driver package (cw-usbmsd-v1_2b&per.zip) and install his
+USB mass storage driver (CWUSBMSD&per.ADD), replacing the IBM driver&per. Copy his CWUSBMSD&per.ADD
+driver to the OS2&bsl.BOOT directory&per. Rem out IBM&apos.s USBMSD&per.ADD driver&per. Add a line similar to
+the following to your config&per.sys file&per. Be sure and read his documentation&per.
+
+:p.:hp2.Example&colon. :ehp2.
+
+:p.REM BASEDEV=USBUHCD&per.SYS
+.br
+BASEDEV=USBEHCD&per.SYS /V
+.br
+BASEDEV=USBOHCD&per.SYS /V
+.br
+BASEDEV=USBOHCD&per.SYS /V
+.br
+BASEDEV=USBD&per.SYS
+.br
+BASEDEV=USBHID&per.SYS
+.br
+REM BASEDEV=USBMSD&per.ADD /REMOVABLES&colon.3
+.br
+BASEDEV=CWUSBMSD&per.ADD /FLOPPIES&colon.0 /REMOVABLES&colon.4 /FIXED_DISKS&colon.2 /FORCE_TO_REMOVABLE
+.br
+
+:p.Adjust the REMOVABLES options to the max number of removables you my have plugged in
+at one time&per. Be aware that LVM will still list drives whether you have them plugged
+in or not&per. These drives will show up as 96 MB volumes&per.
+
+:p.14&per. Reboot and see if your device(s) are now recognized&per. If not try the next step&per.
+
+:p.15&per. Download M&per. Kiewitz&apos.s driver package, MMPORTv1&per.zip, from Hobbes&per. You will need
+to replace IBM&apos.s USBD&per.SYS driver with Martin&apos.s USBD&per.SYS driver&per. Attempting to use
+this driver has risks&per. To be safe, rename the IBM driver to something like
+USBD_BCKUP&per.SYS&per. That way if something goes wrong, you can either boot to a
+command prompt or a maintenance partition to copy the IBM driver back over
+Martin&apos.s driver&per. Martin&apos.s driver can trap on boot up&per. What Martin&apos.s driver
+does different is that it attempts to find USB media the Microsoft way instead
+of the USB Standards way&per. When it works, it can be a life saver&per. If it doesn&apos.t
+work with the latest IBM drivers, you might try downloading some of the earlier
+versions of the USB drivers from the eComStation ftp site&per. The closer the IBM
+drivers are to the date of his released driver, the greater the chance of his
+driver working&per. Since he does not have access to the latest code, he had to use
+the the last available code from the DDK site&per. If you have a usbcalls&per.dll on
+your eComStation system, replace it with Martin&apos.s fixed usbcalls&per.dll&per. The driver
+has been patched to fix a nasty bug&per.
+
+:p.Hopefully one of the above techniques will solve your problem&per.
+
+:p.:hp2.IMPORTANT&colon. :ehp2.   If plugging the drive into different computers, make sure ALL the USB
+drivers are the same on these systems&per. File corruption can result when using
+different drivers and versions&per.
+
+:p.Always "EJECT" media before removing (unplugging)&per.  To do otherwise can cause
+file corruption requiring "chkdsk" to be run&per. If the corruption is too bad,
+Windows&apos. "scandisk" will have to be run on the drive&per.  Be aware that Windows XP
+FAT32 scandisk is broken&per.  It fails to fix problems that earlier versions of
+Windows 98 and ME were able to fix&per.  It will no longer fix mismatched FAT chains&per.
 
 :p.:link reftype=hd refid=70.See also TROUBLE SHOOTING :elink.
 .br 
@@ -3088,7 +3275,7 @@ Netlabs or the Yahoo FAT32USER group&per.
 :li. ifs&per.inf&colon. Additions to documentation&per.
 :eul.
 
-:p.:hp2.Revision r311 (valerius, Mon, 22 Sep 2017)&colon. :ehp2.
+:p.:hp2.Revision r311 (valerius, Fri, 22 Sep 2017)&colon. :ehp2.
 
 :p. CHKDSK fixes/enhancements
 :ul compact.
@@ -3372,7 +3559,7 @@ cases, so it cause FORMAT trap)&per.
 
 :ul compact.
 :li. Fix incorrect logic in ChkDskMain&colon. CHKDSK has quit instead of checking
-  the disk&per.
+ the disk&per.
 :eul.
 
 :p.:hp2.Revision r275 (valerius, Thu, 08 Jun 2017)&colon. :ehp2.
@@ -3534,7 +3721,7 @@ and FIL_QUERYEASIZE
 
 :ul compact.
 :li. Fixes for #40 with FS_FINDFIRST/FS_FINDNEXT regarding FIL_QUERYEASFROMLIST/FIL_QUERYEASFROMLISTL&colon.
- return a minimum required FEALIST (otherwise a loop calling FS_FINDNEXT is onserved)&per.
+ return a minimum required FEALIST (otherwise a loop calling FS_FINDNEXT is observed)&per.
 :li. The same fixes for exFAT case
 :li. Fix returning EA's on exFAT&per. Now WPS window with exFAT disk is opened successfully (but WPS
  still traps then, because creating files does not work - it tries to create WP ROOT&per. SF)
@@ -3852,7 +4039,7 @@ So, do get_drive_params() first&per.
 
 :p. UFAT32&per.DLL&colon. Make FORMAT and CHKDSK more portable&per. 
 
-:p. Make FS utilities more portable&per. Move all system-depemdent functions to os2&per.c&per.
+:p. Make FS utilities more portable&per. Move all system-dependent functions to os2&per.c&per.
 Add CHKDSK standalone version&per. Also, FORMAT and CHKDSK now successfully build
 for win32 target&per. Rename fat32chk&per.exe to f32chk&per.exe&per. Now CHKDSK and FORMAT
 standalone versions are called fat32chk&per.exe and fat32fmt&per.exe, for consistency&per.
@@ -3925,7 +4112,7 @@ from one point&per.
 
 :p. Avoid using API&apos.s like DosQueryPathInfo in CHKDSK, because the volume
 is remounted in MOUNT_ACCEPT mode and file API&apos.s are unavailable, and
-an attempt to use them may lead to a trap&per. Use internaal CHKDSK 
+an attempt to use them may lead to a trap&per. Use internal CHKDSK 
 functions instead&per.
 .br
 
@@ -4069,7 +4256,7 @@ went wrong with the current one&per.
 :p.:hp2.Revision r157 (valerius, Sun, 13 Nov 2016)&colon. :ehp2.
 
 :p. fat32&per.ifs&colon. Avoid to enable large files support to prevent a trap when accessing sfi_sizel/sfi_positionl 
-if kernel does not support DosOpenL & Co&per.
+if kernel does not support DosOpenL &amp. Co&per.
 .br
 
 :p.:hp2.Revision r156 (valerius, Thu, 10 Nov 2016)&colon. :ehp2.
@@ -4270,7 +4457,7 @@ write on the current iteration&per.
 
 :p.:hp2.Revision r117 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
 
-:p. FAT32 autocheck on init&per. Remived ioctl and fsctl calls to fat32&per.ifs from CHKDSK and ported 
+:p. FAT32 autocheck on init&per. Removed ioctl and fsctl calls to fat32&per.ifs from CHKDSK and ported 
 the corresponding code from fat32.ifs to CHKDSK&per.
 .br
 
@@ -4380,32 +4567,32 @@ like chkdsk&per.exe/format&per.exe&per. Added fixes to the IFS needed to support
 Also, from now, all parts can be compiled by OpenWatcom wcc[386] and wasm&per.
 .br
 
-:p.:hp2.Revision r96 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r96 (komh, Sun, 14 Dec 2008)&colon. :ehp2.
 
 :p.Fix a non-sector IO problem on a smaller volume than 2GB&per.
 .br
 
-:p.:hp2.Revision r95 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r95 (komh, Sun, 14 Dec 2008)&colon. :ehp2.
 
 :p. Fix a non-sector IO problem on a smaller volume than 2GB&per.
 .br
 
-:p.:hp2.Revision r94 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r94 (komh, Sun, 14 Dec 2008)&colon. :ehp2.
 
 :p. Convert a size from in bytes to in sectors when user request sector io on a less volume than 2GB&per.
 .br
 
-:p.:hp2.Revision r93 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r93 (komh, Sun, 14 Dec 2008)&colon. :ehp2.
 
 :p. Convert a size from in bytes to in sectors when user request sector io on a less volume than 2GB&per.
 .br
 
-:p.:hp2.Revision r92 (valerius, Sun, 14 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r92 (komh, Sun, 14 Dec 2008)&colon. :ehp2.
 
 :p. Support OPEN_FLAGS_DASD correctly on the devices larger than 2GB using sector IO like HPFS&per.
 .br
 
-:p.:hp2.Revision r91 (valerius, Sat, 13 Dec 2008)&colon. :ehp2.
+:p.:hp2.Revision r91 (komh, Sat, 13 Dec 2008)&colon. :ehp2.
 
 :p. Support OPEN_FLAGS_DASD correctly on the devices larger than 2GB using sector IO like HPFS&per.
 .br 
