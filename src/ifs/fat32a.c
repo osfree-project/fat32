@@ -1351,7 +1351,7 @@ USHORT rc;
 
    _asm push es;
 
-   MessageL(LOG_FS, "FS_FSINFO, Flag = %d, Level = %d", 0x002a, usFlag, usLevel);
+   MessageL(LOG_FS, "FS_FSINFO%m, Flag = %d, Level = %d", 0x002a, usFlag, usLevel);
 
    pVolInfo = GetVolInfo(hVBP);
 
@@ -2071,23 +2071,44 @@ APIRET rc = 0;
          f32Parms.fFat = TRUE;
          p += 5;
 
-         while (*p != '\0' && *p != ' ')
+         if (*p == '-')
             {
-            char ch = (char)tolower(*p);
-            int num;
-            if ('a' <= ch && ch <= 'z')
+            // 'disable' mask
+            fat_mask = 0xffffffff;
+
+            while (*p != '\0' && *p != ' ')
                {
-               num = ch - 'a';
-               // set FAT12/FAT16 disks mount mask
-               fat_mask |= (1UL << num);
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set FAT12/FAT16 disks mount mask
+                  fat_mask &= ~(1UL << num);
+                  }
+               p++;
                }
-            else if (*p == '*')
+            }
+         else
+            {
+            while (*p != '\0' && *p != ' ')
                {
-               // mount all FAT12/FAT16 disks
-               fat_mask = 0xffffffff;
-               break;
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set FAT12/FAT16 disks mount mask
+                  fat_mask |= (1UL << num);
+                  }
+               else if (*p == '*')
+                  {
+                  // mount all FAT12/FAT16 disks
+                  fat_mask = 0xffffffff;
+                  break;
+                  }
+               p++;
                }
-            p++;
             }
          }
       else
@@ -2110,23 +2131,44 @@ APIRET rc = 0;
          {
          p += 7;
 
-         while (*p != '\0' && *p != ' ')
+         if (*p == '-')
             {
-            char ch = (char)tolower(*p);
-            int num;
-            if ('a' <= ch && ch <= 'z')
+            // 'disable' mask
+            fat32_mask = 0xffffffff;
+
+            while (*p != '\0' && *p != ' ')
                {
-               num = ch - 'a';
-               // set FAT32 disks mount mask
-               fat32_mask |= (1UL << num);
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set FAT12/FAT16 disks mount mask
+                  fat32_mask &= ~(1UL << num);
+                  }
+               p++;
                }
-            else if (*p == '*')
+            }
+         else
+            {
+            while (*p != '\0' && *p != ' ')
                {
-               // mount all FAT32 disks
-               fat32_mask = 0xffffffff;
-               break;
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set FAT32 disks mount mask
+                  fat32_mask |= (1UL << num);
+                  }
+               else if (*p == '*')
+                  {
+                  // mount all FAT32 disks
+                  fat32_mask = 0xffffffff;
+                  break;
+                  }
+               p++;
                }
-            p++;
             }
          }
       else
@@ -2145,23 +2187,44 @@ APIRET rc = 0;
          f32Parms.fExFat = TRUE;
          p += 7;
 
-         while (*p != '\0' && *p != ' ')
+         if (*p == '-')
             {
-            char ch = (char)tolower(*p);
-            int num;
-            if ('a' <= ch && ch <= 'z')
+            // 'disable' mask
+            exfat_mask = 0xffffffff;
+
+            while (*p != '\0' && *p != ' ')
                {
-               num = ch - 'a';
-               // set exFAT disks mount mask
-               exfat_mask |= (1UL << num);
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set FAT12/FAT16 disks mount mask
+                  exfat_mask &= ~(1UL << num);
+                  }
+               p++;
                }
-            else if (*p == '*')
+            }
+         else
+            {
+            while (*p != '\0' && *p != ' ')
                {
-               // mount all exFAT disks
-               exfat_mask = 0xffffffff;
-               break;
+               char ch = (char)tolower(*p);
+               int num;
+               if ('a' <= ch && ch <= 'z')
+                  {
+                  num = ch - 'a';
+                  // set exFAT disks mount mask
+                  exfat_mask |= (1UL << num);
+                  }
+               else if (*p == '*')
+                  {
+                  // mount all exFAT disks
+                  exfat_mask = 0xffffffff;
+                  break;
+                  }
+               p++;
                }
-            p++;
             }
          }
       else
@@ -3618,7 +3681,7 @@ PSZ      szDstLongName = NULL;
       memcpy(pDirEntryStreamOld, pDirEntryStream, sizeof(DIRENTRY1));
 #endif
 
-      rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
+      rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, ////
          MODIFY_DIR_RENAME, pDirOld, pDirEntry, pDirEntryStream, pDirEntryStreamOld, pszDstFile, 0);
       free(pDirOld);
       goto FS_MOVEEXIT;
@@ -3880,7 +3943,7 @@ INT rc;
 USHORT usSel;
 PVOID pRet;
 
-   MessageL(LOG_FUNCS, "ldtAlloc for %D bytes", 0x0038, tSize);
+   MessageL(LOG_FUNCS, "ldtAlloc%m for %D bytes", 0x0038, tSize);
 
    rc = FSH_SEGALLOC(SA_FLDT | SA_FSWAP| SA_FRING3, tSize, &usSel);
    if (rc)

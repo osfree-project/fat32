@@ -1519,14 +1519,17 @@ unlimited, theoretically&per. This switch defines, whether to use the support fo
 specified, but large file API is unavailable, the large file support forced to be disabled. This prevents trying to use
 the missing 64-bit fields for file size and position on older systems&per.
 
-:p.:hp2./FAT[&colon.<drive letter list>] :ehp2.Enable FAT12/FAT16 support&per. You can optionally specify the drive
-letters which are needed to mount&per. (Like /fat&colon.abcd or /fat&colon.*)&per. 
+:p.:hp2./FAT[&colon.[-]<drive letter list>] :ehp2.Enable FAT12/FAT16 support&per. You can optionally specify the drive
+letters which are needed to mount&per. (Like /fat&colon.abcd or /fat&colon.* or /fat&colon.-abcd)&per. Minus denotes that
+the following drive letters should be disabled, so this is a "blacklist"-type mask&per.
 
-:p.:hp2./FAT32&colon.<drive letter list> :ehp2.Enable FAT32 support for a list of drive letters&per.
+:p.:hp2./FAT32&colon.[-]<drive letter list> :ehp2.Enable FAT32 support for a list of drive letters&per. Minus denotes that
+the following drive letters should be disabled, so this is a "blacklist"-type mask&per.
 
-:p.:hp2./EXFAT[&colon.<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
-letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*)&per. There is an support for exFAT
-filesystems&per. (beta-quality)&per.
+:p.:hp2./EXFAT[&colon.[-]<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
+letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.* or /exfat&colon.-abcd)&per. There is an support for exFAT
+filesystems&per. (beta-quality)&per. Minus denotes that the following drive letters should be disabled, so this is a 
+"blacklist"-type mask&per.
 
 :p.:hp2./PLUS :ehp2. Enable FAT+ support (large files, bigger than 4 GB)&per.
 
@@ -2224,7 +2227,7 @@ I like using the /V option because it tells one whether the necessary drivers ar
 or not at bootup&per.  The /V option can always be removed later when your USB device are
 working properly&per.
 
-:p.REM BASEDEV=USEUHCD.SYS /V
+:p.REM BASEDEV=USBUHCD.SYS /V
 .br
 BASEDEV=USBOHCD.SYS /V
 .br
