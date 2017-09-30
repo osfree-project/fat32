@@ -12,7 +12,7 @@ ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PSHOPENINFO pSH
                       PDIRENTRY pDirEntry, PDIRENTRY1 pDirEntryStream, PSZ pszFullName);
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew,
-                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongName);
+                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongNameOld, PSZ pszLongNameNew);
 ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 void SetSHInfo1(PCDINFO pCD, PDIRENTRY1 pStreamEntry, PSHOPENINFO pSHInfo);
@@ -407,7 +407,7 @@ USHORT rc;
       }
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo,
-      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName);
+      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName, NULL);
 
 MarkFileEASExit:
    if (pOldEntry)
@@ -584,7 +584,7 @@ ULONG    ulCluster;
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName);
+   rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName, NULL);
    if (rc)
       goto usDeleteEASExit;
 
@@ -756,7 +756,7 @@ PSHOPENINFO pSHInfo = NULL;
          rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, pDirNew, pDirStreamNew, pszEAName);
       else
          rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo,
-            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName);
+            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL);
       if (rc)
          {
          free(pszEAName);
@@ -793,7 +793,7 @@ PSHOPENINFO pSHInfo = NULL;
          }
 #endif
       rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName);
+           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL);
       if (rc)
          {
          free(pszEAName);

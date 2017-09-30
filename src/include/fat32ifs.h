@@ -386,7 +386,7 @@ IMPORT USHORT ModifyDirectory(PVOLINFO pVolInfo, ULONG ulDirCluster,
                               PSHOPENINFO pDirSHInfo, USHORT usMode,
                               PDIRENTRY pOld, PDIRENTRY pNew,
                               PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew,
-                              PSZ pszLongName, USHORT usIOMode);
+                              PSZ pszLongNameOld, PSZ pszLongNameNew, USHORT usIOMode);
 IMPORT USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PDIRENTRY pNew, PDIRENTRY1 pNewStream, PSZ pszName);
 IMPORT USHORT MakeShortName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
 IMPORT BOOL   DeleteFatChain(PVOLINFO pVolInfo, ULONG ulCluster);

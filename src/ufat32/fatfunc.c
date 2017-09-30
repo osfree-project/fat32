@@ -39,7 +39,7 @@ ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PSHOPENINFO pSH
                       PDIRENTRY pDirEntry, PDIRENTRY1 pDirEntryStream, PSZ pszFullName);
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew,
-                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongName);
+                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongNameOld, PSZ pszLongNameNew);
 APIRET MarkFileEAS(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS);
 USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark);
 BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
@@ -1620,7 +1620,7 @@ USHORT NameHash(USHORT *pszFilename, int NameLen)
 
 USHORT ModifyDirectory1(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY1 pOld, PDIRENTRY1 pNew,
-                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongName)
+                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongNameOld, PSZ pszLongNameNew)
 {
 PDIRENTRY1 pDirectory;
 PDIRENTRY1 pDir2, pDir1;
@@ -1657,7 +1657,7 @@ BOOL      fFound;
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
-      if (!pNew || !pszLongName)
+      if (!pNew || !pszLongNameOld)
          {
          return ERROR_INVALID_PARAMETER;
          }
@@ -1665,7 +1665,7 @@ BOOL      fFound;
       memcpy(&DirNew, pNew, sizeof (DIRENTRY1));
       /* if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongName, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, pszLongNameOld, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             {
             Message("Modify directory: Longname error");
@@ -1675,20 +1675,20 @@ BOOL      fFound;
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
-            pszLongName = NULL;
+            pszLongNameOld = NULL;
          }
       else
-         pszLongName = NULL; */
+         pszLongNameOld = NULL; */
 
       //usEntriesNeeded = 1;
       usEntriesNeeded = 2;
-      if (pszLongName)
+      if (pszLongNameOld)
 #if 0
-         usEntriesNeeded += strlen(pszLongName) / 13 +
-            (strlen(pszLongName) % 13 ? 1 : 0);
+         usEntriesNeeded += strlen(pszLongNameOld) / 13 +
+            (strlen(pszLongNameOld) % 13 ? 1 : 0);
 #else
-         //usEntriesNeeded += ( DBCSStrlen( pszLongName ) + 12 ) / 13;
-         usEntriesNeeded += ( DBCSStrlen( pszLongName ) + 14 ) / 15;
+         //usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
+         usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 14 ) / 15;
 #endif
       }
 
@@ -1957,6 +1957,7 @@ BOOL      fFound;
                      else
                         {
                         usMode = MODIFY_DIR_INSERT;
+                        pszLongNameOld = pszLongNameNew;
                         ulCluster = ulDirCluster;
                         ulBytesRemained = pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                         ulPrevCluster = pCD->ulFatEof;
@@ -1985,14 +1986,14 @@ BOOL      fFound;
                //   Message(" Inserting entry into 2 clusters");
 
                pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-               //pWork = fSetLongName(pWork, pszLongName, bCheck);
+               //pWork = fSetLongName(pWork, pszLongNameOld, bCheck);
                //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
-               pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);
+               pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
 
                pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
-               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongName);
+               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
                memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
                   sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
@@ -2033,12 +2034,12 @@ BOOL      fFound;
                //   Message(" Inserting entry into 1 cluster");
 
                pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
-               pWork3 = fSetLongName1(pWork+2, pszLongName, &usNameHash);
+               pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
 
                pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
-               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongName);
+               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
                memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
                   sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
@@ -2143,7 +2144,7 @@ BOOL      fFound;
 
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew,
-                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongName)
+                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongNameOld, PSZ pszLongNameNew)
 {
 APIRET rc;
 
@@ -2151,12 +2152,12 @@ APIRET rc;
       if (pCD->bFatType < FAT_TYPE_EXFAT)
 #endif
          rc = ModifyDirectory0(pCD, ulDirCluster, usMode, pOld, pNew,
-                               pszLongName);
+                               pszLongNameOld);
 #ifdef EXFAT
       else
          rc = ModifyDirectory1(pCD, ulDirCluster, pDirSHInfo, usMode,
                                (PDIRENTRY1)pOld, (PDIRENTRY1)pNew,
-                               pStreamOld, pStreamNew, pszLongName);
+                               pStreamOld, pStreamNew, pszLongNameOld, pszLongNameNew);
 #endif
 
    return rc;
@@ -3233,7 +3234,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-      &DirEntry, &DirNew, &DirStream, &DirStreamNew, NULL);
+      &DirEntry, &DirNew, &DirStream, &DirStreamNew, pszFile, NULL);
 
    return rc;
 }
@@ -3528,7 +3529,7 @@ USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
 #endif
 
    return ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_INSERT, 
-      NULL, pNew, NULL, pNewStream, pszName);
+      NULL, pNew, NULL, pNewStream, pszName, NULL);
 }
 
 /******************************************************************
@@ -4017,7 +4018,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
          if (ulOldCluster != pCD->ulFatEof)
             {
             DeleteFatChain(pCD, ulOldCluster);
-            ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &OldOldEntry, NULL, &OldOldEntryStream, NULL, NULL);
+            ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &OldOldEntry, NULL, &OldOldEntryStream, NULL, pszOldFile, NULL);
             }
          }
 
@@ -4038,7 +4039,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
             memcpy(&OldNewEntryStream, &OldEntryStream, sizeof(DIRENTRY));
             // rename chkdsk.log to chkdsk.old
             rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_RENAME,
-               &OldEntry, &OldNewEntry, &OldEntryStream, &OldNewEntryStream, pszOldFileName);
+               &OldEntry, &OldNewEntry, &OldEntryStream, &OldNewEntryStream, pszFile, pszOldFileName);
             if (rc)
                goto MakeFileEnd;
             }
@@ -4084,7 +4085,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
       rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, &NewEntry, &NewEntryStream, pszFileName);
    else
       rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
-              &OldEntry, &NewEntry, &OldEntryStream, &NewEntryStream, pszFileName);
+              &OldEntry, &NewEntry, &OldEntryStream, &NewEntryStream, pszFileName, NULL);
 
    if (rc)
       goto MakeFileEnd;
@@ -4162,7 +4163,7 @@ APIRET rc;
       }
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-                        &DirEntry, NULL, &DirEntryStream, NULL, NULL);
+                        &DirEntry, NULL, &DirEntryStream, NULL, pszFilename, NULL);
    if (rc)
       goto DeleteFileExit;
 

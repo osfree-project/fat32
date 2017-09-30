@@ -277,7 +277,7 @@ APIRET rc;
       }
 #endif
 
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE, pDirEntry, NULL, pStreamEntry, NULL, pszFile, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE, pDirEntry, NULL, pStreamEntry, NULL, pszFile, NULL, 0);
    if (rc)
       goto usSetEAKeysExit;
 

@@ -678,7 +678,7 @@ PSHOPENINFO pSHInfo = NULL;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-      pDirEntry, NULL, pStreamEntry, NULL, pszFile, DVIO_OPWRTHRU);
+      pDirEntry, NULL, pStreamEntry, NULL, pszFile, NULL, DVIO_OPWRTHRU);
    //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
    //   pDirEntry, NULL, pStreamEntry, NULL, NULL, DVIO_OPWRTHRU);
    if (rc)

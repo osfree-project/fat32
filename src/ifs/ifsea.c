@@ -472,7 +472,7 @@ PSHOPENINFO pSrcSHInfo = NULL;
    ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, pTarEntry, pTarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, pszTarEAName, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, pszTarEAName, NULL, 0);
       //rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usCopyEASExit;
@@ -510,7 +510,7 @@ PSHOPENINFO pSrcSHInfo = NULL;
    /*
       Make new direntry
    */
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, NULL, 0);
 
 
 usCopyEASExit:
@@ -588,7 +588,7 @@ PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
    ulTarCluster = FindPathCluster(pVolInfo, ulTarDirCluster, pszTarEAName, pDirTarSHInfo, pTarEntry, pTarStreamEntry, NULL);
    if (ulTarCluster != pVolInfo->ulFatEof && ulTarCluster != ulSrcCluster)
       {
-      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, pszTarEAName, 0);
+      rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, pszTarEAName, NULL, 0);
       //rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_DELETE, pTarEntry, NULL, pTarStreamEntry, NULL, NULL, 0);
       if (rc)
          goto usMoveEASExit;
@@ -605,16 +605,16 @@ PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
       memmove(pTarStreamEntry, pSrcStreamEntry, sizeof(DIRENTRY1));
 #endif
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
-         MODIFY_DIR_RENAME, pSrcEntry, pTarEntry, pSrcStreamEntry, pTarStreamEntry, pszTarEAName, 0);
+         MODIFY_DIR_RENAME, pSrcEntry, pTarEntry, pSrcStreamEntry, pTarStreamEntry, pszSrcEAName, pszTarEAName, 0);
       goto usMoveEASExit;
       }
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pSrcEntry, NULL, pSrcStreamEntry, NULL, pszSrcEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pSrcEntry, NULL, pSrcStreamEntry, NULL, pszSrcEAName, NULL, 0);
    //rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pSrcEntry, NULL, pSrcStreamEntry, NULL, NULL, 0);
    if (rc)
       goto usMoveEASExit;
 
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, NULL, 0);
 
 usMoveEASExit:
    if (pszSrcEAName)
@@ -705,7 +705,7 @@ USHORT rc;
       }
 
    rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
-      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName, 0);
+      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName, NULL, 0);
    //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
    //   MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, NULL, 0);
 
@@ -915,7 +915,7 @@ ULONG    ulCluster;
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName, 0);
+   rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName, NULL, 0);
    //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, NULL, 0);
    if (rc)
       goto usDeleteEASExit;
@@ -1092,7 +1092,7 @@ PSHOPENINFO pSHInfo = NULL;
          rc = MakeDirEntry(pVolInfo, ulDirCluster, pDirSHInfo, pDirNew, pDirStreamNew, pszEAName);
       else
          rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
-            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, 0);
+            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL, 0);
          //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo,
          //   MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
       if (rc)
@@ -1131,7 +1131,7 @@ PSHOPENINFO pSHInfo = NULL;
          }
 #endif
       rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, 0);
+           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL, 0);
       //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
       //     pDirEntry, pDirNew, pDirStream, pDirStreamNew, NULL, 0);
       if (rc)

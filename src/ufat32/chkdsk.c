@@ -87,7 +87,7 @@ ULONG FindPathCluster(PCDINFO pCD, ULONG ulCluster, PSZ pszPath, PSHOPENINFO pSH
                       PDIRENTRY pDirEntry, PDIRENTRY1 pDirEntryStream, PSZ pszFullName);
 APIRET ModifyDirectory(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
                        USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew,
-                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongName);
+                       PDIRENTRY1 pStreamOld, PDIRENTRY1 pStreamNew, PSZ pszLongNameOld, PSZ pszLongNameNew);
 APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszOldFile, PSZ pszFile, PBYTE pBuf, ULONG cbBuf);
 ULONG GetNextCluster(PCDINFO pCD, PSHOPENINFO pSHInfo, ULONG ulCluster, BOOL fAllowBad);
 BOOL   ReadFATSector(PCDINFO pCD, ULONG ulSector);
@@ -1571,7 +1571,7 @@ USHORT usSectorsRead;
                               memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY));
                               DirNew.bAttr = FILE_NORMAL;
                               rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
-                                                   &DirEntry, &DirNew, NULL, NULL, NULL);
+                                                   &DirEntry, &DirNew, NULL, NULL, pszFile, NULL);
                               }
                            }
                         if (!rc)
@@ -1588,7 +1588,7 @@ USHORT usSectorsRead;
                            if (rc == ERROR_FILE_NOT_FOUND)
                               {
                               rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
-                                                   &DirEntry, &DirNew, NULL, NULL, Mark.szFileName);
+                                                   &DirEntry, &DirNew, NULL, NULL, pszFile, Mark.szFileName);
                               }
                            }
                         if (!rc)
@@ -2244,7 +2244,7 @@ BOOL fEAS;
                                  memcpy(&DirStreamNew, &DirStream, sizeof(DIRENTRY1));
                                  DirNew.u.File.usFileAttr = FILE_NORMAL;
                                  rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, NULL);
+                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, pszFile, NULL);
                                  }
                               }
                            if (!rc)
@@ -2260,7 +2260,7 @@ BOOL fEAS;
                               if (rc == ERROR_FILE_NOT_FOUND)
                                  {
                                  rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_RENAME,
-                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, Mark.szFileName);
+                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, pszFile, Mark.szFileName);
                                  }
                               }
                            if (!rc)
