@@ -294,17 +294,17 @@ usSetEAKeysExit:
 
 USHORT usGetEAS2(PVOLINFO pVolInfo, ULONG ulFirstClus, USHORT usEAHandle, PFEALIST pFeal)
 {
-
+   return 0;
 }
 
 USHORT usSetEAS2(PVOLINFO pVolInfo, ULONG ulFirstClus, USHORT usEAHandle, PSTR14 pszShortName, PFEALIST pFeal)
 {
-
+   return 0;
 }
 
 USHORT usDelEAS2(PVOLINFO pVolInfo, ULONG ulFirstClus, USHORT usEAHandle)
 {
-
+   return 0;
 }
 
 // Get a record from 'ea idx. sf'

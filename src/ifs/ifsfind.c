@@ -166,11 +166,11 @@ PDIRENTRY1 pStreamEntry = NULL;
          break;
       case FIL_QUERYEASFROMLIST :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + EAMINSIZE;
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3);
          break;
       case FIL_QUERYEASFROMLISTL :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + EAMINSIZE;
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L);
          break;
       default                   :
          rc = ERROR_INVALID_FUNCTION;
@@ -494,11 +494,11 @@ USHORT usEntriesWanted;
          break;
       case FIL_QUERYEASFROMLIST :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + EAMINSIZE;
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3);
          break;
       case FIL_QUERYEASFROMLISTL :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + EAMINSIZE;
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L);
          break;
       default                   :
          rc = ERROR_INVALID_FUNCTION;
@@ -841,8 +841,7 @@ ULONGLONG ullSize;
                            for the time being: just tell the user
                            to allocate some reasonably sized amount of memory
                         */   
-                        pfFind->cbList = EAMINSIZE;
-                        //pfFind->cbList = sizeof pfFind->cbList;
+                        pfFind->cbList = 0;
                      else
                         {
                         rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
@@ -854,8 +853,7 @@ ULONGLONG ullSize;
                               for the time being: just tell the user
                               to allocate some reasonably sized amount of memory
                            */   
-                           pfFind->cbList = EAMINSIZE;
-                           //pfFind->cbList = 4;
+                           pfFind->cbList = 0;
                         rc = 0;
                         }
                      pfFind->attrFile = (USHORT)pDir->bAttr;
@@ -914,8 +912,7 @@ ULONGLONG ullSize;
                            for the time being: just tell the user
                            to allocate some reasonably sized amount of memory
                         */   
-                        pfFind->cbList = EAMINSIZE;
-                        //pfFind->cbList = sizeof pfFind->cbList;
+                        pfFind->cbList = 0;
                      else
                         {
                         rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
@@ -927,8 +924,7 @@ ULONGLONG ullSize;
                               for the time being: just tell the user
                               to allocate some reasonably sized amount of memory
                            */   
-                           pfFind->cbList = EAMINSIZE;
-                           //pfFind->cbList = 4;
+                           pfFind->cbList = 0;
                         rc = 0;
                         }
                      pfFind->attrFile = (USHORT)pDir->bAttr;
@@ -945,8 +941,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
                      ULONG ulFeaSize;
 
-                     //if (*pcbData < sizeof (FILEFNDBUF3) + sizeof (ULONG) + strlen(szLongName) + 2)
-                     if (*pcbData < sizeof (FILEFNDBUF3) + EAMINSIZE + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3) + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1036,8 +1031,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
                      ULONG ulFeaSize;
 
-                     //if (*pcbData < sizeof (FILEFNDBUF3L) + sizeof (ULONG) + strlen(szLongName) + 2)
-                     if (*pcbData < sizeof (FILEFNDBUF3L) + EAMINSIZE + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3L) + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1292,8 +1286,7 @@ ULONGLONG ullSize;
                            for the time being: just tell the user
                            to allocate some reasonably sized amount of memory
                         */   
-                        pfFind->cbList = EAMINSIZE;
-                        //pfFind->cbList = sizeof pfFind->cbList;
+                        pfFind->cbList = 0;
                      else
                         {
                         rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
@@ -1305,8 +1298,7 @@ ULONGLONG ullSize;
                               for the time being: just tell the user
                               to allocate some reasonably sized amount of memory
                            */   
-                           pfFind->cbList = EAMINSIZE;
-                           //pfFind->cbList = 4;
+                           pfFind->cbList = 0;
                         rc = 0;
                         }
 
@@ -1336,8 +1328,7 @@ ULONGLONG ullSize;
                            for the time being: just tell the user
                            to allocate some reasonably sized amount of memory
                         */   
-                        pfFind->cbList = EAMINSIZE;
-                        //pfFind->cbList = sizeof pfFind->cbList;
+                        pfFind->cbList = 0;
                      else
                         {
                         rc = usGetEASize(pVolInfo, pFindInfo->pInfo->rgClusters[0], NULL,
@@ -1349,8 +1340,7 @@ ULONGLONG ullSize;
                               for the time being: just tell the user
                               to allocate some reasonably sized amount of memory
                            */   
-                           pfFind->cbList = EAMINSIZE;
-                           //pfFind->cbList = 4;
+                           pfFind->cbList = 0;
                         rc = 0;
                         }
 
@@ -1367,8 +1357,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
                      ULONG ulFeaSize;
 
-                     //if (*pcbData < sizeof (FILEFNDBUF3) + sizeof (ULONG) + strlen(szLongName) + 2)
-                     if (*pcbData < sizeof (FILEFNDBUF3) + EAMINSIZE + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3) + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1445,8 +1434,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
                      ULONG ulFeaSize;
 
-                     //if (*pcbData < sizeof (FILEFNDBUF3L) + sizeof (ULONG) + strlen(szLongName) + 2)
-                     if (*pcbData < sizeof (FILEFNDBUF3L) + EAMINSIZE + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3L) + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
