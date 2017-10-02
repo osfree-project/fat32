@@ -166,11 +166,11 @@ PDIRENTRY1 pStreamEntry = NULL;
          break;
       case FIL_QUERYEASFROMLIST :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3);
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + EAMINSIZE;
          break;
       case FIL_QUERYEASFROMLISTL :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L);
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + EAMINSIZE;
          break;
       default                   :
          rc = ERROR_INVALID_FUNCTION;
@@ -494,11 +494,11 @@ USHORT usEntriesWanted;
          break;
       case FIL_QUERYEASFROMLIST :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3);
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3) + EAMINSIZE;
          break;
       case FIL_QUERYEASFROMLISTL :
          /* bare minimum, zero terminator only */
-         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L);
+         usNeededLen = sizeof (EAOP) + sizeof (FILEFNDBUF3L) + EAMINSIZE;
          break;
       default                   :
          rc = ERROR_INVALID_FUNCTION;
@@ -941,7 +941,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
                      ULONG ulFeaSize;
 
-                     if (*pcbData < sizeof (FILEFNDBUF3) + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3) + EAMINSIZE + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1031,7 +1031,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
                      ULONG ulFeaSize;
 
-                     if (*pcbData < sizeof (FILEFNDBUF3L) + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3L) + EAMINSIZE + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1357,7 +1357,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3 pfFind = (PFILEFNDBUF3)*ppData;
                      ULONG ulFeaSize;
 
-                     if (*pcbData < sizeof (FILEFNDBUF3) + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3) + EAMINSIZE + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
@@ -1434,7 +1434,7 @@ ULONGLONG ullSize;
                      PFILEFNDBUF3L pfFind = (PFILEFNDBUF3L)*ppData;
                      ULONG ulFeaSize;
 
-                     if (*pcbData < sizeof (FILEFNDBUF3L) + strlen(szLongName))
+                     if (*pcbData < sizeof (FILEFNDBUF3L) + EAMINSIZE + strlen(szLongName))
                         {
                         rc = ERROR_BUFFER_OVERFLOW;
                         goto FillDirEntryExit;
