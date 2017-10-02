@@ -24,13 +24,13 @@ ADD_DEFS =
 OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
       $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd &
       $(PROJ_BLD)\chkdsk.obd $(PROJ_BLD)\fatfunc.obd $(PROJ_BLD)\unicode.obd &
-      $(PROJ_BLD)\ea.obd $(PROJ_BLD)\log.obd $(PROJ_BLD)\init.obd
+      $(PROJ_BLD)\ea.obd $(PROJ_BLD)\log.obd $(PROJ_BLD)\init.obd $(PROJ_BLD)\util.obd
 OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj &
-      $(PROJ_BLD)\log.obj
-OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc &
+      $(PROJ_BLD)\log.obj $(PROJ_BLD)\util.obj
+OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc $(PROJ_BLD)\util.obc &
       $(PROJ_BLD)\fatfunc.obc $(PROJ_BLD)\unicode.obc $(PROJ_BLD)\log.obc $(PROJ_BLD)\ea.obc
 OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\os2.obj &
-      $(PROJ_BLD)\msg.obj $(PROJ_BLD)\log.obj
+      $(PROJ_BLD)\msg.obj $(PROJ_BLD)\log.obj $(PROJ_BLD)\util.obj
 OBJS5=$(PROJ_BLD)\stub.obd
 COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x

@@ -88,6 +88,12 @@ ULONG ReadSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPer
 }
 
 
+ULONG ReadSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
+{
+    return ReadSect(hFile, ulSector, nSectors, BytesPerSector, pbSector);
+}
+
+
 ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector )
 {
     DWORD dwWritten;
@@ -102,13 +108,17 @@ ULONG WriteSect ( HANDLE hDevice, LONG ulSector, USHORT nSectors, USHORT BytesPe
     return 0;
 }
 
-ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+
+ULONG WriteSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
 {
-    DWORD rc;
+    return WriteSect(hFile, ulSector, nSectors, BytesPerSector, pbSector);
+}
 
-    rc = WriteSect ( hDevice, Sector, NumSects, BytesPerSector, Data );
 
-    return rc;
+// check if the driveletter is cdrom one
+BYTE get_medium_type(char *pszFilename)
+{
+  return MEDIUM_TYPE_DASD;
 }
 
 void open_drive (char *path , HANDLE *hDevice)
@@ -281,6 +291,11 @@ void remount_media (HANDLE hDevice)
   //    die( "Failed to dismount device", -7 );
 }
 
+void close_drive(HANDLE hDevice)
+{
+    CloseHandle( hDevice );
+}
+
 void cleanup ( void )
 {
     static int num_called = 0;
@@ -307,11 +322,6 @@ void startlw(HANDLE hDevice)
 void stoplw(HANDLE hDevice)
 {
     // none
-}
-
-void close_drive(HANDLE hDevice)
-{
-    CloseHandle( hDevice );
 }
 
 

@@ -280,7 +280,7 @@ ULONG BootChkSum(const char *data, int bytes)
 
 #endif
 
-void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumSects) //, DISK_GEOMETRY* pdgDrive  )
+void zero_sectors ( PCDINFO pCD, DWORD Sector, DWORD BytesPerSect, DWORD NumSects) //, DISK_GEOMETRY* pdgDrive  )
 {
     BYTE *pZeroSect;
     DWORD BurstSize;
@@ -306,7 +306,7 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
 
     mem_alloc((void **)&pZeroSect, BytesPerSect * BurstSize);
 
-    //seek_to_sect( hDevice, Sector, BytesPerSect );
+    //SeekToSector( pCD, Sector, BytesPerSect );
 
     query_freq( &Frequency );
     query_time( &Start );
@@ -322,8 +322,8 @@ void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumS
         else 
             WriteSize = NumSects;
 
-        seek_to_sect( hDevice, Sector, BytesPerSect );
-        ret = write_sect ( hDevice, Sector, BytesPerSect, pZeroSect, WriteSize );
+        SeekToSector( pCD, Sector, BytesPerSect );
+        ret = WriteSector2 ( pCD, Sector, BytesPerSect, pZeroSect, WriteSize );
 
         if ( ret )
             die ( "Failed to write", ret );  
@@ -415,6 +415,7 @@ int format_volume (char *path, format_params *params)
     // Debug temp vars
     ULONGLONG FatNeeded, ClusterCount;
     char c;
+    PCDINFO pCD;
 
     static char volId[12] = {0};
     char *vol = volId;
@@ -424,11 +425,16 @@ int format_volume (char *path, format_params *params)
     strncpy(vol, params->volume_label, 11);
     check_vol_label(path, (char **)&vol);
 
+    mem_alloc((void **)&pCD, sizeof(CDINFO));
+    if (!pCD)
+       return FALSE;
+    memset(pCD, 0, sizeof (CDINFO));
+
     // Open drive
-    open_drive (path, &hDevice);
-    bGPTMode = get_drive_params(hDevice, &dp);
-    lock_drive(hDevice);
-    begin_format(hDevice);
+    OpenDrive (pCD, path);
+    bGPTMode = GetDriveParams(pCD, &dp);
+    LockDrive(pCD);
+    BeginFormat(pCD);
     //sectorio(hDevice);
 
     // Specify volume label
@@ -786,8 +792,25 @@ int format_volume (char *path, format_params *params)
     */
     if ( dp.BytesPerSect != 512 )
     {
-        ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-2] = 0x55;
-        ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-1] = 0xaa;
+#ifdef EXFAT
+        if (params->bFatType < FAT_TYPE_FAT32)
+        {
+            ((BYTE*)pFATBootSect)[dp.BytesPerSect-2] = 0x55;
+            ((BYTE*)pFATBootSect)[dp.BytesPerSect-1] = 0xaa;
+        }
+        else if (params->bFatType == FAT_TYPE_FAT32)
+        {
+#endif
+            ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-2] = 0x55;
+            ((BYTE*)pFAT32BootSect)[dp.BytesPerSect-1] = 0xaa;
+#ifdef EXFAT
+        }
+        else if (params->bFatType == FAT_TYPE_EXFAT)
+        {
+            ((BYTE*)pEXFATBootSect)[dp.BytesPerSect-2] = 0x55;
+            ((BYTE*)pEXFATBootSect)[dp.BytesPerSect-1] = 0xaa;
+        }
+#endif
     }
 
     if (params->bFatType == FAT_TYPE_FAT32)
@@ -872,7 +895,7 @@ int format_volume (char *path, format_params *params)
     }
 #endif
 
-    zero_sectors( hDevice, 0, dp.BytesPerSect, SystemAreaSize);
+    zero_sectors( pCD, 0, dp.BytesPerSect, SystemAreaSize);
 
     show_message ( "Clearing out %d sectors for \nReserved sectors, fats and root cluster.\n", 0, 0, 1, SystemAreaSize );
     show_message ( "Initialising reserved sectors and FATs.\n", 0, 0, 0 );
@@ -880,7 +903,7 @@ int format_volume (char *path, format_params *params)
     if (params->bFatType < FAT_TYPE_FAT32)
     {
         // write the boot sector
-        write_sect ( hDevice, 0, dp.BytesPerSect, pFATBootSect, 1 );
+        WriteSector2 ( pCD, 0, dp.BytesPerSect, pFATBootSect, 1 );
     }
     else if (params->bFatType == FAT_TYPE_FAT32)
     {
@@ -888,8 +911,8 @@ int format_volume (char *path, format_params *params)
         for ( i=0; i<2; i++ )
         {
             int SectorStart = (i==0) ? 0 : BackupBootSect;
-            write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFAT32BootSect, 1 );
-            write_sect ( hDevice, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
+            WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pFAT32BootSect, 1 );
+            WriteSector2 ( pCD, SectorStart+1, dp.BytesPerSect, pFAT32FsInfo, 1 );
         }
     }
 #ifdef EXFAT
@@ -922,7 +945,7 @@ int format_volume (char *path, format_params *params)
         for ( i=0; i<2; i++ )
         {
             int SectorStart = (i==0) ? 0 : BackupBootSect;
-            write_sect ( hDevice, SectorStart, dp.BytesPerSect, pEXFATBootSect, BackupBootSect );
+            WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pEXFATBootSect, BackupBootSect );
         }
     }
 #endif
@@ -935,7 +958,7 @@ int format_volume (char *path, format_params *params)
        for ( i = 0; i < dp.NumFATs; i++ )
        {
           int SectorStart = dp.ReservedSectCount + (i * FatSize );
-          write_sect ( hDevice, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
+          WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pFirstSectOfFat, 1 );
        }
 #ifdef EXFAT
     }
@@ -959,7 +982,7 @@ int format_volume (char *path, format_params *params)
                if (i / EntriesPerSec)
                {
                   // write previous sector
-                  write_sect ( hDevice,
+                  WriteSector2 ( pCD,
                                SectorStart + (i / EntriesPerSec - 1),
                                dp.BytesPerSect,
                                pFirstSectOfFat,
@@ -987,7 +1010,7 @@ int format_volume (char *path, format_params *params)
                // next sector
                if (k / EntriesPerSec)
                {
-                  write_sect ( hDevice,
+                  WriteSector2 ( pCD,
                                SectorStart + (k / EntriesPerSec - 1),
                                dp.BytesPerSect,
                                pFirstSectOfFat,
@@ -1010,7 +1033,7 @@ int format_volume (char *path, format_params *params)
          pFirstSectOfFat[(2 + ulExfatBitmapClusters + ulExfatUpCaseClusters) % EntriesPerSec] = 0xffffffff;
 
          // write last sector
-         write_sect ( hDevice,
+         WriteSector2 ( pCD,
                       SectorStart + ((2 + ulExfatBitmapClusters + ulExfatUpCaseClusters) / EntriesPerSec),
                       dp.BytesPerSect,
                       pFirstSectOfFat,
@@ -1040,13 +1063,13 @@ int format_volume (char *path, format_params *params)
         }
         // root dir cluster
         SetBmpEntry2(pBitmap, &dp, 2 + ulExfatBitmapClusters + i, 1);
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pBitmap, ulExfatBitmapClusters * params->sectors_per_cluster );
+        WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pBitmap, ulExfatBitmapClusters * params->sectors_per_cluster );
 
         // write upcase table
         memset( pUpCaseTbl, 0, ulExfatUpCaseClusters * params->sectors_per_cluster * dp.BytesPerSect );
         memcpy( pUpCaseTbl, pUpCase, ulExfatUpCaseLen );
         SectorStart += ulExfatBitmapClusters * params->sectors_per_cluster;
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pUpCaseTbl, ulExfatUpCaseClusters * params->sectors_per_cluster );
+        WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pUpCaseTbl, ulExfatUpCaseClusters * params->sectors_per_cluster );
 
         // write root dir
         memset( pRootDir, 0, params->sectors_per_cluster * dp.BytesPerSect );
@@ -1067,7 +1090,7 @@ int format_volume (char *path, format_params *params)
         pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum2((char *)pUpCase, ulExfatUpCaseLen);
         //
         SectorStart += ulExfatUpCaseClusters * params->sectors_per_cluster;
-        write_sect ( hDevice, SectorStart, dp.BytesPerSect, pRootDir, params->sectors_per_cluster );
+        WriteSector2 ( pCD, SectorStart, dp.BytesPerSect, pRootDir, params->sectors_per_cluster );
     }
 #endif
 
@@ -1084,7 +1107,7 @@ int format_volume (char *path, format_params *params)
     //    will let you use a 48bit LBA drive.
     //    see http://www.48bitlba.com/win98.htm for instructions
 
-    if ( !bGPTMode )
+    if ( !bGPTMode && pCD->bMediumType != MEDIUM_TYPE_CDROM)
     {
         BYTE type;
 
@@ -1111,12 +1134,12 @@ int format_volume (char *path, format_params *params)
 #endif
         }
 
-        set_part_type (hDevice, &dp, type);
+        SetPartType (pCD, &dp, type);
     }
 
-    remount_media ( hDevice );
-    unlock_drive ( hDevice );
-    close_drive ( hDevice );
+    RemountMedia ( pCD );
+    UnlockDrive ( pCD );
+    CloseDrive ( pCD );
     fflush(stdout);
 
     set_vol_label (path, vol);

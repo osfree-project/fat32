@@ -470,6 +470,8 @@ ULONG avail_clusters;
 WORD  bytes_per_sector;
 } DISKINFO, *PDISKINFO;
 
+#define MEDIUM_TYPE_DASD  0
+#define MEDIUM_TYPE_CDROM 1
 
 typedef struct _CDInfo
 {
@@ -483,7 +485,7 @@ ULONG       ulClusterSize;
 ULONG       SectorsPerCluster;
 ULONG       ulTotalClusters;
 ULONG       ulCurFATSector;
-BYTE        pbFATSector[512 * 3];
+BYTE        pbFATSector[SECTOR_SIZE * 8 * 3];
 BOOL        fDetailed;
 BOOL        fPM;
 BOOL        fFix;
@@ -523,7 +525,7 @@ DISKINFO    DiskInfo;
 USHORT      usLostChains;
 ULONG       rgulLost[MAX_LOST_CHAINS];
 ULONG       rgulSize[MAX_LOST_CHAINS];
-
+BYTE        bMediumType;
 } CDINFO, *PCDINFO;
 
 //

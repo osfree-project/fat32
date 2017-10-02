@@ -53,9 +53,9 @@ PRIVATE BOOL RecoverChain(PCDINFO pCD, ULONG ulCluster, PSHOPENINFO pSHInfo);
 PRIVATE BOOL LostToFile(PCDINFO pCD, ULONG ulCluster, ULONG ulSize);
 PRIVATE BOOL ClusterInChain(PCDINFO pCD, ULONG ulStart, ULONG ulCluster);
 
-ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
 ULONG ReadCluster(PCDINFO pDrive, ULONG ulCluster, PBYTE pbCluster);
-ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadSect(HANDLE hFile, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
@@ -224,17 +224,19 @@ struct extbpb dp;
       query_current_disk(pCD->szDrive);
       }
 
-   open_drive(pCD->szDrive, &hFile);
+   OpenDrive(pCD, pCD->szDrive);
+   hFile = pCD->hDisk;
+   hDisk = hFile;
 
    if (pCD->fFix)
       {
-      lock_drive(hFile);
+      LockDrive(pCD);
       }
 
-   pCD->hDisk = hFile;
-   hDisk = hFile;
+   //pCD->hDisk = hFile;
+   //hDisk = hFile;
 
-   get_drive_params(hFile, &dp);
+   GetDriveParams(pCD, &dp);
    memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
 
    rc = ReadSector(pCD, 0, 1, bSector);
@@ -318,10 +320,10 @@ struct extbpb dp;
 
    if (pCD->fFix)
       {
-      unlock_drive(hFile);
+      UnlockDrive(pCD);
       }
 
-   close_drive(hFile);
+   CloseDrive(pCD);
 
    free(pCD);
 
@@ -377,57 +379,6 @@ int main(int argc, char *argv[])
 #endif
 
 
-ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PBYTE pbCluster)
-{
-   ULONG ulSector;
-   USHORT rc;
-
-   if (ulCluster < 2 || ulCluster >= pCD->ulTotalClusters + 2)
-      return ERROR_SECTOR_NOT_FOUND;
-
-   ulSector = pCD->ulStartOfData +
-      (ulCluster - 2) * pCD->SectorsPerCluster;
-
-   rc = ReadSector(pCD, ulSector,
-      pCD->SectorsPerCluster,
-      pbCluster);
-
-   if (rc)
-      return rc;
-
-   return 0;
-}
-
-ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
-{
-   return ReadSect(pCD->hDisk, ulSector, nSectors, pCD->BootSect.bpb.BytesPerSector, pbSector);
-}
-
-ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector)
-{
-   return WriteSect(pCD->hDisk, ulSector, nSectors, pCD->BootSect.bpb.BytesPerSector, pbSector);
-}
-
-ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster)
-{
-   ULONG ulSector;
-   ULONG rc;
-
-   if (ulCluster < 2 || ulCluster >= pCD->ulTotalClusters + 2)
-      return ERROR_SECTOR_NOT_FOUND;
-
-   ulSector = pCD->ulStartOfData +
-      (ulCluster - 2) * pCD->SectorsPerCluster;
-
-   rc = WriteSector(pCD, ulSector,
-      pCD->SectorsPerCluster, pbCluster);
-   if (rc)
-      return rc;
-
-   return 0;
-}
-
-
 ULONG ChkDskMain(PCDINFO pCD)
 {
 ULONG  rc;
@@ -459,7 +410,7 @@ PSZ    pszType;
          rc = INIT16(0, 0);
 #endif
          // issue BEGINFORMAT ioctl to prepare disk for checking
-         begin_format(pCD->hDisk);
+         BeginFormat(pCD);
          }
       }
    /*
@@ -776,7 +727,7 @@ ChkDskMainExit:
 
       // remount disk for changes to take effect
       if (! pCD->fAutoCheck)
-         remount_media(pCD->hDisk);
+         RemountMedia(pCD);
       }
 
    mem_free((void *)pCD->pFatBits, usBlocks * 4096);

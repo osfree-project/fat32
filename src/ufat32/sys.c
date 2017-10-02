@@ -137,6 +137,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 {
   ULONG cbSize, ulAction, cbActual, cbOffActual;
   ULONG chksum;
+  PCDINFO pCD;
   PULONG p;
   struct extbpb dp;
   char   file[20];
@@ -157,13 +158,19 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
      exit(0);
      }
 
-  open_drive(drive, &hf);
+  mem_alloc((void **)&pCD, sizeof(CDINFO));
+  if (!pCD)
+     return;
+  memset(pCD, 0, sizeof (CDINFO));
 
-  lock_drive(hf);
+  OpenDrive(pCD, drive);
 
-  get_drive_params(hf, &dp);
+  LockDrive(pCD);
 
-  rc = ReadSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
+  GetDriveParams(pCD, &dp);
+  memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
+
+  rc = ReadSector(pCD, 0, sizeof(fat32buf) / dp.BytesPerSect, (char *)&fat32buf);
 
   if (rc)
   {
@@ -229,7 +236,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
        *p = chksum;
     }
 
-    rc = WriteSect(hf, 0, sizeof(exfatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&exfatbuf);
+    rc = WriteSector(pCD, 0, sizeof(exfatbuf) / dp.BytesPerSect, (char *)&exfatbuf);
 
     if (rc)
     {
@@ -238,7 +245,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
       return;
     }
 
-    /* rc = WriteSect(hf, 12, sizeof(exfatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&exfatbuf);
+    /* rc = WriteSector(pCD, 12, sizeof(exfatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&exfatbuf);
 
     if (rc)
     {
@@ -285,7 +292,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
     strncpy(&fat32buf.FS, "fat", 3);
     fat32buf.FS[3] = 0;
 
-    rc = WriteSect(hf, 0, sizeof(fat32buf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fat32buf);
+    rc = WriteSector(pCD, 0, sizeof(fat32buf) / dp.BytesPerSect, (char *)&fat32buf);
 
     if (rc)
     {
@@ -304,7 +311,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
     // copy OEM ID
     strncpy(&fatbuf.Oem_Id, "[osFree]", 8);
 
-    rc = WriteSect(hf, 0, sizeof(fatbuf) / dp.BytesPerSect, dp.BytesPerSect, (char *)&fatbuf);
+    rc = WriteSector(pCD, 0, sizeof(fatbuf) / dp.BytesPerSect, (char *)&fatbuf);
 
     if (rc)
     {
@@ -317,8 +324,8 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   //sectorio(hf);
   //stoplw(hf);
 
-  unlock_drive(hf);
-  close_drive(hf);
+  UnlockDrive(pCD);
+  CloseDrive(pCD);
 
 //#ifdef EXFAT
 //  if (fs_type == FAT_TYPE_EXFAT)

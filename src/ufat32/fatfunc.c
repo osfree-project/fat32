@@ -24,9 +24,9 @@ typedef struct _FEALIST *PFEALIST;
 
 BYTE rgValidChars[]="01234567890 ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'()-_@^`{}~";
 
-ULONG ReadSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG ReadSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
 ULONG ReadCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
-ULONG WriteSector(PCDINFO pCD, ULONG ulSector, USHORT nSectors, PBYTE pbSector);
+ULONG WriteSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
 ULONG WriteCluster(PCDINFO pCD, ULONG ulCluster, PVOID pbCluster);
 ULONG ReadFatSector(PCDINFO pCD, ULONG ulSector);
 ULONG WriteFatSector(PCDINFO pCD, ULONG ulSector);

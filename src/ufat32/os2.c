@@ -17,6 +17,12 @@
 #include "fat32def.h"
 #include "portable.h"
 
+#define  IOCTL_CDROMDISK2         0x82
+#define  CDROMDISK_READDATA       0x76
+#define  CDROMDISK_WRITEDATA      0x56
+#define  CDROMDISK2_FEATURES      0x63
+#define  CDROMDISK2_DRIVELETTERS  0x60
+
 HANDLE hDev;
 
 char msg = FALSE;
@@ -191,6 +197,91 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSect
     return rc;
 }
 
+ULONG ReadSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
+{
+   LONG lDataSize;
+   BIOSPARAMETERBLOCK bpb;
+
+   #pragma pack(1)
+
+   // parameter packet
+   struct ReadData_param {
+      ULONG       ID_code;                // 'CD01'
+      UCHAR       address_mode;           // Addressing format of start_sector:
+                                          //  00 - Logical Block format
+                                          //  01 - Minutes/Seconds/Frame format
+      USHORT      transfer_count;         // Numbers of sectors to read.
+                                          //  Must  be non zero
+      ULONG       start_sector;           // Starting sector number of the read operation
+      UCHAR       reserved;               // Reserved. Must be 0
+      UCHAR       interleave_size;        // Not used. Must be 0
+      UCHAR       interleave_skip_factor; // Not used. Must be 0
+   } parm;
+   ULONG parmlen = sizeof(parm);
+
+   #define SECTORSIZE      2048
+
+   struct ReadData_data {
+      UCHAR        data_area[SECTORSIZE];
+   } data;
+
+   ULONG datalen = sizeof(data);
+   ULONG cbRead32;
+
+   /* parameter packet */
+   struct PARM {
+      unsigned char command;
+      unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   ULONGLONG off;
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   APIRET rc = 0;
+
+   parm2.command = 1;
+   parm2.drive = 0;
+
+   if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+      return rc;
+
+   lDataSize = nSectors * BytesPerSector;
+   cbRead32 = (lDataSize > BytesPerSector) ? BytesPerSector : (ULONG)lDataSize;
+
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= BytesPerSector;
+
+   memset(&parm, 0, sizeof(parm));
+   memset(&data, 0, sizeof(data));
+
+   parm.ID_code = ('C') | ('D' << 8) | ('0' << 16) | ('1' << 24);
+   parm.address_mode = 0; // lba
+
+   do
+   {
+       parm.transfer_count = 1;
+       parm.start_sector = (ULONG)(off / BytesPerSector);
+
+       rc = DosDevIOCtl((HFILE)hFile, IOCTL_CDROMDISK, CDROMDISK_READDATA,
+                        &parm, parmlen, &parmlen, &data, datalen, &datalen);
+
+       if (!rc)
+           memcpy((char *)pbSector, &data, cbRead32);
+       else
+           break;
+
+       off          += cbRead32;
+       lDataSize    -= cbRead32;
+       pbSector      = (PBYTE)pbSector + cbRead32;
+
+   } while ((lDataSize > 0) && !rc);
+
+   return rc;
+}
+
 ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
 {
    ULONG ulDataSize;
@@ -213,7 +304,7 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
    ULONG parmlen2 = sizeof(parm2);
    ULONG datalen2 = sizeof(bpb);
    ULONG cbWrite32;
-   ULONG rc;
+   ULONG rc = 0;
    ULONG parmlen4;
    char trkbuf[sizeof(TRACKLAYOUT) + sizeof(USHORT) * 2 * 255];
    PTRACKLAYOUT ptrk = (PTRACKLAYOUT)trkbuf;
@@ -221,6 +312,9 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
    USHORT cyl, head, sec, n;
    ULONGLONG off;
    int i;
+
+   parm2.command = 1;
+   parm2.drive = 0;
 
    ulDataSize = nSectors * BytesPerSector;
 
@@ -276,16 +370,128 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
     return rc;
 }
 
-ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects )
+ULONG WriteSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector)
 {
-    DWORD dwWritten;
-    ULONG ret;
+   LONG lDataSize;
+   BIOSPARAMETERBLOCK bpb;
 
-    ret = WriteSect( hDevice, Sector, NumSects, BytesPerSector, Data);
+   #pragma pack(1)
 
-    return ret;
+   // parameter packet
+   struct WriteData_param {
+      ULONG       ID_code;                // 'CD01'
+      UCHAR       address_mode;           // Addressing format of start_sector:
+                                          //  00 - Logical Block format
+                                          //  01 - Minutes/Seconds/Frame format
+      USHORT      transfer_count;         // Numbers of sectors to read.
+                                          //  Must  be non zero
+      ULONG       start_sector;           // Starting sector number of the read operation
+      UCHAR       reserved;               // Reserved. Must be 0
+      UCHAR       interleave_size;        // Not used. Must be 0
+      UCHAR       interleave_skip_factor; // Not used. Must be 0
+   } parm;
+   ULONG parmlen = sizeof(parm);
+
+   #define SECTORSIZE      2048
+
+   struct WriteData_data {
+      UCHAR        data_area[SECTORSIZE];
+   } data;
+
+   ULONG datalen = sizeof(data);
+   ULONG cbWrite32;
+
+   /* parameter packet */
+   struct PARM {
+      unsigned char command;
+      unsigned char drive;
+   } parm2;
+
+   #pragma pack()
+
+   ULONGLONG off;
+   ULONG parmlen2 = sizeof(parm2);
+   ULONG datalen2 = sizeof(bpb);
+   APIRET rc = 0;
+
+   parm2.command = 1;
+   parm2.drive = 0;
+
+   if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+      return rc;
+
+   lDataSize = nSectors * BytesPerSector;
+
+   cbWrite32 = (lDataSize > BytesPerSector) ? BytesPerSector : (ULONG)lDataSize;
+
+   off =  ulSector + bpb.cHiddenSectors;
+   off *= BytesPerSector;
+
+   memset(&parm, 0, sizeof(parm));
+   memset(&data, 0, sizeof(data));
+
+   parm.ID_code = ('C') | ('D' << 8) | ('0' << 16) | ('1' << 24);
+   parm.address_mode = 0; // lba
+
+   do
+   {
+       parm.transfer_count = 1;
+       parm.start_sector = (ULONG)(off / BytesPerSector);
+
+       memcpy(&data, (char *)pbSector, cbWrite32);
+
+       rc = DosDevIOCtl((HFILE)hFile, IOCTL_CDROMDISK, CDROMDISK_WRITEDATA,
+                        &parm, parmlen, &parmlen, &data, datalen, &datalen);
+
+       if (rc)
+           break;
+
+       off           += cbWrite32;
+       lDataSize    -= cbWrite32;
+       pbSector      = (PBYTE)pbSector + cbWrite32;
+
+   } while ((lDataSize > 0) && !rc);
+
+   return rc;
 }
 
+// check if the driveletter is cdrom one
+BYTE get_medium_type(char *pszFilename)
+{
+    typedef struct _CDROMDeviceMap
+    {
+        USHORT usDriveCount;
+        USHORT usFirstLetter;
+    } CDROMDeviceMap;
+
+    HFILE hf;
+    ULONG ulAction = 0;
+    CDROMDeviceMap CDMap;
+    ULONG ulParamSize = sizeof(ulAction);
+    ULONG ulDataSize = sizeof(CDROMDeviceMap);
+    char driveName[3] = { '?', ':', '\0' };
+    int drv;
+
+    if (DosOpen("\\DEV\\CD-ROM2$", &hf, &ulAction, 0, FILE_NORMAL,
+                OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL))
+        return MEDIUM_TYPE_DASD;
+
+    DosDevIOCtl(hf, IOCTL_CDROMDISK2, CDROMDISK2_DRIVELETTERS,
+                NULL, 0, &ulParamSize,
+                (PVOID)&CDMap, sizeof(CDROMDeviceMap), &ulDataSize);
+    DosClose(hf);
+
+    for (drv = CDMap.usFirstLetter; drv < CDMap.usFirstLetter + CDMap.usDriveCount; drv++)
+    {
+        driveName[0] = 'A' + drv;
+        if (!stricmp(driveName, pszFilename))
+            return MEDIUM_TYPE_CDROM;
+    }
+
+    return MEDIUM_TYPE_DASD;
+}
 
 void open_drive (char *path, HANDLE *hDevice)
 {
@@ -483,6 +689,11 @@ void remount_media (HANDLE hDevice)
   }
 }
 
+void close_drive(HANDLE hDevice)
+{
+    // Close Device
+    DosClose ( (HFILE)hDevice );
+}
 
 void cleanup ( void )
 {
@@ -539,12 +750,6 @@ void stoplw(HANDLE hDevice)
      show_message("%s\n", 0, 0, 1, get_error(rc));
      return;
    }
-}
-
-void close_drive(HANDLE hDevice)
-{
-    // Close Device
-    DosClose ( (HFILE)hDevice );
 }
 
 int mem_alloc(void **p, ULONG cb)

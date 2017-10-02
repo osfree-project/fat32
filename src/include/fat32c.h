@@ -234,20 +234,22 @@ BOOL   fNoFatChain;
 
 void die ( char * error, DWORD rc );
 DWORD get_vol_id (void);
-void seek_to_sect( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect );
-ULONG write_sect ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects );
-void zero_sectors ( HANDLE hDevice, DWORD Sector, DWORD BytesPerSect, DWORD NumSects); //, DISK_GEOMETRY* pdgDrive  )
-void open_drive (char *path, HANDLE *hDevice);
-void lock_drive(HANDLE hDevice);
-void unlock_drive(HANDLE hDevice);
-BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp);
-void set_part_type(HANDLE hDevice, struct extbpb *dp, int type);
-void begin_format (HANDLE hDevice);
-void remount_media (HANDLE hDevice);
+void SeekToSector( PCDINFO pCD, DWORD Sector, DWORD BytesPerSect );
+ULONG ReadSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
+ULONG WriteSector(PCDINFO pCD, ULONG ulSector, ULONG nSectors, PBYTE pbSector);
+ULONG WriteSector2 ( PCDINFO pCD, DWORD Sector, DWORD BytesPerSector, void *Data, DWORD NumSects );
+void zero_sectors ( PCDINFO pCD, DWORD Sector, DWORD BytesPerSect, DWORD NumSects); //, DISK_GEOMETRY* pdgDrive  )
+void OpenDrive (PCDINFO pCD, char *path);
+void LockDrive(PCDINFO pCD);
+void UnlockDrive(PCDINFO pCD);
+BOOL GetDriveParams(PCDINFO pCD, struct extbpb *dp);
+void SetPartType(PCDINFO pCD, struct extbpb *dp, int type);
+void BeginFormat (PCDINFO pCD);
+void RemountMedia (PCDINFO pCD);
 void sectorio(HANDLE hDevice);
 void startlw(HANDLE hDevice);
 void stoplw(HANDLE hDevice);
-void close_drive(HANDLE hDevice);
+void CloseDrive(PCDINFO pCD);
 int  mem_alloc(void **p, ULONG cb);
 int  mem_alloc2(void **p, ULONG cb);
 void mem_free(void *p, ULONG cb);
