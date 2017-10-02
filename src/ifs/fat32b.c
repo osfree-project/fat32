@@ -1420,6 +1420,7 @@ USHORT    rc;
                            else
                               {
                               usMode = MODIFY_DIR_INSERT;
+                              pszLongNameOld = pszLongNameNew;
                               ulCluster = ulDirCluster;
                               ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                               ulPrevCluster = pVolInfo->ulFatEof;

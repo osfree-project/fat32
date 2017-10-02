@@ -1196,7 +1196,7 @@ USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark)
 /************************************************************************
 *
 ************************************************************************/
-APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongName)
+APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTRY pOld, PDIRENTRY pNew, PSZ pszLongNameOld, PSZ pszLongNameNew)
 {
    PDIRENTRY pDirectory;
    PDIRENTRY pDir2;
@@ -1222,32 +1222,32 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
-      if (!pNew || !pszLongName)
+      if (!pNew || !pszLongNameOld)
          return ERROR_INVALID_PARAMETER;
 
       memcpy(&DirNew, pNew, sizeof (DIRENTRY));
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongName, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, pszLongNameOld, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             return ERROR_FILE_EXISTS;
          set_datetime(&DirNew);
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
-            pszLongName = NULL;
+            pszLongNameOld = NULL;
          }
       else
-         pszLongName = NULL;
+         pszLongNameOld = NULL;
 
       usEntriesNeeded = 1;
-      if (pszLongName)
+      if (pszLongNameOld)
          {
 #if 0
-         usEntriesNeeded += strlen(pszLongName) / 13 +
-            (strlen(pszLongName) % 13 ? 1 : 0);
+         usEntriesNeeded += strlen(pszLongNameOld) / 13 +
+            (strlen(pszLongNameOld) % 13 ? 1 : 0);
 #else
-         usEntriesNeeded += ( DBCSStrlen( pszLongName ) + 12 ) / 13;
+         usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
 #endif
          }
       }
@@ -1433,6 +1433,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
                      else
                         {
                         usMode = MODIFY_DIR_INSERT;
+                        pszLongNameOld = pszLongNameNew;
                         ulCluster = ulDirCluster;
                         ulBytesRemained = pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                         ulPrevCluster = pCD->ulFatEof;
@@ -1453,7 +1454,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                pWork = (PDIRENTRY)CompactDir(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameOld, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                if (ulPrevCluster == 1)
                   // reading root directory on FAT12/FAT16
@@ -1486,7 +1487,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                pWork = (PDIRENTRY)CompactDir(pDir2, ulBytesToRead, usEntriesNeeded);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongName, bCheck);
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameOld, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                if (ulCluster == 1)
                   // reading root directory on FAT12/FAT16
@@ -2152,7 +2153,7 @@ APIRET rc;
       if (pCD->bFatType < FAT_TYPE_EXFAT)
 #endif
          rc = ModifyDirectory0(pCD, ulDirCluster, usMode, pOld, pNew,
-                               pszLongNameOld);
+                               pszLongNameOld, pszLongNameNew);
 #ifdef EXFAT
       else
          rc = ModifyDirectory1(pCD, ulDirCluster, pDirSHInfo, usMode,
