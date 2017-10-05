@@ -714,6 +714,10 @@ int i;
          if ( pVolChars && (pVolChars->VolDescriptor & VC_REMOVABLE_MEDIA) )
             pVolInfo->fRemovable = TRUE;
 
+         // consider CDRW (which have 0xffff sectors per track) to be "removables" too
+         if ( ! pVolInfo->fRemovable && pvpfsi->vpi_trksec == 0xffff )
+            pVolInfo->fRemovable = TRUE;
+
          if (! pVolInfo->fRemovable)
             pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
          else
@@ -876,12 +880,16 @@ int i;
          break;
 
       case MOUNT_VOL_REMOVED:
+         break;
+
       case MOUNT_RELEASE:
+
          if ( *((ULONG *)pvpfsd->vpd_work + 1) != FAT32_VPB_MAGIC )
             {
             /* VPB magic is invalid, so it is not the VPB
                created by fat32.ifs */
-            return 0;
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            goto FS_MOUNT_EXIT;
             }
 
          pVolInfo = GetVolInfo(hVBP);
@@ -895,16 +903,14 @@ int i;
             goto FS_MOUNT_EXIT;
             }
 
-         if (! pVolInfo->fFormatInProgress)
+         if (! pVolInfo->fFormatInProgress &&
+             ! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
             {
-            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
-            UpdateFSInfo(pVolInfo);
+               usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
+               UpdateFSInfo(pVolInfo);
 
-            if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
-               {
                // ignore dirty status on floppies (and FAT12)
                MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
-               }
             }
 
          // delete pVolInfo from the list

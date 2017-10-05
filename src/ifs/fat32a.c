@@ -1561,9 +1561,14 @@ ULONG  ulDirEntries = 0;
          {
          if (ulCluster == 1)
             // reading root directory on FAT12/FAT16
-            ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
+            rc = ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
          else
-            ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
+            rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
+         if (rc)
+            {
+            free(pDirEntry);
+            return rc;
+            }
          pDir    = pDirStart;
          pDirEnd = (PDIRENTRY)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
 #ifdef EXFAT
@@ -1709,6 +1714,12 @@ ULONG  ulDirEntries = 0;
          rc = WriteSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, DVIO_OPWRTHRU);
       else
          rc = WriteBlock(pVolInfo, ulCluster, ulBlock, (PBYTE)pDirStart, DVIO_OPWRTHRU);
+      if (rc)
+         {
+         free(pDirEntry);
+         free(pDirStart);
+         return rc;
+         }
       }
    else
       {
@@ -1732,6 +1743,12 @@ ULONG  ulDirEntries = 0;
          pBootSect = (PBOOTSECT)pDirStart;
          memcpy(pBootSect->VolumeLabel, pDirEntry->bFileName, 11);
          rc = WriteSector(pVolInfo, 0L, 1, (PBYTE)pBootSect, DVIO_OPWRTHRU | DVIO_OPNCACHE);
+         if (rc)
+            {
+            free(pDirEntry);
+            free(pDirStart);
+            return rc;
+            }
          }
       free(pDirStart);
 
@@ -1739,7 +1756,7 @@ ULONG  ulDirEntries = 0;
          {
          memcpy(pVolInfo->BootSect.VolumeLabel, pDirEntry->bFileName, 11);
          rc = FSH_GETVOLPARM(pVolInfo->hVBP, &pvpfsi, &pvpfsd);
-        if (!rc)
+         if (!rc)
             memcpy(pvpfsi->vpi_text, pDirEntry->bFileName, 11);
          }
       }
