@@ -186,9 +186,10 @@ typedef struct
     DWORD ulFatEof;
     DWORD ulFatEof2;
     DWORD ulFatBad;
-    int sectors_per_cluster;        // can be zero for default or 1,2,4,8,16,32 or 64
+    DWORD sectors_per_cluster;        // can be zero for default or 1,2,4,8,16,32 or 64
     char volume_label[12];
-    int reserved_sectors;
+    DWORD reserved_sectors;
+    DWORD align;
     }
 format_params;
 

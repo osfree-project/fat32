@@ -84,22 +84,25 @@ DWORD get_fat_size_sectors ( format_params *params, DWORD DskSize,
     Denominator = ( SecPerClus * BytesPerSect ) + ( FatElementSize2 * NumFATs ) / 2;
     FatSz = Numerator / Denominator;
 
-    // round up
-    FatSz += 1;
+    // round up to alignment value
+    if (params->align == 1)
+       FatSz += 1;
+    else
+       FatSz = ((FatSz + params->align - 1) / params->align) * params->align;
 
     return( (DWORD) FatSz );
 }
 
 
-BYTE get_spc ( DWORD ClusterSizeKB, DWORD BytesPerSect )
+DWORD get_spc ( DWORD ClusterSizeKB, DWORD BytesPerSect )
 {
     DWORD spc = ( ClusterSizeKB * 1024 ) / BytesPerSect;
-    return( (BYTE) spc );
+    return( (DWORD) spc );
 }
 
-BYTE get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DWORD BytesPerSect )
+DWORD get_sectors_per_cluster ( format_params *params, LONGLONG DiskSizeBytes, DWORD BytesPerSect )
 {
-    BYTE ret = 0x01; // 1 sector per cluster
+    DWORD ret = 0x01; // 1 sector per cluster
     LONGLONG DiskSizeMB = DiskSizeBytes / ( 1024*1024 );
 
     switch (params->bFatType)
@@ -483,6 +486,8 @@ int format_volume (char *path, format_params *params)
         }
     }
 
+    dp.ReservedSectCount = max(dp.ReservedSectCount, params->align);
+
     // Checks on Disk Size
     qTotalSectors = dp.TotalSectors;
 
@@ -496,9 +501,18 @@ int format_volume (char *path, format_params *params)
     UserAreaSize = dp.TotalSectors - dp.ReservedSectCount - ((DWORD)dp.NumFATs*FatSize);
 
     if (params->bFatType < FAT_TYPE_FAT32)
+        {
+        if (!dp.RootDirEnt)
+           // number of dir entries per cluster
+           dp.RootDirEnt = (params->sectors_per_cluster * dp.BytesPerSect) / sizeof(DIRENTRY);
+
+        if (params->align <= 2048)
+           dp.RootDirEnt = max(dp.RootDirEnt, params->align * dp.BytesPerSect / sizeof(DIRENTRY));
+
         // root dir is excluded from user area on FAT12/FAT16
         UserAreaSize -= (ULONG)dp.RootDirEnt * sizeof(DIRENTRY) / dp.BytesPerSect +
         (((ULONG)dp.RootDirEnt * sizeof(DIRENTRY) % dp.BytesPerSect) ? 1 : 0);
+        }
 
     ClusterCount = UserAreaSize / params->sectors_per_cluster;
 
@@ -633,8 +647,7 @@ int format_volume (char *path, format_params *params)
         pFATBootSect->bSecPerClus = (BYTE) params->sectors_per_cluster;
         pFATBootSect->wRsvdSecCnt = (WORD) dp.ReservedSectCount;
         pFATBootSect->bNumFATs = (BYTE) dp.NumFATs;
-        pFATBootSect->wRootEntCnt = (params->sectors_per_cluster * dp.BytesPerSect) /
-            sizeof(DIRENTRY); // number of dir entries per cluster
+        pFATBootSect->wRootEntCnt = dp.RootDirEnt;
 
         if (dp.TotalSectors < 65536L)
             pFATBootSect->wTotSec16 = dp.TotalSectors;
@@ -1266,6 +1279,8 @@ int format(int argc, char *argv[], char *envp[])
     path[1] = ':';
     path[2] = '\0';
 
+    p.align = 1;
+
     for ( i = 2; i < argc; i++ )
     {
         if ( !((strlen(argv[i])>=2) && ((argv[i][0] == '-')||(argv[i][0] == '/'))) )
@@ -1383,6 +1398,26 @@ int format(int argc, char *argv[], char *envp[])
         case 'P':
                 msg = TRUE;
                 continue;
+        case 'A': // align
+                {
+                char  buf[256];
+
+                if ( strrchr(strupr(val), 'K') )
+                   {
+                   memcpy(buf, val, strlen(val) - 1);
+                   p.align = atol(buf) * 1024;
+                   }
+                else if ( strrchr(strupr(val), 'M') )
+                   {
+                   memcpy(buf, val, strlen(val) - 1);
+                   p.align = atol(buf) * 1024 * 1024;
+                   }
+                else
+                   {
+                   p.align = atol(val);
+                   }
+                continue;
+                }
         default:
 	        usage( argv[0] );
         }
