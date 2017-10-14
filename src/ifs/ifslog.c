@@ -85,19 +85,19 @@ USHORT usThreadID;
       }
    fTraceInitted = TRUE;
 
+   if (!(f32Parms.fMessageActive & usLevel))
+      {
+      va_end(va);
+      _asm pop es;
+      return;
+      }
+
    if (fTraceEnabled)
       {
       // output to trace buffer
       va_copy(va2, va);
       trace(pszMessage, va2);
       va_end(va2);
-      }
-
-   if (!(f32Parms.fMessageActive & usLevel))
-      {
-      va_end(va);
-      _asm pop es;
-      return;
       }
 
    if (! fLogPrintInitted)
