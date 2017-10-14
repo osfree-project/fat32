@@ -143,11 +143,17 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSect
    ULONGLONG off;
    int i;
 
+   parm2.command = 1;
+   parm2.drive = 0;
+
    ulDataSize = nSectors * BytesPerSector;
 
    if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
+
+   if (!bpb.cHeads || !bpb.usSectorsPerTrack)
+       return ERROR_SECTOR_NOT_FOUND;
 
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;
@@ -321,6 +327,9 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
    if ( (rc = DosDevIOCtl((HFILE)hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
        return rc;
+
+   if (!bpb.cHeads || !bpb.usSectorsPerTrack)
+       return ERROR_SECTOR_NOT_FOUND;
 
    memset((char *)trkbuf, 0, sizeof(trkbuf));
    off =  ulSector + bpb.cHiddenSectors;

@@ -64,11 +64,11 @@ static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pM
 USHORT DBCSStrlen( const PSZ pszStr );
 
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster);
-static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, USHORT usBlockSize);
+static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlockSize);
 static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster);
-static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize);
+static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulBlockSize);
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue);
-static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize);
+static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, ULONG ulBlockSize);
 
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
@@ -4184,6 +4184,12 @@ USHORT rc;
 
    MessageL(LOG_FUNCS, "ReadFatSector%m", 0x0043);
 
+   if (pVolInfo->bFatType != FAT_TYPE_FAT12)
+      {
+      ulSec = ulSector * 64;
+      usNumSec = 64;
+      }
+
    // read multiples of three sectors,
    // to fit a whole number of FAT12 entries
    // (ulSector is indeed a number of 3*512
@@ -4232,6 +4238,12 @@ USHORT usFat;
 USHORT rc;
 
    MessageL(LOG_FUNCS, "WriteFatSector%m", 0x0044);
+
+   if (pVolInfo->bFatType != FAT_TYPE_FAT12)
+      {
+      ulSec = ulSector * 64;
+      usNumSec = 64;
+      }
 
    // write multiples of three sectors,
    // to fit a whole number of FAT12 entries
@@ -4362,13 +4374,16 @@ USHORT rc;
 ******************************************************************/
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   return GetFatEntryBlock(pVolInfo, ulCluster, pVolInfo->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
+   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
+      return GetFatEntryBlock(pVolInfo, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
+   else
+      return GetFatEntryBlock(pVolInfo, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64); // in  32 kb blocks
 }
 
 /******************************************************************
 *
 ******************************************************************/
-static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, USHORT usBlockSize)
+static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlockSize)
 {
 ULONG  ulSector;
 
@@ -4377,18 +4392,18 @@ ULONG  ulSector;
    switch (pVolInfo->bFatType)
       {
       case FAT_TYPE_FAT12:
-         ulSector = ((ulCluster * 3) / 2) / usBlockSize;
+         ulSector = ((ulCluster * 3) / 2) / ulBlockSize;
          break;
 
       case FAT_TYPE_FAT16:
-         ulSector = (ulCluster * 2) / usBlockSize;
+         ulSector = (ulCluster * 2) / ulBlockSize;
          break;
 
       case FAT_TYPE_FAT32:
 #ifdef EXFAT
       case FAT_TYPE_EXFAT:
 #endif
-         ulSector = (ulCluster * 4) / usBlockSize;
+         ulSector = (ulCluster * 4) / ulBlockSize;
       }
 
    return ulSector;
@@ -4399,13 +4414,16 @@ ULONG  ulSector;
 ******************************************************************/
 static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, pVolInfo->BootSect.bpb.BytesPerSector * 3);
+   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
+      return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
+   else
+      return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64);
 }
 
 /******************************************************************
 *
 ******************************************************************/
-static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, USHORT usBlockSize)
+static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulBlockSize)
 {
    ulCluster &= pVolInfo->ulFatEof;
 
@@ -4418,8 +4436,8 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
 
          ulOffset = (ulCluster * 3) / 2;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = ( ((ulCluster * 3) % 2) ?
@@ -4434,8 +4452,8 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
          PUSHORT pusCluster;
          ULONG   ulOffset = ulCluster * 2;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pusCluster & pVolInfo->ulFatEof;
@@ -4450,8 +4468,8 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
          PULONG pulCluster;
          ULONG   ulOffset = ulCluster * 4;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          ulCluster = *pulCluster & pVolInfo->ulFatEof;
@@ -4466,13 +4484,16 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
 ******************************************************************/
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue)
 {
-   SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, pVolInfo->BootSect.bpb.BytesPerSector * 3);
+   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
+      SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
+   else
+      SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64);
 }
 
 /******************************************************************
 *
 ******************************************************************/
-static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, USHORT usBlockSize)
+static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, ULONG ulBlockSize)
 {
 //USHORT usPrevValue;
 
@@ -4490,8 +4511,8 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
 
          ulOffset = (ulCluster * 3) / 2;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          usPrevValue = *pusCluster;
@@ -4507,8 +4528,8 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
          PUSHORT pusCluster;
          ULONG   ulOffset = ulCluster * 2;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pusCluster = (PUSHORT)((PBYTE)pFatStart + ulOffset);
          *pusCluster = (USHORT)ulValue;
@@ -4523,8 +4544,8 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
          PULONG pulCluster;
          ULONG   ulOffset = ulCluster * 4;
 
-         if (usBlockSize)
-            ulOffset %= usBlockSize;
+         if (ulBlockSize)
+            ulOffset %= ulBlockSize;
 
          pulCluster = (PULONG)((PBYTE)pFatStart + ulOffset);
          *pulCluster = ulValue;
@@ -4555,6 +4576,10 @@ ULONG GetNextCluster(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster)
 {
 ULONG ulSector;
+
+   if (ulCluster >= pVolInfo->ulTotalClusters + 2 &&
+       !(ulCluster >= pVolInfo->ulFatBad && ulCluster <= pVolInfo->ulFatEof))
+      return pVolInfo->ulFatEof;
 
 #ifdef EXFAT
    if ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) &&
