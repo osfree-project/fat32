@@ -146,7 +146,7 @@ CC=wcc
 !endif
 
 .SUFFIXES:
-.SUFFIXES: .tff .tsf .flt .ifs .dll .exe .lib .lnk .ols .obc .obd .obj .cpp .c .c16 .h .asm .sym .map .wmp .inf .ipf .bmp
+.SUFFIXES: .tff .tsf .flt .ifs .dll .exe .lib .lnk .ols .obc .obs .obd .obj .cpp .c .c16 .h .asm .sym .map .wmp .inf .ipf .bmp
 
 all: $(BLDROOT)\bld.flg $(PROJ_BLD)\makefile.wcc dirs copy targets &
      $(BINROOT)\zip-os2.flg $(BINROOT)\zip-win32.flg $(BINROOT)\wpi.flg .symbolic
@@ -340,6 +340,10 @@ $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
  @$(CC) $(COPT)  -d__DLL__ -bd -fr=$^*.err -fo=$^@ $<
 
 .c.obc: .autodepend
+ @echo CC       $^.
+ @$(CC) $(COPT) -fr=$^*.err -fo=$^@ $<
+
+.c.obs: .autodepend
  @echo CC       $^.
  @$(CC) $(COPT) -fr=$^*.err -fo=$^@ $<
 

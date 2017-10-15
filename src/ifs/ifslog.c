@@ -69,8 +69,6 @@ static BOOL fWriteLogging(PSZ pszMessage);
 VOID message(USHORT usLevel, PSZ pszMessage, va_list va)
 {
 static BOOL fLogPrintInitted = FALSE;
-static BOOL fTraceInitted = FALSE;
-static BOOL fTraceEnabled;
 static BYTE szMessage[512];
 va_list va2;
 PROCINFO Proc;
@@ -79,25 +77,19 @@ USHORT usThreadID;
 
    _asm push es;
 
-   if (! fTraceInitted)
+   if (pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8)))
       {
-      fTraceEnabled = pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8));
+      // output to trace buffer
+      va_copy(va2, va);
+      trace(pszMessage, va2);
+      va_end(va2);
       }
-   fTraceInitted = TRUE;
 
    if (!(f32Parms.fMessageActive & usLevel))
       {
       va_end(va);
       _asm pop es;
       return;
-      }
-
-   if (fTraceEnabled)
-      {
-      // output to trace buffer
-      va_copy(va2, va);
-      trace(pszMessage, va2);
-      va_end(va2);
       }
 
    if (! fLogPrintInitted)

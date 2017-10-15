@@ -21,15 +21,15 @@ ADD_DEFS =
 
 # create win32 binaries
 OBJS1=$(PROJ_BLD)\format.obd $(PROJ_BLD)\win32.obd &
-      $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
+      $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd $(PROJ_BLD)\clus.obd &
       $(PROJ_BLD)\chkdsk.obd $(PROJ_BLD)\fatfunc.obd &
       $(PROJ_BLD)\ea.obd $(PROJ_BLD)\log.obd $(PROJ_BLD)\util.obd
 OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\win32.obj &
       $(PROJ_BLD)\log.obj $(PROJ_BLD)\util.obj
-OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\win32.obc $(PROJ_BLD)\util.obc &
+OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\win32.obc $(PROJ_BLD)\util.obc $(PROJ_BLD)\clus.obc &
       $(PROJ_BLD)\fatfunc.obc $(PROJ_BLD)\ea.obc $(PROJ_BLD)\log.obc
-OBJS4=$(PROJ_BLD)\sys.obj $(PROJ_BLD)\win32.obj &
-      $(PROJ_BLD)\log.obj $(PROJ_BLD)\util.obj
+OBJS4=$(PROJ_BLD)\sys.obs $(PROJ_BLD)\win32.obs $(PROJ_BLD)\clus.obs &
+      $(PROJ_BLD)\log.obs $(PROJ_BLD)\util.obs
 OBJS5=$(PROJ_BLD)\stub.obd
 COPT=-3s -sg -hw -mf -od -zq -q -u__OS2__ $(ADD_DEFS) -d_WIN32 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\nt
 TARGETS=$(BINROOT)\win32\dll\ufat32.sym &
@@ -205,7 +205,15 @@ $(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols makefile.wcc ..\..\makefile.m
  @%append $@ LIB clib3s,kernel32,user32
  @%append $@ @$[@
 
+.obc: $(PROJ_BLD)
+
+.obs: $(PROJ_BLD)
+
 $(PROJ_BLD)\win32.obc: win32.c
+ @echo CC       $^.
+ @$(CC) $(COPT) -d__UNICODE__ -fr=$^*.err -fo=$^@ $<
+
+$(PROJ_BLD)\win32.obs: win32.c
  @echo CC       $^.
  @$(CC) $(COPT) -d__UNICODE__ -fr=$^*.err -fo=$^@ $<
 
