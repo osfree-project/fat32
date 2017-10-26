@@ -4184,12 +4184,6 @@ USHORT rc;
 
    MessageL(LOG_FUNCS, "ReadFatSector%m", 0x0043);
 
-   if (pVolInfo->bFatType != FAT_TYPE_FAT12)
-      {
-      ulSec = ulSector * 64;
-      usNumSec = 64;
-      }
-
    // read multiples of three sectors,
    // to fit a whole number of FAT12 entries
    // (ulSector is indeed a number of 3*512
@@ -4238,12 +4232,6 @@ USHORT usFat;
 USHORT rc;
 
    MessageL(LOG_FUNCS, "WriteFatSector%m", 0x0044);
-
-   if (pVolInfo->bFatType != FAT_TYPE_FAT12)
-      {
-      ulSec = ulSector * 64;
-      usNumSec = 64;
-      }
 
    // write multiples of three sectors,
    // to fit a whole number of FAT12 entries
@@ -4374,10 +4362,7 @@ USHORT rc;
 ******************************************************************/
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
-      return GetFatEntryBlock(pVolInfo, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
-   else
-      return GetFatEntryBlock(pVolInfo, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64); // in  32 kb blocks
+   return GetFatEntryBlock(pVolInfo, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3); // in three sector blocks
 }
 
 /******************************************************************
@@ -4414,10 +4399,7 @@ ULONG  ulSector;
 ******************************************************************/
 static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster)
 {
-   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
-      return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
-   else
-      return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64);
+   return GetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -4484,10 +4466,7 @@ static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, 
 ******************************************************************/
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue)
 {
-   if (pVolInfo->bFatType == FAT_TYPE_FAT12)
-      SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
-   else
-      SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 64);
+   SetFatEntryEx(pVolInfo, pVolInfo->pbFatSector, ulCluster, ulValue, (ULONG)pVolInfo->BootSect.bpb.BytesPerSector * 3);
 }
 
 /******************************************************************
@@ -6758,15 +6737,16 @@ PDIRENTRY pMax, pDirBlock2 = pDirBlock;
 
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize)
 {
-//PDIRENTRY1 pMax, pDirBlock2 = pDirBlock;
-//
-//   pMax = (PDIRENTRY1)((PBYTE)pDirBlock + ulSize);
-//   while (pDirBlock != pMax)
-//      {
-//      if (pDirBlock->bEntryType == ENTRY_TYPE_EOD)
-//         pDirBlock->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
-//      pDirBlock++;
-//      }
+PDIRENTRY1 pMax, pDirBlock2 = pDirBlock;
+
+   pMax = (PDIRENTRY1)((PBYTE)pDirBlock + ulSize);
+   while (pDirBlock != pMax)
+      {
+      if (pDirBlock->bEntryType == ENTRY_TYPE_EOD)
+         // Mark to something non-zero without ENTRY_TYPE_IN_USE_STATUS bit
+         pDirBlock->bEntryType = 0x05;
+      pDirBlock++;
+      }
 }
 
 #endif

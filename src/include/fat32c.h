@@ -190,6 +190,10 @@ typedef struct
     char volume_label[12];
     DWORD reserved_sectors;
     DWORD align;
+    DWORD tracks;
+    DWORD sectors_per_track;
+    DWORD size;
+    UCHAR long_format;
     }
 format_params;
 
@@ -269,3 +273,4 @@ void cleanup ( void );
 void quit (int rc);
 void show_progress (float fPercentWritten);
 int show_message (char *pszMsg, unsigned short usLogMsg, unsigned short usMsg, unsigned short usNumFields, ...);
+void LowLevelFmt(PCDINFO pCD, format_params *params);

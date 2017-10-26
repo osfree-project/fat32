@@ -446,6 +446,12 @@ int format_volume (char *path, format_params *params)
 
     vol = strupr(vol);
 
+    // low level format
+    if (params->long_format)
+    {
+       LowLevelFmt(pCD, params);
+    }
+
     if (params->bFatType == FAT_TYPE_NONE)
     {
         ULONGLONG VolSizeMB;
@@ -1418,6 +1424,18 @@ int format(int argc, char *argv[], char *envp[])
                    }
                 continue;
                 }
+        case 'T': // tracks
+                p.tracks = atol(val);
+                continue;
+        case 'N': // sectors per track
+                p.sectors_per_track = atol(val);
+                continue;
+        case 'F': // volume size
+                p.size = atol(val);
+                continue;
+        case 'L': // long format
+                p.long_format = TRUE;
+                continue;
         default:
 	        usage( argv[0] );
         }
@@ -1471,110 +1489,4 @@ void sig_handler (int sig)
 {
     show_sig_string(sig);
     cleanup();
-}
-
-void check_vol_label(char *path, char **vol_label)
-{
-    /* Current volume label  */
-    char cur_vol[12];
-    char testvol[12];
-    /* file system information buffer */
-    char   c;
-    ULONG  rc;
-
-    show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
-
-    if (! msg)
-    {
-        memset(cur_vol, 0, sizeof(cur_vol));
-        memset(testvol, 0, sizeof(testvol));
-
-        rc = query_vol_label(path, cur_vol, sizeof(cur_vol));
-
-        show_message( "The new type of file system is %1.\n", 0, 1293, 1, TYPE_STRING, "FAT32" );
-
-        if (!cur_vol || !*cur_vol)
-            show_message( "The disk has no volume label.\n", 0, 125, 0 );
-        else
-        {
-            if (!vol_label || !*vol_label || !**vol_label)
-            {
-                show_message( "Enter the current volume label for drive %1 ", 0, 1318, 1, TYPE_STRING, path );
-
-                // Read the volume label
-                gets(testvol);
-            }
-        }
-
-        // if the entered volume label is empty, or doesn't
-        // the same as a current volume label, write an error
-        if ( stricmp(*vol_label, cur_vol) && stricmp(testvol, cur_vol) && (!**vol_label || !*testvol))
-        {
-            show_message( "An incorrect volume label was entered for this drive.\n", 0, 636, 0 );
-            exit (1);
-        }
-    }
-
-    show_message( "Warning!  All data on hard disk %1 will be lost!\n"
-                  "Proceed with FORMAT (Y/N)? ", 0, 1271, 1, TYPE_STRING, path );
-
-    c = getchar();
-
-    if ( c != '1' && toupper(c) != 'Y' )
-        exit (1);
- 
-    fflush(stdout);
-}
-
-char *get_vol_label(char *path, char *vol)
-{
-    static char default_vol[12] = "NO NAME    ";
-    static char v[12] = "           ";
-    char *label = vol;
-
-    if (!vol || !*vol)
-    {
-        fflush(stdin);
-        show_message( "Enter up to 11 characters for the volume label\n"
-                      "or press Enter for no volume label. ", 0, 1288, 0 );
-
-        label = v;
-    }
-
-    memset(label, 0, 12);
-    gets(label);
-
-    if (!*label)
-        label = default_vol;
-
-    if (strlen(label) > 11)
-    {
-       show_message( "The volume label you entered exceeds the 11-character limit.\n"
-                     "The first 11 characters were written to disk.  Any characters that\n"
-                     "exceeded the 11-character limit were automatically deleted.\n", 0, 154, 0 );
-       // truncate it
-       label[11] = '\0';
-    }
-
-    return label;
-}
-
-void show_progress (float fPercentWritten)
-{
-    char str[128];
-    
-    sprintf(str, "%3.f", fPercentWritten);
-    show_message( "%1% of the disk has been formatted.", 0, 538, 1,
-                  TYPE_STRING, str );
-
-    // restore cursor position
-    printf("\r");
-
-    fflush(stdout); 
-}
-
-void quit (int rc)
-{
-    cleanup ();
-    exit (rc);
 }

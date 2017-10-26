@@ -448,8 +448,7 @@ IMPORT VOID   GetCaseConversion( PUCHAR pCase );
 #define GetCurTime() (*pGITicks)
 
 
-#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 + 10000)
-//#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + SECTOR_SIZE * 8 + 10000)
+#define STORAGE_NEEDED (sizeof (VOLINFO) + sizeof (BOOTFSINFO) + SECTOR_SIZE * 8 * 3 + SECTOR_SIZE * 8 + 10000)
 
 
 #endif

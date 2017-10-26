@@ -2911,6 +2911,8 @@ if I'd convince OS/4 developers to do such an enhancement&per. But it will not w
 :p.:link reftype=hd refid=200702.Support for files > 4 GB on FAT/FAT32 (FAT+) :elink.
 
 :p.:link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
+
+:p.:link reftype=hd refid=200704.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :elink.
 .br 
 
 :h3 id=200700 res=32065.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
@@ -3021,6 +3023,38 @@ when usbmsd&per.add sees the media beginning from the boot sector&per. Such medi
 erasing the boot sector with zeroes&per. Then usbmsd&per.add disables emulation and it then works as usual&per.
 
 :p.Large floppies can be safely formatted with FAT16/FAT32/exFAT and used with fat32&per.ifs&per.
+
+:h3 id=200704 res=32069.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
+
+:p.:hp2.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
+
+:p.It was discovered that if I create a FAT filesystem image with 2048 bytes per sector (it can be done by
+QSINIT bootloader utilities, for example), and burn it onto a CDRW disk, it can be successfully mounted by
+FAT32&per.IFS&per. Moreover, Windows understands such CD&apos.s too&per. This could be treated as just a
+curious fact, but it can serve as a test for non-512 byte sectors support, too, which is very useful&per.
+
+:p.Also, with a little additional code for reading/writing CD&apos.s sectors (which was actually taken as is
+from my VirtualBox port, where you can run CD writing software in VBox, and burn CD&apos.s with a CD passthrough
+feature), FORMAT and CHKDSK could be taught to work with CDRW&apos.s too&per. This allows to format a CDRW as
+a big diskette, with a FAT filesystem&per. So, it works the same way UDF formatted CD&apos.s work&per. The only 
+thing not yet working is a low level format, so you format a CDRW on a low level first, either with UDF or with
+cdrecord/dvddao&per. The command may look like this&colon.
+
+:p.:hp2.format u&colon. /fs&colon.udf /l /y /nofmt :ehp2.
+
+:p.This will allow to create a low level info required for accessing the CD in packet mode (which allows to
+write sectors at once, but not tracks/sessions)&per. Then you can format the CD into a FAT filesystem, instead
+of UDF&colon.
+
+:p.:hp2.format u: /fs&colon.fat32 /v&colon.fat32cd :ehp2.
+
+:p. You may discover that after such an operation, programs like FC/2 or the WPS see the CD as a FAT32 filesystem&per.
+They will see that a 640 MB CDRW disk has about 603 MB of available space&per. You can copy/delete/move files as usual&per.
+You can also CHKDSK this media, it will be able to fix lost clusters etc&per. SYSINSTX utility works too, but my BIOS
+was unable to boot from a non-iso9660 CD&per. 
+
+:p.After writing the CD you need to do "unlock u&colon.", then "eject u&colon."&per. Both utilites are supplied with UDF
+filesystem archive&per.
 
 :p.
 :h1 id=70 res=30064.Trouble Shooting

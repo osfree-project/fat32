@@ -498,21 +498,10 @@ int i;
 
          pVolInfo->pBootFSInfo = (PBOOTFSINFO)(pVolInfo + 1);
 
-         switch (pVolInfo->bFatType)
-            {
-            case FAT_TYPE_FAT12:
-               pVolInfo->pbFatSector = malloc(3 * pvpfsi->vpi_bsize);
-               break;
-
-            default:
-               pVolInfo->pbFatSector = malloc(64 * pvpfsi->vpi_bsize);
-               break;
-            }
-         //pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
+         pVolInfo->pbFatSector = (PBYTE)(pVolInfo->pBootFSInfo + 1);
 
          pVolInfo->ulCurFatSector = -1L;
-         pVolInfo->pbFatBits = (PBYTE)(pVolInfo->pBootFSInfo + 1);
-         //pVolInfo->pbFatBits = (PBYTE)pVolInfo->pbFatSector + SECTOR_SIZE * 8 * 3;
+         pVolInfo->pbFatBits = (PBYTE)pVolInfo->pbFatSector + SECTOR_SIZE * 8 * 3;
          
 #ifdef EXFAT
          if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
@@ -930,7 +919,6 @@ int i;
          RemoveVolume(pVolInfo);
          *(PVOLINFO *)(pvpfsd->vpd_work) = NULL;
          *((ULONG *)pvpfsd->vpd_work + 1) = 0;
-         free(pVolInfo->pbFatSector);
          free(pVolInfo);
          rc = NO_ERROR;
          break;

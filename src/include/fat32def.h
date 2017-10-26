@@ -471,8 +471,10 @@ ULONG avail_clusters;
 WORD  bytes_per_sector;
 } DISKINFO, *PDISKINFO;
 
-#define MEDIUM_TYPE_DASD  0
-#define MEDIUM_TYPE_CDROM 1
+#define MEDIUM_TYPE_DASD    0
+#define MEDIUM_TYPE_CDROM   1
+#define MEDIUM_TYPE_FLOPPY  2
+#define MEDIUM_TYPE_OPTICAL 3
 
 typedef struct _CDInfo
 {

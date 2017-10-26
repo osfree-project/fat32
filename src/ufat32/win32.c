@@ -121,6 +121,14 @@ BYTE get_medium_type(char *pszFilename)
   return MEDIUM_TYPE_DASD;
 }
 
+void low_level_fmt_floppy(HANDLE hDevice, format_params *params)
+{
+}
+
+void low_level_fmt_cd(HANDLE hDevice, format_params *params)
+{
+}
+
 void open_drive (char *path , HANDLE *hDevice)
 {
   char  DriveDevicePath[]="\\\\.\\Z:"; // for CreateFile

@@ -32,6 +32,7 @@ char FS_NAME[8] = "FAT32";
 PSZ GetOS2Error(USHORT rc);
 
 void LogOutMessagePrintf(ULONG ulMsgNo, char *psz, ULONG ulParmNo, va_list va);
+void show_progress (float fPercentWritten);
 
 #ifdef __UNICODE__
 USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
@@ -150,7 +151,13 @@ ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSect
 
    if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
-       return rc;
+   {
+       parm2.command = 0;
+
+       if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+           return rc;
+   }
 
    if (!bpb.cHeads || !bpb.usSectorsPerTrack)
        return ERROR_SECTOR_NOT_FOUND;
@@ -252,7 +259,13 @@ ULONG ReadSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSe
 
    if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
-      return rc;
+   {
+       parm2.command = 0;
+
+       if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+           return rc;
+   }
 
    lDataSize = nSectors * BytesPerSector;
    cbRead32 = (lDataSize > BytesPerSector) ? BytesPerSector : (ULONG)lDataSize;
@@ -326,7 +339,15 @@ ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector
 
    if ( (rc = DosDevIOCtl((HFILE)hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
-       return rc;
+   {
+       parm2.command = 0;
+
+       if ( (rc = DosDevIOCtl((HFILE)hf, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+           {
+           return rc;
+           }
+   }
 
    if (!bpb.cHeads || !bpb.usSectorsPerTrack)
        return ERROR_SECTOR_NOT_FOUND;
@@ -428,7 +449,13 @@ ULONG WriteSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerS
 
    if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
                           &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
-      return rc;
+   {
+       parm2.command = 0;
+
+       if ( (rc = DosDevIOCtl((HFILE)hFile, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                          &parm2, parmlen2, &parmlen2, &bpb, datalen2, &datalen2)) )
+           return rc;
+   }
 
    lDataSize = nSectors * BytesPerSector;
 
@@ -468,6 +495,7 @@ ULONG WriteSectCD(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerS
 // check if the driveletter is cdrom one
 BYTE get_medium_type(char *pszFilename)
 {
+    // detect CD
     typedef struct _CDROMDeviceMap
     {
         USHORT usDriveCount;
@@ -499,7 +527,243 @@ BYTE get_medium_type(char *pszFilename)
             return MEDIUM_TYPE_CDROM;
     }
 
+    // detect floppy
+    {
+        /* parameter packet */
+        #pragma pack(1)
+        struct {
+            unsigned char command;
+            unsigned char drive;
+        } parm;
+        #pragma pack()
+        /* data packet      */
+        BIOSPARAMETERBLOCK bpb;
+        ULONG num = 0, map = 0;
+        char driveName[3] = { '?', ':', '\0' };
+        APIRET rc;
+
+        DosQueryCurrentDisk(&num, &map);
+
+        for (drv = 0; drv < 'z' - 'a' + 1; drv++)
+        {
+            char szDevName[4] = "A:";
+            char fsqbuf2[sizeof(FSQBUFFER2) + 3 * CCHMAXPATH];
+            PFSQBUFFER2 pfsqbuf2 = (PFSQBUFFER2)fsqbuf2;
+            ULONG cbData;
+            ULONG parmlen = sizeof(parm);
+            ULONG datalen = sizeof(bpb);
+
+            driveName[0] = 'A' + drv;
+
+            // skip if the drive is not in map
+            if ((map & (drv + 1)) == 0)
+                continue;
+
+            parm.command = 0;
+            parm.drive = drv;
+
+            // skip if we fail to get an BPB
+            if ( (rc = DosDevIOCtl(-1, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                              &parm, parmlen, &parmlen, &bpb, datalen, &datalen)) )
+                continue;
+
+            switch (bpb.bDeviceType)
+            {
+                case 5: // Fixed disk
+                case 6: // Tape drive
+                    continue;
+
+                case 8: // R/W optical disk
+                    if (!stricmp(szDevName, pszFilename))
+                        return MEDIUM_TYPE_FLOPPY;
+
+                case 7: // Other (includes 3.5" diskette drive)
+                    szDevName[0] += drv;
+                    cbData = sizeof(fsqbuf2);
+                    // disable error popups
+                    DosError(FERR_DISABLEEXCEPTION | FERR_DISABLEHARDERR);
+                    if (! DosQueryFSAttach(szDevName, 0L, FSAIL_QUERYNAME, (PFSQBUFFER2)&fsqbuf2, &cbData) )
+                    {
+                        if (pfsqbuf2->iType == FSAT_REMOTEDRV)
+                            continue; // skip remote drives
+                        else if (pfsqbuf2->iType == FSAT_LOCALDRV)
+                        {
+                            PSZ pszFSName = (PSZ)pfsqbuf2->szName + pfsqbuf2->cbName + 1;
+                            if (!strstr(pszFSName, "FAT") || bpb.usBytesPerSector != 512) // optical
+                                continue; // skip non-fat drives
+                        }
+                    }
+                    // enable error popups
+                    DosError(FERR_ENABLEEXCEPTION | FERR_ENABLEHARDERR);
+                    break;
+                    
+                default:
+                    break;
+            }
+
+            if (!stricmp(szDevName, pszFilename))
+                return MEDIUM_TYPE_FLOPPY;
+
+        }
+    }
+
+    // DASD
     return MEDIUM_TYPE_DASD;
+}
+
+void low_level_fmt_floppy(HANDLE hDevice, format_params *params)
+{
+  #pragma pack(1)
+
+  struct FmtVerify_param {
+   UCHAR        CmdInfo;
+   USHORT       Head;
+   USHORT       Cylinder;
+   USHORT       TracksNo;
+   USHORT       SectorsNo;
+   struct _tuple
+   {
+     BYTE  c;
+     BYTE  h;
+     BYTE  s;
+     BYTE  n;
+   }        FormatTrackTable[1];
+  };
+
+  char *parm;
+  struct FmtVerify_param *parm2;
+
+  struct FmtVerify_data {
+   UCHAR        StrtSector;
+  } data;
+
+  ULONG parmlen;
+  ULONG datalen;
+
+  APIRET rc;
+  int i, j, k;
+
+  struct {
+   UCHAR command;
+   UCHAR drive;
+  } parm1;
+
+  BIOSPARAMETERBLOCK bpb;
+
+  #pragma pack()
+
+  parmlen = sizeof(parm1);
+  datalen = sizeof(bpb);
+  parm1.command = 0;
+  parm1.drive   = 0;
+
+  if ( rc = DosDevIOCtl((HFILE)hDevice, IOCTL_DISK, DSK_GETDEVICEPARAMS,
+                        &parm1, parmlen, &parmlen, &bpb, datalen, &datalen) )
+     {
+     printf("GetDeviceParams rc=%u\n", rc);
+     return;
+     }
+
+  parm1.command = 2;
+  bpb.cCylinders = params->tracks;
+  bpb.usSectorsPerTrack = params->sectors_per_track;
+  bpb.cHeads = 2;
+
+  if ( rc = DosDevIOCtl((HFILE)hDevice, IOCTL_DISK, DSK_SETDEVICEPARAMS,
+                        &parm1, parmlen, &parmlen, &bpb, datalen, &datalen) )
+     {
+     printf("SetDeviceParams rc=%u\n", rc);
+     return;
+     }
+
+  parmlen = sizeof(struct FmtVerify_param) + 4 * (params->sectors_per_track - 1);
+  datalen = sizeof(struct FmtVerify_data);
+
+  parm  = (char *)malloc(parmlen);
+  parm2 = (struct FmtVerify_param *)parm;
+  parm2->CmdInfo = 1;
+
+  data.StrtSector = 0;
+
+  for (j = 0; j < 2; j++)
+  {
+    parm2->Head = j;
+
+    for (i = 0; i < params->tracks; i++)
+    {
+      parm2->Cylinder = i;
+      parm2->TracksNo = 0;
+      parm2->SectorsNo = params->sectors_per_track;
+
+      for (k = 0; k < params->sectors_per_track; k++)
+      {
+        parm2->FormatTrackTable[k].c = i;
+        parm2->FormatTrackTable[k].h = j;
+        parm2->FormatTrackTable[k].s = k + 1;
+        parm2->FormatTrackTable[k].n = 2;
+      }
+
+      rc = DosDevIOCtl((HFILE)hDevice, IOCTL_DISK, DSK_FORMATVERIFY,
+                       parm, parmlen, &parmlen,
+                       &data, datalen, &datalen);
+      if (rc)
+      {
+        printf("FormatVerify rc=%u\n", rc);
+      }
+
+      DosSleep(1000);
+      if (! rc)
+         show_progress( (float)((j * params->tracks + (i + 1)) * 100 / (params->tracks * 2)) );
+    }
+  }
+
+  free(parm);
+  DosSleep(4000);
+}
+
+void low_level_fmt_cd(HANDLE hDevice, format_params *params)
+{
+  struct FmtVerify_param {
+   UCHAR        Command;  // Bit 7: 0 - start/cancel formatting, 1 - get format status
+                          // Bit 0: 0 - start formatting, 1 - cancel formatting
+                          // Bit 1: 1 - Mount Rainier
+                          // Bit 2: 1 - wait for background formatting complete
+                          // Bit 3: 1 - resume background formatting
+  } parm;
+
+  struct FmtVerify_data {
+   UCHAR        Status;   // Percent of formatted volume, if supported such feature
+                          // 0, if not supported
+  } data;
+
+  ULONG parmlen = sizeof(struct FmtVerify_param);
+  ULONG datalen = sizeof(struct FmtVerify_data);
+  APIRET rc;
+
+  parm.Command = 0;
+  data.Status  = 0;
+
+  rc = DosDevIOCtl((HFILE)hDevice, IOCTL_DISK, DSK_FORMATVERIFY,
+                   &parm, parmlen, &parmlen,
+                   &data, datalen, &datalen);
+
+  if (rc)
+     return;
+
+  parm.Command = (1 << 7);
+
+  do
+  {
+     rc = DosDevIOCtl((HFILE)hDevice, IOCTL_DISK, DSK_FORMATVERIFY,
+                   &parm, parmlen, &parmlen,
+                   &data, datalen, &datalen);
+
+     DosSleep(1000);
+     if (! rc)
+        show_progress ((float)data.Status);
+  } while (data.Status < 100 && ! rc);
+
+  DosSleep(7000);
 }
 
 void open_drive (char *path, HANDLE *hDevice)
@@ -626,6 +890,9 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
 {
   APIRET rc;
   int i;
+
+  if (! dp->HiddenSectors)
+    return;
 
   rc = ReadSect(hDevice, -dp->HiddenSectors, 1, dp->BytesPerSect, (char *)&mbr);
 
