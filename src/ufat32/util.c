@@ -12,8 +12,8 @@ void lock_drive(HANDLE hDevice);
 void unlock_drive(HANDLE hDevice);
 BOOL get_drive_params(HANDLE hDevice, struct extbpb *dp);
 void set_part_type(HANDLE hDevice, struct extbpb *dp, int type);
-void begin_format (HANDLE hDevice);
-void remount_media (HANDLE hDevice);
+void begin_format (HANDLE hDevice, BOOL fImage);
+void remount_media (HANDLE hDevice, BOOL fImage);
 void close_drive(HANDLE hDevice);
 ULONG ReadSect(HANDLE hFile, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 ULONG WriteSect(HANDLE hf, LONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
@@ -136,13 +136,15 @@ void SetPartType(PCDINFO pCD, struct extbpb *dp, int type)
 
 void BeginFormat(PCDINFO pCD)
 {
-   begin_format(pCD->hDisk);
+   BOOL fImage = *(pCD->szImage) ? 1 : 0;
+   begin_format(pCD->hDisk, fImage);
 }
 
 
 void RemountMedia(PCDINFO pCD)
 {
-   remount_media(pCD->hDisk);
+   BOOL fImage = *(pCD->szImage) ? 1 : 0;
+   remount_media(pCD->hDisk, fImage);
 }
 
 

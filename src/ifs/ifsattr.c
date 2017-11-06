@@ -38,7 +38,12 @@ USHORT rc;
 
    MessageL(LOG_FS, "FS_FILEATTRIBUTE%m, Flag = %X for %s", 0x000d, usFlag, pName);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
@@ -270,7 +275,12 @@ USHORT rc;
    MessageL(LOG_FS, "FS_PATHINFO%m Flag = %d, Level = %d called for %s, cbData = %u",
             0x000e, usFlag, usLevel, pName, cbData);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {

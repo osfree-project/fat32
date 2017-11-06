@@ -12,7 +12,7 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BINROOT)\os2\system $(BINROOT)\os2\system\trace &
            $(BINROOT)\os2\book $(BINROOT)\os2\docs $(BINROOT)\os2\docs\fat32 &
            $(BLDROOT)\util $(BLDROOT)\ifs $(BLDROOT)\ifs\libc $(BLDROOT)\partfilt $(BLDROOT)\ifsinf &
-           $(BLDROOT)\ufat32 $(BLDROOT)\f32chk &
+           $(BLDROOT)\ufat32 $(BLDROOT)\f32chk $(BLDROOT)\util\zlib $(BLDROOT)\util\qemu-block &
            $(BLDROOT)\ufat32\win32 $(BINROOT)\win32 $(BINROOT)\win32\dll
 
 CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.obc $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &
@@ -43,6 +43,7 @@ util     = &
  f32mon.exe   &
  f32stat.exe  &
  f32chk.exe &
+ f32mount.exe &
  fat32chk.exe &
  fat32fmt.exe &
  fat32sys.exe
@@ -66,7 +67,7 @@ adddrv   = &
 
 sym      = &
  boot\fat32.sym system\trace\trc00fe.tff dll\uunifat.sym &
- cachef32.sym f32parts.sym f32mon.sym &
+ cachef32.sym f32parts.sym f32mon.sym f32mount.sym &
  f32stat.sym f32chk.sym fat32chk.sym fat32fmt.sym fat32sys.sym
 
 adddrvsym = &
@@ -90,6 +91,7 @@ distlist = &
  $(p)os2\f32mon.exe $(p)os2\f32mon.sym &
  $(p)os2\f32stat.exe $(p)os2\f32stat.sym &
  $(p)os2\f32chk.exe $(p)os2\f32chk.sym &
+ $(p)os2\f32mount.exe $(p)os2\f32mount.sym &
  $(p)os2\fat32chk.exe $(p)os2\fat32chk.sym &
  $(p)os2\fat32fmt.exe $(p)os2\fat32fmt.sym &
  $(p)os2\fat32sys.exe $(p)os2\fat32sys.sym &

@@ -29,7 +29,7 @@ APIRET rc = 0;
 
    MessageL(LOG_FS, "FS_FINDCLOSE%m", 0x0005);
 
-   pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+   pVolInfo = GetVolInfoFS(pfsfsd);
 
    if (! pVolInfo)
       {
@@ -120,13 +120,23 @@ PDIRENTRY1 pStreamEntry = NULL;
 
    memset(pfsfsd, 0, sizeof (struct fsfsd));
 
-   pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+      }
 
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
       goto FS_FINDFIRSTEXIT;
       }
+
+   pFindInfo->pVolInfo = pVolInfo;
+
+   if (pName[1] == ':' && pVolInfo->pbMntPoint)
+      pName += strlen(pVolInfo->pbMntPoint);
 
    if (pVolInfo->fFormatInProgress)
       {
@@ -454,7 +464,7 @@ USHORT usEntriesWanted;
    usEntriesWanted = *pcMatch;
    *pcMatch = 0;
 
-   pVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+   pVolInfo = GetVolInfoFS(pfsfsd);
 
    if (! pVolInfo)
       {

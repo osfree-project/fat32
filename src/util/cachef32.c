@@ -14,9 +14,12 @@
 #define INCL_DOSDEVICES
 #define INCL_DOSPROCESS
 #define INCL_VIO
+#define INCL_LONGLONG
 #include <os2.h>
 #include "portable.h"
 #include "fat32def.h"
+
+#include "vl.h"
 
 #define TIME_FACTOR 1
 
@@ -31,6 +34,7 @@ PRIVATE VOID APIENTRY EMThread(ULONG ulArg);
 */
 PRIVATE VOID _LNK_CONV LWThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV EMThread(PVOID ulArg);
+PRIVATE VOID _LNK_CONV RWThread(PVOID ulArg);
 
 PRIVATE BOOL IsDiskClean(PSZ pszDrive);
 PRIVATE BOOL DoCheckDisk(BOOL fDoCheck);
@@ -128,6 +132,8 @@ UCHAR rgFirstInfo[256];
    signal(SIGBREAK, Handler);
    signal(SIGTERM, Handler);
    signal(SIGINT, Handler);
+   signal(SIGSEGV, Handler);
+   signal(SIGFPE, Handler);
 
 /*
    rc = DosCreateThread(&pOptions->ulEMTID, EMThread, 0L, 0, 8196);
@@ -144,6 +150,10 @@ UCHAR rgFirstInfo[256];
 
    pOptions->ulLWTID = _beginthread(LWThread,NULL,8192,NULL);
    if (pOptions->ulLWTID == -1)
+	  printf("_beginthread failed, rc = %d\n", -1);
+
+   pOptions->ulRWTID = _beginthread(RWThread,NULL,32784,NULL);
+   if (pOptions->ulRWTID == -1)
 	  printf("_beginthread failed, rc = %d\n", -1);
 
    ulParmSize = sizeof f32Parms;
@@ -167,6 +177,120 @@ UCHAR rgFirstInfo[256];
    DosExit(EXIT_PROCESS, 0);
 
    return 0;
+}
+
+/******************************************************************
+*
+******************************************************************/
+VOID _LNK_CONV RWThread(PVOID ulArg)
+{
+BlockDriverState *bs;
+BlockDriver *drv = NULL;
+LONGLONG ibActual;
+ULONG ulDataSize;
+EXBUF exbuf;
+ULONG ulParmSize = sizeof(EXBUF);
+ULONG cbActual;
+ULONG ulAction;
+PCPDATA pCPData = NULL;
+char *pFmt;
+APIRET rc;
+int ret;
+
+   bdrv_init();
+
+   rc = DosAllocMem((void **)&pCPData, sizeof(CPDATA),
+                    PAG_COMMIT | PAG_READ | PAG_WRITE);
+
+   if (rc)
+      return;
+
+   exbuf.buf = (ULONG)pCPData;
+
+   rc = DosFSCtl(NULL, 0, NULL,
+                 &exbuf, ulParmSize, &ulParmSize,
+                 FAT32_DAEMON_STARTED, FS_NAME, -1, FSCTL_FSDNAME);
+
+   if (rc)
+      return;
+
+   while (1)
+      {
+      rc = DosFSCtl(NULL, 0, NULL,
+                    NULL, 0, NULL,
+                    FAT32_GET_REQ, FS_NAME, -1, FSCTL_FSDNAME);
+
+      if (!rc || rc == ERROR_VOLUME_NOT_MOUNTED || rc == ERROR_INTERRUPT)
+         {
+         switch (pCPData->Op)
+            {
+            case OP_OPEN:
+               bs = bdrv_new("");
+
+               if (! bs)
+                  {
+                  rc = ERROR_NOT_ENOUGH_MEMORY;
+                  break;
+                  }
+
+               pFmt = pCPData->pFmt;
+
+               if (*pFmt)
+                  {
+                  drv = bdrv_find_format(pFmt);
+                  }
+
+               if ((ret = bdrv_open2(bs, pCPData->Buf, 0, drv)) < 0)
+                  {
+                  rc = ERROR_FILE_NOT_FOUND;
+                  break;
+                  }
+               pCPData->hf = (ULONG)bs;
+               break;
+
+            case OP_CLOSE:
+               bs = (BlockDriverState *)pCPData->hf;
+
+               bdrv_delete(bs);
+               break;
+
+            case OP_READ:
+               bs = (BlockDriverState *)pCPData->hf;
+
+               if (bdrv_read(bs, pCPData->llOffset / 512, pCPData->Buf, pCPData->cbData / 512) != 0)
+                  {
+                  rc = ERROR_READ_FAULT;
+                  break;
+                  }
+
+               rc = NO_ERROR;
+               break;
+
+            case OP_WRITE:
+               bs = (BlockDriverState *)pCPData->hf;
+
+               if (bdrv_write(bs, pCPData->llOffset / 512, pCPData->Buf, pCPData->cbData / 512) != 0)
+                  {
+                  rc = ERROR_WRITE_FAULT;
+                  break;
+                  }
+
+               rc = NO_ERROR;
+               break;
+            }
+
+         pCPData->rc = rc;
+         }
+      rc = DosFSCtl(NULL, 0, NULL,
+                    NULL, 0, NULL,
+                    FAT32_DONE_REQ, FS_NAME, -1, FSCTL_FSDNAME);
+      }
+
+   rc = DosFSCtl(NULL, 0, NULL,
+                 NULL, 0, NULL,
+                 FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
+
+   rc = DosFreeMem(pCPData);
 }
 
 /******************************************************************
@@ -230,6 +354,10 @@ VOID Handler(INT iSignal)
 	{
 	   pOptions->fTerminate = TRUE;
 	}
+   DosFSCtl(NULL, 0, NULL,
+            NULL, 0, NULL,
+            FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
+
 //	 exit(1);
 }
 
@@ -381,6 +509,9 @@ ULONG	  ulParm;
 					 printf("Terminate request already set!\n");
 				  pOptions->fTerminate = TRUE;
 				  printf("Terminating CACHEF32.EXE...\n");
+                                  DosFSCtl(NULL, 0, NULL,
+                                           NULL, 0, NULL,
+                                           FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
 				  DosExit(EXIT_PROCESS, 0);
 				  }
 			   printf("/Q is invalid, CACHEF32 is not running!\n");

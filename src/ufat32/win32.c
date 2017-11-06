@@ -8,6 +8,8 @@
 
 #include "fat32c.h"
 
+BOOL fDiskImage = FALSE;
+
 HANDLE hDev;
 
 char msg = FALSE;
@@ -277,7 +279,7 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
      }
 }
 
-void begin_format (HANDLE hDevice)
+void begin_format (HANDLE hDevice, BOOL fImage)
 {
   BOOL bRet;
   DWORD cbRet;
@@ -288,7 +290,7 @@ void begin_format (HANDLE hDevice)
       die( "Failed to dismount device", -7 );
 }
 
-void remount_media (HANDLE hDevice)
+void remount_media (HANDLE hDevice, BOOL fImage)
 {
   //BOOL bRet;
   //DWORD cbRet;
@@ -316,7 +318,7 @@ void cleanup ( void )
     if (hDev == 0)
         return;
 
-    remount_media ( hDev );
+    remount_media ( hDev, fDiskImage );
     unlock_drive ( hDev );
     close_drive ( hDev);
     hDev = 0;

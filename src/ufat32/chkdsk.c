@@ -118,6 +118,8 @@ extern int logbufsize;
 extern char *logbuf;
 extern int  logbufpos;
 
+extern BOOL fDiskImage;
+
 static HANDLE hDisk = 0;
 
 F32PARMS  f32Parms = {0};
@@ -145,6 +147,9 @@ static void usage(char *s)
                 "/c         auto recover files only if the FS\n"
                 "           is in inconsistent state\n"
                 "/a         autocheck\n"
+                "/m:<mountpoint> specify a mountpoint of a mounted\n"
+                "           filesystem image. If specified, it is used\n"
+                "           instead of [c:\\].\n"
                 "/h or /?   show help\n",
                 0, 0, 1, s);
 }
@@ -197,6 +202,12 @@ struct extbpb dp;
             case 'A':
                pCD->fAutoCheck = TRUE;
                break;
+            case 'M':
+               if (strlen(rgArgv[iArg] + 3) > CCHMAXPATHCOMP)
+                  exit(ERROR_FILENAME_EXCED_RANGE);
+               strcpy(pCD->szImage, rgArgv[iArg] + 3);
+               fDiskImage = TRUE;
+               break;
             case 'H':
             case '?':
                // show help
@@ -224,7 +235,11 @@ struct extbpb dp;
       query_current_disk(pCD->szDrive);
       }
 
-   OpenDrive(pCD, pCD->szDrive);
+   if (*(pCD->szImage))
+      OpenDrive(pCD, pCD->szImage);
+   else
+      OpenDrive(pCD, pCD->szDrive);
+
    hFile = pCD->hDisk;
    hDisk = hFile;
 
@@ -232,9 +247,6 @@ struct extbpb dp;
       {
       LockDrive(pCD);
       }
-
-   //pCD->hDisk = hFile;
-   //hDisk = hFile;
 
    GetDriveParams(pCD, &dp);
    memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));

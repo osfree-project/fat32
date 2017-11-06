@@ -14,8 +14,6 @@ void open_drive (char *path, HANDLE *hDevice);
 void close_drive(HANDLE hDevice);
 void lock_drive(HANDLE hDevice);
 void unlock_drive(HANDLE hDevice);
-void begin_format (HANDLE hDevice);
-void remount_media (HANDLE hDevice);
 
 ULONG ReadSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
 ULONG WriteSect(HANDLE hf, ULONG ulSector, USHORT nSectors, USHORT BytesPerSector, PBYTE pbSector);
@@ -110,7 +108,7 @@ CHAR fs_type = 0;
 
 static void usage(char *s)
 {
-   show_message("Usage: [c:\\] %s x:\n"
+   show_message("Usage: [c:\\] %s x: [/m:<mntpoint>]\n"
                 "(c) Netlabs, 2016, covered by (L)GPL\n"
                 "Make a disk system.\n\n", 0, 0, 1, s);
 }
@@ -148,14 +146,20 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   ULONG  ulDirCluster, ulCluster;
   char   *bootblk;
   struct extbpb dp;
-  char   file[20];
+  char   file[256];
   char   *drive = rgArgv[1];
+  char   *pszImage;
   FILE   *fd;
   HANDLE  hf;
   APIRET rc;
   int i, j;
 
   show_message("FAT32 version %s compiled on " __DATE__ "\n", 0, 0, 1, FAT32_VERSION);
+
+  if (iArgc > 2 && (pszImage = strstr(strlwr(rgArgv[2]), "/m:")))
+     {
+     pszImage += 3;
+     }
 
   if (!rgArgv[1] ||
       (rgArgv[1] && (strstr(strlwr(rgArgv[1]), "/h") || strstr(strlwr(rgArgv[1]), "/?"))) ||
@@ -168,8 +172,15 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   // create subdirs
   memset(file, 0, sizeof(file));
-  file[0] = drive[0];
-  strcat(file, ":\\boot");
+  strcpy(file, drive);
+
+  if (pszImage)
+     {
+     strcpy(file, pszImage);
+     strcat(file, "\\");
+     }
+
+  strcat(file, "\\boot");
   mkdir(file);
   strcat(file, "\\loader");
   mkdir(file);
@@ -177,8 +188,14 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   mkdir(file);
 
   memset(file, 0, sizeof(file));
-  file[0] = drive[0];
-  strcat(file, ":\\boot\\loader\\preldr0.mdl");
+  strcpy(file, drive);
+
+  if (pszImage)
+     {
+     strcpy(file, pszImage);
+     }
+
+  strcat(file, "\\boot\\loader\\preldr0.mdl");
 
   fd = fopen(file, "wb+");
 
@@ -199,8 +216,14 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   fclose(fd);
 
   memset(file, 0, sizeof(file));
-  file[0] = drive[0];
-  strcat(file, ":\\boot\\loader\\preldr0.mdl");
+  strcpy(file, drive);
+
+  if (pszImage)
+     {
+     strcpy(file, pszImage);
+     }
+
+  strcat(file, "\\boot\\loader\\preldr0.mdl");
 
   fd = fopen(file, "rb+");
 
@@ -236,7 +259,10 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   fclose(fd);
 
-  strncpy(file + 22, ".rel", 4);
+  if (pszImage)
+     strncpy(file + 20 + strlen(pszImage), ".rel", 4);
+  else
+     strncpy(file + 22, ".rel", 4);
 
   fd = fopen(file, "wb");
 
@@ -258,8 +284,14 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   fclose(fd);
 
   memset(file, 0, sizeof(file));
-  file[0] = drive[0];
-  strcat(file, ":\\boot\\loader\\fsd\\fat.mdl");
+  strcpy(file, drive);
+
+  if (pszImage)
+     {
+     strcpy(file, pszImage);
+     }
+
+  strcat(file, "\\boot\\loader\\fsd\\fat.mdl");
 
   fd = fopen(file, "wb");
 
@@ -280,8 +312,10 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   fclose(fd);
 
-  strncpy(file + 22, ".rel", 4);
-
+  if (pszImage)
+     strncpy(file + 20 + strlen(pszImage), ".rel", 4);
+  else
+     strncpy(file + 22, ".rel", 4);
   
   fd = fopen(file, "wb");
 
@@ -308,8 +342,15 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   {
     /* copy boot sector config file */
     memset(file, 0, sizeof(file));
-    file[0] = drive[0];
-    strcat(file, ":\\boot\\bootsec.cfg");
+    strcpy(file, drive);
+
+    if (pszImage)
+       {
+       strcpy(file, pszImage);
+       strcat(file, "\\");
+       }
+
+    strcat(file, "\\boot\\bootsec.cfg");
 
     fd = fopen(file, "wb");
 
@@ -345,8 +386,15 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   memcpy(bootblk, &ldr0hdr, sizeof(ldr0hdr));
 
   memset(file, 0, sizeof(file));
-  file[0] = drive[0];
-  strcat(file, ":\\boot\\bootblk");
+  strcpy(file, drive);
+
+  if (pszImage)
+     {
+     strcpy(file, pszImage);
+     strcat(file, "\\");
+     }
+
+  strcat(file, "\\boot\\bootblk");
 
   fd = fopen(file, "wb+");
 
@@ -373,7 +421,14 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
      return;
   memset(pCD, 0, sizeof (CDINFO));
 
-  OpenDrive(pCD, drive);
+  if (pszImage)
+     {
+     OpenDrive(pCD, pszImage);
+     }
+  else
+     {
+     OpenDrive(pCD, drive);
+     }
 
   LockDrive(pCD);
 
@@ -384,7 +439,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   if (rc)
   {
-    show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+    if (pszImage)
+       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+    else
+       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
     show_message("%s\n", 0, 0, 1, get_error(rc));
     return;
   }
@@ -503,7 +562,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
     if (rc)
     {
-      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      if (pszImage)
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+      else
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
       show_message("%s\n", 0, 0, 1, get_error(rc));
       return;
     }
@@ -512,7 +575,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
     if (rc)
     {
-      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      if (pszImage)
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+      else
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
       show_message("%s\n", 0, 0, 1, get_error(rc));
       return;
     }
@@ -559,7 +626,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
     if (rc)
     {
-      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      if (pszImage)
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+      else
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
       show_message("%s\n", 0, 0, 1, get_error(rc));
       return;
     }
@@ -578,7 +649,11 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
     if (rc)
     {
-      show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+      if (pszImage)
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+      else
+         show_message("Cannot write to %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
       show_message("%s\n", 0, 0, 1, get_error(rc));
       return;
     }

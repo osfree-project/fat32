@@ -358,7 +358,7 @@
     PLIN pGlobLinAddr
  );
 
- #pragma aux DevHelp_ProcessToGlobal = \
+ #pragma aux DevHelp_VMProcessToGlobal = \
     ".386p" \
     "mov     dl, 59h" \
     "mov     eax, [esp]" \
@@ -433,8 +433,8 @@
     ".386p" \
     "mov     dl, 5ch" \
     "mov     bx, sp" \
-    "mov     ebx, ss:[bx]" \
     "mov     ecx, ss:[bx+4]" \
+    "mov     ebx, ss:[bx]" \
     "call    dword ptr ds:[Device_Help]" \
     "jc      error" \
     "xor     ax, ax" \

@@ -41,6 +41,8 @@ USHORT QueryNLS2Uni( USHORT usCode );
 extern UCHAR rgFirstInfo[ 256 ];
 #endif
 
+BOOL fDiskImage = FALSE;
+
 #pragma pack(1)
 
 typedef struct _PTE
@@ -772,12 +774,14 @@ void open_drive (char *path, HANDLE *hDevice)
   ULONG  ulAction;
   char DriveDevicePath[]="Z:"; // for DosOpen
   char *p = path;
+  ULONG ulFlags = 0;
 
   if (path[1] == ':' && path[2] == '\0')
   {
     // drive letter (UNC)
     DriveDevicePath[0] = *path;
     p = DriveDevicePath;
+    ulFlags = OPEN_FLAGS_DASD;
   }
 
   rc = DosOpen( p,               // filename
@@ -788,7 +792,7 @@ void open_drive (char *path, HANDLE *hDevice)
               OPEN_ACTION_OPEN_IF_EXISTS, // | OPEN_ACTION_REPLACE_IF_EXISTS,
               OPEN_FLAGS_FAIL_ON_ERROR |  // OPEN_FLAGS_WRITE_THROUGH | 
               OPEN_SHARE_DENYREADWRITE |  // OPEN_FLAGS_NO_CACHE  |
-              OPEN_ACCESS_READWRITE    | OPEN_FLAGS_DASD,
+              OPEN_ACCESS_READWRITE    | ulFlags,
               NULL);                 // peaop2
 
   if ( rc != 0 || hDevice == 0 )
@@ -915,7 +919,7 @@ void set_part_type(HANDLE hDevice, struct extbpb *dp, int type)
   }
 }
 
-void begin_format (HANDLE hDevice)
+void begin_format (HANDLE hDevice, BOOL fImage)
 {
   // Detach the volume from the old FSD 
   // and attach to the new one
@@ -937,15 +941,24 @@ void begin_format (HANDLE hDevice)
       strcpy(FS_NAME, "UNIFAT");
       }
 
-  rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &cmdinfo, 
-                    parmlen, &parmlen, datainfo,
-                    datalen, &datalen);
+  if (fImage)
+     {
+     rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_FAT32, FAT32_BEGINFORMAT, &cmdinfo, 
+                       parmlen, &parmlen, datainfo,
+                       datalen, &datalen);
+     }
+  else
+     {
+     rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_BEGINFORMAT, &cmdinfo, 
+                       parmlen, &parmlen, datainfo,
+                       datalen, &datalen);
+     }
 
   if ( rc )
       die( "Failed to begin format device", rc );
 }
 
-void remount_media (HANDLE hDevice)
+void remount_media (HANDLE hDevice, BOOL fImage)
 {
   // Redetermine media
   unsigned char parminfo  = 0;
@@ -954,9 +967,18 @@ void remount_media (HANDLE hDevice)
   unsigned long datalen   = 1;
   APIRET rc;
 
-  rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_REDETERMINEMEDIA,
-                    &parminfo, parmlen, &parmlen, // Param packet
-                    &datainfo, datalen, &datalen);
+  if (fImage)
+     {
+     rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_FAT32, FAT32_REDETERMINEMEDIA,
+                       &parminfo, parmlen, &parmlen, // Param packet
+                       &datainfo, datalen, &datalen);
+     }
+  else
+     {
+     rc = DosDevIOCtl( (HFILE)hDevice, IOCTL_DISK, DSK_REDETERMINEMEDIA,
+                       &parminfo, parmlen, &parmlen, // Param packet
+                       &datainfo, datalen, &datalen);
+     }
 
   if ( rc ) 
   {
@@ -983,7 +1005,7 @@ void cleanup ( void )
     if (hDev == 0)
         return;
 
-    remount_media ( hDev );
+    remount_media ( hDev, fDiskImage );
     unlock_drive ( hDev );
     close_drive ( hDev);
     hDev = 0;
@@ -1113,8 +1135,20 @@ ULONG query_vol_label(char *path, char *pszVolLabel, int cbVolLabel)
 
     // Query the filesystem info, 
     // including the current volume label
-    rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
-                        (PVOID)&fsiBuffer, sizeof(fsiBuffer));
+    if (fDiskImage)
+       {
+       ULONG ulDataSize = sizeof(fsiBuffer);
+       ULONG ulParmSize = strlen(path) + 1;
+
+       rc = DosFSCtl( (PVOID)&fsiBuffer, ulDataSize, &ulDataSize,
+                      path, ulParmSize, &ulParmSize,
+                      FAT32_GETVOLLABEL, "FAT32", -1, FSCTL_FSDNAME );
+       }
+    else
+       {
+       rc = DosQueryFSInfo((toupper(path[0]) - 'A' + 1), FSIL_VOLSER,
+                           (PVOID)&fsiBuffer, sizeof(fsiBuffer));
+       }
 
     if (rc)
         return rc;
@@ -1148,8 +1182,20 @@ void set_vol_label (char *path, char *vol)
   strcpy(vl.szVolLabel, vol);
   vl.cch = strlen(vl.szVolLabel);
 
-  rc = DosSetFSInfo(diskno, FSIL_VOLSER,
-                    (PVOID)&vl, sizeof(VOLUMELABEL));
+    if (fDiskImage)
+       {
+       ULONG ulDataSize = sizeof(vl);
+       ULONG ulParmSize = strlen(path) + 1;
+
+       rc = DosFSCtl( (PVOID)&vl, ulDataSize, &ulDataSize,
+                      path, ulParmSize, &ulParmSize,
+                      FAT32_SETVOLLABEL, "FAT32", -1, FSCTL_FSDNAME );
+       }
+    else
+       {
+       rc = DosSetFSInfo(diskno, FSIL_VOLSER,
+                         (PVOID)&vl, sizeof(VOLUMELABEL));
+       }
 
   if ( rc )
     show_message ("WARNING: failed to set the volume label, rc=%lu\n", 0, 0, 1, rc);

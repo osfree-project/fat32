@@ -13,18 +13,20 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
-COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-block
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
 OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj
 OBJS3=$(PROJ_BLD)\monitor.obj
 OBJS4=$(PROJ_BLD)\diskinf0.obj $(PROJ_BLD)\diskinf1.obj $(PROJ_BLD)\diskinf2.obj
 OBJS5=$(PROJ_BLD)\diskdump.obj
+OBJS6=$(PROJ_BLD)\f32mount.obj
 
 TARGETS=$(BINROOT)\os2\f32stat.exe $(BINROOT)\os2\f32mon.exe $(BINROOT)\os2\f32parts.exe  &
-        $(BINROOT)\os2\cachef32.exe $(BINROOT)\os2\diskdump.exe $(BINROOT)\os2\diskdump.sym $(BINROOT)\os2\cachef32.sym &
+        $(BINROOT)\os2\cachef32.exe $(BINROOT)\os2\diskdump.exe $(BINROOT)\os2\f32mount.exe &
+        $(BINROOT)\os2\diskdump.sym $(BINROOT)\os2\cachef32.sym  $(BINROOT)\os2\f32mount.sym &
         $(BINROOT)\os2\f32parts.sym $(BINROOT)\os2\f32mon.sym $(BINROOT)\os2\f32stat.sym
-DIRS=..\include
+DIRS=..\include zlib qemu-block
 
 SYS=os2v2
 
@@ -45,6 +47,8 @@ $(BINROOT)\os2\cachef32.exe:
 
 $(BINROOT)\os2\diskdump.exe:
 
+$(BINROOT)\os2\f32mount.exe:
+
 $(BINROOT)\os2\diskdump.sym:
 
 $(BINROOT)\os2\cachef32.sym:
@@ -55,15 +59,19 @@ $(BINROOT)\os2\f32mon.sym:
 
 $(BINROOT)\os2\f32stat.sym:
 
+$(BINROOT)\os2\f32mount.sym:
+
 $(PROJ_BLD)\f32stat.lnk: $(PROJ_BLD)\f32stat.ols
 
-$(PROJ_BLD)\cachef32.lnk: $(PROJ_BLD)\cachef32.ols
+$(PROJ_BLD)\cachef32.lnk: $(PROJ_BLD)\cachef32.ols ..\bld\lib\zlib.lib ..\bld\lib\qemu-block.lib
 
 $(PROJ_BLD)\f32mon.lnk: $(PROJ_BLD)\f32mon.ols
 
 $(PROJ_BLD)\f32parts.lnk: $(PROJ_BLD)\f32parts.ols
 
 $(PROJ_BLD)\diskdump.lnk: $(PROJ_BLD)\diskdump.ols
+
+$(PROJ_BLD)\f32mount.lnk: $(PROJ_BLD)\f32mount.ols
 
 $(PROJ_BLD)\f32stat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@
@@ -85,15 +93,20 @@ $(PROJ_BLD)\diskdump.ols: $(OBJS5) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
+$(PROJ_BLD)\f32mount.ols: $(OBJS6) makefile.wcc ..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS6)) do @%append $^@ FILE %e
+
 .ols.lnk:
  @%create $@
  @%append $@ SYSTEM $(SYS)
  @%append $@ NAME $(BINROOT)\os2\$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $@ OPTION ST=81920
+ @%append $@ OPTION ST=384000
+ @%append $@ OPTION HEAP=384000
  @%append $@ OPTION QUIET
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;
- @%append $@ LIB os2386,clib3s
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIB os2386,clib3s,zlib,qemu-block
  @%append $@ @$[@

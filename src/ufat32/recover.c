@@ -14,7 +14,6 @@ void CodepageConvInit(BOOL fSilent);
 
 BOOL DoRecover(PCDINFO pCD, char *pszFilename);
 int recover_thread(int argc, char *argv[]);
-void remount_media (HANDLE hDevice);
 
 #define STACKSIZE 0x10000
 

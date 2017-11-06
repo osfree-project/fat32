@@ -1,0 +1,31 @@
+!define _32BITS
+ROOT=..\..
+PROJ=util\zlib
+PATH=..\..\..\$(PROJ)
+DIRS=
+TARGETS=$(LIBROOT)\zlib.lib
+
+!include ..\..\makefile.mk
+
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+OBJS=$(PROJ_BLD)\adler32.obj &
+     $(PROJ_BLD)\compress.obj &
+     $(PROJ_BLD)\crc32.obj &
+     $(PROJ_BLD)\deflate.obj &
+     $(PROJ_BLD)\gzclose.obj &
+     $(PROJ_BLD)\gzlib.obj &
+     $(PROJ_BLD)\gzread.obj &
+     $(PROJ_BLD)\gzwrite.obj &
+     $(PROJ_BLD)\infback.obj &
+     $(PROJ_BLD)\inffast.obj &
+     $(PROJ_BLD)\inflate.obj &
+     $(PROJ_BLD)\inftrees.obj &
+     $(PROJ_BLD)\trees.obj &
+     $(PROJ_BLD)\uncompr.obj &
+     $(PROJ_BLD)\zutil.obj
+
+$(LIBROOT)\zlib.lib: $(PROJ_BLD)\zlib.ols
+
+$(PROJ_BLD)\zlib.ols: $(OBJS)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ +%e

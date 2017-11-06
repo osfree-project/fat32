@@ -12,6 +12,16 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#include "devhdr.h"
+#include "devcmd.h"
+#include "sas.h"
+
+#define STDON   0x0100
+
+int mount(unsigned short usFlag,
+          PVOLINFO       pVolInfo,
+          char far      *pBoot);
+
 /*
 **  Request Packet Header
 */
@@ -50,7 +60,7 @@ PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR);
 PRIVATE ULONG GetVolId(void);
 IMPORT SEL cdecl SaSSel(void);
 
-UCHAR GetFatType(PBOOTSECT pBoot);
+UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect);
 
 ULONG fat_mask = 0;
 ULONG fat32_mask = 0;
@@ -60,27 +70,24 @@ ULONG exfat_mask = 0;
 
 extern PGINFOSEG pGI;
 
+extern PCPDATA pCPData;
+
 #pragma optimize("eglt",off)
 
-int far pascal _loadds FS_MOUNT(unsigned short usFlag,      /* flag     */
+int far pascal _loadds FS_MOUNT(unsigned short usFlag,  /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
                         struct vpfsd far * pvpfsd,      /* pvpfsd   */
-                        unsigned short hVBP,        /* hVPB     */
-                        char far *  pBoot       /* pBoot    */)
+                        unsigned short hVBP,            /* hVPB     */
+                        char far *  pBoot               /* pBoot    */
+)
 {
 PBOOTSECT pSect    = NULL;
 PVOLINFO  pVolInfo = NULL;
 PVOLINFO  pNext = NULL;
 PVOLINFO  pPrev = NULL;
+USHORT usVolCount;
 USHORT hDupVBP  = 0;
 USHORT rc = NO_ERROR;
-USHORT usVolCount;
-
-P_DriverCaps pDevCaps;
-P_VolChars   pVolChars;
-BOOL fValidBoot = TRUE;
-BOOL fNewBoot = TRUE;
-int i;
 
    /*
     openjfs source does the same, just be on the safe side
@@ -134,38 +141,551 @@ int i;
             //else
             //   InitCache(ulCacheSectors);
 
-            pVolInfo->bFatType = GetFatType(pSect);
+            pVolInfo->hVBP    = hVBP;
+            pVolInfo->hDupVBP = hDupVBP;
+
+            pVolInfo->bDrive = pvpfsi->vpi_drive;
+            pVolInfo->bUnit  = pvpfsi->vpi_unit;
+
+            rc = mount(usFlag, pVolInfo, pBoot);
+
+            if (rc)
+               goto FS_MOUNT_EXIT;
+
+            rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
+            if (rc)
+               {
+               FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+               rc = ERROR_GEN_FAILURE;
+               goto FS_MOUNT_EXIT;
+               }
+            *((PVOLINFO *)pvpfsd->vpd_work) = pVolInfo;
+            *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
+
+            pVolInfo->pNextVolInfo = NULL;
+
+            if (!pGlobVolInfo)
+               {
+               pGlobVolInfo = pVolInfo;
+               }
+            else
+               {
+               pNext = pGlobVolInfo;
+               while(pNext->pNextVolInfo)
+                  {
+                  pNext = pNext->pNextVolInfo;
+                  }
+               pNext->pNextVolInfo = pVolInfo;
+               }
+            }
+
+         break;
+
+      case MOUNT_ACCEPT :
+         if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
+            hDupVBP = 0;
+
+         //if (pvpfsi->vpi_bsize != SECTOR_SIZE)
+         //   {
+         //   rc = ERROR_VOLUME_NOT_MOUNTED;
+         //   goto FS_MOUNT_EXIT;
+         //   }
+      
+         pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
+         if (!pVolInfo)
+            {
+            rc = ERROR_NOT_ENOUGH_MEMORY;
+            goto FS_MOUNT_EXIT;
+            }
+         rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
+         if (rc)
+            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+
+         memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
+
+         pVolInfo->hVBP = hVBP;
+         pVolInfo->hDupVBP = hDupVBP; //// ?
+
+         pVolInfo->bDrive = pvpfsi->vpi_drive;
+         pVolInfo->bUnit  = pvpfsi->vpi_unit;
+
+         rc = mount(usFlag, pVolInfo, pBoot);
+
+         if (rc)
+            goto FS_MOUNT_EXIT;
+
+         *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
+         *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
+
+         if (!pGlobVolInfo)
+            {
+            pGlobVolInfo = pVolInfo;
+            usVolCount = 1;
+            }
+         else
+            {
+            pNext = pGlobVolInfo;
+            usVolCount = 1;
+            if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
+               pVolInfo->hDupVBP = pNext->hVBP;
+            while (pNext->pNextVolInfo)
+               {
+               pNext = (PVOLINFO)pNext->pNextVolInfo;
+               if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
+                  pVolInfo->hDupVBP = pNext->hVBP;
+               usVolCount++;
+               }
+            pNext->pNextVolInfo = pVolInfo;
+            usVolCount++;
+            }
+         if (f32Parms.fMessageActive & LOG_FS)
+            Message("%u Volumes mounted!", usVolCount);
+
+         break;
+
+      case MOUNT_VOL_REMOVED:
+         break;
+
+      case MOUNT_RELEASE:
+
+         if ( *((ULONG *)pvpfsd->vpd_work + 1) != FAT32_VPB_MAGIC )
+            {
+            /* VPB magic is invalid, so it is not the VPB
+               created by fat32.ifs */
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            goto FS_MOUNT_EXIT;
+            }
+
+         pVolInfo = GetVolInfo(hVBP);
+
+         if (!pVolInfo)
+            {
+            if (f32Parms.fMessageActive & LOG_FS)
+               Message("pVolInfo == 0\n");
+            
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            goto FS_MOUNT_EXIT;
+            }
+
+         rc = mount(usFlag, pVolInfo, pBoot);
+
+         if (rc)
+            goto FS_MOUNT_EXIT;
+
+         // delete pVolInfo from the list
+         RemoveVolume(pVolInfo);
+         *(PVOLINFO *)(pvpfsd->vpd_work) = NULL;
+         *((ULONG *)pvpfsd->vpd_work + 1) = 0;
+         free(pVolInfo);
+         rc = NO_ERROR;
+         break;
+      }
+
+FS_MOUNT_EXIT:
+   MessageL(LOG_FS, "FS_MOUNT%m returned %u", 0x8001, rc);
+
+   _asm pop es;
+
+   return rc;
+}
+
+int PreSetup(void)
+{
+APIRET rc;
+
+   rc = FSH_SEMREQUEST(&pCPData->semSerialize, -1);
+
+   if (rc)
+      return rc;
+
+   rc = FSH_SEMWAIT(&pCPData->semRqDone, -1);
+
+   if (rc)
+      {
+      FSH_SEMCLEAR(&pCPData->semSerialize);
+      return rc;
+      }
+
+   return NO_ERROR;
+}
+
+int PostSetup(void)
+{
+APIRET rc;
+
+   rc = FSH_SEMSET(&pCPData->semRqDone);
+
+   if (rc)
+      {
+      FSH_SEMCLEAR(&pCPData->semSerialize);
+      return rc;
+      }
+
+   FSH_SEMCLEAR(&pCPData->semRqAvail);
+
+   rc = FSH_SEMWAIT(&pCPData->semRqDone, -1);
+
+   FSH_SEMCLEAR(&pCPData->semSerialize);
+
+   if (rc)
+      return rc;
+
+   return NO_ERROR;
+}
+
+int Mount(PMNTOPTS opts, PVOLINFO *pVolInfo)
+{
+PVOLINFO pNext;
+APIRET rc;
+UCHAR pBoot[512];
+USHORT usVolCount;
+ULONG hf;
+
+   switch (opts->usOp)
+      {
+      case MOUNT_MOUNT:
+         if (!opts->hf && GetVolInfoX(opts->pMntPoint))
+            {
+            return ERROR_ALREADY_EXISTS;
+            }
+
+         FSH_SEMCLEAR(&pCPData->semSerialize);
+
+         if (opts->hf)
+            {
+            /* already opened */
+            hf = opts->hf;
+            rc = NO_ERROR;
+            }
+         else
+            {
+            /* open file */
+            rc = PreSetup();
+
+            Message("000: rc=%u", rc);
+            if (rc)
+               return rc;
+
+            pCPData->Op = OP_OPEN;
+            strcpy(pCPData->Buf, opts->pFilename);
+            memcpy(pCPData->pFmt, opts->pFmt, 8);
+
+            rc = PostSetup();
+
+            Message("001: rc=%u", rc);
+            if (rc)
+               return rc;
+
+            hf = pCPData->hf;
+            rc = pCPData->rc;
+
+            if (rc)
+               return rc;
+            }
+
+         /* read the boot sector */
+         rc = PreSetup();
+
+         Message("002: rc=%u", rc);
+         if (rc)
+            return rc;
+
+         pCPData->Op = OP_READ;
+         pCPData->hf = hf;
+         pCPData->llOffset = (LONGLONG)opts->ullOffset;
+         pCPData->cbData = 512;
+
+         rc = PostSetup();
+
+         Message("003: rc=%u", rc);
+         if (rc)
+            return rc;
+
+         rc = pCPData->rc;
+
+         if (rc)
+            return rc;
+
+         memcpy(pBoot, pCPData->Buf, 512);
+
+         /* create the VOLINFO structure */
+         *pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
+         if (!*pVolInfo)
+            {
+            rc = ERROR_NOT_ENOUGH_MEMORY;
+            return rc;
+            }
+
+         memset(*pVolInfo, 0, (size_t)STORAGE_NEEDED);
+
+         (*pVolInfo)->pbMntPoint = malloc(strlen(opts->pMntPoint) + 1);
+
+         if (! (*pVolInfo)->pbMntPoint)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+         (*pVolInfo)->pbFilename = malloc(strlen(opts->pFilename) + 1);
+
+         if (! (*pVolInfo)->pbFilename)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+         strcpy((*pVolInfo)->pbMntPoint, opts->pMntPoint);
+         strcpy((*pVolInfo)->pbFilename, opts->pFilename);
+         (*pVolInfo)->ullOffset = opts->ullOffset;
+         (*pVolInfo)->hf = hf;
+
+         rc = mount(opts->usOp, *pVolInfo, pBoot);
+
+         Message("004: rc=%u", rc);
+         if (rc)
+            return rc;
+
+         rc = FSH_FORCENOSWAP(SELECTOROF(*pVolInfo));
+         if (rc)
+            {
+            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+            rc = ERROR_GEN_FAILURE;
+            return rc;
+            }
+
+         (*pVolInfo)->pNextVolInfo = NULL;
+
+         if (!pGlobVolInfo)
+            {
+            pGlobVolInfo = *pVolInfo;
+            }
+         else
+            {
+            pNext = pGlobVolInfo;
+            while(pNext->pNextVolInfo)
+               {
+               pNext = pNext->pNextVolInfo;
+               }
+            pNext->pNextVolInfo = *pVolInfo;
+            }
+         break;
+
+      case MOUNT_ACCEPT:
+         if (!opts->hf && GetVolInfoX(opts->pMntPoint))
+            {
+            return ERROR_ALREADY_EXISTS;
+            }
+
+         if (opts->hf)
+            {
+            /* already opened */
+            hf = opts->hf;
+            rc = NO_ERROR;
+            }
+         else
+            {
+            /* open file */
+            rc = PreSetup();
+
+            if (rc)
+               return rc;
+
+            pCPData->Op = OP_OPEN;
+            strcpy(pCPData->Buf, opts->pFilename);
+            memcpy(pCPData->pFmt, opts->pFmt, 8);
+
+            rc = PostSetup();
+
+            if (rc)
+               return rc;
+
+            hf = pCPData->hf;
+            rc = pCPData->rc;
+
+            if (rc)
+               return rc;
+            }
+
+         /* read the boot sector */
+         rc = PreSetup();
+
+         if (rc)
+            return rc;
+
+         pCPData->Op = OP_READ;
+         pCPData->hf = hf;
+         pCPData->llOffset = (LONGLONG)opts->ullOffset;
+         pCPData->cbData = 512;
+
+         rc = PostSetup();
+
+         if (rc)
+            return rc;
+
+         memcpy(pBoot, pCPData->Buf, 512);
+
+         *pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
+         if (!*pVolInfo)
+            {
+            rc = ERROR_NOT_ENOUGH_MEMORY;
+            return rc;
+            }
+         rc = FSH_FORCENOSWAP(SELECTOROF(*pVolInfo));
+         if (rc)
+            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+
+         memset(*pVolInfo, 0, (size_t)STORAGE_NEEDED);
+
+         (*pVolInfo)->pbMntPoint = malloc(strlen(opts->pMntPoint) + 1);
+
+         if (! (*pVolInfo)->pbMntPoint)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+         (*pVolInfo)->pbFilename = malloc(strlen(opts->pFilename) + 1);
+
+         if (! (*pVolInfo)->pbFilename)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+         strcpy((*pVolInfo)->pbMntPoint, opts->pMntPoint);
+         strcpy((*pVolInfo)->pbFilename, opts->pFilename);
+         (*pVolInfo)->ullOffset = opts->ullOffset;
+         (*pVolInfo)->hf = hf;
+
+         rc = mount(opts->usOp, *pVolInfo, pBoot);
+
+         if (rc)
+            return rc;
+
+         if (!pGlobVolInfo)
+            {
+            pGlobVolInfo = *pVolInfo;
+            usVolCount = 1;
+            }
+         else
+            {
+            pNext = pGlobVolInfo;
+            usVolCount = 1;
+            //if (pNext->bDrive == pvpfsi->vpi_drive && !(*pVolInfo)->hDupVBP)
+            //   (*pVolInfo)->hDupVBP = pNext->hVBP;
+            while (pNext->pNextVolInfo)
+               {
+               pNext = (PVOLINFO)pNext->pNextVolInfo;
+               //if (pNext->bDrive == pvpfsi->vpi_drive && !(*pVolInfo)->hDupVBP)
+               //   (*pVolInfo)->hDupVBP = pNext->hVBP;
+               usVolCount++;
+               }
+            pNext->pNextVolInfo = *pVolInfo;
+            usVolCount++;
+            }
+         if (f32Parms.fMessageActive & LOG_FS)
+            Message("%u Volumes mounted!", usVolCount);
+
+         break;
+
+      case MOUNT_VOL_REMOVED:
+         break;
+
+      case MOUNT_RELEASE:
+         if (! opts->hf)
+            {
+            *pVolInfo = GetVolInfoX(opts->pMntPoint);
+            }
+
+         if (!*pVolInfo)
+            {
+            if (f32Parms.fMessageActive & LOG_FS)
+               Message("pVolInfo == 0\n");
+            
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            return rc;
+            }
+
+         rc = mount(opts->usOp, *pVolInfo, pBoot);
+
+         if (rc)
+            return rc;
+
+         if (! opts->hf)
+            {
+            /* close file */
+            rc = PreSetup();
+
+            if (rc)
+               return rc;
+
+            pCPData->Op = OP_CLOSE;
+            pCPData->hf = (*pVolInfo)->hf;
+
+            rc = PostSetup();
+
+            if (rc)
+               return rc;
+            }
+
+         // delete pVolInfo from the list
+         free((*pVolInfo)->pbMntPoint);
+         free((*pVolInfo)->pbFilename);
+         RemoveVolume(*pVolInfo);
+         free(*pVolInfo);
+         *pVolInfo = NULL;
+         rc = NO_ERROR;
+         break;
+      }
+
+   return rc;
+}
+
+int mount(unsigned short usFlag,
+          PVOLINFO       pVolInfo,
+          char far       *pBoot)
+{
+struct vpfsi far * pvpfsi;
+struct vpfsd far * pvpfsd;
+PBOOTSECT pSect    = NULL;
+USHORT rc = NO_ERROR;
+
+P_DriverCaps pDevCaps  = NULL;
+P_VolChars   pVolChars = NULL;
+BOOL fValidBoot = TRUE;
+BOOL fNewBoot = TRUE;
+int i;
+
+   if (pVolInfo->hVBP)
+      FSH_GETVOLPARM(pVolInfo->hVBP, &pvpfsi, &pvpfsd);
+
+   switch (usFlag)
+      {
+      case MOUNT_MOUNT  :
+            pSect = (PBOOTSECT)pBoot;
+
+            pVolInfo->bFatType = GetFatType(pVolInfo, pSect);
 
             if (pVolInfo->bFatType == FAT_TYPE_NONE)
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
                freeseg(pVolInfo);
-               goto FS_MOUNT_EXIT;
+               goto MOUNT_EXIT;
                }
 
             if ( (pVolInfo->bFatType < FAT_TYPE_FAT32) &&
-                 ((! f32Parms.fFat) || ! (fat_mask & (1UL << pvpfsi->vpi_drive))) )
+                 ((! f32Parms.fFat) ||
+                  (pVolInfo->hVBP && ! (fat_mask & (1UL << pvpfsi->vpi_drive)))) )
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
                freeseg(pVolInfo);
-               goto FS_MOUNT_EXIT;
+               goto MOUNT_EXIT;
                }
 
             if ( (pVolInfo->bFatType == FAT_TYPE_FAT32) &&
-                 ! (fat32_mask & (1UL << pvpfsi->vpi_drive)) )
+                 (pVolInfo->hVBP && ! (fat32_mask & (1UL << pvpfsi->vpi_drive))) )
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
                freeseg(pVolInfo);
-               goto FS_MOUNT_EXIT;
+               goto MOUNT_EXIT;
                }
 
 #ifdef EXFAT
             if ( (pVolInfo->bFatType == FAT_TYPE_EXFAT) &&
-                 ((! f32Parms.fExFat) || ! (exfat_mask & (1UL << pvpfsi->vpi_drive))) )
+                 ((! f32Parms.fExFat) ||
+                 (pVolInfo->hVBP && ! (exfat_mask & (1UL << pvpfsi->vpi_drive)))) )
                {
                rc = ERROR_VOLUME_NOT_MOUNTED;
                freeseg(pVolInfo);
-               goto FS_MOUNT_EXIT;
+               goto MOUNT_EXIT;
                }
 #endif
 
@@ -199,32 +719,6 @@ int i;
                   pVolInfo->ulFatBad   = EXFAT_BAD_CLUSTER;
                   pVolInfo->ulFatClean = EXFAT_CLEAN_SHUTDOWN;
 #endif
-               }
-
-            rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
-            if (rc)
-               {
-               FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
-               rc = ERROR_GEN_FAILURE;
-               goto FS_MOUNT_EXIT;
-               }
-            *((PVOLINFO *)pvpfsd->vpd_work) = pVolInfo;
-            *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
-
-            pVolInfo->pNextVolInfo = NULL;
-
-            if (!pGlobVolInfo)
-               {
-               pGlobVolInfo = pVolInfo;
-               }
-            else
-               {
-               pNext = pGlobVolInfo;
-               while(pNext->pNextVolInfo)
-                  {
-                  pNext = pNext->pNextVolInfo;
-                  }
-               pNext->pNextVolInfo = pVolInfo;
                }
 
                // check for 0xf6 symbol (is the BPB erased?)
@@ -272,169 +766,171 @@ int i;
                      }
                   }
 
-               if (! fValidBoot)
+               if (! fValidBoot && pVolInfo->hVBP)
                   {
                   // construct the Serial No and Volume label
                   memcpy(pvpfsi->vpi_text, "UNREADABLE ", sizeof(pSect->VolumeLabel));
                   pvpfsi->vpi_vid = GetVolId();
                   }
 
-               if (! fNewBoot)
+               if (! fNewBoot && pVolInfo->hVBP)
                   {
                   memcpy(pvpfsi->vpi_text, "UNLABELED  ", sizeof(pSect->VolumeLabel));
                   pvpfsi->vpi_vid = GetVolId();
                   }
 
-               if (pVolInfo->bFatType < FAT_TYPE_FAT32)
+               if (pVolInfo->hVBP)
                   {
-                  PBOOTSECT0 pSect0 = (PBOOTSECT0)pSect;
-
-                  /* Mounting pre-BPB FAT (from DOS 1.x),
-                     the 1st FAT table sector is passed in pSect,
-                     instead of the BPB. The 1st byte is the 
-                     media type byte (this is the case with
-                     mounting the VFDISK.SYS virtual floppy) */
-
-                  // Media type byte:
-                  // Byte   Capacity   Media Size and Type
-                  // F0     2.88 MB    3.5-inch, 2-sided, 36-sector DS?ED
-                  // F0     1.84 MB    3.5-inch  2-sided, 23-sector DS/HD
-                  // F0     1.44 MB    3.5-inch, 2-sided, 18-sector DS/HD
-                  // F9     1.2 MB     5.25-inch, 2-sided, 15-sector DS/HD
-                  // F9     720 KB     3.5-inch, 2-sided, 9-sector DS/DHD
-                  // FA     RAM disk   (not all ramdisks use this)
-                  // FC     180 KB     5.25-inch, 1-sided, 9-sector SS/DD
-                  // FD     360 KB     5.25-inch, 2-sided, 9-sector DS/DD
-                  // FE     160 KB     5.25-inch, 1-sided, 8-sector SS/DD
-                  // FF     320 KB     5.25-inch, 2-sided, 8-sector DS/DD
-                  // F8     -----      Fixed disk
-                  // F8     1.44 MB    3.5-inch, 2-sided, 9-sector DS/QD PS/2 diskette
-
-                  // predefined floppy formats, no BPB
-                  if (*(UCHAR *)pBoot != 0xeb && fValidBoot)
+                  if (pVolInfo->bFatType < FAT_TYPE_FAT32)
                      {
-                     pSect0->bpb.BytesPerSector = 0x200;
-                     pSect0->bpb.SectorsPerCluster = 1;
-                     pSect0->bpb.ReservedSectors = 1;
-                     pSect0->bpb.NumberOfFATs = 2;
-                     pSect0->bpb.RootDirEntries = 0xe0;
-                     pSect0->bpb.TotalSectors = 0;
-                     pSect0->bpb.SectorsPerFat = 9;
-                     pSect0->bpb.HiddenSectors = 0;
-                     }
+                     PBOOTSECT0 pSect0 = (PBOOTSECT0)pSect;
 
-                  switch (*(UCHAR *)pBoot)
-                     {
-                     case 0xf0:
-                        pSect0->bpb.MediaDescriptor = 0xf0;
-                        if (pvpfsi->vpi_totsec == 2880)
-                           {
-                           // 1.44 MB, 80t/16s/2h, 3.5" // +
-                           pSect0->bpb.SectorsPerFat = 9;
-                           pSect0->bpb.SectorsPerCluster = 1;
-                           pSect0->bpb.RootDirEntries = 0xe0;
-                           pSect0->bpb.BigTotalSectors = 2880;
-                           pSect0->bpb.SectorsPerTrack = 18;
-                           pSect0->bpb.Heads = 2;
-                           }
-                        else if (pvpfsi->vpi_totsec == 3680)
-                           {
-                           // 1.84 MB, 80t/23s/2h, 3.5" // +
-                           pSect0->bpb.SectorsPerFat = 11;
-                           pSect0->bpb.SectorsPerCluster = 1;
-                           pSect0->bpb.RootDirEntries = 0xe0;
-                           pSect0->bpb.BigTotalSectors = 3680;
-                           pSect0->bpb.SectorsPerTrack = 23;
-                           pSect0->bpb.Heads = 2;
-                           }
-                        else
-                           {
-                           // 2.88 MB, 80t/36s/2h, 3.5" // +
-                           pSect0->bpb.SectorsPerFat = 9;
-                           pSect0->bpb.SectorsPerCluster = 2;
-                           pSect0->bpb.RootDirEntries = 0xf0;
-                           pSect0->bpb.BigTotalSectors = 5760;
-                           pSect0->bpb.SectorsPerTrack = 36;
-                           pSect0->bpb.Heads = 2;
-                           }
-                        break;
-                        
-                     case 0xf9:
-                        pSect0->bpb.MediaDescriptor = 0xf9;
-                        if (pvpfsi->vpi_totsec == 1440)
-                           {
-                           // 720 KB, 80t/9s/2h, 3.5" // +
-                           pSect0->bpb.SectorsPerFat = 3;
+                     /* Mounting pre-BPB FAT (from DOS 1.x),
+                        the 1st FAT table sector is passed in pSect,
+                        instead of the BPB. The 1st byte is the 
+                        media type byte (this is the case with
+                        mounting the VFDISK.SYS virtual floppy) */
+
+                     // Media type byte:
+                     // Byte   Capacity   Media Size and Type
+                     // F0     2.88 MB    3.5-inch, 2-sided, 36-sector DS?ED
+                     // F0     1.84 MB    3.5-inch  2-sided, 23-sector DS/HD
+                     // F0     1.44 MB    3.5-inch, 2-sided, 18-sector DS/HD
+                     // F9     1.2 MB     5.25-inch, 2-sided, 15-sector DS/HD
+                     // F9     720 KB     3.5-inch, 2-sided, 9-sector DS/DHD
+                     // FA     RAM disk   (not all ramdisks use this)
+                     // FC     180 KB     5.25-inch, 1-sided, 9-sector SS/DD
+                     // FD     360 KB     5.25-inch, 2-sided, 9-sector DS/DD
+                     // FE     160 KB     5.25-inch, 1-sided, 8-sector SS/DD
+                     // FF     320 KB     5.25-inch, 2-sided, 8-sector DS/DD
+                     // F8     -----      Fixed disk
+                     // F8     1.44 MB    3.5-inch, 2-sided, 9-sector DS/QD PS/2 diskette
+
+                     // predefined floppy formats, no BPB
+                     if (*(UCHAR *)pBoot != 0xeb && fValidBoot)
+                        {
+                        pSect0->bpb.BytesPerSector = 0x200;
+                        pSect0->bpb.SectorsPerCluster = 1;
+                        pSect0->bpb.ReservedSectors = 1;
+                        pSect0->bpb.NumberOfFATs = 2;
+                        pSect0->bpb.RootDirEntries = 0xe0;
+                        pSect0->bpb.TotalSectors = 0;
+                        pSect0->bpb.SectorsPerFat = 9;
+                        pSect0->bpb.HiddenSectors = 0;
+                        }
+
+                     switch (*(UCHAR *)pBoot)
+                        {
+                        case 0xf0:
+                           pSect0->bpb.MediaDescriptor = 0xf0;
+                           if (pvpfsi->vpi_totsec == 2880)
+                              {
+                              // 1.44 MB, 80t/16s/2h, 3.5" // +
+                              pSect0->bpb.SectorsPerFat = 9;
+                              pSect0->bpb.SectorsPerCluster = 1;
+                              pSect0->bpb.RootDirEntries = 0xe0;
+                              pSect0->bpb.BigTotalSectors = 2880;
+                              pSect0->bpb.SectorsPerTrack = 18;
+                              pSect0->bpb.Heads = 2;
+                              }
+                           else if (pvpfsi->vpi_totsec == 3680)
+                              {
+                              // 1.84 MB, 80t/23s/2h, 3.5" // +
+                              pSect0->bpb.SectorsPerFat = 11;
+                              pSect0->bpb.SectorsPerCluster = 1;
+                              pSect0->bpb.RootDirEntries = 0xe0;
+                              pSect0->bpb.BigTotalSectors = 3680;
+                              pSect0->bpb.SectorsPerTrack = 23;
+                              pSect0->bpb.Heads = 2;
+                              }
+                           else
+                              {
+                              // 2.88 MB, 80t/36s/2h, 3.5" // +
+                              pSect0->bpb.SectorsPerFat = 9;
+                              pSect0->bpb.SectorsPerCluster = 2;
+                              pSect0->bpb.RootDirEntries = 0xf0;
+                              pSect0->bpb.BigTotalSectors = 5760;
+                              pSect0->bpb.SectorsPerTrack = 36;
+                              pSect0->bpb.Heads = 2;
+                              }
+                           break;
+
+                        case 0xf9:
+                           pSect0->bpb.MediaDescriptor = 0xf9;
+                           if (pvpfsi->vpi_totsec == 1440)
+                              {
+                              // 720 KB, 80t/9s/2h, 3.5" // +
+                              pSect0->bpb.SectorsPerFat = 3;
+                              pSect0->bpb.SectorsPerCluster = 2;
+                              pSect0->bpb.RootDirEntries = 0x70;
+                              pSect0->bpb.BigTotalSectors = 1440;
+                              pSect0->bpb.SectorsPerTrack = 9;
+                              pSect0->bpb.Heads = 2;
+                              }
+                           else
+                              {
+                              // 1.2 MB, 80t/15s/2h, 5.25" // +
+                              pSect0->bpb.SectorsPerFat = 7;
+                              pSect0->bpb.BigTotalSectors = 2400;
+                              pSect0->bpb.SectorsPerTrack = 15;
+                              pSect0->bpb.Heads = 2;
+                              }
+                           break;
+
+                        case 0xfc:
+                           // 180 KB, 40t/9s/1h, 5.25" // -
+                           pSect0->bpb.MediaDescriptor = 0xfc;
+                           pSect0->bpb.SectorsPerFat = 2; // ?
+                           pSect0->bpb.SectorsPerCluster = 1; // ?
+                           pSect0->bpb.RootDirEntries = 0x70; // ?
+                           pSect0->bpb.BigTotalSectors = 360;
+                           pSect0->bpb.SectorsPerTrack = 9;
+                           pSect0->bpb.Heads = 1;
+                           break;
+
+                        case 0xfd:
+                           // 360 KB, 40t/9s/2h, 5.25" // +
+                           pSect0->bpb.MediaDescriptor = 0xfd;
+                           pSect0->bpb.SectorsPerFat = 2;
                            pSect0->bpb.SectorsPerCluster = 2;
                            pSect0->bpb.RootDirEntries = 0x70;
-                           pSect0->bpb.BigTotalSectors = 1440;
+                           pSect0->bpb.BigTotalSectors = 720;
                            pSect0->bpb.SectorsPerTrack = 9;
                            pSect0->bpb.Heads = 2;
-                           }
-                        else
-                           {
-                           // 1.2 MB, 80t/15s/2h, 5.25" // +
-                           pSect0->bpb.SectorsPerFat = 7;
-                           pSect0->bpb.BigTotalSectors = 2400;
-                           pSect0->bpb.SectorsPerTrack = 15;
-                           pSect0->bpb.Heads = 2;
-                           }
-                        break;
+                           break;
 
-                     case 0xfc:
-                        // 180 KB, 40t/9s/1h, 5.25" // -
-                        pSect0->bpb.MediaDescriptor = 0xfc;
-                        pSect0->bpb.SectorsPerFat = 2; // ?
-                        pSect0->bpb.SectorsPerCluster = 1; // ?
-                        pSect0->bpb.RootDirEntries = 0x70; // ?
-                        pSect0->bpb.BigTotalSectors = 360;
-                        pSect0->bpb.SectorsPerTrack = 9;
-                        pSect0->bpb.Heads = 1;
-                        break;
-                        
-                     case 0xfd:
-                        // 360 KB, 40t/9s/2h, 5.25" // +
-                        pSect0->bpb.MediaDescriptor = 0xfd;
-                        pSect0->bpb.SectorsPerFat = 2;
-                        pSect0->bpb.SectorsPerCluster = 2;
-                        pSect0->bpb.RootDirEntries = 0x70;
-                        pSect0->bpb.BigTotalSectors = 720;
-                        pSect0->bpb.SectorsPerTrack = 9;
-                        pSect0->bpb.Heads = 2;
-                        break;
-                        
-                     case 0xfe:
-                        // 160 KB, 40t/8s/1h, 5.25" // -
-                        pSect0->bpb.MediaDescriptor = 0xfe;
-                        pSect0->bpb.SectorsPerFat = 1; // ?
-                        pSect0->bpb.SectorsPerCluster = 1; // ?
-                        pSect0->bpb.RootDirEntries = 0x70; // ?
-                        pSect0->bpb.BigTotalSectors = 320;
-                        pSect0->bpb.SectorsPerTrack = 8;
-                        pSect0->bpb.Heads = 1;
-                        break;
-                        
-                     case 0xff:
-                        // 320 KB, 80t/8s/1h, 5.25" // -
-                        pSect0->bpb.MediaDescriptor = 0xff;
-                        pSect0->bpb.SectorsPerFat = 1; // ?
-                        pSect0->bpb.SectorsPerCluster = 2; // ?
-                        pSect0->bpb.RootDirEntries = 0x70; // ?
-                        pSect0->bpb.BigTotalSectors = 640;
-                        pSect0->bpb.SectorsPerTrack = 8;
-                        pSect0->bpb.Heads = 1;
-                     }
+                        case 0xfe:
+                           // 160 KB, 40t/8s/1h, 5.25" // -
+                           pSect0->bpb.MediaDescriptor = 0xfe;
+                           pSect0->bpb.SectorsPerFat = 1; // ?
+                           pSect0->bpb.SectorsPerCluster = 1; // ?
+                           pSect0->bpb.RootDirEntries = 0x70; // ?
+                           pSect0->bpb.BigTotalSectors = 320;
+                           pSect0->bpb.SectorsPerTrack = 8;
+                           pSect0->bpb.Heads = 1;
+                           break;
 
-                     if (fValidBoot)
-                        {
-                        pvpfsi->vpi_bsize  = ((PBOOTSECT0)pSect)->bpb.BytesPerSector;
-                        pvpfsi->vpi_totsec = ((PBOOTSECT0)pSect)->bpb.BigTotalSectors;
-                        pvpfsi->vpi_trksec = ((PBOOTSECT0)pSect)->bpb.SectorsPerTrack;
-                        pvpfsi->vpi_nhead  = ((PBOOTSECT0)pSect)->bpb.Heads;
+                        case 0xff:
+                           // 320 KB, 80t/8s/1h, 5.25" // -
+                           pSect0->bpb.MediaDescriptor = 0xff;
+                           pSect0->bpb.SectorsPerFat = 1; // ?
+                           pSect0->bpb.SectorsPerCluster = 2; // ?
+                           pSect0->bpb.RootDirEntries = 0x70; // ?
+                           pSect0->bpb.BigTotalSectors = 640;
+                           pSect0->bpb.SectorsPerTrack = 8;
+                           pSect0->bpb.Heads = 1;
                         }
-                  }
-               else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
-                  {
+
+                        if (fValidBoot)
+                           {
+                           pvpfsi->vpi_bsize  = ((PBOOTSECT0)pSect)->bpb.BytesPerSector;
+                           pvpfsi->vpi_totsec = ((PBOOTSECT0)pSect)->bpb.BigTotalSectors;
+                           pvpfsi->vpi_trksec = ((PBOOTSECT0)pSect)->bpb.SectorsPerTrack;
+                           pvpfsi->vpi_nhead  = ((PBOOTSECT0)pSect)->bpb.Heads;
+                           }
+                     }
+                  else if (pVolInfo->bFatType == FAT_TYPE_FAT32)
+                     {
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = pSect->bpb.BytesPerSector;
@@ -442,10 +938,10 @@ int i;
                         pvpfsi->vpi_trksec = pSect->bpb.SectorsPerTrack;
                         pvpfsi->vpi_nhead  = pSect->bpb.Heads;
                         }
-                  }
+                     }
 #ifdef EXFAT
-               else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-                  {
+                  else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+                     {
                      if (fValidBoot)
                         {
                         pvpfsi->vpi_bsize  = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
@@ -455,10 +951,9 @@ int i;
                         pvpfsi->vpi_totsec = ((PBOOTSECT1)pSect)->ullVolumeLength.ulLo;
 #endif
                         }
-                  }
+                     }
 #endif
-            }
-
+                  }
          /* continue mount in both cases:
             for a first time mount it's an initializaton
             for the n-th remount it's a reinitialization of the old VPB
@@ -537,11 +1032,6 @@ int i;
          // size of a subcluster block
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
 
-         pVolInfo->hVBP    = hVBP;
-         pVolInfo->hDupVBP = hDupVBP;
-
-         pVolInfo->bDrive = pvpfsi->vpi_drive;
-         pVolInfo->bUnit  = pvpfsi->vpi_unit;
          pVolInfo->pNextVolInfo = NULL;
 
          pVolInfo->fFormatInProgress = FALSE;
@@ -569,7 +1059,7 @@ int i;
 
          if (pVolInfo->bFatType < FAT_TYPE_FAT32)
             {
-            if (fNewBoot)
+            if (fNewBoot && pVolInfo->hVBP)
                {
                pvpfsi->vpi_vid = ((PBOOTSECT0)pSect)->ulVolSerial;
                memcpy(pVolInfo->BootSect.FileSystem, "FAT     ", 8);
@@ -590,7 +1080,7 @@ int i;
             }
          if (pVolInfo->bFatType == FAT_TYPE_FAT32)
             {
-            if (fNewBoot)
+            if (fNewBoot && pVolInfo->hVBP)
                {
                pvpfsi->vpi_vid = pSect->ulVolSerial;
                memcpy(pVolInfo->BootSect.FileSystem, "FAT32   ", 8);
@@ -600,7 +1090,7 @@ int i;
          else if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
             {
             // create FAT32-type extended BPB for exFAT
-            if (fValidBoot)
+            if (fValidBoot && pVolInfo->hVBP)
                {
                pvpfsi->vpi_vid = ((PBOOTSECT1)pSect)->ulVolSerial;
                memcpy(pVolInfo->BootSect.FileSystem, "EXFAT   ", 8);
@@ -618,7 +1108,8 @@ int i;
             }
 #endif
 
-         pVolInfo->BootSect.ulVolSerial = pvpfsi->vpi_vid;
+         if (pVolInfo->hVBP)
+            pVolInfo->BootSect.ulVolSerial = pvpfsi->vpi_vid;
 
          if (! pVolInfo->BootSect.bpb.BigSectorsPerFat)
             // if partition is small
@@ -670,7 +1161,6 @@ int i;
             USHORT usSize = 11;
 
             memset(pszVolLabel, 0, sizeof(pszVolLabel));
-            memset(pvpfsi->vpi_text, 0, sizeof(pvpfsi->vpi_text));
 
             fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
             // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
@@ -678,20 +1168,29 @@ int i;
             // (see MarkDiskStatus)
             pVolInfo->ulCurFatSector = 0xffff;
 
-            if (! pszVolLabel || ! *pszVolLabel)
-               strcpy(pvpfsi->vpi_text, "UNLABELED  ");
-            else
-               strcpy(pvpfsi->vpi_text, pszVolLabel);
-            
-            memset(pVolInfo->BootSect.VolumeLabel, 0, sizeof(pVolInfo->BootSect.VolumeLabel));
-            memcpy(pVolInfo->BootSect.VolumeLabel, pvpfsi->vpi_text, sizeof(pVolInfo->BootSect.VolumeLabel));
+            if (pVolInfo->hVBP)
+               {
+               memset(pvpfsi->vpi_text, 0, sizeof(pvpfsi->vpi_text));
+
+               if (! pszVolLabel || ! *pszVolLabel)
+                  strcpy(pvpfsi->vpi_text, "UNLABELED  ");
+               else
+                  strcpy(pvpfsi->vpi_text, pszVolLabel);
+
+               memset(pVolInfo->BootSect.VolumeLabel, 0, sizeof(pVolInfo->BootSect.VolumeLabel));
+               memcpy(pVolInfo->BootSect.VolumeLabel, pvpfsi->vpi_text, sizeof(pVolInfo->BootSect.VolumeLabel));
+               }
             }
 
-         rc = CheckWriteProtect(pVolInfo);
+         if (pVolInfo->hVBP)
+            rc = CheckWriteProtect(pVolInfo);
+         else
+            rc = 0;
+
          if (rc && rc != ERROR_WRITE_PROTECT)
             {
             Message("Cannot access drive, rc = %u", rc);
-            goto FS_MOUNT_EXIT;
+            goto MOUNT_EXIT;
             }
          if (rc == ERROR_WRITE_PROTECT)
             pVolInfo->fWriteProtected = TRUE;
@@ -704,23 +1203,28 @@ int i;
             GetFreeSpace(pVolInfo);
             }
 
-         pDevCaps  = pvpfsi->vpi_pDCS;
-         pVolChars = pvpfsi->vpi_pVCS;
+         if (pVolInfo->hVBP)
+            {
+         //   pDevCaps  = pvpfsi->vpi_pDCS;
+            pVolChars = pvpfsi->vpi_pVCS;
 
          //if (!pDevCaps)
          //   {
          //   Message("Strategy2 not found, searching Device Driver chain !");
-         //   pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+            pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
          //   }
+            }
 
          if ( pVolChars && (pVolChars->VolDescriptor & VC_REMOVABLE_MEDIA) )
             pVolInfo->fRemovable = TRUE;
 
          // consider CDRW (which have 0xffff sectors per track) to be "removables" too
-         if ( ! pVolInfo->fRemovable && pvpfsi->vpi_trksec == 0xffff )
+         if ( ! pVolInfo->fRemovable &&
+              pVolInfo->hVBP &&
+              pvpfsi->vpi_trksec == 0xffff )
             pVolInfo->fRemovable = TRUE;
 
-         if (! pVolInfo->fRemovable)
+         if (! pVolInfo->fRemovable && pVolInfo->hVBP)
             pVolInfo->fDiskCleanOnMount = pVolInfo->fDiskClean = GetDiskStatus(pVolInfo);
          else
             // ignore disk status on floppies
@@ -766,87 +1270,58 @@ int i;
          break;
 
       case MOUNT_ACCEPT :
-         if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
-            hDupVBP = 0;
+         pSect = (PBOOTSECT)pBoot;
 
-         //if (pvpfsi->vpi_bsize != SECTOR_SIZE)
-         //   {
-         //   rc = ERROR_VOLUME_NOT_MOUNTED;
-         //   goto FS_MOUNT_EXIT;
-         //   }
-      
-         pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
-         if (!pVolInfo)
+         if (pVolInfo->hVBP)
             {
-            rc = ERROR_NOT_ENOUGH_MEMORY;
-            goto FS_MOUNT_EXIT;
+            // pSect == NULL here!
+            memset(&pVolInfo->BootSect, 0, sizeof (BOOTSECT));
+            pVolInfo->BootSect.bpb.BigTotalSectors = pvpfsi->vpi_totsec;
+            pVolInfo->BootSect.bpb.BytesPerSector  = pvpfsi->vpi_bsize;
             }
-         rc = FSH_FORCENOSWAP(SELECTOROF(pVolInfo));
-         if (rc)
-            FatalMessage("FSH_FORCENOSWAP on VOLINFO Segment failed, rc=%u", rc);
+         else
+            {
+            memcpy(&pVolInfo->BootSect, pSect, sizeof (BOOTSECT));
+            };
 
-         memset(pVolInfo, 0, (size_t)STORAGE_NEEDED);
-
-         memset(&pVolInfo->BootSect, 0, sizeof (BOOTSECT));
-         pVolInfo->BootSect.bpb.BigTotalSectors = pvpfsi->vpi_totsec;
-         pVolInfo->BootSect.bpb.BytesPerSector  = pvpfsi->vpi_bsize;
          pVolInfo->fWriteProtected   = FALSE;
          pVolInfo->fDiskCleanOnMount = FALSE;
 
-         pVolInfo->hVBP = hVBP;
-         pVolInfo->hDupVBP = hDupVBP; //// ?
-         pVolInfo->bDrive = pvpfsi->vpi_drive;
-         pVolInfo->bUnit  = pvpfsi->vpi_unit;
          pVolInfo->pNextVolInfo = NULL;
 
          // the volume is being formatted
          pVolInfo->fFormatInProgress = TRUE;
 
          // fake values assuming sector == cluster
-         pVolInfo->ulClusterSize   = pvpfsi->vpi_bsize;
+         if (pVolInfo->hVBP)
+            {
+            pVolInfo->ulClusterSize   = pvpfsi->vpi_bsize;
+            pVolInfo->ulTotalClusters = pvpfsi->vpi_totsec;
+            }
+         else
+            {
+            pVolInfo->ulClusterSize   = pSect->bpb.BytesPerSector;
+            pVolInfo->ulTotalClusters = pSect->bpb.BigTotalSectors;
+            }
+
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
-         pVolInfo->ulTotalClusters = pvpfsi->vpi_totsec;
 
          pVolInfo->usRASectors = usDefaultRASectors;
 
          // undefined
          pVolInfo->ulStartOfData = 0;
 
-         *((PVOLINFO *)(pvpfsd->vpd_work)) = pVolInfo;
-         *((ULONG *)pvpfsd->vpd_work + 1) = FAT32_VPB_MAGIC;
-
-         if (!pGlobVolInfo)
+         if (pVolInfo->hVBP)
             {
-            pGlobVolInfo = pVolInfo;
-            usVolCount = 1;
-            }
-         else
-            {
-            pNext = pGlobVolInfo;
-            usVolCount = 1;
-            if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
-               pVolInfo->hDupVBP = pNext->hVBP;
-            while (pNext->pNextVolInfo)
-               {
-               pNext = (PVOLINFO)pNext->pNextVolInfo;
-               if (pNext->bDrive == pvpfsi->vpi_drive && !pVolInfo->hDupVBP)
-                  pVolInfo->hDupVBP = pNext->hVBP;
-               usVolCount++;
-               }
-            pNext->pNextVolInfo = pVolInfo;
-            usVolCount++;
-            }
-         if (f32Parms.fMessageActive & LOG_FS)
-            Message("%u Volumes mounted!", usVolCount);
-
-         pDevCaps  = pvpfsi->vpi_pDCS;
-         pVolChars = pvpfsi->vpi_pVCS;
+         //   pDevCaps  = pvpfsi->vpi_pDCS;
+            pVolChars = pvpfsi->vpi_pVCS;
 
          //if (!pDevCaps)
          //   {
          //   Message("Strategy2 not found, searching Device Driver chain !");
-         //   pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
+            pDevCaps = ReturnDriverCaps(pvpfsi->vpi_unit);
          //   }
+            }
 
          if (pDevCaps && f32Parms.fMessageActive & LOG_FS)
             {
@@ -885,26 +1360,6 @@ int i;
          break;
 
       case MOUNT_RELEASE:
-
-         if ( *((ULONG *)pvpfsd->vpd_work + 1) != FAT32_VPB_MAGIC )
-            {
-            /* VPB magic is invalid, so it is not the VPB
-               created by fat32.ifs */
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
-
-         pVolInfo = GetVolInfo(hVBP);
-
-         if (!pVolInfo)
-            {
-            if (f32Parms.fMessageActive & LOG_FS)
-               Message("pVolInfo == 0\n");
-            
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
-
          if (! pVolInfo->fFormatInProgress &&
              ! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
             {
@@ -914,13 +1369,6 @@ int i;
                // ignore dirty status on floppies (and FAT12)
                MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
             }
-
-         // delete pVolInfo from the list
-         RemoveVolume(pVolInfo);
-         *(PVOLINFO *)(pvpfsd->vpd_work) = NULL;
-         *((ULONG *)pvpfsd->vpd_work + 1) = 0;
-         free(pVolInfo);
-         rc = NO_ERROR;
          break;
 
       default :
@@ -928,10 +1376,7 @@ int i;
          break;
       }
 
-FS_MOUNT_EXIT:
-   MessageL(LOG_FS, "FS_MOUNT%m returned %u", 0x8001, rc);
-
-   _asm pop es;
+MOUNT_EXIT:
 
    return rc;
 }
@@ -988,7 +1433,7 @@ USHORT rc;
 }
 
 
-UCHAR GetFatType(PBOOTSECT pSect)
+UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
 {
    /*
     *  check for FAT32 according to the Microsoft FAT32 specification
@@ -1001,7 +1446,12 @@ UCHAR GetFatType(PBOOTSECT pSect)
    ULONG DataSec;
    ULONG TotClus;
    ULONG CountOfClusters;
-   BYTE bLeadByte;
+   ULONG ulSector, ulNumFats;
+   USHORT usSectorsPerFat;
+   BYTE bLeadByte, bFatType;
+   char *pFat;
+   ULONG buf[2];
+   int i;
 
    if (! pSect)
       {
@@ -1113,7 +1563,88 @@ UCHAR GetFatType(PBOOTSECT pSect)
       return FAT_TYPE_FAT16;
       } /* endif */
 
-   return FAT_TYPE_NONE;
+   if (! pVolInfo)
+      {
+      // don't check FATs if called from autocheck routine
+      // passing pVolInfo == NULL
+      return FAT_TYPE_NONE;
+      }
+
+   ulSector = pSect->bpb.ReservedSectors;
+   ulNumFats = pSect->bpb.NumberOfFATs;
+   usSectorsPerFat = pSect->bpb.SectorsPerFat;
+   bLeadByte = pSect->bpb.MediaDescriptor;
+
+   // init some fields for ReadSector()
+   if (pSect->bpb.TotalSectors)
+      pVolInfo->BootSect.bpb.BigTotalSectors = pSect->bpb.TotalSectors;
+   else
+      pVolInfo->BootSect.bpb.BigTotalSectors = pSect->bpb.BigTotalSectors;
+
+   pVolInfo->BootSect.bpb.BytesPerSector = pSect->bpb.BytesPerSector;
+
+   pVolInfo->ulStartOfData = pVolInfo->BootSect.bpb.BigTotalSectors;
+
+   if (CountOfClusters >= 65525UL)
+      bFatType = FAT_TYPE_FAT32;
+   else if (CountOfClusters >= 4085UL)
+      bFatType = FAT_TYPE_FAT16;
+   else
+      bFatType = FAT_TYPE_FAT12;
+
+   pFat = malloc(SECTOR_SIZE * 8);
+
+   if (! pFat)
+      return FAT_TYPE_NONE;
+
+   for (i = 0; i < ulNumFats; i++)
+      {
+      // read each FAT copy start
+      if (ReadSector(pVolInfo, ulSector, 1, (void far *)pFat, 0))
+         {
+         bFatType = FAT_TYPE_NONE;
+         break;
+         }
+
+      switch (bFatType)
+         {
+         case FAT_TYPE_FAT12:
+            buf[0] = 0xffff00 | bLeadByte;
+            buf[1] = 0;
+
+            if (memcmp(pFat, buf, 2))
+               bFatType = FAT_TYPE_NONE;
+
+            break;
+
+         case FAT_TYPE_FAT16:
+            buf[0] = 0xffffff00 | bLeadByte;
+            buf[1] = 0;
+
+            if (memcmp(pFat, buf, 2))
+               bFatType = FAT_TYPE_NONE;
+
+            break;
+
+         case FAT_TYPE_FAT32:
+            buf[0] = 0x0fffff00 | bLeadByte;
+            buf[1] = 0x0fffffff;
+
+            if (memcmp(pFat, buf, 4))
+               bFatType = FAT_TYPE_NONE;
+
+            break;
+
+         default:
+            bFatType = FAT_TYPE_NONE;
+         }
+
+      ulSector += usSectorsPerFat;
+      }
+
+   free(pFat);
+
+   return bFatType;
 }
 
 /* Generate Volume Serial Number */
@@ -1134,13 +1665,11 @@ ULONG GetVolId(void)
     return d;
 }
 
-#if 0
-
 #pragma optimize("eglt",off)
 
 #define SAS_SEL 0x70
 
-P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
+PRIVATE P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
 {
    RP_GETDRIVERCAPS rp={0};
    PRP_GETDRIVERCAPS pRH = &rp;
@@ -1158,11 +1687,11 @@ P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
 
    while (pDD && (pDD != (struct SysDev far *)-1))
       {
-      if (
-          (memicmp(&pDD->SDevName[1],"Disk DD",7) == 0) &&        // found OS2DASD.DMD
-          (pDD->SDevAtt == (DEV_NON_IBM | DEVLEV_1 | DEV_30))     // found OS2DASD.DMD
-          )
-         {
+      //if (
+      //    (memicmp(&pDD->SDevName[1],"Disk DD",7) == 0) &&        // found OS2DASD.DMD
+      //    (pDD->SDevAtt == (DEV_NON_IBM | DEVLEV_1 | DEV_30))     // found OS2DASD.DMD
+      //    )
+      //   {
          pStrat = (PFN)MAKEP(pDD->SDevProtCS,pDD->SDevStrat);
          dsSel   = pDD->SDevProtDS;
 
@@ -1187,16 +1716,17 @@ P_DriverCaps ReturnDriverCaps(UCHAR ucUnit)
                pop es
                pop ds
                }
-            return pRH->pDCS;
-            }
+            if (pRH->rph.Status == STDON) //
+               {                          //
+               return pRH->pDCS;          //
+               }                          //
+      //      }
 
-            break;
-         }
+      //      break;
+            }
       pDD = (struct SysDev far *)pDD->SDevNext;
       }
    return NULL;
 }
 
 #pragma optimize("",on)
-
-#endif

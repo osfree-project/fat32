@@ -52,6 +52,8 @@ USHORT _Far16 _Pascal _loadds INIT16(HMODULE hmod, ULONG flag);
 // disk file open handle
 extern char msg;
 
+extern BOOL fDiskImage;
+
 DWORD get_fat_size_sectors ( format_params *params, DWORD DskSize,
                              DWORD ReservedSecCnt, DWORD SecPerClus,
                              DWORD NumFATs, DWORD BytesPerSect )
@@ -325,7 +327,11 @@ void zero_sectors ( PCDINFO pCD, DWORD Sector, DWORD BytesPerSect, DWORD NumSect
         else 
             WriteSize = NumSects;
 
-        SeekToSector( pCD, Sector, BytesPerSect );
+        if (! fDiskImage)
+        {
+           SeekToSector( pCD, Sector, BytesPerSect );
+        }
+
         ret = WriteSector2 ( pCD, Sector, BytesPerSect, pZeroSect, WriteSize );
 
         if ( ret )
@@ -432,6 +438,9 @@ int format_volume (char *path, format_params *params)
     if (!pCD)
        return FALSE;
     memset(pCD, 0, sizeof (CDINFO));
+
+    if (fDiskImage)
+       strcpy(pCD->szImage, path);
 
     // Open drive
     OpenDrive (pCD, path);
@@ -1204,6 +1213,14 @@ static void usage( char *s )
                  "/P is specified by PM frontends\n"
                  "/V:<volume label>\n"
                  "/R:<reserved sectors>\n"
+                 "/M:<mountpoint> specify a mountpoint of a mounted\n"
+                 "    filesystem image. If specified, it is used\n"
+                 "    instead of [c:\\].\n"
+                 "/A:<align>\n"
+                 "/T:<tracks>\n"
+                 "/N:<sectors per track>\n"
+                 "/F:<volume size>\n"
+                 "/L  Low-level format for CDRW/DVD-RW/floppies\n"
                  "/? this help message\n\n", 0, 0, 1, s );
 
         exit(1);
@@ -1435,6 +1452,10 @@ int format(int argc, char *argv[], char *envp[])
                 continue;
         case 'L': // long format
                 p.long_format = TRUE;
+                continue;
+        case 'M': // specify a mount point	
+                strcpy(path, val);
+                fDiskImage = TRUE;
                 continue;
         default:
 	        usage( argv[0] );

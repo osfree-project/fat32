@@ -38,6 +38,10 @@ static BYTE szBanner[]=
 "FAT32.IFS version " FAT32_VERSION " " __DATE__ "\r\n"
 "Made by Henk Kelder + Netlabs";
 
+PCPDATA pCPData = NULL;
+LIN lock = 0;
+PID pidDaemon;
+
 USHORT NameHash(USHORT *pszFilename, int NameLen);
 static BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG GetFreeCluster(PVOLINFO pVolInfo);
@@ -53,6 +57,7 @@ VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
 USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
 VOID   ReleaseFat(PVOLINFO pVolInfo);
+int Mount(PMNTOPTS opts, PVOLINFO *pVolInfo);
 static USHORT RecoverChain(PVOLINFO pVolInfo, ULONG ulCluster, PBYTE pData, USHORT cbData);
 static USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector);
 static USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector);
@@ -62,6 +67,8 @@ static ULONG GetChainSize(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluste
 static USHORT MakeChain(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulFirstCluster, ULONG ulSize);
 static USHORT GetSetFileEAS(PVOLINFO pVolInfo, USHORT usFunc, PMARKFILEEASBUF pMark);
 USHORT DBCSStrlen( const PSZ pszStr );
+int fGetSetFSInfo(unsigned short usFlag, PVOLINFO pVolInfo, char far * pData,
+    unsigned short cbData, unsigned short usLevel);
 
 static ULONG GetFatEntrySec(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG GetFatEntryBlock(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulBlockSize);
@@ -69,6 +76,9 @@ static ULONG GetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster);
 static ULONG GetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulBlockSize);
 static void SetFatEntry(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulValue);
 static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, ULONG ulValue, ULONG ulBlockSize);
+
+int PreSetup(void);
+int PostSetup(void);
 
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
@@ -150,7 +160,18 @@ PSZ      szDstLongName = NULL;
 
    MessageL(LOG_FS, "FS_COPY%m %s to %s, mode %d", 0x0025, pSrc, pDst, usMode);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pSrc);
+
+   if (pVolInfo != GetVolInfoX(pDst))
+      {
+      rc = ERROR_CANNOT_COPY;
+      goto FS_COPYEXIT;
+      }
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
@@ -613,7 +634,12 @@ PSZ      szLongName = NULL;
 
    MessageL(LOG_FS, "FS_DELETE%m for %s", 0x0026, pFile);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pFile);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
@@ -947,6 +973,110 @@ FS_FLUSHEXIT:
    return rc;
 }
 
+PID queryCurrentPid()
+{
+   APIRET rc;
+
+   struct {
+         PID pid;
+         USHORT uid;
+         USHORT pdb;
+   } info;
+
+   rc = FSH_QSYSINFO(QSI_PROCID, (char far *) &info, sizeof info);
+
+   if (rc)
+      Message("Cannot query PID!");
+
+   return info.pid;
+}
+
+LIN virtToLin(void far *p)
+{
+   APIRET rc;
+   LIN lin;
+
+   rc = DevHelp_VirtToLin(
+      SELECTOROF(p),
+      OFFSETOF(p),
+      &lin);
+
+   if (rc)
+      Message("virtToLin failed!");
+
+   return lin;
+}
+
+
+APIRET daemonStarted(PEXBUF pexbuf)
+{
+APIRET rc;
+PAGELIST pagelist[17];
+ULONG pages;
+LIN linaddr;
+
+   rc = DevHelp_AllocGDTSelector((PSEL)&SELECTOROF(pCPData), 1);
+
+   if (rc)
+      return rc;
+
+   rc = DevHelp_VMProcessToGlobal(VMDHPG_WRITE,
+                                  pexbuf->buf, sizeof(CPDATA),
+                                  &linaddr);
+
+   if (rc)
+      return rc;
+
+   rc = DevHelp_VMLock(VMDHL_WRITE | VMDHL_LONG,
+                       linaddr, sizeof(CPDATA),
+                       virtToLin(pagelist),
+                       virtToLin(&lock),
+                       &pages);
+
+   if (rc)
+      return rc;
+
+   rc = DevHelp_LinToGDTSelector(SELECTOROF(pCPData),
+                                 linaddr, sizeof(CPDATA));
+
+   if (rc)
+      return rc;
+
+   pidDaemon = queryCurrentPid();
+
+   rc = FSH_SEMSET(&pCPData->semRqAvail);
+
+   if (rc)
+      return rc;
+   
+   rc = FSH_SEMCLEAR(&pCPData->semSerialize);
+
+   return rc;
+}
+
+APIRET daemonStopped(void)
+{
+APIRET rc;
+
+   pidDaemon = 0;
+
+   FSH_SEMCLEAR(&pCPData->semRqDone);
+
+   rc = FSH_SEMREQUEST(&pCPData->semSerialize, -1);
+
+   if (rc)
+      return rc;
+
+   rc = FSH_SEMCLEAR(&pCPData->semSerialize);
+
+   DevHelp_VMUnLock(virtToLin(&lock));
+   DevHelp_FreeGDTSelector(SELECTOROF(pCPData));
+
+   if (rc)
+      return rc;
+
+   return NO_ERROR;
+}
 
 /******************************************************************
 *
@@ -1320,6 +1450,128 @@ POPENINFO pOpenInfo;
         rc = 0;
         break;
 
+      case FAT32_MOUNT:
+        {
+        PVOLINFO pVolInfo2; 
+
+        if (cbParm < sizeof(MNTOPTS))
+           {
+           rc = ERROR_BUFFER_OVERFLOW;
+           goto FS_FSCTLEXIT;
+           }
+        rc = Mount((PMNTOPTS)pParm, &pVolInfo2);
+        }
+        break;
+
+      case FAT32_DAEMON_STARTED:
+         if (pidDaemon)
+            {
+            rc = ERROR_ALREADY_EXISTS;
+            goto FS_FSCTLEXIT;
+            }
+
+         if (cbParm < sizeof(EXBUF))
+            {
+            rc = ERROR_INVALID_PARAMETER;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = daemonStarted((PEXBUF)pParm);
+         break;
+
+      case FAT32_DAEMON_STOPPED:
+         if (! pidDaemon)
+            {
+            rc = NO_ERROR;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = daemonStopped();
+         break;
+
+     case FAT32_DAEMON_DETACH:
+        rc = daemonStopped();
+        break;
+
+     case FAT32_GET_REQ:
+        if (queryCurrentPid() != pidDaemon)
+            {
+            rc = ERROR_ALREADY_ASSIGNED;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = FSH_SEMWAIT(&pCPData->semRqAvail, TO_INFINITE);
+
+         if (rc)
+            break;
+         
+         rc = FSH_SEMSET(&pCPData->semRqAvail);
+         break;
+
+      case FAT32_DONE_REQ:
+         if (queryCurrentPid() != pidDaemon)
+            {
+            rc = ERROR_ALREADY_ASSIGNED;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = FSH_SEMCLEAR(&pCPData->semRqDone);
+         break;
+
+      case FAT32_GETVOLLABEL:
+         {
+         PVOLINFO pVolInfo = GetVolInfoX(pParm);
+
+         if (! pVolInfo)
+            {
+            rc = ERROR_INVALID_DRIVE;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = fGetSetFSInfo(INFO_RETRIEVE,
+                            pVolInfo,
+                            pData,
+                            cbData,
+                            FSIL_VOLSER);
+         }
+         break;
+
+      case FAT32_GETALLOC:
+         {
+         PVOLINFO pVolInfo = GetVolInfoX(pParm);
+
+         if (! pVolInfo)
+            {
+            rc = ERROR_INVALID_DRIVE;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = fGetSetFSInfo(INFO_RETRIEVE,
+                            pVolInfo,
+                            pData,
+                            cbData,
+                            FSIL_ALLOC);
+         }
+         break;
+
+      case FAT32_SETVOLLABEL:
+         {
+         PVOLINFO pVolInfo = GetVolInfoX(pParm);
+
+         if (! pVolInfo)
+            {
+            rc = ERROR_INVALID_DRIVE;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = fGetSetFSInfo(INFO_SET,
+                            pVolInfo,
+                            pData,
+                            cbData,
+                            FSIL_VOLSER);
+         }
+         break;
+
       default :
          rc = ERROR_INVALID_FUNCTION;
          break;
@@ -1361,23 +1613,48 @@ USHORT rc;
       goto FS_FSINFOEXIT;
       }
 
+   rc = fGetSetFSInfo(usFlag,
+                      pVolInfo,
+                      pData,
+                      cbData,
+                      usLevel);
+
+FS_FSINFOEXIT:
+
+   MessageL(LOG_FS, "FS_FSINFO%m returned %u", 0x802a, rc);
+
+   _asm pop es;
+
+   return rc;
+}
+
+int fGetSetFSInfo(
+    unsigned short usFlag,      /* flag     */
+    PVOLINFO pVolInfo,          /* pVolInfo */
+    char far * pData,           /* pData    */
+    unsigned short cbData,      /* cbData   */
+    unsigned short usLevel      /* level    */
+)
+{
+USHORT rc;
+
    if (pVolInfo->fFormatInProgress)
       {
       rc = ERROR_ACCESS_DENIED;
-      goto FS_FSINFOEXIT;
+      goto FSINFOEXIT;
       }
 
    if (IsDriveLocked(pVolInfo))
       {
       rc = ERROR_DRIVE_LOCKED;
-      goto FS_FSINFOEXIT;
+      goto FSINFOEXIT;
       }
 
    rc = MY_PROBEBUF(PB_OPWRITE, pData, cbData);
    if (rc)
       {
       Message("Protection VIOLATION in FS_FSINFO!");
-      goto FS_FSINFOEXIT;
+      goto FSINFOEXIT;
       }
 
    if (usFlag == INFO_RETRIEVE)
@@ -1391,7 +1668,7 @@ USHORT rc;
             if (cbData < sizeof (FSALLOCATE))
                {
                rc = ERROR_BUFFER_OVERFLOW;
-               goto FS_FSINFOEXIT;
+               goto FSINFOEXIT;
                }
 #ifdef OLD_SOURCE
             pAlloc->ulReserved  = 0L;
@@ -1437,7 +1714,7 @@ USHORT rc;
             if (cbData < sizeof (FSINFO))
                {
                rc = ERROR_BUFFER_OVERFLOW;
-               goto FS_FSINFOEXIT;
+               goto FSINFOEXIT;
                }
 
 #ifndef __WATCOMC__
@@ -1472,7 +1749,7 @@ USHORT rc;
             if (cbData < 1)
                {
                rc = ERROR_INSUFFICIENT_BUFFER;
-               goto FS_FSINFOEXIT;
+               goto FSINFOEXIT;
                }
 
             if (pVol->cch < (BYTE)12)
@@ -1502,11 +1779,7 @@ USHORT rc;
    else
       rc = ERROR_BAD_COMMAND;
 
-FS_FSINFOEXIT:
-
-   MessageL(LOG_FS, "FS_FSINFO%m returned %u", 0x802a, rc);
-
-   _asm pop es;
+FSINFOEXIT:
 
    return rc;
 }
@@ -2390,7 +2663,7 @@ PBIOSPARAMETERBLOCK pBPB;
    MessageL(LOG_FS, "FS_IOCTL%m, Cat %Xh, Func %Xh, File# %u",
             0x002b, usCat, usFunc, psffsi->sfi_selfsfn);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -2464,7 +2737,7 @@ PBIOSPARAMETERBLOCK pBPB;
             case DSK_LOCKDRIVE:
                if (pVolInfo->fLocked)
                   {
-                  Message("Drive locked, pVolInfo->fLocked=%lu", pVolInfo->fLocked);
+                  Message("Drive locked, pVolInfo->fLocked=%u", pVolInfo->fLocked);
                   rc = ERROR_DRIVE_LOCKED;
                   goto FS_IOCTLEXIT;
                   }
@@ -2476,8 +2749,15 @@ PBIOSPARAMETERBLOCK pBPB;
                   }
 
                hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (pVolInfo->hVBP)
+                  {
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               else
+                  {
+                  rc = NO_ERROR;
+                  }
 
                if (!rc) {
                  pVolInfo->fLocked = TRUE;
@@ -2496,8 +2776,15 @@ PBIOSPARAMETERBLOCK pBPB;
 
             case DSK_UNLOCKDRIVE:
                hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (pVolInfo->hVBP)
+                  {
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               else
+                  {
+                  rc = NO_ERROR;
+                  }
 
                if (!rc) {
 
@@ -2524,8 +2811,15 @@ PBIOSPARAMETERBLOCK pBPB;
                //   *pcbData = sizeof (BYTE);
 
                hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (pVolInfo->hVBP)
+                  {
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               else
+                  {
+                  rc = NO_ERROR;
+                  }
 
                if (!rc) {
 
@@ -2583,12 +2877,249 @@ PBIOSPARAMETERBLOCK pBPB;
                rc = 0;
                break;
 
-            case DSK_GETDEVICEPARAMS :
+            case DSK_READTRACK :
                if (pcbData)
                   *pcbData = sizeof (BIOSPARAMETERBLOCK);
                hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (pVolInfo->hVBP)
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+               else
+                  {
+                  // image, mounted at the mount point
+                  PTRACKLAYOUT ptrk = (PTRACKLAYOUT)pParm;
+                  ULONG ulFirstSector;
+
+                  if (! (ptrk->bCommand & 1) )
+                     {
+                     rc = ERROR_NOT_SUPPORTED;
+                     goto FS_IOCTLEXIT;
+                     }
+
+                  rc = PreSetup();
+
+                  if (rc)
+                     {
+                     goto FS_IOCTLEXIT;
+                     }                    
+
+                  ulFirstSector = (ULONG)ptrk->usCylinder * pVolInfo->BootSect.bpb.SectorsPerTrack * pVolInfo->BootSect.bpb.Heads +
+                     (ULONG)ptrk->usHead * pVolInfo->BootSect.bpb.SectorsPerTrack + ptrk->usFirstSector;
+
+                  pCPData->Op = OP_READ;
+                  pCPData->hf = pVolInfo->hf;
+                  pCPData->llOffset = (LONGLONG)ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector;
+                  pCPData->cbData = (ULONG)ptrk->cSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+
+                  rc = PostSetup();
+
+                  if (rc)
+                     {
+                     goto FS_IOCTLEXIT;
+                     }                    
+
+                  memcpy(pData, &pCPData->Buf, pCPData->cbData);
+                  rc = pCPData->rc;
+                  }
+
+               if (!rc)
+                  {
+                  if (pcbData)
+                     {
+                     *pcbData = cbData;
+                     }
+
+                  if (pcbParm)
+                     {
+                     *pcbParm = cbParm;
+                     }
+                  }
+               break;
+
+            case DSK_WRITETRACK :
+               if (pcbData)
+                  *pcbData = sizeof (BIOSPARAMETERBLOCK);
+               hDEV = GetVolDevice(pVolInfo);
+               if (pVolInfo->hVBP)
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+               else
+                  {
+                  // image, mounted at the mount point
+                  PTRACKLAYOUT ptrk = (PTRACKLAYOUT)pParm;
+                  ULONG ulFirstSector;
+
+                  if (! (ptrk->bCommand & 1) )
+                     {
+                     rc = ERROR_NOT_SUPPORTED;
+                     goto FS_IOCTLEXIT;
+                     }
+
+                  rc = PreSetup();
+
+                  if (rc)
+                     {
+                     goto FS_IOCTLEXIT;
+                     }                    
+
+                  ulFirstSector = (ULONG)ptrk->usCylinder * pVolInfo->BootSect.bpb.SectorsPerTrack * pVolInfo->BootSect.bpb.Heads +
+                     (ULONG)ptrk->usHead * pVolInfo->BootSect.bpb.SectorsPerTrack + ptrk->usFirstSector;
+
+                  pCPData->Op = OP_WRITE;
+                  pCPData->hf = pVolInfo->hf;
+                  pCPData->llOffset = (LONGLONG)ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector;
+                  pCPData->cbData = (ULONG)ptrk->cSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+                  memcpy(&pCPData->Buf, pData, pCPData->cbData);
+
+                  rc = PostSetup();
+
+                  if (rc)
+                     {
+                     goto FS_IOCTLEXIT;
+                     }                    
+
+                  rc = pCPData->rc;
+                  }
+
+               if (!rc)
+                  {
+                  if (pcbData)
+                     {
+                     *pcbData = cbData;
+                     }
+
+                  if (pcbParm)
+                     {
+                     *pcbParm = cbParm;
+                     }
+                  }
+               break;
+
+            case DSK_GETDEVICEPARAMS :
+               if (pcbData)
+                  *pcbData = sizeof (BIOSPARAMETERBLOCK);
+
+               hDEV = GetVolDevice(pVolInfo);
+
+               if (pVolInfo->hVBP)
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+               else
+                  {
+                  ULONG cSectors;
+                  PBPB pbpb;
+
+                  // image, mounted at the mount point
+                  if (*(PULONG)pParm & 1)
+                     {
+                     // return BPB currently in drive
+                     rc = PreSetup();
+
+                     if (rc)
+                        {
+                        goto FS_IOCTLEXIT;
+                        }                    
+
+                     pCPData->Op = OP_READ;
+                     pCPData->hf = pVolInfo->hf;
+                     pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset;
+                     pCPData->cbData = pVolInfo->BootSect.bpb.BytesPerSector;
+
+                     rc = PostSetup();
+
+                     if (rc)
+                        {
+                        goto FS_IOCTLEXIT;
+                        }                    
+
+                     pBPB = (PBIOSPARAMETERBLOCK)pData;
+
+                     pbpb = (PBPB)((PBYTE)pCPData->Buf + 0xb);
+
+                     pBPB->usBytesPerSector = pVolInfo->BootSect.bpb.BytesPerSector;
+                     pBPB->bSectorsPerCluster = pVolInfo->BootSect.bpb.SectorsPerCluster;
+                     pBPB->usReservedSectors = pVolInfo->BootSect.bpb.ReservedSectors;
+                     pBPB->cFATs = pVolInfo->BootSect.bpb.NumberOfFATs;
+                     pBPB->cRootEntries = pVolInfo->BootSect.bpb.RootDirEntries;
+                     pBPB->cSectors = pVolInfo->BootSect.bpb.TotalSectors;
+                     pBPB->bMedia = pVolInfo->BootSect.bpb.MediaDescriptor;
+                     pBPB->usSectorsPerFAT = pVolInfo->BootSect.bpb.SectorsPerFat;
+                     pBPB->usSectorsPerTrack = pVolInfo->BootSect.bpb.SectorsPerTrack;
+                     pBPB->cHeads = pVolInfo->BootSect.bpb.Heads;
+                     pBPB->cHiddenSectors = pVolInfo->BootSect.bpb.HiddenSectors;
+                     pBPB->cLargeSectors = pVolInfo->BootSect.bpb.BigTotalSectors;
+
+                     cSectors = pBPB->cSectors;
+
+                     if (! cSectors)
+                        cSectors = pBPB->cLargeSectors;
+
+                     if (! pBPB->usSectorsPerTrack || ! pBPB->cHeads)
+                        {
+                        rc = ERROR_SECTOR_NOT_FOUND;
+                        goto FS_IOCTLEXIT;
+                        }                    
+
+                     pBPB->cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
+
+                     pBPB->bDeviceType = 1 << 5;  // hard disk
+                     pBPB->fsDeviceAttr = 1 << 2; // > 16 MB flag
+                     }
+                  else
+                     {
+                     // return recommended BPB
+                     ULONG cCylinders;
+
+                     pBPB = (PBIOSPARAMETERBLOCK)pData;
+
+                     memset(pBPB, 0, sizeof(PBIOSPARAMETERBLOCK));
+                     pBPB->usBytesPerSector = pVolInfo->BootSect.bpb.BytesPerSector;
+                     pBPB->cHiddenSectors = pVolInfo->BootSect.bpb.HiddenSectors;
+
+                     cSectors = pVolInfo->BootSect.bpb.BigTotalSectors;
+
+                     if (cSectors < 65536UL)
+                        pBPB->cSectors = cSectors;
+                     else
+                        pBPB->cLargeSectors = cSectors;
+
+                     pBPB->bMedia = 0xf8;
+                     pBPB->usSectorsPerTrack = pVolInfo->BootSect.bpb.SectorsPerTrack;
+                     pBPB->cHeads = pVolInfo->BootSect.bpb.Heads;
+
+                     if (! pBPB->usSectorsPerTrack)
+                        {
+                        pBPB->usSectorsPerTrack = 63;
+                        }                    
+
+                     if (! pBPB->cHeads)
+                        {
+                        pBPB->cHeads = 255;
+                        }                    
+
+                     cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
+
+                     if (cCylinders > 0xffff)
+                        {
+                        pBPB->usSectorsPerTrack = 127;
+                        cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
+                        }
+
+                     if (cCylinders > 0xffff)
+                        {
+                        pBPB->usSectorsPerTrack = 255;
+                        cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
+                        }
+
+                     pBPB->cCylinders = cCylinders;
+
+                     pBPB->bDeviceType = 1 << 5;  // hard disk
+                     pBPB->fsDeviceAttr = 1 << 2; // > 16 MB flag
+                     }
+
+                  rc = NO_ERROR;
+                  }
+
                if (!rc) {
 
                   if (pcbData) {
@@ -2640,8 +3171,15 @@ PBIOSPARAMETERBLOCK pBPB;
                // on a floppy device)
                pkt->bCmdInfo &= ~IODC_SP_MEDIA;
 
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+               if (pVolInfo->hVBP)
+                  {
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               else
+                  {
+                  rc = NO_ERROR;
+                  }
 
                if (!rc)
                   {
@@ -2660,8 +3198,16 @@ PBIOSPARAMETERBLOCK pBPB;
 
             default  :
                hDEV = GetVolDevice(pVolInfo);
-               rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-                  usCat, usFunc, pParm, cbParm, pData, cbData);
+
+               if (pVolInfo->hVBP)
+                  {
+                  rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                                    usCat, usFunc, pParm, cbParm, pData, cbData);
+                  }
+               else
+                  {
+                  rc = NO_ERROR;
+                  }
 
                 if (!rc) {
                  if (pcbData) {
@@ -2833,10 +3379,10 @@ PBIOSPARAMETERBLOCK pBPB;
                      rc = 0;
                   }
                break;
-            /* case FAT32_READCLUSTER:
+            case FAT32_READBLOCK:
                {
-               ULONG ulCluster;
-               if (cbParm < sizeof(ULONG))
+               ULONG ulCluster, ulBlock;
+               if (cbParm < 2 * sizeof(ULONG))
                   {
                   rc = ERROR_INSUFFICIENT_BUFFER;
                   goto FS_IOCTLEXIT;
@@ -2847,9 +3393,10 @@ PBIOSPARAMETERBLOCK pBPB;
                   goto FS_IOCTLEXIT;
                   }
                ulCluster = *(PULONG)pParm;
-               rc = ReadCluster(pVolInfo, ulCluster, pData, 0);
+               ulBlock = *((PULONG)pParm + 1);
+               rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pData, 0);
                break;
-               } */
+               }
             case FAT32_READSECTOR:
                {
                PREADSECTORDATA pRSD;
@@ -2867,10 +3414,10 @@ PBIOSPARAMETERBLOCK pBPB;
                rc = ReadSector(pVolInfo, pRSD->ulSector, pRSD->nSectors, pData, 0);
                break;
                }
-            /* case FAT32_WRITECLUSTER:
+            case FAT32_WRITEBLOCK:
                {
-               ULONG ulCluster;
-               if (cbParm < sizeof(ULONG))
+               ULONG ulCluster, ulBlock;
+               if (cbParm < 2 * sizeof(ULONG))
                   {
                   rc = ERROR_INSUFFICIENT_BUFFER;
                   goto FS_IOCTLEXIT;
@@ -2881,9 +3428,10 @@ PBIOSPARAMETERBLOCK pBPB;
                   goto FS_IOCTLEXIT;
                   }
                ulCluster = *(PULONG)pParm;
-               rc = WriteCluster(pVolInfo, ulCluster, pData, 0);
+               ulBlock = *((PULONG)pParm + 1);
+               rc = WriteBlock(pVolInfo, ulCluster, ulBlock, pData, 0);
                break;
-               } */
+               }
             case FAT32_WRITESECTOR:
                {
                PWRITESECTORDATA pWSD;
@@ -2901,6 +3449,161 @@ PBIOSPARAMETERBLOCK pBPB;
                rc = WriteSector(pVolInfo, pWSD->ulSector, pWSD->nSectors, pData, 0);
                break;
                }
+
+            case FAT32_BEGINFORMAT :
+               {
+               // image, mounted at the mount point
+               PVOLINFO pVolInfo2;
+               POPENINFO pOpenInfo;
+               PMNTOPTS opts;
+
+               opts = (PMNTOPTS)malloc(sizeof(MNTOPTS));
+
+               if (! opts)
+                  {
+                  rc = ERROR_NOT_ENOUGH_MEMORY;
+                  goto FS_IOCTLEXIT;
+                  }
+
+               pOpenInfo = *(POPENINFO *)psffsd;
+
+               if (! pOpenInfo)
+                  {
+                  rc = ERROR_VOLUME_NOT_MOUNTED;
+                  free(opts);
+                  goto FS_IOCTLEXIT;
+                  }
+
+               opts->usOp = MOUNT_ACCEPT;
+               strcpy(opts->pFilename, pVolInfo->pbFilename);
+               strcpy(opts->pMntPoint, pVolInfo->pbMntPoint);
+               opts->ullOffset = pVolInfo->ullOffset;
+               opts->hf = pVolInfo->hf;
+
+               rc = Mount(opts, &pVolInfo2);
+
+               if (rc)
+                  {
+                  free(opts);
+                  goto FS_IOCTLEXIT;
+                  }
+
+               pVolInfo2->fLocked = pVolInfo->fLocked;
+               pVolInfo2->ulOpenFiles = pVolInfo->ulOpenFiles;
+               pVolInfo2->BootSect.bpb.HiddenSectors = pVolInfo->BootSect.bpb.HiddenSectors;
+               pVolInfo2->BootSect.bpb.BigTotalSectors = pVolInfo->BootSect.bpb.BigTotalSectors;
+               pVolInfo2->BootSect.bpb.TotalSectors = pVolInfo->BootSect.bpb.TotalSectors;
+               pVolInfo2->BootSect.bpb.BytesPerSector = pVolInfo->BootSect.bpb.BytesPerSector;
+               pVolInfo2->BootSect.bpb.SectorsPerTrack = pVolInfo->BootSect.bpb.SectorsPerTrack;
+               pVolInfo2->BootSect.bpb.Heads = pVolInfo->BootSect.bpb.Heads;
+               pOpenInfo->pVolInfo = pVolInfo2;
+
+               opts->usOp = MOUNT_RELEASE;
+               strcpy(opts->pFilename, pVolInfo->pbFilename);
+               strcpy(opts->pMntPoint, pVolInfo->pbMntPoint);
+               opts->ullOffset = pVolInfo->ullOffset;
+               opts->hf = pVolInfo->hf;
+
+               rc = Mount(opts, &pVolInfo);
+
+               free(opts);
+
+               if (!rc)
+                  {
+                  if (pcbData)
+                     {
+                     *pcbData = cbData;
+                     }
+
+                  if (pcbParm)
+                     {
+                     *pcbParm = cbParm;
+                     }
+                  }
+               else
+                  {
+                  pOpenInfo->pVolInfo = NULL;
+                  }
+               }
+               break;
+
+            case FAT32_REDETERMINEMEDIA :
+               {
+               // image, mounted at the mount point
+               PVOLINFO pVolInfo2;
+               POPENINFO pOpenInfo;
+               PMNTOPTS opts;
+
+               opts = (PMNTOPTS)malloc(sizeof(MNTOPTS));
+
+               if (! opts)
+                  {
+                  rc = ERROR_NOT_ENOUGH_MEMORY;
+                  goto FS_IOCTLEXIT;
+                  }
+
+               pOpenInfo = *(POPENINFO *)psffsd;
+
+               if (! pOpenInfo)
+                  {
+                  rc = ERROR_VOLUME_NOT_MOUNTED;
+                  free(opts);
+                  goto FS_IOCTLEXIT;
+                  }
+
+               opts->usOp = MOUNT_MOUNT;
+               strcpy(opts->pFilename, pVolInfo->pbFilename);
+               strcpy(opts->pMntPoint, pVolInfo->pbMntPoint);
+               opts->ullOffset = pVolInfo->ullOffset;
+               opts->hf = pVolInfo->hf;
+
+               rc = Mount(opts, &pVolInfo2);
+
+               if (rc)
+                  {
+                  free(opts);
+                  goto FS_IOCTLEXIT;
+                  }
+
+               pVolInfo2->fLocked = pVolInfo->fLocked;
+               pVolInfo2->ulOpenFiles = pVolInfo->ulOpenFiles;
+               pVolInfo2->BootSect.bpb.HiddenSectors = pVolInfo->BootSect.bpb.HiddenSectors;
+               pVolInfo2->BootSect.bpb.BigTotalSectors = pVolInfo->BootSect.bpb.BigTotalSectors;
+               pVolInfo2->BootSect.bpb.TotalSectors = pVolInfo->BootSect.bpb.TotalSectors;
+               pVolInfo2->BootSect.bpb.BytesPerSector = pVolInfo->BootSect.bpb.BytesPerSector;
+               pVolInfo2->BootSect.bpb.SectorsPerTrack = pVolInfo->BootSect.bpb.SectorsPerTrack;
+               pVolInfo2->BootSect.bpb.Heads = pVolInfo->BootSect.bpb.Heads;
+               pOpenInfo->pVolInfo = pVolInfo2;
+
+               opts->usOp = MOUNT_RELEASE;
+               strcpy(opts->pFilename, pVolInfo->pbFilename);
+               strcpy(opts->pMntPoint, pVolInfo->pbMntPoint);
+               opts->ullOffset = pVolInfo->ullOffset;
+               opts->hf = pVolInfo->hf;
+
+               rc = Mount(opts, &pVolInfo);
+
+               free(opts);
+
+               if (!rc)
+                  {
+                  if (pcbData)
+                     {
+                     *pcbData = cbData;
+                     }
+
+                  if (pcbParm)
+                     {
+                     *pcbParm = cbParm;
+                     }
+                  }
+               else
+                  {
+                  pOpenInfo->pVolInfo = NULL;
+                  }
+               }
+               break;
+
             default :
                rc = ERROR_BAD_COMMAND;
                break;
@@ -2909,19 +3612,29 @@ PBIOSPARAMETERBLOCK pBPB;
 
       default:
          hDEV = GetVolDevice(pVolInfo);
-         rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
-            usCat, usFunc, pParm, cbParm, pData, cbData);
 
-         if (!rc) {
-           if (pcbData) {
-             *pcbData = cbData;
-           }
+         if (pVolInfo->hVBP)
+            {
+            rc = FSH_DOVOLIO2(hDEV, psffsi->sfi_selfsfn,
+                              usCat, usFunc, pParm, cbParm, pData, cbData);
+            }
+         else
+            {
+            rc = NO_ERROR;
+            }
 
-           if (pcbParm) {
-             *pcbParm = cbParm;
-           }
-         }
+         if (!rc)
+            {
+            if (pcbData)
+               {
+               *pcbData = cbData;
+               }
 
+            if (pcbParm)
+               {
+               *pcbParm = cbParm;
+               }
+            }
          break;
       }
 
@@ -3371,7 +4084,18 @@ PSZ      szDstLongName = NULL;
 
    MessageL(LOG_FS, "FS_MOVE%m %s to %s", 0x002c, pSrc, pDst);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pSrc);
+
+   if (pVolInfo != GetVolInfoX(pDst))
+      {
+      rc = ERROR_CANNOT_COPY;
+      goto FS_MOVEEXIT;
+      }
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
@@ -5568,6 +6292,71 @@ PVOLINFO pVolInfo;
       return pGlobVolInfo;
       }
    pVolInfo->hVBP = hVBP;
+   return pVolInfo;
+}
+
+PVOLINFO GetVolInfoCD(struct cdfsi *pcdfsi, struct cdfsd *pcdfsd)
+{
+PSZ pszCurDir = pcdfsi->cdi_curdir;
+POPENINFO pOpenInfo;
+
+   if (pszCurDir[1] == ':')
+      pszCurDir += 2;
+
+   if (*pszCurDir == '\\')
+      return GetVolInfo(pcdfsi->cdi_hVPB);
+
+   pOpenInfo = (POPENINFO)*((PULONG)pcdfsd + 1);
+
+   return pOpenInfo->pVolInfo;
+}
+
+PVOLINFO GetVolInfoSF(struct sffsd *psffsd)
+{
+POPENINFO pOpenInfo;
+
+   pOpenInfo = *(POPENINFO *)psffsd;
+   return pOpenInfo->pVolInfo;
+}
+
+PVOLINFO GetVolInfoFS(struct fsfsd *pfsfsd)
+{
+PVOLINFO pVolInfo;
+
+   pVolInfo = ((PFINDINFO)pfsfsd)->pVolInfo;
+   return pVolInfo;
+}
+
+PVOLINFO GetVolInfoX(char *pszName)
+{
+PVOLINFO pVolInfo = NULL;
+PVOLINFO pNext = pGlobVolInfo;
+APIRET rc;
+
+   do
+      {
+      if (pNext && pNext->pbMntPoint && strstr(strlwr(pszName), strlwr(pNext->pbMntPoint)))
+         break;
+      if (pNext && pNext->pbFilename && strstr(strlwr(pszName), strlwr(pNext->pbFilename)))
+         break;
+      pNext = pNext->pNextVolInfo;
+      }
+   while (pNext);
+
+   pVolInfo = pNext;
+
+   if (! pVolInfo)
+      {
+      return NULL;
+      }
+
+   rc = MY_PROBEBUF(PB_OPWRITE, (PBYTE)pVolInfo, sizeof (VOLINFO));
+   if (rc)
+      {
+      FatalMessage("FAT32: Error VOLINFO invalid in GetVolInfo (ProtViol)");
+      return pGlobVolInfo;
+      }
+
    return pVolInfo;
 }
 

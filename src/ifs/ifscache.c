@@ -41,6 +41,8 @@ ULONG          _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
 PRIVATE USHORT _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
 PRIVATE BOOL   _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
 
+extern PCPDATA pCPData;
+
 PRIVATE USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName);
 PRIVATE VOID   ReleaseReadBuf(PVOLINFO pVolInfo);
 PRIVATE BOOL   IsSectorInCache(PVOLINFO pVolInfo, ULONG ulSector, PBYTE bSector);
@@ -61,6 +63,9 @@ VOID   ReleaseFat(PVOLINFO pVolInfo);
 USHORT GetBufAccess(PVOLINFO pVolInfo, PSZ pszName);
 VOID   ReleaseBuf(PVOLINFO pVolInfo);
 ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
+
+int PreSetup(void);
+int PostSetup(void);
 
 PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 
@@ -292,7 +297,29 @@ char far *p;
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();
-   rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
+   if (pVolInfo->hVBP)
+      rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
+   else
+      {
+      /* read loopback device */
+      rc = PreSetup();
+
+      if (rc)
+         return rc;
+
+      pCPData->Op = OP_READ;
+      pCPData->hf = pVolInfo->hf;
+      pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + ulSector * pVolInfo->BootSect.bpb.BytesPerSector;
+      pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+
+      rc = PostSetup();
+
+      if (rc)
+         return rc;
+
+      memcpy(pbSectors, &pCPData->Buf, pCPData->cbData);
+      rc = pCPData->rc;
+      }
    if (rc)
       {
       //CritMessage("FAT32: ReadSector of sector %ld (%d sectors) failed, rc = %u",
@@ -387,7 +414,29 @@ char *p;
       {
       MessageL(LOG_CACHE, "WriteSector%m: Writing sector thru", 0x4063);
       pVolInfo->ulLastDiskTime = GetCurTime();
-      rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
+      if (pVolInfo->hVBP)
+         rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
+      else
+         {
+         /* write loopback device */
+         rc = PreSetup();
+
+         if (rc)
+            return rc;
+
+         pCPData->Op = OP_WRITE;
+         pCPData->hf = pVolInfo->hf;
+         pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + ulSector * pVolInfo->BootSect.bpb.BytesPerSector;
+         pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+         memcpy(&pCPData->Buf, pbData, pCPData->cbData);
+
+         rc = PostSetup();
+
+         if (rc)
+            return rc;
+
+         rc = pCPData->rc;
+         }
       if (rc && rc != ERROR_WRITE_PROTECT )
          Message("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
             ulSector, nSectors, rc);

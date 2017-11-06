@@ -140,12 +140,43 @@ ULONG  ulCluster;
 ULONG  ulCluster2;
 PDIRENTRY pDirEntry;
 PDIRENTRY1 pDirEntry1;
+PSZ    pszPath = NULL;
 PSZ    p;
 
    MessageL(LOG_FUNCS, "FindDirCluster%m for %s, CurDirEnd %u, AttrWanted %u",
             0x0031, pDir, usCurDirEnd, usAttrWanted );
 
-   if (pcdfsi &&
+   pszPath = malloc(CCHMAXPATHCOMP);
+
+   if (! pszPath)
+      {
+      return ERROR_NOT_ENOUGH_MEMORY;
+      }
+
+   if (! pVolInfo->hVBP)
+      {
+      // FAT FS image mounted at some directory
+      if (pDir[1] == ':')
+         {
+         // absolute path starting from a drive letter
+         pDir += strlen(pVolInfo->pbMntPoint);
+         }
+      else if (pDir[0] == '\\')
+         {
+         // absolute path starting from backslash
+         pDir++;
+         }
+      else
+         {
+         // relative path
+         strcpy(pszPath, pcdfsi->cdi_curdir);
+         strcat(pszPath, "\\");
+         strcat(pszPath, pDir);
+         pDir = pszPath + strlen(pVolInfo->pbMntPoint);
+         }
+      }
+
+   if (pcdfsi && pVolInfo->hVBP &&
       (pcdfsi->cdi_flags & CDI_ISVALID) &&
       !(pcdfsi->cdi_flags & CDI_ISROOT) &&
       usCurDirEnd != 0xFFFF)
@@ -178,6 +209,7 @@ PSZ    p;
    pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
    if (!pDirEntry)
       {
+      free(pszPath);
       return ERROR_NOT_ENOUGH_MEMORY;
       }
    pDirEntry1 = (PDIRENTRY1)pDirEntry;
@@ -191,6 +223,7 @@ PSZ    p;
    szDir = (PSZ)malloc((size_t)FAT32MAXPATH);
    if (!szDir)
       {
+      free(pszPath);
       free(pDirEntry);
       return pVolInfo->ulFatEof;
       }
@@ -209,6 +242,7 @@ PSZ    p;
    if (ulCluster == pVolInfo->ulFatEof)
       {
       MessageL(LOG_FUNCS, "FindDirCluster%m for '%s', not found", 0x4002, szDir);
+      free(pszPath);
       free(szDir);
       free(pDirEntry);
       return pVolInfo->ulFatEof;
@@ -222,6 +256,7 @@ PSZ    p;
 #endif
       {
       MessageL(LOG_FUNCS, "FindDirCluster%m for '%s', not a directory", 0x4003, szDir);
+      free(pszPath);
       free(szDir);
       free(pDirEntry);
       return pVolInfo->ulFatEof;
@@ -242,6 +277,7 @@ PSZ    p;
             {
             if (pDirEnd)
                *pDirEnd = pDir + strlen(pDir);
+            free(pszPath);
             free(szDir);
             free(pDirEntry);
             return ulCluster2;
@@ -249,6 +285,7 @@ PSZ    p;
          }
       }
 
+   free(pszPath);
    free(szDir);
    free(pDirEntry);
    return ulCluster;

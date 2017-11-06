@@ -24,7 +24,7 @@ extern F32PARMS f32Parms;
 UCHAR fRing3 = FALSE;
 
 VOID _cdecl InitMessage(PSZ pszMessage, ...);
-UCHAR GetFatType(PBOOTSECT pBoot);
+UCHAR GetFatType(PVOID pVolInfo, PBOOTSECT pSect);
 BOOL TranslateInit(BYTE rgTrans[], USHORT usSize);
 
 #define MAX_TRANS_TABLE     0x100
@@ -130,7 +130,7 @@ void _cdecl autocheck(char *args)
     /* due to link problems we can't use memcmp for this           */
 
     // get FAT type
-    type = GetFatType((PBOOTSECT)boot_sector);
+    type = GetFatType(NULL, (PBOOTSECT)boot_sector);
 
 #ifdef EXFAT
     if ( (type == FAT_TYPE_NONE) ||

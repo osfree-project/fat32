@@ -81,12 +81,23 @@ USHORT rc;
             0x0012, pName, ulOpenMode, usOpenFlag, usIOMode, psffsi->sfi_selfsfn);
    MessageL(LOG_FS, "%m              attribute %X, pEABuf %lX", 0x0013, usAttr, pEABuf);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
       rc = ERROR_INVALID_DRIVE;
       goto FS_OPENCREATEEXIT;
+      }
+
+   if (! pVolInfo->hVBP && ! stricmp(pName, pVolInfo->pbMntPoint))
+      {
+      // a hack to support opening a mount point in DASD mode
+      ulOpenMode |= OPEN_FLAGS_DASD;
       }
 
    if (pVolInfo->fFormatInProgress && !(ulOpenMode & OPEN_FLAGS_DASD))
@@ -145,6 +156,8 @@ USHORT rc;
    memset(pOpenInfo, 0, sizeof (OPENINFO));
    *(POPENINFO *)psffsd = pOpenInfo;
 
+   pOpenInfo->pVolInfo = pVolInfo;
+
    if ((ulOpenMode & OPEN_ACCESS_EXECUTE) == OPEN_ACCESS_EXECUTE)
       {
       ulOpenMode &= ~OPEN_ACCESS_EXECUTE;
@@ -171,6 +184,7 @@ USHORT rc;
          rc = ERROR_TOO_MANY_OPEN_FILES;
          goto FS_OPENCREATEEXIT;
          }
+
       //pOpenInfo->pSHInfo->sOpenCount++; //
       if (pOpenInfo->pSHInfo->fLock)
          {
@@ -1168,7 +1182,8 @@ USHORT  rc = 0;
    _asm push es;
 
    pOpenInfo = GetOpenInfo(psffsd);
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -1286,7 +1301,7 @@ ULONGLONG size;
    MessageL(LOG_FS, "FS_READ%m, %u bytes at offset %lld",
             0x0016, usBytesToRead, pos);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -1907,7 +1922,7 @@ ULONGLONG size;
    MessageL(LOG_FS, "FS_WRITE%m, %u bytes at offset %lld, pData=%lx, Len=%u, ioflag %X, size = %llu",
             0x0017, usBytesToWrite, pos, pData, *pLen, usIOFlag, size);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -2752,7 +2767,7 @@ USHORT rc;
    MessageL(LOG_FS, "FS_CHGFILEPTRL%m, Mode %d - offset %lld, current offset=%lld",
             0x001a, usType, llOffset, pos);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -2954,7 +2969,7 @@ USHORT rc;
 #endif
          ULONG  ulCluster;
 
-         pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+         pVolInfo = GetVolInfoSF(psffsd);
 
          if (! pVolInfo)
             {
@@ -3239,7 +3254,7 @@ USHORT rc;
       goto FS_NEWSIZELEXIT;
       }
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -3530,7 +3545,7 @@ ULONGLONG size;
             pOpenInfo->pSHInfo->szFileName,
             usFlag, usLevel);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB);
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {

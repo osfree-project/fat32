@@ -43,7 +43,7 @@ INT iArg;
       OPEN_ACTION_OPEN_IF_EXISTS,         /* open flags   */
       OPEN_ACCESS_READONLY |              /* open mode    */
         OPEN_SHARE_DENYNONE |
-        OPEN_FLAGS_DASD,
+        (rgArgv[1][2] ? 0 : OPEN_FLAGS_DASD),
       NULL);                              /* ea data      */
    if (rc)
       {

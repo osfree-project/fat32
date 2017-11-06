@@ -215,27 +215,39 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define FAT32_QUERYSHORTNAME    0x800A
 #define FAT32_GETCASECONVERSION 0x800B
 #define FAT32_GETFIRSTINFO      0x800C
+#define FAT32_MOUNT             0x800D
+#define FAT32_GETVOLLABEL       0x800E
+#define FAT32_GETALLOC          0x800F
+#define FAT32_SETVOLLABEL       0x8010
+#define FAT32_DAEMON_STARTED    0x8011
+#define FAT32_DAEMON_STOPPED    0x8012
+#define FAT32_DAEMON_DETACH     0x8013
+#define FAT32_GET_REQ           0x8014
+#define FAT32_DONE_REQ          0x8015
+#define FAT32_NEXT_CMD          0x8016
 
 #define FAT32_SECTORIO        0x9014
 
 /* IOCTL function numbers */
 #define IOCTL_FAT32        IOCTL_GENERAL
-#define FAT32_SETRASECTORS    0xF0
-#define FAT32_GETVOLCLEAN     0xF1
-#define FAT32_MARKVOLCLEAN    0xF2
-#define FAT32_FORCEVOLCLEAN   0xF3
-#define FAT32_RECOVERCHAIN    0xF4
-#define FAT32_DELETECHAIN     0xF5
-#define FAT32_QUERYRASECTORS  0xF6
-#define FAT32_GETFREESPACE    0xF7
-#define FAT32_SETFILESIZE     0xF8
-#define FAT32_QUERYEAS        0xF9
-#define FAT32_SETEAS          0xFA
-#define FAT32_SETCLUSTER      0xFB
-#define FAT32_READCLUSTER     0xFC
-#define FAT32_READSECTOR      0xFD
-#define FAT32_WRITECLUSTER    0xFE
-#define FAT32_WRITESECTOR     0xFF
+#define FAT32_BEGINFORMAT       0xE0
+#define FAT32_REDETERMINEMEDIA  0xE1
+#define FAT32_SETRASECTORS      0xF0
+#define FAT32_GETVOLCLEAN       0xF1
+#define FAT32_MARKVOLCLEAN      0xF2
+#define FAT32_FORCEVOLCLEAN     0xF3
+#define FAT32_RECOVERCHAIN      0xF4
+#define FAT32_DELETECHAIN       0xF5
+#define FAT32_QUERYRASECTORS    0xF6
+#define FAT32_GETFREESPACE      0xF7
+#define FAT32_SETFILESIZE       0xF8
+#define FAT32_QUERYEAS          0xF9
+#define FAT32_SETEAS            0xFA
+#define FAT32_SETCLUSTER        0xFB
+#define FAT32_READBLOCK         0xFC
+#define FAT32_READSECTOR        0xFD
+#define FAT32_WRITEBLOCK        0xFE
+#define FAT32_WRITESECTOR       0xFF
 
 #define FAT_TYPE_NONE  0
 #define FAT_TYPE_FAT12 1
@@ -327,8 +339,45 @@ typedef struct _Options
 volatile USHORT fTerminate;
 ULONG  ulLWTID;
 ULONG  ulEMTID;
+ULONG  ulRWTID;
 BYTE   bLWPrio;
 } LWOPTS, * PLWOPTS;
+
+typedef struct _Mountoptions
+{
+UCHAR pFilename[CCHMAXPATHCOMP];
+UCHAR pMntPoint[CCHMAXPATHCOMP];
+UCHAR pFmt[8];
+ULONGLONG ullOffset;
+ULONGLONG ullSize;
+ULONG ulBytesPerSector;
+ULONG hf;
+USHORT usOp;
+} MNTOPTS, *PMNTOPTS;
+
+#define OP_OPEN  0UL
+#define OP_CLOSE 1UL
+#define OP_READ  2UL
+#define OP_WRITE 3UL
+
+typedef struct _exbuf
+{
+ULONG buf;
+} EXBUF, *PEXBUF;
+
+typedef struct _cpdata
+{
+  ULONG semSerialize;
+  ULONG semRqAvail;
+  ULONG semRqDone;
+  ULONG rc;
+  ULONG hf;
+  ULONG Op;
+  ULONG cbData;
+  LONGLONG llOffset;
+  UCHAR pFmt[8];
+  UCHAR Buf[32768];
+} CPDATA, *PCPDATA;
 
 typedef struct _BootSector
 {
@@ -475,6 +524,7 @@ WORD  bytes_per_sector;
 #define MEDIUM_TYPE_CDROM   1
 #define MEDIUM_TYPE_FLOPPY  2
 #define MEDIUM_TYPE_OPTICAL 3
+#define MEDIUM_TYPE_LOOP    4
 
 typedef struct _CDInfo
 {
@@ -529,6 +579,7 @@ USHORT      usLostChains;
 ULONG       rgulLost[MAX_LOST_CHAINS];
 ULONG       rgulSize[MAX_LOST_CHAINS];
 BYTE        bMediumType;
+BYTE        szImage[CCHMAXPATHCOMP];
 } CDINFO, *PCDINFO;
 
 //

@@ -181,6 +181,10 @@ ULONG     ulUpcaseTblLen;
 PBYTE     pbFatBits;
 ULONG     ulCurBmpSector;
 ULONG     ulBmpStartSector;
+PBYTE     pbFilename;
+PBYTE     pbMntPoint;
+ULONGLONG ullOffset;
+ULONG     hf;
 } VOLINFO, *PVOLINFO; // FAR ?
 
 #pragma pack(1)
@@ -200,11 +204,12 @@ BOOL   fNoFatChain;
 } SHOPENINFO, *PSHOPENINFO;
 #pragma pack()
 
-typedef struct _OpenInfo /* 30 bytes maximaal ! */
+typedef struct _OpenInfo /* 30 bytes maximal ! */
 {
 PSHOPENINFO pSHInfo;
 PSHOPENINFO pDirSHInfo;
 PVOID       pNext;
+PVOLINFO    pVolInfo;
 BOOL        fSectorMode;
 BOOL        fCommitAttr;
 ULONG       ulCurCluster;
@@ -234,6 +239,7 @@ typedef struct _FindInfo /* MAX 24 BYTES ! */
 {
 PFINFO    pInfo;
 PSHOPENINFO pSHInfo;
+PVOLINFO  pVolInfo;
 } FINDINFO, *PFINDINFO;
 
 typedef struct _EASizeBuf
@@ -347,6 +353,10 @@ IMPORT ULONG SetNextCluster(PVOLINFO pVolInfo, ULONG ulCluster, ULONG ulNext);
 IMPORT USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 IMPORT USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode);
 IMPORT PVOLINFO GetVolInfo(USHORT hVBP);
+IMPORT PVOLINFO GetVolInfoCD(struct cdfsi *pcdfsi, struct cdfsd *pcdfsd);
+IMPORT PVOLINFO GetVolInfoSF(struct sffsd *psffsd);
+IMPORT PVOLINFO GetVolInfoFS(struct fsfsd *pfsfsd);
+IMPORT PVOLINFO GetVolInfoX(char *pszName);
 IMPORT VOID   MakeName(PDIRENTRY pDir, PSZ pszName, USHORT usMax);
 void FileSetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, ULONGLONG ullSize);
 void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFile, PULONGLONG pullSize);

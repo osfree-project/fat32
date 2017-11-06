@@ -67,7 +67,7 @@ int far pascal _loadds FS_OPENPAGEFILE (
    MessageL(LOG_FS, "FS_OPENPAGEFILE%m  pName=%s OpenMode=%x, OpenFlag=%x Attr=%x",
             0x0002, pName, OpenMode, OpenFlag, Attr);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -162,7 +162,7 @@ int far pascal _loadds FS_ALLOCATEPAGESPACE(
 
    MessageL(LOG_FS, "FS_ALLOCATEPAGESPACE%m  size=%lu contig=%lu", 0x0003, ulSize, ulWantContig);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {
@@ -233,7 +233,7 @@ int far pascal _loadds FS_DOPAGEIO(
     */
    //IWRITE_LOCK(ip);
 
-   pVolInfo = GetVolInfo(psffsi->sfi_hVPB); 
+   pVolInfo = GetVolInfoSF(psffsd);
 
    if (! pVolInfo)
       {

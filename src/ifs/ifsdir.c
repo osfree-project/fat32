@@ -54,7 +54,12 @@ PSZ      szDirLongName;
             goto FS_CHDIREXIT;
             }
 
-         pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+         pVolInfo = GetVolInfoX(pDir);
+
+         if (! pVolInfo)
+            {
+            pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+            }
 
          if (! pVolInfo)
             {
@@ -99,6 +104,15 @@ PSZ      szDirLongName;
                 rc = ERROR_ACCESS_DENIED;
                 goto FS_CHDIREXIT;
             }
+
+            pOpenInfo->pVolInfo = GetVolInfoX(pDir);
+
+            if (!pOpenInfo->pVolInfo)
+               {
+               pOpenInfo->pVolInfo = pVolInfo;
+               }
+
+            pVolInfo = pOpenInfo->pVolInfo;
          }
 
          ulCluster = FindDirCluster(pVolInfo,
@@ -116,7 +130,7 @@ PSZ      szDirLongName;
             goto FS_CHDIREXIT;
             }
 
-         if (ulCluster == pVolInfo->BootSect.bpb.RootDirStrtClus)
+         if (ulCluster == pVolInfo->BootSect.bpb.RootDirStrtClus && pVolInfo->hVBP)
             {
             rc = 0;
             goto FS_CHDIREXIT;
@@ -194,7 +208,12 @@ ULONG    ulBlock;
 
    MessageL(LOG_FS, "FS_MKDIR%m - %s", 0x0010, pName);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
@@ -430,7 +449,12 @@ PSHOPENINFO pSHInfo = NULL;
 
    MessageL(LOG_FS, "FS_RMDIR%m %s", 0x0011, pName);
 
-   pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+   pVolInfo = GetVolInfoX(pName);
+
+   if (! pVolInfo)
+      {
+      pVolInfo = GetVolInfo(pcdfsi->cdi_hVPB);
+      }
 
    if (! pVolInfo)
       {
