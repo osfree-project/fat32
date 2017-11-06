@@ -143,6 +143,7 @@ int i;
 
 int main(int argc, char *argv[])
 {
+    FILESTATUS3L info;
     MNTOPTS opts;
     ULONG cbData, cbParms = sizeof(MNTOPTS);
     BOOL fDelete = FALSE;
@@ -262,22 +263,28 @@ int main(int argc, char *argv[])
           if (strlen(p + 3) <= 8)
              pFmt = p + 3;
        }
+       else
+       {
+          if (i > 2)
+          {
+             rc = ERROR_INVALID_PARAMETER;
+             goto err;
+          }
+       }
     }
+
+    rc = DosQueryPathInfo(szFilename,
+                          FIL_STANDARDL,
+                          &info,
+                          sizeof(info));
+
+    if (rc)
+       goto err;
+
+    ullSize = info.cbFile;
 
     if (! fDelete && fPart)
     {
-       FILESTATUS3L info;
-
-       rc = DosQueryPathInfo(szFilename,
-                             FIL_STANDARDL,
-                             &info,
-                             sizeof(info));
-
-       if (rc)
-          return rc;
-
-       ullSize = info.cbFile;
-
        rc = parsePartTable(szFilename,
                            pFmt,
                            &ullOffset,
@@ -286,7 +293,15 @@ int main(int argc, char *argv[])
                            ulPart);
 
        if (rc)
-          return rc;
+          goto err;
+
+       rc = DosQueryPathInfo(szMntPoint,
+                             FIL_STANDARDL,
+                             &info,
+                             sizeof(info));
+
+       if (rc)
+          goto err;
     }
 
     if (fDelete)
@@ -332,6 +347,7 @@ int main(int argc, char *argv[])
         }
     }
 
+err:
     switch (rc)
     {
       case ERROR_INVALID_FSD_NAME:
