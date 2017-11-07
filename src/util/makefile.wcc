@@ -71,7 +71,7 @@ $(PROJ_BLD)\f32parts.lnk: $(PROJ_BLD)\f32parts.ols
 
 $(PROJ_BLD)\diskdump.lnk: $(PROJ_BLD)\diskdump.ols
 
-$(PROJ_BLD)\f32mount.lnk: $(PROJ_BLD)\f32mount.ols
+$(PROJ_BLD)\f32mount.lnk: $(PROJ_BLD)\f32mount.ols ..\bld\lib\zlib.lib ..\bld\lib\qemu-block.lib
 
 $(PROJ_BLD)\f32stat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@

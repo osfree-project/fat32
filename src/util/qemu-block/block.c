@@ -359,6 +359,7 @@ int bdrv_read(BlockDriverState *bs, int64_t sector_num,
     return 0;
 }
 
+
 /* return -1 if error */
 int bdrv_write(BlockDriverState *bs, int64_t sector_num, 
                const uint8_t *buf, int nb_sectors)
@@ -763,6 +764,7 @@ BlockDriver bdrv_raw = {
 
 void bdrv_init(void)
 {
+    bdrv_register(&bdrv_raw);
 #if !defined(_WIN32) && !defined(__OS2__)
     bdrv_register(&bdrv_cow);
 #endif
@@ -774,5 +776,4 @@ void bdrv_init(void)
     bdrv_register(&bdrv_vpc);
     bdrv_register(&bdrv_parallels);
     bdrv_register(&bdrv_vvfat);
-    bdrv_register(&bdrv_raw);
 }

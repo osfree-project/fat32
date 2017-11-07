@@ -393,8 +393,8 @@ extern BlockDriver bdrv_vmdk;
 extern BlockDriver bdrv_cloop;
 extern BlockDriver bdrv_dmg;
 extern BlockDriver bdrv_bochs;
-extern BlockDriver bdrv_vpc;
 extern BlockDriver bdrv_parallels;
+extern BlockDriver bdrv_vpc;
 extern BlockDriver bdrv_vvfat;
 
 void bdrv_init(void);

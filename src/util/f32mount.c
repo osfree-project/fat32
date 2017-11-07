@@ -367,7 +367,7 @@ err:
              return 0;
 
       default:
-             printf ("DosFSCtl failed, rc=%lu", rc);
+             printf ("Error mounting image, rc=%lu", rc);
              return 1;
     }
 

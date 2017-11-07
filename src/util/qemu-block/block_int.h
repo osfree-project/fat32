@@ -24,15 +24,6 @@
 #ifndef BLOCK_INT_H
 #define BLOCK_INT_H
 
-typedef struct BlockDriverAIOCB BlockDriverAIOCB;
-typedef void BlockDriverCompletionFunc(void *opaque, int ret);
-
-typedef struct AIOPool {
-    void (*cancel)(BlockDriverAIOCB *acb);
-    int aiocb_size;
-    BlockDriverAIOCB *free_aiocb;
-} AIOPool;
-
 struct BlockDriver {
     const char *format_name;
     int instance_size;
@@ -82,36 +73,5 @@ struct BlockDriverState {
     char device_name[32];
     BlockDriverState *next;
 };
-
-struct BlockDriverAIOCB {
-    AIOPool *pool;
-    BlockDriverState *bs;
-    BlockDriverCompletionFunc *cb;
-    void *opaque;
-    BlockDriverAIOCB *next;
-};
-
-typedef struct QEMUIOVector {
-    struct iovec *iov;
-    int niov;
-    int nalloc;
-    size_t size;
-} QEMUIOVector;
-
-struct iovec {
-    void *iov_base;
-    size_t iov_len;
-};
-
-typedef struct QEMUBH QEMUBH;
-
-typedef void QEMUBHFunc(void *opaque);
-
-typedef struct BlockDriverInfo {
-    /* in bytes, 0 if irrelevant */
-    int cluster_size;
-    /* offset at which the VM state can be saved (0 if not possible) */
-    int64_t vm_state_offset;
-} BlockDriverInfo;
 
 #endif /* BLOCK_INT_H */
