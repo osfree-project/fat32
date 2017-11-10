@@ -257,7 +257,7 @@ int ret;
             case OP_READ:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_read(bs, pCPData->llOffset / 512, pCPData->Buf, pCPData->cbData / 512) != 0)
+               if (bdrv_pread(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_READ_FAULT;
                   break;
@@ -269,7 +269,7 @@ int ret;
             case OP_WRITE:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_write(bs, pCPData->llOffset / 512, pCPData->Buf, pCPData->cbData / 512) != 0)
+               if (bdrv_pwrite(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_WRITE_FAULT;
                   break;

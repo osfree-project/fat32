@@ -133,10 +133,49 @@ PDIRENTRY1 pStreamEntry = NULL;
       goto FS_FINDFIRSTEXIT;
       }
 
-   pFindInfo->pVolInfo = pVolInfo;
-
    if (pName[1] == ':' && pVolInfo->pbMntPoint)
+      {
+      // get path from the current volume root
       pName += strlen(pVolInfo->pbMntPoint);
+
+      if ( *pName == '\0' || !stricmp(pName, "*") || !stricmp(pName, "?") )
+         {
+         // if pName is mountpoint, followed by * or ?, search on the parent volume
+         PVOLINFO pTmpVolInfo;
+         char *p, *pNewName;
+
+         pName -= strlen(pVolInfo->pbMntPoint);
+
+         pNewName = malloc(strlen(pName) + 1);
+
+         if (! pNewName)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+         // pointer to last char
+         p = pName + strlen(pName) - 1;
+
+         // if name ends at the backslash
+         if (*p == '\\') p--;
+
+         // skip last subdir from the path
+         while (p >= pName && *p != '\\') p--;
+
+         memcpy(pNewName, pName, p - pName);
+         pNewName[p - pName] = '\0';
+
+         pTmpVolInfo = GetVolInfoX(pNewName);
+
+         if (! pTmpVolInfo)
+            {
+            pTmpVolInfo = GetVolInfo(pfsfsi->fsi_hVPB);
+            }
+
+         pVolInfo = pTmpVolInfo;
+         free(pNewName);
+         }
+      }
+
+   pFindInfo->pVolInfo = pVolInfo;
 
    if (pVolInfo->fFormatInProgress)
       {

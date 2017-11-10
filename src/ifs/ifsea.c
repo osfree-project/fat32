@@ -166,9 +166,9 @@ usStoreEASExit:
 ************************************************************************/
 USHORT usGetEASize(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, PULONG pulSize)
 {
-PSZ pszEAName;
+PSZ pszEAName = NULL;
 USHORT rc;
-PDIRENTRY pDirEntry;
+PDIRENTRY pDirEntry = NULL;
 PDIRENTRY1 pDirEntryStream = NULL;
 ULONG    ulCluster;
 
@@ -417,7 +417,7 @@ USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
-PDIRENTRY pSrcEntry, pTarEntry;
+PDIRENTRY pSrcEntry = NULL, pTarEntry = NULL;
 PDIRENTRY1 pTarStreamEntry = NULL, pSrcStreamEntry = NULL;
 PSHOPENINFO pSrcSHInfo = NULL;
 
@@ -546,7 +546,7 @@ USHORT rc;
 ULONG ulSrcCluster, ulTarCluster;
 PSZ   pszSrcEAName = NULL,
       pszTarEAName = NULL;
-PDIRENTRY pSrcEntry, pTarEntry;
+PDIRENTRY pSrcEntry = NULL, pTarEntry = NULL;
 PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
 
    pSrcEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
@@ -643,7 +643,7 @@ usMoveEASExit:
 USHORT MarkFileEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszFileName, BYTE fEAS)
 {
 ULONG ulCluster;
-PDIRENTRY pOldEntry, pNewEntry;
+PDIRENTRY pOldEntry = NULL, pNewEntry = NULL;
 PDIRENTRY1 pOldEntryStream = NULL;
 USHORT rc;
 
@@ -886,7 +886,7 @@ USHORT usDeleteEAS(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo
 {
 PSZ pszEAName;
 USHORT rc;
-PDIRENTRY pDirEntry;
+PDIRENTRY pDirEntry = NULL;
 PDIRENTRY1 pStreamEntry = NULL;
 ULONG    ulCluster;
 
@@ -952,8 +952,8 @@ PBYTE pWrite;
 USHORT rc;
 USHORT usClustersNeeded;
 USHORT usBlocksNeeded;
-PDIRENTRY pDirEntry;
-PDIRENTRY pDirNew;
+PDIRENTRY pDirEntry = NULL;
+PDIRENTRY pDirNew = NULL;
 PDIRENTRY1 pDirStream = NULL;
 PDIRENTRY1 pDirStreamNew = NULL;
 BOOL     fCritical;

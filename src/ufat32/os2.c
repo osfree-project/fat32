@@ -100,6 +100,7 @@ void die ( char * error, DWORD rc )
     if ( rc )
         show_message("Error code: %lu\n", 0, 0, 1, rc);
 
+    cleanup();
     exit ( rc );
 }
 

@@ -26,7 +26,7 @@ ULONG ulCluster;
 PSZ   pszFile;
 USHORT rc;
 //BYTE     szDirLongName[ FAT32MAXPATH ];
-PSZ      szDirLongName;
+PSZ    szDirLongName = NULL;
 
    _asm push es;
 
@@ -191,7 +191,7 @@ PVOLINFO pVolInfo;
 ULONG    ulCluster;
 ULONG    ulDirCluster;
 PSZ      pszFile;
-PDIRENTRY pDirEntry;
+PDIRENTRY pDirEntry = NULL;
 PDIRENTRY pDir;
 #ifdef EXFAT
 PDIRENTRY1 pDir1;
@@ -434,13 +434,13 @@ ULONG    ulCluster;
 ULONG    ulNextCluster;
 ULONG    ulDirCluster;
 PSZ      pszFile;
-PDIRENTRY pDirEntry;
+PDIRENTRY pDirEntry = NULL;
 PDIRENTRY pDir;
 PDIRENTRY pWork, pMax;
 USHORT   rc;
 USHORT   usFileCount;
 //BYTE     szLongName[ FAT32MAXPATH ];
-PSZ     szLongName;
+PSZ     szLongName = NULL;
 PDIRENTRY1 pStreamEntry = NULL, pDirStream = NULL;
 PSHOPENINFO pDirSHInfo = NULL;
 PSHOPENINFO pSHInfo = NULL;

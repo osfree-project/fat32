@@ -54,6 +54,7 @@ void die ( char * error, DWORD rc )
 
     LocalFree(lpMsgBuf);
  
+    cleanup();
     exit (dw);
 }
 

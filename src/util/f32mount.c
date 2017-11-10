@@ -81,7 +81,7 @@ int i;
       return ERROR_FILE_NOT_FOUND;
       }
 
-   if (bdrv_read(bs, *pullOffset / 512, (char *)&mbr, 1) != 0)
+   if (bdrv_pread(bs, *pullOffset, (char *)&mbr, 512) < 0)
       {
       bdrv_delete(bs);
       return ERROR_READ_FAULT;
@@ -118,7 +118,7 @@ int i;
 
       do
       {
-         if (bdrv_read(bs, *pullOffset / 512, (char *)&mbr, 1) != 0)
+         if (bdrv_pread(bs, *pullOffset, (char *)&mbr, 512) < 0)
             {
             rc = ERROR_READ_FAULT;
             break;
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
                           &info,
                           sizeof(info));
 
-    if (rc)
+    if (rc && rc != ERROR_ACCESS_DENIED)
        goto err;
 
     ullSize = info.cbFile;

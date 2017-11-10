@@ -362,7 +362,6 @@ ULONG hf;
             /* open file */
             rc = PreSetup();
 
-            Message("000: rc=%u", rc);
             if (rc)
                return rc;
 
@@ -372,7 +371,6 @@ ULONG hf;
 
             rc = PostSetup();
 
-            Message("001: rc=%u", rc);
             if (rc)
                return rc;
 
@@ -386,7 +384,6 @@ ULONG hf;
          /* read the boot sector */
          rc = PreSetup();
 
-         Message("002: rc=%u", rc);
          if (rc)
             return rc;
 
@@ -397,7 +394,6 @@ ULONG hf;
 
          rc = PostSetup();
 
-         Message("003: rc=%u", rc);
          if (rc)
             return rc;
 
@@ -435,7 +431,6 @@ ULONG hf;
 
          rc = mount(opts->usOp, *pVolInfo, pBoot);
 
-         Message("004: rc=%u", rc);
          if (rc)
             return rc;
 
@@ -1182,10 +1177,7 @@ int i;
                }
             }
 
-         if (pVolInfo->hVBP)
-            rc = CheckWriteProtect(pVolInfo);
-         else
-            rc = 0;
+         rc = CheckWriteProtect(pVolInfo);
 
          if (rc && rc != ERROR_WRITE_PROTECT)
             {
@@ -1391,11 +1383,57 @@ USHORT usSectors = 1;
 
    MessageL(LOG_FUNCS, "CheckWriteProtect%m", 0x0100);
 
-   rc = FSH_DOVOLIO(DVIO_OPREAD, DVIO_ALLACK, pVolInfo->hVBP, pVolInfo->pbFatSector, &usSectors, 1L);
-   if (!rc)
+   if (pVolInfo->hVBP)
       {
+      rc = FSH_DOVOLIO(DVIO_OPREAD, DVIO_ALLACK, pVolInfo->hVBP, pVolInfo->pbFatSector, &usSectors, 1L);
+      if (!rc)
+         {
+         usSectors = 1;
+         rc = FSH_DOVOLIO(DVIO_OPWRITE, DVIO_ALLACK, pVolInfo->hVBP, pVolInfo->pbFatSector, &usSectors, 1L);
+         }
+      }
+   else
+      {
+      /* read loopback device */
+      rc = PreSetup();
+
+      if (rc)
+         return rc;
+
+      pCPData->Op = OP_READ;
+      pCPData->hf = pVolInfo->hf;
+      pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + pVolInfo->BootSect.bpb.BytesPerSector;
+      pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+
+      rc = PostSetup();
+
+      if (rc)
+         return rc;
+
+      rc = pCPData->rc;
+
+      /* write loopback device */
+      rc = PreSetup();
+
+      if (rc)
+         return rc;
+
       usSectors = 1;
-      rc = FSH_DOVOLIO(DVIO_OPWRITE, DVIO_ALLACK, pVolInfo->hVBP, pVolInfo->pbFatSector, &usSectors, 1L);
+
+      pCPData->Op = OP_WRITE;
+      pCPData->hf = pVolInfo->hf;
+      pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + pVolInfo->BootSect.bpb.BytesPerSector;
+      pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+
+      rc = PostSetup();
+
+      if (rc)
+         return rc;
+
+      rc = pCPData->rc;
+
+      if (rc == ERROR_WRITE_FAULT)
+         rc = ERROR_WRITE_PROTECT;
       }
 
    return rc;

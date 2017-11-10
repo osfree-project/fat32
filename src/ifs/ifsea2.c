@@ -31,9 +31,9 @@ USHORT usSetEAKeys(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFile,
 
 USHORT usInitEAS2(PVOLINFO pVolInfo)
 {
-PDIRENTRY  pDirEntry;
+PDIRENTRY  pDirEntry = NULL;
 PDIRENTRY1 pStreamEntry = NULL;
-char *pBuf;
+char *pBuf = NULL;
 ULONG ulCluster;
 APIRET rc;
 
@@ -145,7 +145,7 @@ USHORT usGetEAKeys(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFile,
                     PSHOPENINFO pDirSHInfo, ULONG *pulFirstClus, USHORT *pusEAHandle, PSTR14 chShortName)
 {
 ULONG ulSrcCluster;
-PDIRENTRY  pDirEntry;
+PDIRENTRY  pDirEntry = NULL;
 PDIRENTRY1 pStreamEntry = NULL;
 APIRET rc;
 char *p = *chShortName;
@@ -234,7 +234,7 @@ USHORT usSetEAKeys(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszFile,
                     PSHOPENINFO pDirSHInfo, ULONG *pulFirstClus, USHORT *pusEAHandle)
 {
 ULONG ulSrcCluster;
-PDIRENTRY  pDirEntry;
+PDIRENTRY  pDirEntry = NULL;
 PDIRENTRY1 pStreamEntry = NULL;
 APIRET rc;
 
