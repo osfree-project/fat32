@@ -148,7 +148,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
   struct extbpb dp;
   char   file[256];
   char   *drive = rgArgv[1];
-  char   *pszImage;
+  char   *pszImage = NULL;
   FILE   *fd;
   HANDLE  hf;
   APIRET rc;
@@ -169,6 +169,44 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
      usage(rgArgv[0]);
      exit(0);
      }
+
+  mem_alloc((void **)&pCD, sizeof(CDINFO));
+  if (!pCD)
+     return;
+  memset(pCD, 0, sizeof (CDINFO));
+
+  if (pszImage)
+     {
+     OpenDrive(pCD, pszImage);
+     }
+  else
+     {
+     OpenDrive(pCD, drive);
+     }
+
+  GetDriveParams(pCD, &dp);
+  memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
+
+  rc = ReadSector(pCD, 0, sizeof(fat32buf) / dp.BytesPerSect, (char *)&fat32buf);
+
+  if (rc)
+  {
+    if (pszImage)
+       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
+    else
+       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
+
+    show_message("%s\n", 0, 0, 1, get_error(rc));
+    return;
+  }
+
+#ifdef EXFAT
+  if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->oemID), "EXFAT   ", 8))
+    fs_type = FAT_TYPE_EXFAT;
+  else
+#endif
+    if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->FileSystem), "FAT32   ", 8))
+      fs_type = FAT_TYPE_FAT32;
 
   // create subdirs
   memset(file, 0, sizeof(file));
@@ -416,45 +454,7 @@ void _System sysinstx_thread(int iArgc, char *rgArgv[], char *rgEnv[])
 
   free(bootblk);
 
-  mem_alloc((void **)&pCD, sizeof(CDINFO));
-  if (!pCD)
-     return;
-  memset(pCD, 0, sizeof (CDINFO));
-
-  if (pszImage)
-     {
-     OpenDrive(pCD, pszImage);
-     }
-  else
-     {
-     OpenDrive(pCD, drive);
-     }
-
   LockDrive(pCD);
-
-  GetDriveParams(pCD, &dp);
-  memcpy(&pCD->BootSect.bpb, &dp, sizeof(dp));
-
-  rc = ReadSector(pCD, 0, sizeof(fat32buf) / dp.BytesPerSect, (char *)&fat32buf);
-
-  if (rc)
-  {
-    if (pszImage)
-       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, pszImage, rc);
-    else
-       show_message("Cannot read %s disk, rc=%lu.\n", 0, 0, 2, drive, rc);
-
-    show_message("%s\n", 0, 0, 1, get_error(rc));
-    return;
-  }
-
-#ifdef EXFAT
-  if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->oemID), "EXFAT   ", 8))
-    fs_type = FAT_TYPE_EXFAT;
-  else
-#endif
-    if (!strncmp(strupr(((PBOOTSECT)(&fat32buf))->FileSystem), "FAT32   ", 8))
-      fs_type = FAT_TYPE_FAT32;
 
 #ifdef EXFAT
   if (fs_type == FAT_TYPE_EXFAT)

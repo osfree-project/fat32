@@ -221,8 +221,8 @@ char far *p;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
-      FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
-         ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
+      //FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
+      //   ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
 
@@ -403,8 +403,8 @@ char *p;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
-      FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
-         ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
+      //FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
+      //   ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
       }
 

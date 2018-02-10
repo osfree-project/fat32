@@ -12,7 +12,7 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BINROOT)\os2\system $(BINROOT)\os2\system\trace &
            $(BINROOT)\os2\book $(BINROOT)\os2\docs $(BINROOT)\os2\docs\fat32 &
            $(BLDROOT)\util $(BLDROOT)\ifs $(BLDROOT)\ifs\libc $(BLDROOT)\partfilt $(BLDROOT)\ifsinf &
-           $(BLDROOT)\ufat32 $(BLDROOT)\f32chk $(BLDROOT)\util\zlib $(BLDROOT)\util\qemu-block &
+           $(BLDROOT)\ufat32 $(BLDROOT)\f32chk $(BLDROOT)\util\zlib $(BLDROOT)\util\qemu-img $(BLDROOT)\util\qemu-img\block &
            $(BLDROOT)\ufat32\win32 $(BINROOT)\win32 $(BINROOT)\win32\dll
 
 CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.obc $(PROJ_BLD)\*.lnk $(PROJ_BLD)\*.wmp &

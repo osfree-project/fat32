@@ -1157,7 +1157,8 @@ int i;
 
             memset(pszVolLabel, 0, sizeof(pszVolLabel));
 
-            fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
+            rc = fGetSetVolLabel(pVolInfo, INFO_RETRIEVE, pszVolLabel, &usSize);
+
             // prevent writing the FSInfo sector in pVolInfo->pbFatSector buffer
             // over 0 sector of 1st FAT on unmount if pVolInfo->ulCurFatSector == 0
             // (see MarkDiskStatus)
@@ -1167,7 +1168,7 @@ int i;
                {
                memset(pvpfsi->vpi_text, 0, sizeof(pvpfsi->vpi_text));
 
-               if (! pszVolLabel || ! *pszVolLabel)
+               if (rc || ! pszVolLabel || ! *pszVolLabel)
                   strcpy(pvpfsi->vpi_text, "UNLABELED  ");
                else
                   strcpy(pvpfsi->vpi_text, pszVolLabel);
@@ -1185,7 +1186,10 @@ int i;
             goto MOUNT_EXIT;
             }
          if (rc == ERROR_WRITE_PROTECT)
+            {
             pVolInfo->fWriteProtected = TRUE;
+            rc = NO_ERROR;
+            }
 
          if (f32Parms.fCalcFree ||
             pVolInfo->pBootFSInfo->ulFreeClusters == 0xFFFFFFFF ||
@@ -1369,6 +1373,8 @@ int i;
       }
 
 MOUNT_EXIT:
+   if (rc)
+      rc = ERROR_VOLUME_NOT_MOUNTED;
 
    return rc;
 }
@@ -1566,6 +1572,23 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
    DataSec = TotSec - NonDataSec;
    CountOfClusters = DataSec / pbpb->SectorsPerCluster;
 
+   if (! pSect->bpb.BigTotalSectors && ! pSect->bpb.TotalSectors)
+      return FAT_TYPE_NONE;
+
+   if (! pSect->bpb.BytesPerSector || ! pSect->bpb.SectorsPerCluster)
+      return FAT_TYPE_NONE;
+
+   ulSector = pSect->bpb.ReservedSectors;
+   ulNumFats = pSect->bpb.NumberOfFATs;
+   usSectorsPerFat = pSect->bpb.SectorsPerFat;
+   bLeadByte = pSect->bpb.MediaDescriptor;
+
+   if (! ulSector || ! ulNumFats || ! bLeadByte)
+      return FAT_TYPE_NONE;
+
+   if (! usSectorsPerFat && ! pSect->bpb.BigSectorsPerFat)
+      return FAT_TYPE_NONE;
+
    if ((CountOfClusters >= 65525UL) && !memcmp(pSect->FileSystem, "FAT32   ", 8))
       {
       return FAT_TYPE_FAT32;
@@ -1591,6 +1614,10 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
       return FAT_TYPE_FAT16;
       }
 
+   // JMP SHORT instruction at the beginning of the boot sector
+   if (pSect->bJmp[0] != 0xeb)
+      return FAT_TYPE_NONE;
+
    if (pSect->bJmp[1] < 0x29)
       {
       // old-style pre-DOS 4.0 BPB (jump offset < 0x29, which
@@ -1608,11 +1635,6 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       }
 
-   ulSector = pSect->bpb.ReservedSectors;
-   ulNumFats = pSect->bpb.NumberOfFATs;
-   usSectorsPerFat = pSect->bpb.SectorsPerFat;
-   bLeadByte = pSect->bpb.MediaDescriptor;
-
    // init some fields for ReadSector()
    if (pSect->bpb.TotalSectors)
       pVolInfo->BootSect.bpb.BigTotalSectors = pSect->bpb.TotalSectors;
@@ -1622,6 +1644,9 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
    pVolInfo->BootSect.bpb.BytesPerSector = pSect->bpb.BytesPerSector;
 
    pVolInfo->ulStartOfData = pVolInfo->BootSect.bpb.BigTotalSectors;
+
+   if (! pVolInfo->BootSect.bpb.BigTotalSectors || ! pVolInfo->BootSect.bpb.BytesPerSector)
+      return FAT_TYPE_NONE;
 
    if (CountOfClusters >= 65525UL)
       bFatType = FAT_TYPE_FAT32;

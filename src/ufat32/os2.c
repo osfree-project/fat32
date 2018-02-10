@@ -1055,7 +1055,7 @@ int mem_alloc(void **p, ULONG cb)
 {
     APIRET rc;
 
-    if (!(rc = DosAllocMem ( (void **)p, cb, PAG_COMMIT | PAG_READ | PAG_WRITE )))
+    if (!(rc = DosAllocMem ( (void **)p, cb, PAG_COMMIT | PAG_READ | PAG_WRITE | OBJ_ANY)))
         memset(*p, 0, cb);
     else
         show_message("mem_alloc failed, rc=%lu\n", 0, 0, 1, rc);

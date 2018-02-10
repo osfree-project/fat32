@@ -19,6 +19,7 @@
 #include "portable.h"
 #include "fat32def.h"
 
+//#include "block.h"
 #include "vl.h"
 
 #define TIME_FACTOR 1
@@ -154,7 +155,7 @@ UCHAR rgFirstInfo[256];
 
    pOptions->ulRWTID = _beginthread(RWThread,NULL,32784,NULL);
    if (pOptions->ulRWTID == -1)
-	  printf("_beginthread failed, rc = %d\n", -1);
+          printf("_beginthread failed, rc = %d\n", -1);
 
    ulParmSize = sizeof f32Parms;
    rc = DosFSCtl(
@@ -195,6 +196,7 @@ ULONG ulAction;
 PCPDATA pCPData = NULL;
 char *pFmt;
 APIRET rc;
+FILE *fd;
 int ret;
 
    bdrv_init();

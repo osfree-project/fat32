@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+//#include "block.h"
 #include "vl.h"
 
 char FS_NAME[8] = "FAT32";
@@ -265,10 +266,20 @@ int main(int argc, char *argv[])
        }
        else
        {
-          if (i > 2)
+          if (argc == 2 || i > 2)
           {
              rc = ERROR_INVALID_PARAMETER;
              goto err;
+          }
+          else if (! fDelete && i == 2)
+          {
+             rc = DosQueryPathInfo(szMntPoint,
+                                   FIL_STANDARDL,
+                                   &info,
+                                   sizeof(info));
+
+             if (rc && rc != ERROR_ACCESS_DENIED)
+                goto err;
           }
        }
     }

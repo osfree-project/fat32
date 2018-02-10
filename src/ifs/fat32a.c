@@ -1802,6 +1802,10 @@ USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 ULONG  ulDirEntries = 0;
 
+   // some sanity checks first
+   if (! pszVolLabel || ! pusSize)
+      return ERROR_INVALID_PARAMETER;
+
    pDir = NULL;
 
    pDirEntry = (PDIRENTRY)malloc((size_t)sizeof(DIRENTRY));
@@ -1909,7 +1913,6 @@ ULONG  ulDirEntries = 0;
          break;
       }
 
-
    if (usFlag == INFO_RETRIEVE)
       {
       free(pDirStart);
@@ -1930,6 +1933,14 @@ ULONG  ulDirEntries = 0;
          {
          // exFAT case
          USHORT pVolLabel[11];
+
+         // additional sanity checks
+         if (((PDIRENTRY1)pDirEntry)->u.VolLbl.bCharCount > 11)
+            {
+            free(pDirEntry);
+            return ERROR_INVALID_PARAMETER;
+            }
+
          memcpy(pVolLabel, ((PDIRENTRY1)pDirEntry)->u.VolLbl.usChars,
             ((PDIRENTRY1)pDirEntry)->u.VolLbl.bCharCount * sizeof(USHORT));
          pVolLabel[((PDIRENTRY1)pDirEntry)->u.VolLbl.bCharCount] = 0;
@@ -5375,7 +5386,8 @@ BOOL rc;
    if (ulCluster >= pVolInfo->ulTotalClusters + 2)
       {
       Message("An invalid cluster number %8.8lX was found\n", ulCluster);
-      rc = TRUE;
+      rc = FALSE;
+      //rc = TRUE;
       goto ClusterInUse_Exit;
       }
 
@@ -5395,8 +5407,17 @@ BOOL rc;
 #ifdef EXFAT
    ulBmpSector = GetAllocBitmapSec(pVolInfo, ulCluster);
 
-   if (pVolInfo->ulCurBmpSector != ulBmpSector)
-      ReadBmpSector(pVolInfo, ulBmpSector);
+   // sanity check
+   if (ulBmpSector > pVolInfo->ulAllocBmpLen ||
+       ulBmpSector > pVolInfo->BootSect.bpb.BigTotalSectors)
+      {
+      rc = TRUE;
+      goto ClusterInUse_Exit;
+      }
+
+   if ( pVolInfo->ulCurBmpSector != ulBmpSector &&
+       ReadBmpSector(pVolInfo, ulBmpSector) )
+      return TRUE;
 
    rc = GetBmpEntry(pVolInfo, ulCluster);
 #else
@@ -5468,10 +5489,10 @@ ULONG ulTotalFree;
 
       //ulNextCluster = GetFatEntry(pVolInfo, ulCluster);
       //if (ulNextCluster == 0)
-      if (!ClusterInUse(pVolInfo, ulCluster))
+      if (! ClusterInUse(pVolInfo, ulCluster))
          {
          ulTotalFree++;
-         if (!ulNextFree)
+         if (! ulNextFree)
             ulNextFree = ulCluster;
          }
       }

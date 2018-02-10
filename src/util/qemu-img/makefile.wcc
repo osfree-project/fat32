@@ -1,6 +1,6 @@
 !define _32BITS
 ROOT=..\..
-PROJ=util\qemu-block
+PROJ=util\qemu-img
 PATH=..\..\..\$(PROJ)
 DIRS=
 TARGETS=$(LIBROOT)\qemu-block.lib

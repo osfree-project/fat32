@@ -13,7 +13,7 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
-COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-block
+COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-img
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
 OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj
@@ -26,7 +26,7 @@ TARGETS=$(BINROOT)\os2\f32stat.exe $(BINROOT)\os2\f32mon.exe $(BINROOT)\os2\f32p
         $(BINROOT)\os2\cachef32.exe $(BINROOT)\os2\diskdump.exe $(BINROOT)\os2\f32mount.exe &
         $(BINROOT)\os2\diskdump.sym $(BINROOT)\os2\cachef32.sym  $(BINROOT)\os2\f32mount.sym &
         $(BINROOT)\os2\f32parts.sym $(BINROOT)\os2\f32mon.sym $(BINROOT)\os2\f32stat.sym
-DIRS=..\include zlib qemu-block
+DIRS=..\include zlib qemu-img
 
 SYS=os2v2
 
@@ -63,7 +63,7 @@ $(BINROOT)\os2\f32mount.sym:
 
 $(PROJ_BLD)\f32stat.lnk: $(PROJ_BLD)\f32stat.ols
 
-$(PROJ_BLD)\cachef32.lnk: $(PROJ_BLD)\cachef32.ols ..\bld\lib\zlib.lib ..\bld\lib\qemu-block.lib
+$(PROJ_BLD)\cachef32.lnk: $(PROJ_BLD)\cachef32.ols ..\bld\lib\zlib.lib $(LIBROOT)\qemu-block.lib # $(BINROOT)\os2\dll\qemuimg.dll
 
 $(PROJ_BLD)\f32mon.lnk: $(PROJ_BLD)\f32mon.ols
 
@@ -71,7 +71,7 @@ $(PROJ_BLD)\f32parts.lnk: $(PROJ_BLD)\f32parts.ols
 
 $(PROJ_BLD)\diskdump.lnk: $(PROJ_BLD)\diskdump.ols
 
-$(PROJ_BLD)\f32mount.lnk: $(PROJ_BLD)\f32mount.ols ..\bld\lib\zlib.lib ..\bld\lib\qemu-block.lib
+$(PROJ_BLD)\f32mount.lnk: $(PROJ_BLD)\f32mount.ols ..\bld\lib\zlib.lib $(LIBROOT)\qemu-block.lib # $(BINROOT)\os2\dll\qemuimg.dll
 
 $(PROJ_BLD)\f32stat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@
@@ -109,4 +109,45 @@ $(PROJ_BLD)\f32mount.ols: $(OBJS6) makefile.wcc ..\makefile.mk
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s,zlib,qemu-block
+!if 0
+ @%append $@ IMPORT &
+    bdrv_init qemuimg.bdrv_init, &
+    bdrv_new qemuimg.bdrv_new, &
+    bdrv_find_format qemuimg.bdrv_find_format, &
+    bdrv_open qemuimg.bdrv_open, &
+    bdrv_open2 qemuimg.bdrv_open2, &
+    bdrv_delete qemuimg.bdrv_delete, &
+    bdrv_pread qemuimg.bdrv_pread, &
+    bdrv_pwrite qemuimg.bdrv_pwrite, &
+    bdrv_iterate_format qemuimg.bdrv_iterate_format, &
+    bdrv_is_encrypted qemuimg.bdrv_is_encrypted, &
+    bdrv_set_key qemuimg.bdrv_set_key, &
+    bdrv_create qemuimg.bdrv_create, &
+    bdrv_get_geometry qemuimg.bdrv_get_geometry, &
+    bdrv_check qemuimg.bdrv_check, &
+    bdrv_commit qemuimg.bdrv_commit, &
+    bdrv_get_info qemuimg.bdrv_get_info, &
+    bdrv_read qemuimg.bdrv_read, &
+    bdrv_write qemuimg.bdrv_write, &
+    bdrv_write_compressed qemuimg.bdrv_write_compressed, &
+    bdrv_is_allocated qemuimg.bdrv_is_allocated, &
+    bdrv_snapshot_list qemuimg.bdrv_snapshot_list, &
+    bdrv_snapshot_dump qemuimg.bdrv_snapshot_dump, &
+    bdrv_get_format qemuimg.bdrv_get_format, &
+    bdrv_get_backing_filename qemuimg.bdrv_get_backing_filename, &
+    bdrv_snapshot_create qemuimg.bdrv_snapshot_create, &
+    bdrv_snapshot_goto qemuimg.bdrv_snapshot_goto, &
+    bdrv_snapshot_delete qemuimg.bdrv_snapshot_delete, &
+    get_option_parameter qemuimg.get_option_parameter, &
+    set_option_parameter qemuimg.set_option_parameter, &
+    set_option_parameter_int qemuimg.set_option_parameter_int, &
+    parse_option_parameters qemuimg.parse_option_parameters, &
+    print_option_parameters qemuimg.print_option_parameters, &
+    free_option_parameters qemuimg.free_option_parameters, &
+    print_option_help qemuimg.print_option_help, &
+    get_human_readable_size qemuimg.get_human_readable_size, &
+    qemu_free qemuimg.qemu_free, &
+    path_combine qemuimg.path_combine, &
+    pstrcpy qemuimg.pstrcpy
+!endif
  @%append $@ @$[@

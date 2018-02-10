@@ -3024,6 +3024,24 @@ erasing the boot sector with zeroes&per. Then usbmsd&per.add disables emulation 
 
 :p.Large floppies can be safely formatted with FAT16/FAT32/exFAT and used with fat32&per.ifs&per.
 
+:p.To create a Large Floppy in OS/2, you&apos.ll need to erase the medium with DFSee first&per. For that,
+you need to select the whole disk with File->Open object to work with->Disk->Your disk&per. Then wipe it
+with command&colon.
+
+:p.:hp2. wipe "" 0 2048 :ehp2.
+
+:p. where "" is an empty pattern&per. "0" is a starting sector, and "2048" is wipe size in sectors&per. After
+that, you can quit DFSee with "q" command, eject the disk, reinsert it and then you can format it again as a
+whole with the
+
+:p.:hp2. fat32fmt o&colon. /fs&colon.fat32 /v&colon.<volume label> :ehp2.
+
+:p.command&per. Note that the FORMAT command will not work in this case, because FORMAT&per.COM frontend does not
+like such media and will show an error&per.
+
+:p.If you want to reformat the medium back as PRM, you&apos.ll need to erase it again, eject, reinsert it,
+create a partition on it, then reformat with FORMAT command&per.
+
 :h3 id=200704 res=32069.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
 
 :p.:hp2.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
