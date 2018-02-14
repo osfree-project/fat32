@@ -15,8 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#include "block.h"
-#include "vl.h"
+#include "block.h"
+//#include "vl.h"
 
 char FS_NAME[8] = "FAT32";
 
@@ -363,6 +363,10 @@ err:
     {
       case ERROR_INVALID_FSD_NAME:
              printf ("Error: IFS=FAT32.IFS not loaded in CONFIG.SYS");
+             return 1;
+
+      case ERROR_INVALID_PROCID:
+             printf ("Error: cachef32.exe is not running");
              return 1;
 
       case ERROR_INVALID_PATH:

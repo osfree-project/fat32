@@ -13,7 +13,7 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
-COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-img
+COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-img
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
 OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj

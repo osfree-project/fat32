@@ -68,6 +68,8 @@ ULONG fat32_mask = 0;
 ULONG exfat_mask = 0;
 #endif
 
+extern PID pidDaemon;
+
 extern PGINFOSEG pGI;
 
 extern PCPDATA pCPData;
@@ -293,6 +295,9 @@ int PreSetup(void)
 {
 APIRET rc;
 
+   if (! pidDaemon)
+      return ERROR_INVALID_PROCID;
+
    rc = FSH_SEMREQUEST(&pCPData->semSerialize, -1);
 
    if (rc)
@@ -312,6 +317,9 @@ APIRET rc;
 int PostSetup(void)
 {
 APIRET rc;
+
+   if (! pidDaemon)
+      return ERROR_INVALID_PROCID;
 
    rc = FSH_SEMSET(&pCPData->semRqDone);
 
@@ -340,6 +348,9 @@ APIRET rc;
 UCHAR pBoot[512];
 USHORT usVolCount;
 ULONG hf;
+
+   if (! pidDaemon)
+      return ERROR_INVALID_PROCID;
 
    switch (opts->usOp)
       {

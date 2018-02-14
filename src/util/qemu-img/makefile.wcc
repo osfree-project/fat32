@@ -1,0 +1,196 @@
+!define _32BITS
+ROOT=..\..
+PROJ=util\qemu-img
+PATH=..\..\..\$(PROJ)
+DIRS=
+TARGETS=$(LIBROOT)\qemu-block.lib &
+        $(BINROOT)\os2\qemu-img.exe $(BINROOT)\os2\qemu-img.sym
+
+#        $(BINROOT)\os2\dll\qemuimg.dll $(BINROOT)\os2\dll\qemuimg.sym
+
+
+!include ..\..\makefile.mk
+
+OBJEXT=obj
+# OBJEXT=obd
+
+COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
+OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
+     $(PROJ_BLD)\qemu-malloc.$(OBJEXT) &
+     $(PROJ_BLD)\qemu-tool.$(OBJEXT) &
+     $(PROJ_BLD)\osdep.$(OBJEXT) &
+     $(PROJ_BLD)\porting.$(OBJEXT) &
+     $(PROJ_BLD)\aes.$(OBJEXT) &
+     $(PROJ_BLD)\cache-utils.$(OBJEXT) &
+     $(PROJ_BLD)\cutils.$(OBJEXT) &
+     $(PROJ_BLD)\json-lexer.$(OBJEXT) &
+     $(PROJ_BLD)\json-parser.$(OBJEXT) &
+     $(PROJ_BLD)\json-streamer.$(OBJEXT) &
+     $(PROJ_BLD)\module.$(OBJEXT) &
+     $(PROJ_BLD)\qbool.$(OBJEXT) &
+     $(PROJ_BLD)\qdict.$(OBJEXT) &
+     $(PROJ_BLD)\qerror.$(OBJEXT) &
+     $(PROJ_BLD)\qfloat.$(OBJEXT) &
+     $(PROJ_BLD)\qint.$(OBJEXT) &
+     $(PROJ_BLD)\qjson.$(OBJEXT) &
+     $(PROJ_BLD)\qlist.$(OBJEXT) &
+     $(PROJ_BLD)\qstring.$(OBJEXT) &
+     $(PROJ_BLD)\aio.$(OBJEXT) &
+     $(PROJ_BLD)\block.$(OBJEXT) &
+     $(PROJ_BLD)\block\bochs.$(OBJEXT) &
+     $(PROJ_BLD)\block\cloop.$(OBJEXT) &
+     $(PROJ_BLD)\block\dmg.$(OBJEXT) &
+     $(PROJ_BLD)\block\parallels.$(OBJEXT) &
+     $(PROJ_BLD)\block\qcow.$(OBJEXT) &
+     $(PROJ_BLD)\block\qcow2.$(OBJEXT) &
+     $(PROJ_BLD)\block\qcow2-cluster.$(OBJEXT) &
+     $(PROJ_BLD)\block\qcow2-refcount.$(OBJEXT) &
+     $(PROJ_BLD)\block\qcow2-snapshot.$(OBJEXT) &
+     $(PROJ_BLD)\block\vdi.$(OBJEXT) &
+     $(PROJ_BLD)\block\vmdk.$(OBJEXT) &
+     $(PROJ_BLD)\block\vpc.$(OBJEXT) &
+     $(PROJ_BLD)\block\vvfat.$(OBJEXT) &
+     $(PROJ_BLD)\block\raw-os2.$(OBJEXT)
+
+OBJS2=$(PROJ_BLD)\qemu-img.obj &
+     $(PROJ_BLD)\qemu-malloc.obj &
+     $(PROJ_BLD)\qemu-tool.obj &
+     $(PROJ_BLD)\osdep.obj
+
+SYS=os2v2_dll
+
+.c: block
+
+.obj: $(BLDROOT)\util\qemu-img\block
+
+.obd: $(BLDROOT)\util\qemu-img\block
+
+$(LIBROOT)\qemu-block.lib: $(PROJ_BLD)\qemu-block.ols
+
+$(BINROOT)\os2\dll\qemuimg.dll: $(PROJ_BLD)\qemuimg.lnk
+
+$(BINROOT)\os2\qemu-img.exe: $(PROJ_BLD)\qemu-img.lnk
+
+$(BINROOT)\os2\dll\qemuimg.sym: $(BINROOT)\os2\dll\qemuimg.dll
+
+$(BINROOT)\os2\qemu-img.sym: $(BINROOT)\os2\qemu-img.exe
+
+$(PROJ_BLD)\qemu-block.ols: $(OBJS1)
+ @%create $^@
+ @for %e in ($<) do @%append $^@ +%e
+
+$(PROJ_BLD)\qemuimg.ols: $(OBJS1) makefile.wcc ..\..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS1)) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\qemu-img.ols: $(OBJS2) makefile.wcc ..\..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS2)) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\qemuimg.lnk: $(PROJ_BLD)\qemuimg.ols
+ @%create $@
+ @%append $@ SYSTEM os2v2_dll
+ @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION ST=384000
+ @%append $@ OPTION HEAP=384000
+ @%append $@ OPTION QUIET
+ @%append $@ DEBUG ALL
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIB os2386,clib3s,zlib
+ @%append $@ EXPORT &
+    bdrv_init, &
+    bdrv_new, &
+    bdrv_find_format, &
+    bdrv_open, &
+    bdrv_open2, &
+    bdrv_delete, &
+    bdrv_pread, &
+    bdrv_pwrite, &
+    bdrv_iterate_format, &
+    bdrv_is_encrypted, &
+    bdrv_set_key, &
+    bdrv_create, &
+    bdrv_get_geometry, &
+    bdrv_check, &
+    bdrv_commit, &
+    bdrv_get_info, &
+    bdrv_read, &
+    bdrv_write, &
+    bdrv_write_compressed, &
+    bdrv_is_allocated, &
+    bdrv_snapshot_list, &
+    bdrv_snapshot_dump, &
+    bdrv_get_format, &
+    bdrv_get_backing_filename, &
+    bdrv_snapshot_create, &
+    bdrv_snapshot_goto, &
+    bdrv_snapshot_delete, &
+    get_option_parameter, &
+    set_option_parameter, &
+    set_option_parameter_int, &
+    parse_option_parameters, &
+    print_option_parameters, &
+    free_option_parameters, &
+    print_option_help, &
+    get_human_readable_size, &
+    qemu_free, &
+    path_combine, &
+    pstrcpy
+ @%append $@ @$[@
+
+$(PROJ_BLD)\qemu-img.lnk: $(PROJ_BLD)\qemu-img.ols
+ @%create $@
+ @%append $@ SYSTEM os2v2
+ @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION ST=384000
+ @%append $@ OPTION HEAP=384000
+ @%append $@ OPTION QUIET
+ @%append $@ DEBUG ALL
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIB os2386,clib3s,zlib,qemu-block
+!if 0
+ @%append $@ IMPORT &
+    bdrv_init qemuimg.bdrv_init, &
+    bdrv_new qemuimg.bdrv_new, &
+    bdrv_find_format qemuimg.bdrv_find_format, &
+    bdrv_open qemuimg.bdrv_open, &
+    bdrv_open2 qemuimg.bdrv_open2, &
+    bdrv_delete qemuimg.bdrv_delete, &
+    bdrv_pread qemuimg.bdrv_pread, &
+    bdrv_pwrite qemuimg.bdrv_pwrite, &
+    bdrv_iterate_format qemuimg.bdrv_iterate_format, &
+    bdrv_is_encrypted qemuimg.bdrv_is_encrypted, &
+    bdrv_set_key qemuimg.bdrv_set_key, &
+    bdrv_create qemuimg.bdrv_create, &
+    bdrv_get_geometry qemuimg.bdrv_get_geometry, &
+    bdrv_check qemuimg.bdrv_check, &
+    bdrv_commit qemuimg.bdrv_commit, &
+    bdrv_get_info qemuimg.bdrv_get_info, &
+    bdrv_read qemuimg.bdrv_read, &
+    bdrv_write qemuimg.bdrv_write, &
+    bdrv_write_compressed qemuimg.bdrv_write_compressed, &
+    bdrv_is_allocated qemuimg.bdrv_is_allocated, &
+    bdrv_snapshot_list qemuimg.bdrv_snapshot_list, &
+    bdrv_snapshot_dump qemuimg.bdrv_snapshot_dump, &
+    bdrv_get_format qemuimg.bdrv_get_format, &
+    bdrv_get_backing_filename qemuimg.bdrv_get_backing_filename, &
+    bdrv_snapshot_create qemuimg.bdrv_snapshot_create, &
+    bdrv_snapshot_goto qemuimg.bdrv_snapshot_goto, &
+    bdrv_snapshot_delete qemuimg.bdrv_snapshot_delete, &
+    get_option_parameter qemuimg.get_option_parameter, &
+    set_option_parameter qemuimg.set_option_parameter, &
+    set_option_parameter_int qemuimg.set_option_parameter_int, &
+    parse_option_parameters qemuimg.parse_option_parameters, &
+    print_option_parameters qemuimg.print_option_parameters, &
+    free_option_parameters qemuimg.free_option_parameters, &
+    print_option_help qemuimg.print_option_help, &
+    get_human_readable_size qemuimg.get_human_readable_size, &
+    qemu_free qemuimg.qemu_free, &
+    path_combine qemuimg.path_combine, &
+    pstrcpy qemuimg.pstrcpy
+!endif
+ @%append $@ @$[@

@@ -40,7 +40,7 @@ static BYTE szBanner[]=
 
 PCPDATA pCPData = NULL;
 LIN lock = 0;
-PID pidDaemon;
+PID pidDaemon = 0;
 
 USHORT NameHash(USHORT *pszFilename, int NameLen);
 static BOOL ClusterInUse(PVOLINFO pVolInfo, ULONG ulCluster);
@@ -1494,7 +1494,10 @@ POPENINFO pOpenInfo;
         break;
 
      case FAT32_GET_REQ:
-        if (queryCurrentPid() != pidDaemon)
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
+
+         if (queryCurrentPid() != pidDaemon)
             {
             rc = ERROR_ALREADY_ASSIGNED;
             goto FS_FSCTLEXIT;
@@ -1509,6 +1512,9 @@ POPENINFO pOpenInfo;
          break;
 
       case FAT32_DONE_REQ:
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
+
          if (queryCurrentPid() != pidDaemon)
             {
             rc = ERROR_ALREADY_ASSIGNED;
@@ -1528,6 +1534,9 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
+
          rc = fGetSetFSInfo(INFO_RETRIEVE,
                             pVolInfo,
                             pData,
@@ -1546,6 +1555,9 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
+
          rc = fGetSetFSInfo(INFO_RETRIEVE,
                             pVolInfo,
                             pData,
@@ -1563,6 +1575,9 @@ POPENINFO pOpenInfo;
             rc = ERROR_INVALID_DRIVE;
             goto FS_FSCTLEXIT;
             }
+
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
 
          rc = fGetSetFSInfo(INFO_SET,
                             pVolInfo,
@@ -2907,6 +2922,9 @@ PBIOSPARAMETERBLOCK pBPB;
                      goto FS_IOCTLEXIT;
                      }
 
+                  if (! pidDaemon)
+                     return ERROR_INVALID_PROCID;
+
                   rc = PreSetup();
 
                   if (rc)
@@ -2966,6 +2984,9 @@ PBIOSPARAMETERBLOCK pBPB;
                      goto FS_IOCTLEXIT;
                      }
 
+                  if (! pidDaemon)
+                     return ERROR_INVALID_PROCID;
+
                   rc = PreSetup();
 
                   if (rc)
@@ -3019,6 +3040,9 @@ PBIOSPARAMETERBLOCK pBPB;
                   {
                   ULONG cSectors;
                   PBPB pbpb;
+
+                  if (! pidDaemon)
+                     return ERROR_INVALID_PROCID;
 
                   // image, mounted at the mount point
                   if (*(PULONG)pParm & 1)
@@ -4606,22 +4630,31 @@ USHORT rc = 0;
       for (pVolInfo = pGlobVolInfo; pVolInfo;
            pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo)
          {
+         if (pVolInfo->hVBP)
+            // physical disk
             Message("disk: %c: fDiskCleanOnMount=%u", 
                pVolInfo->bDrive + 'a', pVolInfo->fDiskCleanOnMount);
+         else
+            // mounted image
+            Message("disk: %s: fDiskCleanOnMount=%u", 
+               pVolInfo->pbFilename, pVolInfo->fDiskCleanOnMount);
 
-            if (pVolInfo->fWriteProtected)
-               continue;
+         if (pVolInfo->fWriteProtected)
+            continue;
 
-            if (pVolInfo->fFormatInProgress)
-               continue;
+         if (pVolInfo->fFormatInProgress)
+            continue;
 
-            usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
+         if (! pVolInfo->hVBP)
+            continue;
 
-            UpdateFSInfo(pVolInfo);
-            if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
-               {
-               MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
-               }
+         usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
+
+         UpdateFSInfo(pVolInfo);
+         if (! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
+            {
+            MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);
+            }
          }
       }
    else /* usType == SD_COMPLETE */

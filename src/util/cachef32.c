@@ -19,14 +19,15 @@
 #include "portable.h"
 #include "fat32def.h"
 
-//#include "block.h"
-#include "vl.h"
+#include "block.h"
+//#include "vl.h"
 
 #define TIME_FACTOR 1
 
 #define SHAREMEM	 "\\SHAREMEM\\CACHEF32"
 
 PRIVATE VOID Handler(INT iSignal);
+PRIVATE VOID ExitHandler(VOID);
 PRIVATE VOID InitProg(INT iArgc, PSZ rgArgv[]);
 PRIVATE PSZ GetFSName(PSZ pszDevice);
 /*
@@ -135,6 +136,8 @@ UCHAR rgFirstInfo[256];
    signal(SIGINT, Handler);
    signal(SIGSEGV, Handler);
    signal(SIGFPE, Handler);
+
+   atexit(ExitHandler);
 
 /*
    rc = DosCreateThread(&pOptions->ulEMTID, EMThread, 0L, 0, 8196);
@@ -351,16 +354,24 @@ ULONG  ulDataSize;
 ******************************************************************/
 VOID Handler(INT iSignal)
 {
-	printf("Signal %d was received\n", iSignal);
-	if (iSignal == SIGTERM)
-	{
-	   pOptions->fTerminate = TRUE;
-	}
+   printf("Signal %d was received\n", iSignal);
+   
+   if (iSignal == SIGTERM)
+   {
+      pOptions->fTerminate = TRUE;
+   }
+
+   //exit(1);
+}
+
+/******************************************************************
+*
+******************************************************************/
+VOID ExitHandler(VOID)
+{
    DosFSCtl(NULL, 0, NULL,
             NULL, 0, NULL,
             FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
-
-//	 exit(1);
 }
 
 /******************************************************************
@@ -743,46 +754,49 @@ ULONG ulAction;
 USHORT usRASectors;
 ULONG  ulDataSize;
 
-	  for (usIndex = 0; usIndex < 26; usIndex++)
-		 {
-		 ULONG Mask = 0x0001 << usIndex;
-		 BYTE szDisk[3];
+   for (usIndex = 0; usIndex < 26; usIndex++)
+      {
+      ULONG Mask = 0x0001 << usIndex;
+      BYTE szDisk[3];
 
-		 if (!(ulDriveMap & Mask))
-			continue;
-		 szDisk[0] = (BYTE)('A' + usIndex);
-		 szDisk[1] = ':';
-		 szDisk[2] = 0;
+      if (!(ulDriveMap & Mask))
+         continue;
+
+      szDisk[0] = (BYTE)('A' + usIndex);
+      szDisk[1] = ':';
+      szDisk[2] = 0;
 
 
-		 rc = DosOpen(szDisk,
-			&hDisk,
-			&ulAction,							/* action taken */
-			0L, 								/* new size 	*/
-			0L, 								/* attributes	*/
-			OPEN_ACTION_OPEN_IF_EXISTS, 		/* open flags	*/
-			OPEN_ACCESS_READONLY |				/* open mode	*/
-			OPEN_SHARE_DENYNONE |
-			OPEN_FLAGS_DASD,
-			NULL);								/* ea data		*/
+      rc = DosOpen(szDisk,
+                   &hDisk,
+                   &ulAction,				/* action taken */
+                   0L, 					/* new size 	*/
+                   0L, 					/* attributes	*/
+                   OPEN_ACTION_OPEN_IF_EXISTS, 		/* open flags	*/
+         	   OPEN_ACCESS_READONLY |		/* open mode	*/
+		   OPEN_SHARE_DENYNONE |
+		   OPEN_FLAGS_DASD,
+		   NULL);				/* ea data		*/
 
-		 ulDataSize = sizeof usRASectors;
-		 usRASectors = FALSE;
-		 rc = DosDevIOCtl(hDisk,
-			IOCTL_FAT32,
-			FAT32_QUERYRASECTORS,
-			NULL, 0, NULL,
-			(PVOID)&usRASectors, ulDataSize, &ulDataSize);
-		 if (rc)
-			printf("DosDevIOCtl, FAT_QUERYRASECTORS for drive %s failed, rc = %d\n",
-			   szDisk, rc);
+      ulDataSize = sizeof usRASectors;
+      usRASectors = FALSE;
 
-		 DosClose(hDisk);
-		 if (!rc)
-			printf("Read-Ahead sector count for drive %s is %u.\n",
-			   szDisk, usRASectors);
-		 }
+      rc = DosDevIOCtl(hDisk,
+		       IOCTL_FAT32,
+		       FAT32_QUERYRASECTORS,
+		       NULL, 0, NULL,
+		       (PVOID)&usRASectors, ulDataSize, &ulDataSize);
 
+      if (rc)
+         printf("DosDevIOCtl, FAT_QUERYRASECTORS for drive %s failed, rc = %d\n",
+	        szDisk, rc);
+
+      DosClose(hDisk);
+
+      if (!rc)
+         printf("Read-Ahead sector count for drive %s is %u.\n",
+	        szDisk, usRASectors);
+      }
 }
 
 BOOL SetRASectors(PSZ pszArg)
