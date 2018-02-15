@@ -2504,7 +2504,6 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
    if (pCD->bFatType < FAT_TYPE_EXFAT)
       {
 #endif
-      ULONGLONG ullSize;
       FileSetSize(pCD, &DirNew, ulDirCluster, pDirSHInfo, pszFile, pFileSize->ullFileSize);
 #ifdef EXFAT
       }

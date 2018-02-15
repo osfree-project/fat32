@@ -13,7 +13,7 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
-COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-img
+COPT=-3s -s -sg -db -d2 -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=qemu-img
 
 OBJS1=$(PROJ_BLD)\f32stat.obj
 OBJS2=$(PROJ_BLD)\cachef32.obj $(PROJ_BLD)\remount.obj
@@ -108,8 +108,8 @@ $(PROJ_BLD)\f32mount.ols: $(OBJS6) makefile.wcc ..\makefile.mk
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
- @%append $@ LIB os2386,clib3s,zlib,qemu-block
-!if 0
+ @%append $@ LIB os2386,clib3s # ,zlib,qemu-block
+!if 1
  @%append $@ IMPORT &
     bdrv_init qemuimg.bdrv_init, &
     bdrv_new qemuimg.bdrv_new, &

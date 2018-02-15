@@ -4,17 +4,16 @@ PROJ=util\qemu-img
 PATH=..\..\..\$(PROJ)
 DIRS=
 TARGETS=$(LIBROOT)\qemu-block.lib &
-        $(BINROOT)\os2\qemu-img.exe $(BINROOT)\os2\qemu-img.sym
-
-#        $(BINROOT)\os2\dll\qemuimg.dll $(BINROOT)\os2\dll\qemuimg.sym
+        $(BINROOT)\os2\qemu-img.exe $(BINROOT)\os2\qemu-img.sym &
+        $(BINROOT)\os2\dll\qemuimg.dll $(BINROOT)\os2\dll\qemuimg.sym
 
 
 !include ..\..\makefile.mk
 
-OBJEXT=obj
-# OBJEXT=obd
+# OBJEXT=obj
+OBJEXT=obd
 
-COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
+COPT=-3s -s -db -d2 -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
 OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
      $(PROJ_BLD)\qemu-malloc.$(OBJEXT) &
      $(PROJ_BLD)\qemu-tool.$(OBJEXT) &
@@ -89,7 +88,7 @@ $(PROJ_BLD)\qemu-img.ols: $(OBJS2) makefile.wcc ..\..\makefile.mk
 
 $(PROJ_BLD)\qemuimg.lnk: $(PROJ_BLD)\qemuimg.ols
  @%create $@
- @%append $@ SYSTEM os2v2_dll
+ @%append $@ SYSTEM os2v2 dll initinstance terminstance
  @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION ST=384000
@@ -151,8 +150,8 @@ $(PROJ_BLD)\qemu-img.lnk: $(PROJ_BLD)\qemu-img.ols
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
- @%append $@ LIB os2386,clib3s,zlib,qemu-block
-!if 0
+ @%append $@ LIB os2386,clib3s # ,zlib,qemu-block
+!if 1
  @%append $@ IMPORT &
     bdrv_init qemuimg.bdrv_init, &
     bdrv_new qemuimg.bdrv_new, &

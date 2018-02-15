@@ -27,6 +27,7 @@ mainifs  = &
  fat32.ifs
 
 dll      = &
+ qemuimg.dll &
  uunifat.dll &
  ufat32.dll &
  ufat12.dll &
@@ -46,7 +47,8 @@ util     = &
  f32mount.exe &
  fat32chk.exe &
  fat32fmt.exe &
- fat32sys.exe
+ fat32sys.exe &
+ qemu-img.exe
 
 inf      = &
  fat32.inf
@@ -68,7 +70,8 @@ adddrv   = &
 sym      = &
  boot\fat32.sym system\trace\trc00fe.tff dll\uunifat.sym &
  cachef32.sym f32parts.sym f32mon.sym f32mount.sym &
- f32stat.sym f32chk.sym fat32chk.sym fat32fmt.sym fat32sys.sym
+ f32stat.sym f32chk.sym fat32chk.sym fat32fmt.sym fat32sys.sym &
+ qemu-img.sym qemuimg.sym
 
 adddrvsym = &
  boot\partfilt.sym
@@ -86,6 +89,8 @@ distlist = &
 !ifeq EXFAT 1
  $(p)os2\dll\uexfat.dll &
 !endif
+ $(p)os2\dll\qemuimg.dll $(p)os2\dll\qemuimg.sym &
+ $(p)os2\qemu-img.exe $(p)os2\qemu-img.sym &
  $(p)os2\cachef32.exe $(p)os2\cachef32.sym &
  $(p)os2\f32parts.exe $(p)os2\f32parts.sym &
  $(p)os2\f32mon.exe $(p)os2\f32mon.sym &
