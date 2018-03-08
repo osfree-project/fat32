@@ -320,7 +320,7 @@
  struct CmdIO
  {
     USHORT Cmd;           /* 3 for read, 4 for write    */
-    void * _Seg16 Buffer; /* buffer                     */
+    void _far *Buffer;    /* buffer                     */
     USHORT BufferLen;     /* buffer length              */
     USHORT Actual;        /* actual bytes transferred   */
 
@@ -374,11 +374,13 @@
     long RangeLength;  /* length of locked/unlocked are        */
  };
 
+#ifndef _MSC_VER
  struct filelockl
  {
     long long FileOffset;   /* start offset of lock/unlock     */
     long long RangeLength;  /* length of locked/unlocked area  */
  };
+#endif
 
  int far pascal _loadds FS_FILELOCKS(
     struct sffsi far *psffsi,
@@ -711,7 +713,7 @@
 
  int far pascal _loadds FS_OPENCREATE(
     struct cdfsi far *pcdfsi,
-    void far *,			/* for remote devices:
+    void far *data,			/* for remote devices:
 				     struct devfsd far *
 				   for local devices:
 				     struct cdfsd far * */

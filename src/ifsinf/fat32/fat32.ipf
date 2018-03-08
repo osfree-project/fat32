@@ -3,19 +3,32 @@
 :title.FAT32.IFS
 
 :h1 id=0 res=30000.Introduction
-:artwork name='img0.bmp' align=center. :artwork name='img1.bmp' align=center. 
+:artwork name='img0.bmp' align=center. 
+
+.* :artwork name='img1.bmp' align=center. 
+
+:lines align=center.
+:hp2. Version 0.10 :ehp2.
+:elines.
+
 :p.
 :p.
 
-:p.:hp2.FAT32 IFS DRIVER FOR ECOMSTATION AND OS/2&colon. :ehp2.  
+:p.:hp2.The universal FAT (FAT12/FAT16/FAT32/exFAT) IFS DRIVER 
+FOR OS/2 and OS/2-based systems&colon. :ehp2.  
 
 :p.This project is based on the original FAT32 source code by Henk Kelder who 
 was kind enough to release the source to Netlabs (netlabs&per.org) in January 2002 
-because he no longer used OS/2&per.  As a result, it is now a Netlabs project with the 
+because he no longer uses OS/2&per.  As a result, it is now a Netlabs project with the 
 full source code always available&per. 
 
-:p.The FAT32 homepage provides both a simple zip file and a WarpIN package which 
-will install FAT32 without much effort on the users part&per. 
+:p.The FAT32 homepage at http&colon.//trac&per.netlabs&per.org/fat32/ provides both 
+a simple zip file and a WarpIN package which will install FAT32 without much effort 
+on the users part&per.
+
+:p. Please note that Arca Noae distributes a stripped-down version without exFAT
+support, for legal reasons&per. To get a full-featured version, please refer to the
+official project home page, which is mentioned above&per.
 
 :p.:hp2.Authors&colon. :ehp2.  
 .br 
@@ -35,8 +48,22 @@ contributor
 -Valery V. Sedletski&colon. FAT32 IFS version 0.10 developer
 .br 
 
+:p.:hp2.User's and developer's resources&colon. :ehp2.
+.br
+-Project bugtracker&colon. http&colon.//trac&per.netlabs&per.org/fat32/report/6
+.br
+-Mailing list for users&colon. https&colon.//groups&per.yahoo&per.com/neo/groups/fat32user/info
+.br
+-Mailing list for developers&colon. https&colon.//groups&per.yahoo&per.com/neo/groups/fat32dev/info
+.br
+-SVN repository&colon. http&colon.//svn&per.netlabs&per.org/repos/fat32/trunk
+.br
+-Builds archive&colon. ftp&colon.//osfree&per.org/upload/fat32/
+.br
+
 :p.Remember that patches are always welcome&per. If anyone would like to 
 contribute, feel free to contact Netlabs&per.&per. 
+
 :p.
 :p.
 :p.:link reftype=hd refid=1.DISCLAIMER :elink.
@@ -58,6 +85,28 @@ stored on your hard disks&per.
 :p.If you cannot agree to these conditions, you should NOT use FAT32&per.IFS! 
 
 :p.Adrian Gschwend &atsign. netlabs&per.org :ehp2.  
+
+:h1 id=100 res=30100.Features
+
+:p.:hp2.Features :ehp2.
+
+:ul.
+
+:li. 64 KB clusters support
+:li. support for files up to 4 GB
+:li. support for VFAT on FAT12/FAT16 (for that, you should specify /fat key for fat32.ifs).
+:li. exFAT support ("/exfat" switch is required).)
+:li. Support for FAT+ (a /plus switch is required).
+:li. Supported different media, like floppies (physical and virtual), CD's, 
+flash sticks and hard disks with FAT12/FAT16/FAT32/exFAT filesystems. For 
+all these media types, FORMAT/CHKDSK/SYS should work.
+:li. Support for mounting FAT12/16/32/ex filesystem images on a FAT12/16/32/ex 
+disk subdirectory. Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi 
+formats are supported. (qemu code was used for support of VM images). For 
+partitioned images, a partition number could be specified. Support for 
+CHKDSK/FORMAT/SYSINSTX on a mounted image (this feature is alpha-quality, yet). 
+
+:eul.
 
 :h1 id=2 res=30002.Making eCS/OS2 Recognize FAT32 Partitions
 
@@ -1055,8 +1104,15 @@ limitations&per.
 Partition Commander versions 8 and 9 (Limitations unknown) 
 .br 
 
+:p.Native OS/2 programs, allowing to format FAT32 disks:
+
+:p.Reformat, by Glassman (http&colon.//ru&per.ecomstation&per.ru/projects/disktools/?action=reformat)
+.br
+ DFSee 8.x and later, by Jan van Wijk (http&colon.//www&per.dfsee&per.com/)&per.
+.br
+
 :p. Since FAT32&per.IFS 0&per.10, new FORMAT routine is supported&per. We ported to OS/2 a
-Windows program called Fat32Format&per. Now it enhanced to support all FAT flavours 
+Windows program called Fat32Format (http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm)&per. Now it enhanced to support all FAT flavours 
 supported, that is&colon. FAT12, FAT16, FAT32, EXFAT&per.
 .br
 
@@ -1191,7 +1247,7 @@ back up and running again&per.
 making the default config&per.sys entries (See WARPIN INSTALLATION OF FAT32 DRIVER), 
 it will install COUNTRY&per.KOR but NOT point the config&per.sys to use it&per. 
 You have to do so manually, and in case of problems, the fallback Alt+F1,F2 
-solution will still point to the original COUNTRY&per.SYS and thus will be safe&per. See :link reftype=hd refid=41.
+solution will still point to the original COUNTRY&per.SYS and thus will be safe&per. See :link reftype=hd refid=20041.
 FILES IN THIS VERSION):elink.&per. It also 
 
 :p.adds a Korean text dealing with FAT32 information&per. 
@@ -1223,7 +1279,7 @@ have to manually edit your CONFIG&per.SYS and change the COUNTRY settings from
 
 :p.where you have to substitute xyz and <Install Path> with appropriate values
 &per. In case of problems, the fallback Alt+F1,F2 solution will still point to the 
-original COUNTRY&per.SYS and thus will be safe&per. See :link reftype=hd refid=41.&osq.Files in this version&osq.:elink.
+original COUNTRY&per.SYS and thus will be safe&per. See :link reftype=hd refid=20041.&osq.Files in this version&osq.:elink.
 &per. 
 
 :p.:hp2.Note&colon.  :ehp2.Korean filenames are displayed correctly only in CP949, but 
@@ -1379,23 +1435,36 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 :p.CALL=x&colon.&bsl.OS2&bsl.CACHEF32&per.EXE [:link reftype=hd refid=46.options:elink.] 
 
 :p.:hp2.Note&colon.  :ehp2.Make sure this is a CALL and NOT a RUN&per. 
+
 :h1 id=40 res=30038.FAT32 IFS Components and Switches
 
 :p.:hp2.FAT32 IFS COMPONENTS AND SWITCHES&colon. :ehp2.
 
-:p.:link reftype=hd refid=41.FILES IN THIS VERSION :elink.
+:p.:link reftype=hd refid=20041.FILES IN THIS VERSION :elink.
 
-:p.:link reftype=hd refid=42.FAT32&per.IFS :elink.
+:p.:link reftype=hd refid=20042.FAT32&per.IFS :elink.
 
-:p.:link reftype=hd refid=45.CACHEF32&per.EXE :elink.
+:p.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.
 
-:p.:link reftype=hd refid=47.UUNIFAT&per.DLL and forwarders :elink.
+:p.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.
 
-:p.:link reftype=hd refid=49.F32MON&per.EXE :elink.
+:p. :link reftype=hd refid=20048.FAT32FMT&per.EXE :elink. 
+
+:p. :link reftype=hd refid=20049.FAT32CHK&per.EXE :elink. 
+
+:p. :link reftype=hd refid=20050.FAT32SYS&per.EXE :elink. 
+
+:p. :link reftype=hd refid=20051.F32CHK&per.EXE :elink. 
+
+:p.:link reftype=hd refid=20052.F32MON&per.EXE :elink.
+
+:p. :link reftype=hd refid=20053.F32STAT&per.EXE :elink. 
+
+:p. :link reftype=hd refid=20054.F32MOUNT&per.EXE :elink. 
 
 .br 
 
-:h2 id=41 res=30039.Files in this Version
+:h2 id=20041 res=30039.Files in this Version
 
 :p.:hp2.FILES IN THIS VERSION&colon. :ehp2.
 
@@ -1406,17 +1475,19 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 :p.:hp2.FAT32&per.TXT :ehp2.Fat32 information in plain ASCII txt format (may be outdated)
 &per. 
 
-:p.:hp2.:link reftype=hd refid=42.FAT32&per.IFS :elink.:ehp2.The actual IFS&per. 
+:p.:hp2.:link reftype=hd refid=20042.FAT32&per.IFS :elink.:ehp2.The actual IFS&per. 
 
-:p.:hp2.:link reftype=hd refid=45.CACHEF32&per.EXE :elink.:ehp2.The cache helper program&per. 
+:p.:hp2.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.:ehp2.The cache helper program&per. 
 
-:p.:hp2.:link reftype=hd refid=47.UUNIFAT&per.DLL and forwarders :elink.:ehp2.Modules needed to run CHKDSK/FORMAT/SYS on FAT32 partition&per. 
+:p.:hp2.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.:ehp2.Modules needed to run CHKDSK/FORMAT/SYS on FAT32 partition&per. 
 
-:p.:hp2.:link reftype=hd refid=20047.F32CHK&per.EXE :elink.:ehp2. A boot disk autocheck helper&per. 
+:p.:hp2.:link reftype=hd refid=20051.F32CHK&per.EXE :elink.:ehp2. A boot disk autocheck helper&per. 
 
 :p.:hp2.:link reftype=hd refid=50.F32STAT&per.EXE :elink.:ehp2. A program to change the DIRTY flag of FAT32 partitions&per. 
 
-:p.:hp2.:link reftype=hd refid=49.F32MON&per.EXE :elink.:ehp2. (Formerly MONITOR&per.EXE) A program to monitor what FAT32
+:p.:hp2.:link reftype=hd refid=20054.F32MOUNT&per.EXE :elink. :ehp2. A mounter program for file system images&per.
+
+:p.:hp2.:link reftype=hd refid=20052.F32MON&per.EXE :elink.:ehp2. (Formerly MONITOR&per.EXE) A program to monitor what FAT32
 &per.IFS is doing&per. 
 
 :p.:hp2.:link reftype=hd refid=26.F32PARTS&per.EXE :elink.:ehp2.(Formerly DISKINFO&per.EXE) A diagnostic program that will 
@@ -1441,7 +1512,7 @@ sys&osq. found in OS2&bsl.SYSTEM directory and replace it with the &osq.country
 :p.:hp2.* CACHEF32&per.CMD :ehp2.Script for loading Korean Codepage and CACHEF32&per.EXE 
 .br 
 
-:h2 id=42 res=30040.FAT32.IFS
+:h2 id=20042 res=30040.FAT32.IFS
 
 :p.:hp2.FAT32&per.IFS&colon. :ehp2.
 
@@ -1558,7 +1629,7 @@ Directory and Files IO reads are done on a cluster base&per. By setting the RASE
 you can define the minimum number of sectors the IFS will read from disk and place 
 in the cache&per. 
 
-:p.:hp2./EAS :ehp2.Make :link reftype=hd refid=42.FAT32&per.IFS :elink.support :link reftype=hd refid=62.EXTENDED ATTRIBUTES :elink.
+:p.:hp2./EAS :ehp2.Make :link reftype=hd refid=20042.FAT32&per.IFS :elink.support :link reftype=hd refid=62.EXTENDED ATTRIBUTES :elink.
 
 :p.:hp2.IMPORTANT&colon.  :ehp2.:hp2.Starting with version 0&per.97, CHKDSK /F must first be run 
 on each FAT32 partition before adding EA support to the FAT32 IFS driver&per. This 
@@ -1610,13 +1681,15 @@ will only redetermine the amount of free space if&colon.
 disk on shutdown&per. 
 
 :p.
-:h2 id=45 res=30043.CACHEF32.EXE
+:h2 id=20045 res=30043.CACHEF32.EXE
 
 :p.:hp2.THE PURPOSE OF CACHEF32&per.EXE :ehp2.
 
 :p.CACHEF32&per.EXE is a helper program with the following functions&colon. 
 
-:p.Check DISK state on boot, run CHKDSK if needed&per. 
+:p.Check DISK state on boot, run CHKDSK if needed (but since FAT32&per.IFS 
+versiom 0&per.10, CHKDSK is no more run from CACHEF32&per.EXE&per. It is run
+from the IFS FS_INIT routine, as it should be)&per.
 .br 
 Start the LAZY WRITE daemon&per. 
 .br 
@@ -1625,7 +1698,15 @@ disk on shutdown&per.
 Set Longname behavior&per. 
 .br 
 Load a CP to UNICODE translate table for longnames and the default codepage
-&per. 
+&per.
+.br
+
+:p. CACHEF32&per.EXE also runs a special helper thread executing a loop polling the IFS 
+for OPEN/READ/WRITE/CLOSE commands. So, this thread executes these commands and returns 
+results back to the IFS&per. This is required to support reading/writing sectors from/to 
+disk images laying on another file system&per. For reading the disk images, CACHEF32&perEXE 
+uses QEMUIMG&per.DLL, which contains the disk image access code ported from QEMU
+(http&colon.//www&per.qemu&per.org/)&per.
 .br 
 
 :p.When run in the foreground and CACHEF32 is already running, it displays the 
@@ -1694,7 +1775,7 @@ FORMAT and SYS commands&per. Previously, there was one DLL, UFAT32&per.DLL and i
 different kinds of FAT, like&colon. FAT12, FAT16, FAT32, EXFAT&per. Since then, all functionality was moved to a single UUNIFAT&per.DLL&per.
 If user calls "format d: /fs&colon.fat12", UFAT12&per.DLL is loaded&per. UFAT12 forwards all calls to the same routines in UUNIFAT&per. So,
 all filesystems are handled by UUNIFAT&per.DLL&per. Note that all four kinds of FAT are handled by a single code, because they are very
-similar, and use the same routines, with a few differencies&per. So creating four almost identical DLL&apos.s is a bad idea, the same way as
+similar, and use the same routines, with a few differences&per. So creating four almost identical DLL&apos.s is a bad idea, the same way as
 creating four IFS drivers for each FAT flavour&per.
 
 :h3 id=30047 res=31045.CHKDSK
@@ -1772,7 +1853,7 @@ additional messages to stdout, then a PM frontend parses them and updates its co
 of the disk is physically written on the disk&per. On next boot this state is 
 checked, and if the disk is not shutdown properly, SCANDISK is run&per. 
 
-:p.FAT32&per.IFS also supports this feature&per. When :link reftype=hd refid=45.CACHEF32 :elink.is called from 
+:p.FAT32&per.IFS also supports this feature&per. When :link reftype=hd refid=20045.CACHEF32 :elink.is called from 
 the config&per.sys, it checks, via a call to the IFS the state of each FAT32 drive
 &per. For each drive that is not shutdown properly, CHKDSK is fired&per. If no errors 
 are found, or if only lost clusters were found and repaired, the drive is marked ok
@@ -1940,14 +2021,14 @@ takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30047.CH
 :p.FAT32SYS&per.EXE is a standalone version of FAT SYS/SYSINSTX&per. It is equivalent to SYS routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30049.SYSINSTX&per.EXE :elink. for more info)&per.
 
-:h2 id=20047 res=32047.F32CHK&per.EXE
+:h2 id=20047 res=32051.F32CHK&per.EXE
 
 :p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
 
 :p.F32CHK&per.EXE is a helper for CHKDSK&per. It is needed for disk autocheck on boot&per. It takes
 the same parameters as CHKDSK itself&per. It is run by FAT32&per.IFS init routine&per.
 
-:h2 id=49 res=32048.F32MON.EXE (formerly MONITOR.EXE)
+:h2 id=20052 res=32048.F32MON.EXE (formerly MONITOR.EXE)
 
 :p.:hp2.F32MON&per.EXE (formerly MONITOR&per.EXE)&colon. :ehp2.  
 
@@ -1958,7 +2039,7 @@ send monitoring information to an internal buffer&per. This internal buffer is o
 information is lost&per. However, this will only occur if /MONITOR is specified after the 
 IFS= line for FAT32&per.IFS&per. 
 
-:p.If the /MONITOR command is not specified in the config&per.sys after the :link reftype=hd refid=42.IFS= 
+:p.If the /MONITOR command is not specified in the config&per.sys after the :link reftype=hd refid=20042.IFS= 
 statement:elink., monitoring is OFF by default, but starting F32MON once will activate 
 monitoring&per. 
 
@@ -2058,6 +2139,66 @@ Windows 95 (OSR2) and later Windows versions, SCANDISK will be started&per.
 :p.:link reftype=launch object='cmd.exe' data='cmd.exe  '.:hp3.START COMMAND PROMPT :ehp3.
 .br 
 :elink.  
+
+:h2 id=20054 res=30074.F32MOUNT&per.EXE
+
+:p.:hp2.F32MOUNT&per.EXE:colon. :ehp2.
+
+:p. F32MOUNT&per.EXE allows to mount the file system images, e&per.g&per., diskette images and hard
+disk images, or partitions inside hard disk images&per. Also, we have ported a library from QEMU,
+allowing to access data inside virtual machine's hard disk images, including VirtualPC (&per.VHD),
+VMWare (&per.VMDK), VirtualBox (&per.VDI), QEMU (QCOW and QCOW2), Macintosh DMG, Bochs, Linux CLOOP
+(images used by Knoppix LiveCD), Parallels, VVFAT, and plain RAW images&per.
+
+:p. The images can be mounted at the directory, serving as a mount point&per. The directory should
+be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem should be FAT12/FAT16/FAt32/exFAT
+too&per. So, you can access the image filesystem by changing the directory to the selected mount
+point subdirectory&per.
+
+:p. The IFS uses CACHEF32&per.EXE as a helper&per. It loads the QEMUIMG&per.DLL library, which contains
+functions to read data inside the virtual VM disk images of the above mentioned formats&per.
+
+:p.The syntax is the following&colon.
+
+:p.:hp2.[c&colon.\] f32mount [d&colon.\somedir\somefile&per.img [<somedir> | /d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
+
+:p. So, for the mount command, the first parameter is an image path (absolute or relative), the second 
+is the mount point (absolute or relative, too)&per. Then the following options are possible&colon.
+
+:p.:hp2. /d :ehp2. - specifies that we're unmouning the image, or a mountpoint, specified as a first parameter&per.
+
+:p.:hp2. /p&colon.<partition no> :ehp2. - specifies partition number to mount&per. Numbers 1&per.&per.4
+specify primary partitions; nubmers > 4 specify logical partitions&per. E&per.g&per., 5 is the first
+logical partition, 6 is second logical partition, etc&per.
+
+:p.:hp2. /o&colon.<offset> :ehp2. - specifies the offset of partition table from the start of the image&per.
+This should be specified if you have a RAW image having a special header right before the partition
+table&per. This option can be used in conjunction with the /p option&per. The offset could be either
+decimal, or hexadecimal&per. Hexadecimal offsets start with "0x"&per.
+
+:p.:hp2. /f&colon.<format> :ehp2. - force the use of specified format, instead of autodetecting
+it, which is the default&per. Usually, the format is autodetected by the QEMUIMG&per.DLL library&per.
+The following format names are defined&colon. :hp2.Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi&per. :ehp2.
+
+:p.:hp2. Examples&colon. :ehp2.
+
+:p.:hp2. [c&colon.\] f32mount win32&per.dsk w&colon.\tmp\0 :ehp2.
+
+:p. - mounts a diskette image&per.
+
+:p.:hp2. [c&colon.\] f32mount flash-512mb&per.img w&colon.\tmp\0 /p&colon.1 :ehp2.
+
+:p. - mounts the first primary partition on a 512 MB flash disk image&per.
+
+:p.:hp2. [c&colon.\] f32mount win98&per.vhd w&colon.\tmp\0 /p&colon.5 :ehp2.
+
+:p. - mounts the first logical partition on the VirtualPC image with Win 98 installed&per.
+
+:p.:hp2. [c&colon.\] f32mount hdimage&per.freedos w&colon.\tmp\0 /p&colon.1 /o&colon.0x80 /f&colon.raw :ehp2.
+
+:p. - mounts the first primary partition on a DOSEMU FreeDOS image (having a 0x80-byte header before
+the partition table&per.)&per. Force format to RAW&per.
+
 :h1 id=52 res=30049.Current Status and Features
 
 :p.:hp2.CURRENT STATUS AND FEATURES&colon. :ehp2.
@@ -2470,11 +2611,11 @@ CODEPAGE&per.
 
 :p.By default Windows long file names (VFAT) are stored in UNICODE&per. 
 
-:p.Since Warp 3 (fixpack 26?) OS/2 contains NLS support&per. :link reftype=hd refid=45.CACHEF32&per.
+:p.Since Warp 3 (fixpack 26?) OS/2 contains NLS support&per. :link reftype=hd refid=20045.CACHEF32&per.
 EXE :elink.
 
 :p.Keep in mind that a table for only ONE codepage is loaded&per. Should you 
-change codepages (using CHCP) you must rerun :link reftype=hd refid=45.CACHEF32 :elink.to load a new table, but keep in 
+change codepages (using CHCP) you must rerun :link reftype=hd refid=20045.CACHEF32 :elink.to load a new table, but keep in 
 mind OS/2 keeps different codepages per session so if you use CHCP to change the CP 
 that CP is only only valid for that session&per. 
 
@@ -2507,7 +2648,7 @@ different names are the same&per.
 Use the long names internally, but hide all files or directories with long 
 names from DOS sessions&per. 
 .br 
-This setting can be changed (on the fly) with :link reftype=hd refid=45.CACHEF32&per.EXE:elink.&per. 
+This setting can be changed (on the fly) with :link reftype=hd refid=20045.CACHEF32&per.EXE:elink.&per. 
 
 :p.When using short names internally the following drawbacks occur&colon. 
 
@@ -2815,7 +2956,7 @@ supported by OS2DASD&per.DMD are now also supported by the IFS&per.
 :p.All of the code is in plain 16 bits C (All of OS/2&apos.s IFS&apos.s are 16 
 bits!)&per. No assembly language code is used&per. 
 
-:p.The :link reftype=hd refid=49.F32MON :elink.function takes a lot of time&per. Be sure to switch if off if you 
+:p.The :link reftype=hd refid=20051.F32MON :elink.function takes a lot of time&per. Be sure to switch if off if you 
 don&apos.t need it&per. 
 
 :p.You should probably experiment with the :link reftype=hd refid=46.CACHEF32 options :elink.to get the best 
@@ -2823,7 +2964,7 @@ performance for your situation&per.
 
 :p.The default for the LAZY WRITER is idle-time priority (/P&colon.1)&per. You 
 might like to experiment with the /P option as well, especially if you have 
-performance problems with :link reftype=hd refid=42.FAT32&per.IFS:elink.&per. 
+performance problems with :link reftype=hd refid=20042.FAT32&per.IFS:elink.&per. 
 
 :p.For best performance it is advised to keep the disk as defragmented as 
 possible&per. Use Windows 9x or later versions defrag to defrag the disk&per. 
@@ -2834,7 +2975,7 @@ possible&per. Use Windows 9x or later versions defrag to defrag the disk&per.
 
 :p.:hp2.Q:ehp2.&colon. Why did you not created three different IFS drivers for FAT, FAT32, EXFAT?
 .br
-:hp2.A:ehp2.&colon. Because all FAT flavours are very similar&per. Many code used by each of them is common&per. The differencies
+:hp2.A:ehp2.&colon. Because all FAT flavours are very similar&per. Many code used by each of them is common&per. The differences
 are minor&per. FAT drives differ from FAT32 ones only in that&colon. 1) BIOS parameter block is different, 2) Root
 directory is located in reserved area, so it is not assigned cluster numbers. We were needed to handle FAT root directory
 specially, while in FAT32 it starts in common cluster heap area, usually, with cluster no&per. 2&per. 3) FAT entries
@@ -2875,12 +3016,12 @@ parameter)&per. Then you can see the actual FS type is its report, at the beginn
 :p.:hp2.Q:ehp2.&colon. Why did you supported EXFAT? It is proprietary Microsoft technology and they extort money from anybody
 using this technology in his products&per. Do you fear Microsoft?
 .br
-:hp2.A:ehp2.&colon. Yes, we are beware the money extortion (called a license fees) from Micro$oft side&per. Nobody is insured 
+:hp2.A:ehp2.&colon. Yes, we beware the money extortion (called a license fees) from Micro$oft side&per. Nobody is insured 
 from that&per. But, for free software, which is FAT32&per.IFS, it should be no problem&per. Free versions of Linux, like Debian
 is, are safely distributing a (FUSE) version of their EXFAT driver&per. Commercial Linux vendors, Like SuSe and Redhat, are paying
 MS license fees, it seems (or don't distribute an EXFAT driver with their OS&apos.es)&per. Arca Noae, being a commercial OS/2 vendor,
 wants to be as far as possible from patented MS stuff&per. But we made, by their request, a version of FAT32&per.IFS without an
-EXFAT support&per. We hope it will be sufficient to them to avoid MS claims&per. Anyway, MS caused the IT industry to use their 
+EXFAT support&per. We hope it will be sufficient for them to avoid MS claims&per. Anyway, MS caused the IT industry to use their 
 patented proprietary EXFAT on SDXC cards (all SD cards larger than 32 GB)&per. So, if we'll not have support for it in our OS,
 we would not use any newer devices with OS/2, like cameras, video registrators, smartphones etc. With FAT32 only, we should stick
 with files not exceeding 4 GB (fat32.ifs now supports up to 4 GB&per. Previously, it supported only 2 GB files, because it is a 16-bit 
@@ -3309,7 +3450,7 @@ assigns before doing the above three examples&per.
 
 :p.:hp2.Note&colon.  :ehp2.If you have a program that doesn&apos.t work or returns errors, 
 please run F32MON&per.EXE while you execute the program&per. After the error has 
-occurred, terminate :link reftype=hd refid=49.F32MON :elink.and send a message describing what the problem is, as 
+occurred, terminate :link reftype=hd refid=20052.F32MON :elink.and send a message describing what the problem is, as 
 detailed as possible, and include the FAT32&per.LOG that was created by F32MON&per. to 
 Netlabs or the Yahoo FAT32USER group&per.   
 :h1 id=71 res=30065.History

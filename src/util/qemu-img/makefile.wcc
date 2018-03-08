@@ -144,8 +144,8 @@ $(PROJ_BLD)\qemu-img.lnk: $(PROJ_BLD)\qemu-img.ols
  @%append $@ SYSTEM os2v2
  @%append $@ NAME $(BINROOT)\os2\$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
- @%append $@ OPTION ST=384000
- @%append $@ OPTION HEAP=384000
+ @%append $@ OPTION ST=65535000
+ @%append $@ OPTION HEAP=65535000
  @%append $@ OPTION QUIET
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp

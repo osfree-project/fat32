@@ -62,7 +62,7 @@ docs     = &
  license.txt os2fat32.txt problems.txt &
 
 korean   = &
- boot\country.kor docs\fat32\fat32.kor
+ system\country.kor docs\fat32\fat32.kor
 
 adddrv   = &
  os2dasd.f32 partfilt.flt
@@ -71,7 +71,7 @@ sym      = &
  boot\fat32.sym system\trace\trc00fe.tff dll\uunifat.sym &
  cachef32.sym f32parts.sym f32mon.sym f32mount.sym &
  f32stat.sym f32chk.sym fat32chk.sym fat32fmt.sym fat32sys.sym &
- qemu-img.sym qemuimg.sym
+ qemu-img.sym dll\qemuimg.sym
 
 adddrvsym = &
  boot\partfilt.sym
@@ -106,7 +106,7 @@ distlist = &
  $(p)os2\docs\fat32\deamon.txt $(p)os2\docs\fat32\fat32.txt $(p)os2\docs\fat32\lesser.txt &
  $(p)os2\docs\fat32\license.txt $(p)os2\docs\fat32\os2fat32.txt $(p)os2\docs\fat32\problems.txt &
  $(p)os2\docs\fat32\partfilt.txt $(p)os2\docs\fat32\message.txt &
- $(p)os2\boot\country.kor $(p)os2\docs\fat32\fat32.kor &
+ $(p)os2\system\country.kor $(p)os2\docs\fat32\fat32.kor &
  $(p)os2\boot\os2dasd.f32
 p = $(BINROOT)\
 distfiles = $+ $(distlist) $-
@@ -217,7 +217,7 @@ clean: .symbolic
  -@del $(CLEANUP) >nul 2>&1
  @for %d in ($(DIRS)) do @if exist %d cd %d && @wmake -h -f makefile.wcc clean
 
-copy: $(BINROOT)\os2\boot\os2dasd.f32 $(BINROOT)\os2\boot\country.kor &
+copy: $(BINROOT)\os2\boot\os2dasd.f32 $(BINROOT)\os2\system\country.kor &
  $(BINROOT)\os2\docs\fat32\partfilt.doc $(BINROOT)\os2\docs\fat32\fat32.kor $(BINROOT)\os2\docs\fat32\build.txt &
  $(BINROOT)\os2\docs\fat32\deamon.txt $(BINROOT)\os2\docs\fat32\fat32.txt $(BINROOT)\os2\docs\fat32\lesser.txt &
  $(BINROOT)\os2\docs\fat32\license.txt $(BINROOT)\os2\docs\fat32\os2fat32.txt $(BINROOT)\os2\docs\fat32\problems.txt &
@@ -227,7 +227,7 @@ copy: $(BINROOT)\os2\boot\os2dasd.f32 $(BINROOT)\os2\boot\country.kor &
 $(BINROOT)\os2\boot\os2dasd.f32: $(ROOT)\lib\os2dasd.f32
  @copy $< $^@ >nul 2>&1
 
-$(BINROOT)\os2\boot\country.kor: $(ROOT)\lib\country.kor
+$(BINROOT)\os2\system\country.kor: $(ROOT)\lib\country.kor
  @copy $< $^@ >nul 2>&1
 
 $(BINROOT)\os2\docs\fat32\partfilt.doc: $(ROOT)\doc\partfilt.doc

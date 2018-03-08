@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
         printf("f32mount [d:\\somedir\\somefile.img [<somedir> | /d] [/p:<partition no>][/o:<offset>][/f:<format>]]\n\n"
                "   Partitions 1..4 are primary partitions. Partitions 5..255 are logical partitions, 5 being the 1st logical.\n"
                "   Offsets can be decimal, as well as hexadecimals, starting from \"0x\".\n"
-               "   The following formats are supported: raw, vpc, vmdk, vvfat, parallels, bochs, cloop, dmg, qcow\n");
+               "   The following formats are supported: raw, vpc, vmdk, vdi, vvfat, parallels, bochs, cloop, dmg, qcow, qcow2\n");
         return 0;
     }
 

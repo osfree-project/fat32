@@ -2,16 +2,21 @@
 INTRODUCTION
 =============
 
-FAT32 IFS DRIVER FOR ECOMSTATION AND OS/2:
--------------------------------------------
+The universal FAT (FAT12/FAT16/FAT32/exFAT) IFS DRIVER FOR OS/2 and OS/2-based systems:
+--------------------------------------------------------------------------------------
 
 This project is based on the original FAT32 source code by Henk Kelder who was
 kind enough to release the source to Netlabs (netlabs.org) in January 2002
-because he no longer used OS/2.  As a result, it is now a Netlabs project with
+because he no longer uses OS/2.  As a result, it is now a Netlabs project with
 the full source code always available.
 
-The FAT32 homepage provides both a simple zip file and a WarpIN package which
-will install FAT32 without much effort on the users part.
+The FAT32 homepage at http://trac.netlabs.org/fat32/ provides both a simple zip 
+file and a WarpIN package which will install FAT32 without much effort on the 
+users part.
+
+Please note that Arca Noae distributes a stripped-down version without exFAT 
+support, for legal reasons. To get a full-featured version, please refer to 
+the official project home page, which is mentioned above.
 
 Authors:
 Henk Kelder: original author
@@ -22,6 +27,13 @@ David Graser: creator of the FAT32.INF file
 Lars Erdmann: developer 
 Valery V. Sedletski: FAT32 IFS version 0.10 developer
 
+User's and developer's resources:   
+Project bugtracker: http://trac.netlabs.org/fat32/report/6 
+Mailing list for users: https://groups.yahoo.com/neo/groups/fat32user/info 
+Mailing list for developers: https://groups.yahoo.com/neo/groups/fat32dev/info 
+SVN repository: http://svn.netlabs.org/repos/fat32/trunk 
+Builds archive: ftp://osfree.org/upload/fat32/ 
+  
 Remember that patches are always welcome. If anyone would like to contribute,
 feel free to contact Netlabs.
 
@@ -248,9 +260,14 @@ Other formatting alternatives
 FreeDOS <= 16 GB
 Partition Commander versions 8 and 9 (Limitations unknown)
 
+Native OS/2 programs, allowing to format FAT32 disks:   
+
+Reformat, by Glassman (http://ru.ecomstation.ru/projects/disktools/?action=reformat) 
+DFSee 8.x and later, by Jan van Wijk (http://www.dfsee.com/). 
+
 Since FAT32.IFS 0.10, new FORMAT routine is supported. We ported to OS/2 a Windows 
-program called Fat32Format. Now it enhanced to support all FAT flavours supported, 
-that is: FAT12, FAT16, FAT32, EXFAT. 
+program called Fat32Format. (http://www.ridgecrop.demon.co.uk/index.htm?fat32format.htm).
+Now it enhanced to support all FAT flavours supported, that is: FAT12, FAT16, FAT32, EXFAT. 
   
 The procedure of formatting is straightforward: you just use FORMAT.COM with /FS:<file system type>   
   
@@ -1097,6 +1114,69 @@ You should run F32STAT.EXE two times for C and D as the following.
 F32STAT.EXE C: /DIRTY
 F32STAT.EXE D: /DIRTY
 
+
+F32MOUNT.EXE   
+------------
+
+F32MOUNT.EXE allows to mount the file system images, e.g., diskette images and 
+hard disk images, or partitions inside hard disk images. Also, we have ported a
+library from QEMU, allowing to access data inside virtual machine's hard disk 
+images, including VirtualPC (.VHD), VMWare (.VMDK), VirtualBox (.VDI), QEMU (QCOW 
+and QCOW2), Macintosh DMG, Bochs, Linux CLOOP (images used by Knoppix LiveCD), 
+Parallels, VVFAT, and plain RAW images.   
+
+The images can be mounted at the directory, serving as a mount point. The 
+directory should be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem 
+should be FAT12/FAT16/FAt32/exFAT too. So, you can access the image filesystem 
+by changing the directory to the selected mount point subdirectory.   
+
+The IFS uses CACHEF32.EXE as a helper. It loads the QEMUIMG.DLL library, which 
+contains functions to read data inside the virtual VM disk images of the above 
+mentioned formats.   
+
+The syntax is the following:   
+
+[c:\] f32mount [d:\somedir\somefile.img [<somedir> | /d] [/p:<partition no>][/o:<offset>][/f:<format>]]   
+
+So, for the mount command, the first parameter is an image path (absolute or 
+relative), the second is the mount point (absolute or relative, too). Then the 
+following options are possible:   
+
+/d - specifies that we're unmouning the image, or a mountpoint, specified as a first parameter.   
+
+/p:<partition no>   - specifies partition number to mount. Numbers 1..4 specify primary 
+                      partitions; nubmers > 4 specify logical partitions. E.g., 5 is the 
+                      first logical partition, 6 is second logical partition, etc.   
+
+/o:<offset>         - specifies the offset of partition table from the start of the image. 
+                      This should be specified if you have a RAW image having a special 
+                      header right before the partition table. This option can be used 
+                      in conjunction with the /p option. The offset could be either 
+                      decimal, or hexadecimal. Hexadecimal offsets start with "0x".   
+
+/f:<format>         - force the use of specified format, instead of autodetecting it, which 
+                      is the default. Usually, the format is autodetected by the QEMUIMG.DLL 
+                      library. The following format names are defined: 
+                      Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi.   
+
+Examples:   
+
+[c:\] f32mount win32.dsk w:\tmp\0   
+
+- mounts a diskette image.   
+
+[c:\] f32mount flash-512mb.img w:\tmp\0 /p:1   
+
+- mounts the first primary partition on a 512 MB flash disk image.   
+
+[c:\] f32mount win98.vhd w:\tmp\0 /p:5   
+
+- mounts the first logical partition on the VirtualPC image with Win 98 installed.   
+
+[c:\] f32mount hdimage.freedos w:\tmp\0 /p:1 /o:0x80 /f:raw   
+
+- mounts the first primary partition on a DOSEMU FreeDOS image (having a 0x80-byte 
+header before the partition table.). Force format to RAW.
 
 
 ==============================

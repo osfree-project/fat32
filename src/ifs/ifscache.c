@@ -299,6 +299,7 @@ char far *p;
    pVolInfo->ulLastDiskTime = GetCurTime();
    if (pVolInfo->hVBP)
       rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
+      //rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLABORT | DVIO_ALLRETRY | DVIO_ALLFAIL, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
    else
       {
       /* read loopback device */
@@ -416,6 +417,7 @@ char *p;
       pVolInfo->ulLastDiskTime = GetCurTime();
       if (pVolInfo->hVBP)
          rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLACK, pVolInfo->hVBP, pbData, &usSectors, ulSector);
+         //rc = FSH_DOVOLIO(DVIO_OPWRITE | usIOMode | VerifyOn(), DVIO_ALLABORT | DVIO_ALLRETRY | DVIO_ALLFAIL, pVolInfo->hVBP, pbData, &usSectors, ulSector);
       else
          {
          /* write loopback device */

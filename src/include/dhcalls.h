@@ -7,7 +7,7 @@
  typedef USHORT NEAR    *NPUSHORT;
 
  typedef ULONG          LIN;
- typedef ULON   FAR     *PLIN;
+ typedef ULONG     _far *PLIN;
 
  #define MSG_MEMORY_ALLOCATION_FAILED 0x00
  #define ERROR_LID_ALREADY_OWNED      0x01
@@ -196,7 +196,7 @@
     UCHAR  Granularity;
     LIN    BaseAddr;
     ULONG  Limit;
- } SELDESCINFO, FAR *PSELDESCINFO;
+ } SELDESCINFO, _far *PSELDESCINFO;
 
  typedef struct _GATEDESCINFO
  {
@@ -205,7 +205,7 @@
     SEL    Selector;
     USHORT Reserved_1;
     ULONG  Offset;
- } GATEDESCINFO, FAR *PGATEDESCINFO;
+ } GATEDESCINFO, _far *PGATEDESCINFO;
 
  USHORT APIENTRY DevHelp_GetDescInfo(
     SEL Selector,
@@ -249,7 +249,7 @@
  {
     ULONG PhysAddr;
     ULONG Size;
- } PAGELIST, NEAR *NPPAGELIST, FAR  *PPAGELIST;
+ } PAGELIST, NEAR *NPPAGELIST, _far  *PPAGELIST;
 
  USHORT APIENTRY DevHelp_VMSetMem(
     LIN LinearAddr,
@@ -270,7 +270,7 @@
 
  USHORT APIENTRY DevHelp_AllocReqPacket(
     USHORT    WaitFlag,
-    PBYTE FAR *ReqPktAddr
+    PBYTE _far *ReqPktAddr
  );
 
  USHORT APIENTRY DevHelp_FreeReqPacket(
@@ -284,7 +284,7 @@
 
  USHORT APIENTRY DevHelp_PullRequest(
     NPBYTE    Queue,
-    PBYTE FAR *ReqPktAddr);
+    PBYTE _far *ReqPktAddr);
 
  USHORT APIENTRY DevHelp_PushRequest(
     NPBYTE Queue,
@@ -343,7 +343,7 @@
  typedef struct _IDCTABLE 
  {
     USHORT        Reserved[3];
-    VOID          (FAR *ProtIDCEntry)(VOID);
+    VOID          (_far *ProtIDCEntry)(VOID);
     USHORT        ProtIDC_DS;
  } IDCTABLE, NEAR *NPIDCTABLE;
 
@@ -578,7 +578,7 @@
     USHORT QChrOut;
     USHORT Count;
     BYTE   Queue[1];
- } QUEUEHDR, FAR *PQUEUEHDR;
+ } QUEUEHDR, _far *PQUEUEHDR;
 
  USHORT APIENTRY DevHelp_QueueInit(
    NPBYTE Queue
@@ -663,12 +663,6 @@
     USHORT Reserved;
  } FILECLOSE;
 
- typedef struct _DDFileIo
- {
-    USHORT   Length;
-    FILEIOOP Data;
- } FILEIOINFO, FAR * PFILEIOINFO;
-
  typedef union FILEIOOP
  {
     struct FOPEN FileOpen;
@@ -676,6 +670,12 @@
     struct FREAD FileRead;
     struct FREADAT FileReadAt;
  } FILEIOOP;
+
+ typedef struct _DDFileIo
+ {
+    USHORT   Length;
+    FILEIOOP Data;
+ } FILEIOINFO, _far * PFILEIOINFO;
 
  USHORT APIENTRY DevHelp_OpenFile(
     PFILEIOINFO pFileOpen
