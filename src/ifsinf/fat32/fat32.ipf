@@ -62,7 +62,7 @@ contributor
 .br
 
 :p.Remember that patches are always welcome&per. If anyone would like to 
-contribute, feel free to contact Netlabs&per.&per. 
+contribute, feel free to contact Netlabs&per.
 
 :p.
 :p.
@@ -1448,6 +1448,8 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 
 :p.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.
 
+:p.:link reftype=hd refid=20055.QEMUIMG&per.DLL :elink.
+
 :p. :link reftype=hd refid=20048.FAT32FMT&per.EXE :elink. 
 
 :p. :link reftype=hd refid=20049.FAT32CHK&per.EXE :elink. 
@@ -1480,6 +1482,8 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 :p.:hp2.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.:ehp2.The cache helper program&per. 
 
 :p.:hp2.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.:ehp2.Modules needed to run CHKDSK/FORMAT/SYS on FAT32 partition&per. 
+
+:p.:hp2.:link reftype=hd refid=20055.QEMUIMG&per.DLL :elink.:ehp2.Disk images support (ported from QEMU)&per. 
 
 :p.:hp2.:link reftype=hd refid=20051.F32CHK&per.EXE :elink.:ehp2. A boot disk autocheck helper&per. 
 
@@ -1770,12 +1774,12 @@ The /FL option was removed in version 0&per.98&per.
   
 :h2 id=47 res=30044.UUNIFAT.DLL and forwarders
 
-:p.:hp2.UUNIFAT&per.DLL and four forwarder DLL&apos.s&colon. UFAT12/FAT16/FAT32/UEXFAT :ehp2. UUNIFAT&per.DLL is FAT file system utility DLL&per. It currently supports CHKDSK, 
+:p.:hp2.UUNIFAT&per.DLL and four forwarder DLL&apos.s&colon. UFAT12/UFAT16/UFAT32/UEXFAT :ehp2. UUNIFAT&per.DLL is FAT file system utility DLL&per. It currently supports CHKDSK, 
 FORMAT and SYS commands&per. Previously, there was one DLL, UFAT32&per.DLL and it supported only FAT32 filesystem&per. Now FAT32&per.IFS supports
-different kinds of FAT, like&colon. FAT12, FAT16, FAT32, EXFAT&per. Since then, all functionality was moved to a single UUNIFAT&per.DLL&per.
+different kinds of FAT, like&colon. FAT12, FAT16, FAT32, exFAT&per. Since then, all functionality was moved to a single UUNIFAT&per.DLL&per.
 If user calls "format d: /fs&colon.fat12", UFAT12&per.DLL is loaded&per. UFAT12 forwards all calls to the same routines in UUNIFAT&per. So,
 all filesystems are handled by UUNIFAT&per.DLL&per. Note that all four kinds of FAT are handled by a single code, because they are very
-similar, and use the same routines, with a few differences&per. So creating four almost identical DLL&apos.s is a bad idea, the same way as
+similar, and use the same routines, with a few differences&per. So creating four almost identical DLL&apos.s would be a bad idea, the same way as
 creating four IFS drivers for each FAT flavour&per.
 
 :h3 id=30047 res=31045.CHKDSK
@@ -1882,6 +1886,8 @@ is implemented in the main DLL, and is redirected to it&per.
 The Fat32Format program was used as a base, see http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm &per.
 
 :p. The Fat32Format program is licensed as GPL too, like FAT32&per.IFS is&per.
+
+:p. Fat32Format 1&per.07 is (c) Tom Thornhill 2007,2008,2009&per.
 
 :p.For FORMAT the following options are implemented&colon.
 
@@ -1998,7 +2004,26 @@ for a FAT drive&per.
 and several FreeLDR main files&per. No OS2BOOT is installed at this moment as it is not yet
 implemented&per. You can add more files from standard FreeLDR installation, if you need&per.
 
-:p.The SYS command is supported for FAT12/FAT16/FAT32 at the moment&per.
+:p.The SYS command is supported for FAT12/FAT16/FAT32/exFAT&per.
+
+:h2 id=20055 res=30069.QEMUIMG&per.DLL
+
+:p.:hp2.QEMUIMG&per.DLL&colon. :ehp2.
+
+:p.QEMUIMG&per.DLL contains support for different disk image formats ported from QEMU 
+(http&colon.//www&per.qemu&per.org/)&per. It allows FAT32&per.IFS to mount the FAT 
+(FAT12/FAT16/FAT32/exFAT) filesystems contained in files of the following 
+formats&colon. :hp2.Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi&per. :ehp2. These are 
+mostly virtual machine disk images of different VM's like Bochs, VirtualPC, VirtualBox, QEMU, VMWare etc&per.
+Also, RAW images are supported, like diskette images&per. See :link reftype=hd refid=20054.F32MOUNT&per.EXE
+:elink. for more details on how to mount different file system images with FAT32&per.IFS&per.
+
+:p.For successful mounting of the disk images, a running :link reftype=hd refid=20045.CACHEF32&per.EXE :elink. 
+daemon is required&per. The daemon contains a special thread polling the IFS for OPEN/READ/WRITE/CLOSE 
+requests, executing these requests and returning the results back, via a shared memory buffer&per.
+
+:p.QEMUIMG&per.DLL is a shared component&per. It is loaded by both :link reftype=hd 
+refid=20045.CACHEF32&per.EXE :elink. and :link reftype=hd refid=20054.F32MOUNT&per.EXE :elink.
 
 :h2 id=20048 res=32044.FAT32FMT&per.EXE
 
@@ -2151,7 +2176,7 @@ VMWare (&per.VMDK), VirtualBox (&per.VDI), QEMU (QCOW and QCOW2), Macintosh DMG,
 (images used by Knoppix LiveCD), Parallels, VVFAT, and plain RAW images&per.
 
 :p. The images can be mounted at the directory, serving as a mount point&per. The directory should
-be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem should be FAT12/FAT16/FAt32/exFAT
+be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem should be FAT12/FAT16/FAT32/exFAT
 too&per. So, you can access the image filesystem by changing the directory to the selected mount
 point subdirectory&per.
 
@@ -2999,7 +3024,7 @@ UUNIFAT&per.DLL utility DLL with four forwarders&colon. UFAT12&per.DLL, UFAT16&p
 taken by the kernel from an IFS&apos. FS_NAME exported variable&per. (Please read about it in IFS&per.INF file)&per. This value
 is 8 bytes long and should not change since IFS is initialized&per. So, we are unable to change it to the "actual" file system
 name&per. It is a string used for IFS identification&per. If an IFS supports more than one filesystem, this variable should be 
-the same&per. Examples of such IFS&apos.es are Netdrive and vfat-os2&per.ifs&per. Netdrive always show "Netdrive" as its 
+the same&per. Examples of such IFS&apos.es are Netdrive and vfat-os2&per.ifs&per. Netdrive always shows "Netdrive" as its 
 identification&per. Vfat-os2&per.ifs used the "vfat" word for that purpose&per. Except for VFAT drives, it also supported
 limited read only NTFS access&per. But the IFS identification still was "vfat"&per. The same is done by FAT32&per.IFS&per.
 There were suggestions to divide it to three different IFS drivers, for FAT, FAT32 and EXFAT&per. But this is not feasible

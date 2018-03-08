@@ -15,7 +15,7 @@
 #include "fat32ifs.h"
 
 PUBLIC BYTE  pascal FS_NAME[8]    ="FAT32";
-PUBLIC ULONG pascal FS_ATTRIBUTE = FSA_LVL7 | FSA_LOCK;
+PUBLIC ULONG pascal FS_ATTRIBUTE = FSA_LVL7;
 
 PUBLIC ULONG     Device_Help = 0L;
 PUBLIC PVOLINFO  pGlobVolInfo = NULL;
