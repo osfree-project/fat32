@@ -55,12 +55,12 @@ Adrian Gschwend @ netlabs.org
 
 
 ==============================================
-MAKING ECS AND OS/2 RECOGNIZE FAT32 PARTITIONS:
+MAKING OS/2 RECOGNIZE FAT32 PARTITIONS:
 ==============================================
 
 EComStation and OS/2 by themselves do not recognize FAT32 partitions.  This means
 that installing the FAT32 IFS (installable file system) is useless if we cannot
-make eCS and OS/2 recognize them. There are several ways this is done.
+make OS/2 recognize them. There are several ways this is done.
 
 Logical Volume Manager (LVM)
 Partition Support Packages for non-LVM Systems
@@ -311,7 +311,7 @@ letter.
 Go to the location where you downloaded the *.wpi file.
 Double click to start the installation.
 When installation is completed, the installation will have copied the following
-files to your eCS\OS2 partition:
+files to your OS/2 partition:
 
 Note: The placement of files is not relevant to install/deinstall. WarpIN will
 take care of that.
@@ -1193,22 +1193,80 @@ be smaller. A FAT32 partition can contain files up to 4GB in size. The 4GB is
 the limit of FAT32 file system itself. Files less than 2GB can be copied or
 moved to a FAT32 partition. Files larger than 2GB cannot be read by some
 programs such as xcopy. It appears that xcopy itself does not support files
-greater than 2GB.
+greater than 2GB. Note by Valery Sedletski:. I tested FAT32.IFS on hard disks with 
+sizes up to 1 TB -- I have a 1 TB USB hard disk formatted as FAT32, and it works fine.
+Also, flash sticks can have unlimited size -- 2 GB is a limit for SD cards, 32 GB is the 
+limit for SDHC cards, and 2 TB is the limit for SDXC cards. SDXC cards are formatted
+as exFAT on the factory, but can be optionally reformatted to FAT32, if preferred.
+I have a 128 GB microSDXC card, which I reformatted as FAT32, it works fine with 
+FAT32.IFS. Note that FAT32.IFS supports exFAT too. 2 GB file size is the limit of some 
+softrware, not supporting 64-bit file size. So, such software, including most 
+16-bit IFS-es, support 32-bit signed file size, 2^31 == 2 GB. But currently,
+we added support for 64-bit file size (aka "large file support") into FAT32.IFS.
+Large file support is enabled on FAT32.IFS, if "/largefile" is specified in 
+FAT32.IFS command line. FAT family filesystems (FAT12/FAT16/FAT32), however, 
+have a 32-bit field for file size in each directory entry, which limits file size 
+to 4 GB == 2^32 bytes. A cluster chain in the FAT table, however, can be
+unlimited. This allows for files with unlimited size, if we'll store full
+64-bit file size elsewhere, but not in the directory entry. FAT+ extension
+stores bits 32-34 in unused 0-2 bits of "EA mark byte". This allows for file
+sizes up to 32 GB. If the file size is even bigger, the full 64-bit file size
+can be stored in special FAT_PLUS_FSZ EA. EA's should be enabled with
+"/eas" switch, of course. Also, for FAT+ support to be enabled, you'll need to
+add the "/plus" switch to FAT32.IFS command line. Note that
+file size is 64-bit in exFAT, so extensions like FAT+ are not required
+here.
 
-It only supports disks with a sector size of 512 bytes. (Are there others?)
+Starting from FAT32.IFS v. 0.10, now clusters of sizes up to 64 KB
+are supported on FAT12/FAT16/FAT32. However, MS discourages the use of
+64 KB clusters, because such clusters may crash older MS OS-es like Win95
+or MSDOS, causing division by zero. But if you don't have such OS-es
+on your machine, such filesystems with 64 KB clusters may be useful, for
+example, you can use a 4 GB FAT16 partition as a SADUMP partition.
+Clusters of sizes up to 32 MB are supported on exFAT partitions.
 
-You cannot BOOT from a FAT32 partition.
+FAT32.IFS previously supported only disks with a sector size of 
+512 bytes. However, this has been changed in FAT32.IFS ver. 0.10. 
+CD/DVD/BD have 2048-byte sectors; MO drives have 1024-byte sectors. 
+Also, some modern hard disks support 4096-byte sectors, though, 
+these big sectors are seen by disk firmware, only. Every OS still 
+sees 512-byte "virtual" sectors. Also, I heard of some unusual USB 
+hard disks with 4096-byte sectors, visible to an OS. Such hard 
+drives are, of course, currently unsupported by OS/2, but this 
+can change in the future. FAT32.IFS supports non-512-byte sectors&per. 
+Sector size is detected according to BIOS parameter block.But such 
+non-512-byte sectors are supported on CD/DVD/BD and MO drives, only. 
+Hard disks are limited to 512-byte sectors on OS/2.). Yes, FAT32.IFS 
+supports not only hard disks, but other media like MO drives (they are not 
+tested, though), floppies or CD/DVD/BD disks. See "Using CDRW's with 
+FAT16/FAT32/exFAT filesystem" section for more info.
 
-You cannot place the SWAPPER.DAT on a FAT32 partition.
+You cannot BOOT OS/2 yet from a FAT32 partition as it done for HPFS/JFS. 
+This can change some day, though. Currently, SYSINSTX installs the FreeLDR 
+bootblock, so you can boot it from that partition. Later, a conventional 
+miniFSD support will be added, so you'll be able to boot OS/2 the same way
+as HPFS/JFS. Note also that booting OS/2 from FAT (FAT12/FAT16/FAT32/exFAT) 
+is possible with FreeLDR and its OS/2 booter, bootos2.mdl (used in Team Boot/2 
+boot disk -- universal OS/2 rescue/live system, supporting CD/flash/harddisk/etc 
+media).
+
+You cannot place the SWAPPER.DAT on a FAT32 partition yet. However,
+there is some incomplete swapping support written, and some day it will support
+swapping on FAT (FAT12/FAT16/FAT32/exFAT) partitions.
 
 CHKDSK can diagnose a disk, but will only FIX lost clusters and an incorrect
 free space count. For all other errors, you'll need to run Windows and start
 SCANDISK to fix the problem.
 
-CHKDSK will always convert lost clusters to files and NEVER to directories. if
-you want that, use SCANDISK.
+CHKDSK will always convert lost clusters to files and NEVER to directories. If
+you want that, use WinNT CHKDSK. Note by Valery Sedletski: In FAT32.IFS v. 0.10, 
+CHKDSK saves lost chains into new subdirectory on each CHKDSK run. So, this 
+limitation also has been overcome.
 
-The FORMAT, RECOVER and SYSINSTX commands are not supported.
+The RECOVER command is not yet supported. FORMAT and SYSINSTX are supported
+in FAT32.IFS v. 0.10, since some revision. SYSINSTX, however,
+still does not support os2boot (a miniFSD). Currently, SYSINSTX only writes
+a bootblock of FreeLDR (a bootloader developed by the osFree project).
 
 Only last access date (and not last access time) is maintained by FAT32.IFS.
 This is similar to Win95 (OSR2).
@@ -1250,7 +1308,7 @@ This is tested successfully too. For example, I have two flash sticks, one is 51
 second is 2 GB. Both working like a charm.   
 
 Also, there were FAT16-only old mp3 players, like I had in the beginning of 2000's. It's 
-size was 256 MB ant it was formatted with FAT16. It looks that FAT32 is unsupported by the 
+size was 256 MB and it was formatted with FAT16. It looks that FAT32 is unsupported by the 
 firmware. These days, I copied files via WPS with creating the .LONGNAME EA's, then used 
 vfat2ea utility to convert .LONGNAME EA's to VFAT LFN's. Now this technique is obsolete. 
 FAT16 with VFAT LFN's can be directly supported by FAT32.IFS.   
@@ -1292,14 +1350,16 @@ system detection of the device as a fixed type, and then detaching and re-attach
 device so changes are recognized.
 
 Partitionable USB drives are seen by the system as if they were "normal" hard disks, so
-to get them to work with eCS or OS/2, you have the usual limitations: -OS2DASD.DMD must
-be at a certain level for large drives to be fully recognized. -Also, volumes must be
-created (and have sticky drive letters assigned if they are to be accessed) either from
-existing partitions, or from unassigned space areas within the "disk". Partitions on
-these devices should also have their proper types set (i.e. 0B/0C for FAT32, 07 for
-HPFS/NTFS/exFAT, 06 for FAT16, etc.) in order to avoid problems.
+to get them to work with OS/2, you have the usual limitations: 
 
-With recent versions of Lars' Erdmann's USB drivers, Large floppies with FAT/FAT32/EXFAT 
+-OS2DASD.DMD must be at a certain level for large drives to be fully recognized. 
+-Also, volumes must be created (and have sticky drive letters assigned if they are to 
+be accessed) either from existing partitions, or from unassigned space areas within 
+the "disk". 
+-Partitions on these devices should also have their proper types set (i.e. 0B/0C for 
+FAT32, 07 for HPFS/NTFS/exFAT, 06 for FAT16, etc.) in order to avoid problems.
+
+With recent versions of Lars' Erdmann's USB drivers, Large floppies with FAT/FAT32/exFAT 
 filesystem can be emulated on USBMSD driver level. The driver just emulates the 1st track 
 with MBR and partition table, and DLAT sector with LVM info. This allows to see Large 
 Floppy media created by Windows, with FAT32.IFS.
@@ -1369,7 +1429,7 @@ cannot be read by the IBM drivers {LVM included). To overcome this, try the foll
 
  a.Get to a Windows machine and reformat the drive.
 
- b.Then boot to DFSee (in my opinion, this is a must utility for every eCS and OS/2 user).
+ b.Then boot to DFSee (in my opinion, this is a must utility for every OS/2 user).
 If you don't have it, download the latest version. It can be used in demo mode.
 
  c.Using DFSee, create a new Master Boot Record with the tables erased.
@@ -1419,7 +1479,7 @@ Other formatting alternatives
 FreeDOS <= 16 GB
 Partition Commander versions 8 and 9 (Limitations unknown)
 
-Note:  After formatting, always run chkdsk under eCS if using the OS/2 FAT32 driver. This
+Note:  After formatting, always run chkdsk under OS/2 if using the OS/2 FAT32 driver. This
 is probably true for any filesystem used.
 
 If you still cannot get your drive to work, you can try the next steps.
@@ -1458,7 +1518,7 @@ work with the latest IBM drivers, you might try downloading some of the earlier
 versions of the USB drivers from the eComStation ftp site. The closer the IBM
 drivers are to the date of his released driver, the greater the chance of his
 driver working. Since he does not have access to the latest code, he had to use
-the the last available code from the DDK site. If you have a usbcalls.dll on
+the last available code from the DDK site. If you have a usbcalls.dll on
 your eComStation system, replace it with Martin's fixed usbcalls.dll. The driver
 has been patched to fix a nasty bug.
 
@@ -1572,26 +1632,26 @@ remote machines are likely to suffer problems with long file names. To be more
 precise:
 
 If you have Windows NT, Windows 2000, Windows XP or newer, your long file names
-(LFNs) are fully interoperable between eCS/OS2 and a Windows system over a
+(LFNs) are fully interoperable between OS/2 and a Windows system over a
 network.
 
 If your Windows system is older than that (Windows 95, 98, and ME), you can work
-flawlessly with LFNs on a remote eCS/OS2 machine from the Windows PC; however,
+flawlessly with LFNs on a remote OS/2 machine from the Windows PC; however,
 it doesn't work the other way round. I.e. the Windows remote machine will show
-LFNs to its other Windows pals in the network, but your eCS/OS2 machine will be
+LFNs to its other Windows pals in the network, but your OS/2 machine will be
 served just short filenames instead.
 
 Why?
 
 This is because of how each PC on the LAN identifies itself and its capabilities
-to the other PCs in the network. eCS/OS2 says to the other machines it uses LM10
+to the other PCs in the network. OS/2 says to the other machines it uses LM10
 for compatibility's sake, which makes win9x machines treat this one like it were
 DOS+W3.11 (i.e. no LFNs). According to IBM, it can do LM30 perfectly - but do
 NOT try to patch the binaries or you'll get a trap.  Oh well, this is just plain
 IBM's fault.
 
-OK, eCS/OS2 says it's LM10 and we can't blame Microsoft for that. However, other
-LAN eCS/OS2 pals have no difficulties whatsoever identifying the OS/2 behind
+OK, OS/2 says it's LM10 and we can't blame Microsoft for that. However, other
+LAN OS/2 pals have no difficulties whatsoever identifying the OS/2 behind
 this 'LM10' label and allowing LFN operation without trouble.
 
 As of 2003 Q2 there hasn't been a release of this patch for win9x networking (as
@@ -2013,12 +2073,12 @@ to the drive
 Try runnng chkdsk <drive>: /F on the drive in question.  It could be that the
 drive still contains a dirty flag.
 
-In addition to being unable to read/write to the drive, OS/2 or eCS tells you
+In addition to being unable to read/write to the drive, OS/2 tells you
 the unit is 32Mb large or some other incorrect size
 
 Try creating a new Master Boot Record (MBR) with the partition tables erased.
 DFSee is a good program to do this.  If you have LVM, then create a new partition
-using it.  If you do not have LVM, then use OS/2s FDISK. to create the new partition.
+using it.  If you do not have LVM, then use OS/2's FDISK, to create the new partition.
 Remember, for non-removable hard drives using LVM, a compatibility volume must be
 created.  Unfortunately, this means that all data on the drive will be lost. Backup
 or copy your data and files to another drive.
@@ -2090,7 +2150,7 @@ There are 5 things you can do:
 
 Just ignore the error message
 Don't use VFdisk
-Add the the statement EARLYMEMINIT=TRUE to the config.sys file.
+Add the statement EARLYMEMINIT=TRUE to the config.sys file.
 
 This setting allows device drivers, etc., access to the memory above 16mb early in
 boot. Previously, this was only available after Device Driver and IFS initialization
@@ -3841,7 +3901,7 @@ Contact:
 -------
 
 Adrian Gschwend at ktk@netlabs.org if you have some FAT32 patches, or you can
-join the #netlabs channel atirc.anduin.net (IRC). My nick is ktk, Brian Smith is
+join the #netlabs channel at irc.freenode.net (FreeNode IRC). My nick is ktk, Brian Smith is
 nuke.
 
 KO Myung-Hun at komh@chollian.net concerning issues dealing the FAT32 code
@@ -4076,3 +4136,27 @@ More information about GNU Software can be found at http://www.gnu.org
 Adrian Gschwend <ktk@netlabs.org>
 
 http://www.netlabs.org
+
+
+Addition from 12. March 2018:
+
+There are some code we borrowed from other projects,
+which have their respective licenses (GPL-compatible):
+
+1) FORMAT is based on Fat32Format, (c) Tom Thornhill,
+licensed as GPL (no strict version),
+http://www.ridgecrop.demon.co.uk/index.htm?fat32format.htm;
+
+2) QEMUIMG.DLL is based on QEMU code, (c) Fabrice Bellard and 
+contributors, licensed as GPL, version 2 (not higher),
+http://www.qemu.org
+
+3) PARTFILT.FLT is (c) Deon van der Westhuysen, 1995; 
+licensed as GPL, version 2, or any later version (at your option)
+
+4) zlib is (c) Mark Adler, Jean-loup Gailly, licensed as a 
+3-clause BSD license (see zlib.h)
+
+Valery V. Sedletski <_valerius@mail.ru>
+
+http://osfree.org

@@ -86,35 +86,13 @@ stored on your hard disks&per.
 
 :p.Adrian Gschwend &atsign. netlabs&per.org :ehp2.  
 
-:h1 id=100 res=30100.Features
+:h1 id=2 res=30002.Making OS/2 Recognize FAT32 Partitions
 
-:p.:hp2.Features :ehp2.
-
-:ul.
-
-:li. 64 KB clusters support
-:li. support for files up to 4 GB
-:li. support for VFAT on FAT12/FAT16 (for that, you should specify /fat key for fat32.ifs).
-:li. exFAT support ("/exfat" switch is required).)
-:li. Support for FAT+ (a /plus switch is required).
-:li. Supported different media, like floppies (physical and virtual), CD's, 
-flash sticks and hard disks with FAT12/FAT16/FAT32/exFAT filesystems. For 
-all these media types, FORMAT/CHKDSK/SYS should work.
-:li. Support for mounting FAT12/16/32/ex filesystem images on a FAT12/16/32/ex 
-disk subdirectory. Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi 
-formats are supported. (qemu code was used for support of VM images). For 
-partitioned images, a partition number could be specified. Support for 
-CHKDSK/FORMAT/SYSINSTX on a mounted image (this feature is alpha-quality, yet). 
-
-:eul.
-
-:h1 id=2 res=30002.Making eCS/OS2 Recognize FAT32 Partitions
-
-:p.:hp2.MAKING ECS AND OS/2 RECOGNIZE FAT32 PARTITIONS&colon. :ehp2.  
+:p.:hp2.MAKING OS/2 RECOGNIZE FAT32 PARTITIONS&colon. :ehp2.  
 
 :p.EComStation and OS/2 by themselves do not recognize FAT32 partitions&per.  
 This means that installing the FAT32 IFS (installable file system) is useless if we 
-cannot make eCS and OS/2 recognize them&per. There are several ways this is done&per. 
+cannot make OS/2 recognize them&per. There are several ways this is done&per. 
 
 :p.:link reftype=hd refid=3.Logical Volume Manager (LVM) :elink.
 .br 
@@ -162,7 +140,7 @@ OS2DASD&per.DMD with these systems! :ehp8.
 
 :p.:hp2.PARTITION SUPPORT PACKAGES FOR NON-LVM SYSTEMS&colon. :ehp2.
 
-:p.For this installable file system to access FAT32 media, first eCS/OS2 has to 
+:p.For this installable file system to access FAT32 media, first OS/2 has to 
 be able to assign them a drive letter&per. You already can do this in LVM systems
 &per. For non-LVM systems you need a &osq.partition support&osq. package&per.  
 Presently, there are three such packages available&per. 
@@ -897,7 +875,7 @@ partition sequence number&per.
 
 :p.:hp2.TWO EXAMPLES OF PARTFILT OUTPUT&colon. :ehp2.
 
-:p.&per.:link reftype=hd refid=28.EXAMPLE OF PARTFILT WITHOUT OPTIONS :elink.
+:p.:link reftype=hd refid=28.EXAMPLE OF PARTFILT WITHOUT OPTIONS :elink.
 
 :p.:link reftype=hd refid=29.EXAMPLE OF PARTFILT OUTPUT WITH /P 0B AS ARGUMENT :elink.
 .br 
@@ -1064,56 +1042,53 @@ Reboot&per.
 format a volume FAT32 under either eComStation or OS/2 was to use DFSee and F32blank 
 together&per. The procedure is as follows&colon. 
 
-:p. 1&per.Find out the volume relevant data&colon. Heads, Sectors, Starting point 
+:ol.
+:li.Find out the volume relevant data&colon. Heads, Sectors, Starting point 
 and Size using DFSee 
-.br 
- 2&per.Feed F32Blank with that data to generate a file with blank FATs suitable 
+:li.Feed F32Blank with that data to generate a file with blank FATs suitable 
 for the volume 
-.br 
- 3&per.Detach the volume (with LVM it&apos.s called &apos.hide&apos. or similar) 
-.br 
- 4&per.Use DFSee to overwrite the volume with the file contents, using &osq.wrim
+:li.Detach the volume (with LVM it&apos.s called &apos.hide&apos. or similar) 
+:li.Use DFSee to overwrite the volume with the file contents, using &osq.wrim
 &osq.&per. 
-.br 
- 5&per.Attach again the volume&per. 
-.br 
- 6&per.If after this you can&apos.t read/write properly the volume or it appears 
+:li.Attach again the volume&per. 
+:li.If after this you can&apos.t read/write properly the volume or it appears 
 as not empty, then you MUST reboot and check it again&per. 
-.br 
- 7&per.If you don&apos.t like DFSee go and find something else capable of doing 
+:li.If you don&apos.t like DFSee go and find something else capable of doing 
 the job&per. 
-.br 
+:eol. 
 
 :p.If this is too complicated for some people, the USB media can also be formatted 
 using one of the Window&apos.s versions&per. Each Windows version has it own built in 
 limitations&per. 
 
-:p.Win95R2 <= 16 GB 
-.br 
-Windows 98 second addition - Volumes < 128 GB and > 512 MB 
-.br 
-Windows ME - 512 MB to 2 TB&per. 
-.br 
-Windows XP <= 32 GB&per. 
-.br 
+:ul.
+:li.Win95R2 <= 16 GB 
+:li.Windows 98 second addition - Volumes < 128 GB and > 512 MB 
+:li.Windows ME - 512 MB to 2 TB&per. 
+:li.Windows XP <= 32 GB&per. 
+:eul. 
 
 :p.Other formatting alternatives 
 
-:p.FreeDOS <= 16 GB 
-.br 
-Partition Commander versions 8 and 9 (Limitations unknown) 
-.br 
+:ul.
+:li.FreeDOS <= 16 GB 
+:li.Partition Commander versions 8 and 9 (Limitations unknown) 
+:eul.
 
 :p.Native OS/2 programs, allowing to format FAT32 disks:
 
-:p.Reformat, by Glassman (http&colon.//ru&per.ecomstation&per.ru/projects/disktools/?action=reformat)
-.br
- DFSee 8.x and later, by Jan van Wijk (http&colon.//www&per.dfsee&per.com/)&per.
-.br
+:ul.
+:li.Reformat, by Glassman (http&colon.//ru&per.ecomstation&per.ru/projects/disktools/?action=reformat)
+:li.DFSee 8.x and later, by Jan van Wijk (http&colon.//www&per.dfsee&per.com/)
+:eul.
 
-:p. Since FAT32&per.IFS 0&per.10, new FORMAT routine is supported&per. We ported to OS/2 a
-Windows program called Fat32Format (http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm)&per. Now it enhanced to support all FAT flavours 
-supported, that is&colon. FAT12, FAT16, FAT32, EXFAT&per.
+:p.Also, except those, there is QSINIT, by _dixie_, which is able 
+to format its ramdisks and hard disk partitions into FAT/FAT32/exFAT filesystems&per.
+
+:p. Since FAT32&per.IFS 0&per.10, new :link reftype=hd refid=30048.FORMAT :elink. routine is supported&per. We ported to OS/2 a
+Windows program called Fat32Format (http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm)&per. 
+Now it is enhanced to support all FAT flavours supported, that is&colon. 
+FAT12, FAT16, FAT32, EXFAT&per.
 .br
 
 :p. The procedure of formatting is straightforward&colon. you just use FORMAT&per.COM
@@ -1151,6 +1126,8 @@ at the moment, but it has its own advantages too).
 :p.The latest version of WarpIN is required and can be downloaded from&colon. 
 
 :lines align=center.
+.br
+.br
 :hp2.http&colon.//www&per.xworkplace&per.org:ehp2.
 .br 
 :elines.
@@ -1165,7 +1142,7 @@ drive letter&per.
 :p. 4&per.Double click to start the installation&per. 
 
 :p. 5&per.When installation is completed, the installation will have copied the 
-following files to your eCS&bsl.OS2 partition&colon. 
+following files to your OS/2 partition&colon. 
 
 :p.:hp2.Note&colon.  :ehp2.The placement of files is not relevant to install/deinstall&per. 
 The &per.wpi will take care of that&per. The default directories will be BIN, BOOK, 
@@ -1182,32 +1159,66 @@ PATH/LIBPATH, etc&per.&per.
 .br 
 CACHEF32&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
 .br 
-F32STAT&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+DISKDUMP&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
+F32CHK&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
 .br 
 F32MON&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
 .br 
+F32MOUNT&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
 F32PARTS&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
 .br 
+F32STAT&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
+FAT32CHK&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
+FAT32FMT&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
+FAT32SYS&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
+QEMU-IMG&per.EXE &bsl.TOOLS&bsl.SYSTEM&bsl.BIN 
+.br 
 
+.br 
+OS2DASD&per.F32 &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT 
+.br 
+PARTFILT&per.FLT &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT 
 .br 
 FAT32&per.IFS &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT 
 .br 
 
 .br 
-UUNIFAT&per.DLL and forwarders &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+QEMUIMG&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+.br 
+UEXFAT&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+.br 
+UFAT12&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+.br 
+UFAT16&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+.br 
+UFAT32&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
+.br 
+UUNIFAT&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
 .br 
 
 .br 
 FAT32&per.INF &bsl.TOOLS&bsl.SYSTEM&bsl.BOOK 
 .br 
-
-.br 
-FAT32&per.TXT &bsl.TOOLS&bsl.SYSTEM&bsl.BOOK 
+IFS&per.INF &bsl.TOOLS&bsl.SYSTEM&bsl.BOOK 
 .br 
 
 .br 
-FAT32&per.KOR &bsl.TOOLS&bsl.SYSTEM&bsl.BOOK (Only if you chose to install 
+FAT32&per.TXT &bsl.TOOLS&bsl.SYSTEM&bsl.DOCS
+.br 
+
+.br 
+FAT32&per.KOR &bsl.OS2&bsl.SYSTEM (Only if you chose to install 
 Korean support) 
+.br 
+
+.br 
+TRC00FE&per.TFF &bsl.OS2&bsl.SYSTEM&bsl.TRACE (Only if you need system trace files for debugging)
 .br 
 
 .br 
@@ -1367,13 +1378,15 @@ manually or using WarpIN, copy the following files to your &bsl.OS2 directory&co
 .br 
 DISKDUMP&per.EXE 
 .br 
-F32STAT&per.EXE 
+F32CHK&per.EXE 
+.br 
+F32MON&per.EXE 
+.br 
+F32MOUNT&per.EXE 
 .br 
 F32PARTS&per.EXE 
 .br 
-F32MON&per.EXE 
-.br
-F32CHK&per.EXE
+F32STAT&per.EXE 
 .br
 FAT32CHK&per.EXE
 .br
@@ -1381,10 +1394,12 @@ FAT32FMT&per.EXE
 .br
 FAT32SYS&per.EXE
 .br
+QEMU-IMG&per.EXE
+.br
 
 :p.Copy the following files to your &bsl.OS2&bsl.DLL directory&colon. 
  
-:p.UUNIFAT&per.DLL / UFAT12&per.DLL / UFAT16&per.DLL/ UFAT32&per.DLL / UEXFAT&per.DLL
+:p.UUNIFAT&per.DLL / UFAT12&per.DLL / UFAT16&per.DLL/ UFAT32&per.DLL / UEXFAT&per.DLL / QEMUIMG&per.DLL
 
 :p.Copy the following files to your &bsl.OS2&bsl.BOOT&colon.
 
@@ -1394,9 +1409,9 @@ FAT32SYS&per.EXE
 :p.Copy documentation files to your &bsl.OS2&bsl.DOCS&bsl.FAT32 directory&colon.
 .br
 
-:p.Copy *&per.INF files to your &bsl.OS2&bsl.BOOT directory&colon.
+:p.Copy *&per.INF files to your &bsl.OS2&bsl.BOOK directory&colon.
 .br
-IFS&perINF
+IFS&per.INF
 .br
 FAT32&per.INF
 .br
@@ -1440,31 +1455,33 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 
 :p.:hp2.FAT32 IFS COMPONENTS AND SWITCHES&colon. :ehp2.
 
-:p.:link reftype=hd refid=20041.FILES IN THIS VERSION :elink.
+:ul.
 
-:p.:link reftype=hd refid=20042.FAT32&per.IFS :elink.
+:li.:link reftype=hd refid=20041.FILES IN THIS VERSION :elink.
 
-:p.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.
+:li.:link reftype=hd refid=20042.FAT32&per.IFS :elink.
 
-:p.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.
+:li.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.
 
-:p.:link reftype=hd refid=20055.QEMUIMG&per.DLL :elink.
+:li.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.
 
-:p. :link reftype=hd refid=20048.FAT32FMT&per.EXE :elink. 
+:li.:link reftype=hd refid=20055.QEMUIMG&per.DLL :elink.
 
-:p. :link reftype=hd refid=20049.FAT32CHK&per.EXE :elink. 
+:li.:link reftype=hd refid=20048.FAT32FMT&per.EXE :elink. 
 
-:p. :link reftype=hd refid=20050.FAT32SYS&per.EXE :elink. 
+:li.:link reftype=hd refid=20049.FAT32CHK&per.EXE :elink. 
 
-:p. :link reftype=hd refid=20051.F32CHK&per.EXE :elink. 
+:li.:link reftype=hd refid=20050.FAT32SYS&per.EXE :elink. 
 
-:p.:link reftype=hd refid=20052.F32MON&per.EXE :elink.
+:li.:link reftype=hd refid=20051.F32CHK&per.EXE :elink. 
 
-:p. :link reftype=hd refid=20053.F32STAT&per.EXE :elink. 
+:li.:link reftype=hd refid=20052.F32MON&per.EXE :elink.
 
-:p. :link reftype=hd refid=20054.F32MOUNT&per.EXE :elink. 
+:li.:link reftype=hd refid=20053.F32STAT&per.EXE :elink. 
 
-.br 
+:li.:link reftype=hd refid=20054.F32MOUNT&per.EXE :elink. 
+
+:eul.
 
 :h2 id=20041 res=30039.Files in this Version
 
@@ -1474,10 +1491,14 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 
 :p.:hp2.FAT32&per.INF :ehp2.This file&per. 
 
+:p.:hp2.IFS&per.INF :ehp2.Updated IBM&apos.s IFS document&per. 
+
 :p.:hp2.FAT32&per.TXT :ehp2.Fat32 information in plain ASCII txt format (may be outdated)
 &per. 
 
 :p.:hp2.:link reftype=hd refid=20042.FAT32&per.IFS :elink.:ehp2.The actual IFS&per. 
+
+:p.:hp2.:link reftype=hd refid=18.PARTFILT&per.FLT:elink.:ehp2.Partition support filter (non-LVM systems, only)&per. 
 
 :p.:hp2.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.:ehp2.The cache helper program&per. 
 
@@ -1487,7 +1508,7 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 
 :p.:hp2.:link reftype=hd refid=20051.F32CHK&per.EXE :elink.:ehp2. A boot disk autocheck helper&per. 
 
-:p.:hp2.:link reftype=hd refid=50.F32STAT&per.EXE :elink.:ehp2. A program to change the DIRTY flag of FAT32 partitions&per. 
+:p.:hp2.:link reftype=hd refid=20053.F32STAT&per.EXE :elink.:ehp2. A program to change the DIRTY flag of FAT32 partitions&per. 
 
 :p.:hp2.:link reftype=hd refid=20054.F32MOUNT&per.EXE :elink. :ehp2. A mounter program for file system images&per.
 
@@ -1606,7 +1627,7 @@ letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.*
 filesystems&per. (beta-quality)&per. Minus denotes that the following drive letters should be disabled, so this is a 
 "blacklist"-type mask&per.
 
-:p.:hp2./PLUS :ehp2. Enable FAT+ support (large files, bigger than 4 GB)&per.
+:p.:hp2./PLUS :ehp2. Enable :link reftype=hd refid=200702.Support for large files, bigger than 4 GB (FAT+) :elink.
 
 :p.:hp2.Note&colon.  :ehp2.If /FAT or /EXFAT or /FAT32 switches are not specified, all FAT32 disks are mounted
 by default&per. FAT12/FAT16 should work on any media&per. Floppies can be mounted too&per. Also, so far, we tested
@@ -1617,7 +1638,7 @@ tested with fat32.ifs&colon. VDISK&per.SYS by IBM (included into each OS/2 syste
 Erdmann, and SVDISK&per.SYS by Albert J. Shan, HD4DISK&per.ADD by _dixie_ (included with QSINIT boot loader)&per. The latter
 is successfully tested both with FAT32 PAE ramdisks and with EXFAT ramdisks in lower memory&per.
 
-:p.:hp2./MONITOR :ehp2.Set F32MON ON by default&per. If omitted F32MON is OFF&per. See :link reftype=hd refid=49.
+:p.:hp2./MONITOR :ehp2.Set F32MON ON by default&per. If omitted F32MON is OFF&per. See :link reftype=hd refid=20052.
 F32MON&per.EXE :elink.for more information&per. 
 
 :p.:hp2./RASECTORS&colon.n :ehp2.Read Ahead Sectors&per. Specifies the minimum number of 
@@ -1691,27 +1712,29 @@ disk on shutdown&per.
 
 :p.CACHEF32&per.EXE is a helper program with the following functions&colon. 
 
-:p.Check DISK state on boot, run CHKDSK if needed (but since FAT32&per.IFS 
+:ul.
+
+:li.Check DISK state on boot, run CHKDSK if needed (but since FAT32&per.IFS 
 versiom 0&per.10, CHKDSK is no more run from CACHEF32&per.EXE&per. It is run
 from the IFS FS_INIT routine, as it should be)&per.
-.br 
-Start the LAZY WRITE daemon&per. 
-.br 
-Set CACHE and READ-AHEAD parameters&per. 
-.br 
-Set Longname behavior&per. 
-.br 
-Load a CP to UNICODE translate table for longnames and the default codepage
-&per.
-.br
-
-:p. CACHEF32&per.EXE also runs a special helper thread executing a loop polling the IFS 
+:li.Start the LAZY WRITE daemon&per. 
+:li.Set CACHE and READ-AHEAD parameters&per. 
+:li.Set Longname behavior&per. 
+:li.Load a CP to UNICODE translate table for longnames and the default codepage
+&per. (Unicode translate table loading is moved to :link reftype=hd refid=20047.
+UUNIFAT&per.DLL :elink.&per. Now CACHEF32&per.EXE just calls corresponding function
+in this DLL&per.)
+:li.CACHEF32&per.EXE also runs a special helper thread executing a loop polling the IFS 
 for OPEN/READ/WRITE/CLOSE commands. So, this thread executes these commands and returns 
 results back to the IFS&per. This is required to support reading/writing sectors from/to 
-disk images laying on another file system&per. For reading the disk images, CACHEF32&perEXE 
-uses QEMUIMG&per.DLL, which contains the disk image access code ported from QEMU
-(http&colon.//www&per.qemu&per.org/)&per.
-.br 
+disk images laying on another file system&per. For reading the disk images, CACHEF32&per.EXE 
+uses :link reftype=hd refid=20055.QEMUIMG&per.DLL :elink., which contains the disk image 
+access code ported from QEMU (http&colon.//www&per.qemu&per.org/)&per.
+:li.CACHEF32&per.EXE also forces all FAT12/FAT16 drives to be remounted on startup&per.
+This is needed to cause these drives remounted by FAT32&per.IFS, instead of the
+in-kernel FAT driver&per. This is to avoid manual remount each time&per.
+
+:eul. 
 
 :p.When run in the foreground and CACHEF32 is already running, it displays the 
 CACHE parameters and allows you to modify the values&per. If no other copy of 
@@ -1772,15 +1795,60 @@ The /FL option was removed in version 0&per.98&per.
 :p.:link reftype=launch object='e.exe' data='e.exe config.sys'.:hp3.EDIT YOUR CONFIG&per.SYS :ehp3.:elink.
 .br 
   
-:h2 id=47 res=30044.UUNIFAT.DLL and forwarders
+:h2 id=20047 res=30044.UUNIFAT.DLL and forwarders
 
-:p.:hp2.UUNIFAT&per.DLL and four forwarder DLL&apos.s&colon. UFAT12/UFAT16/UFAT32/UEXFAT :ehp2. UUNIFAT&per.DLL is FAT file system utility DLL&per. It currently supports CHKDSK, 
-FORMAT and SYS commands&per. Previously, there was one DLL, UFAT32&per.DLL and it supported only FAT32 filesystem&per. Now FAT32&per.IFS supports
-different kinds of FAT, like&colon. FAT12, FAT16, FAT32, exFAT&per. Since then, all functionality was moved to a single UUNIFAT&per.DLL&per.
-If user calls "format d: /fs&colon.fat12", UFAT12&per.DLL is loaded&per. UFAT12 forwards all calls to the same routines in UUNIFAT&per. So,
-all filesystems are handled by UUNIFAT&per.DLL&per. Note that all four kinds of FAT are handled by a single code, because they are very
-similar, and use the same routines, with a few differences&per. So creating four almost identical DLL&apos.s would be a bad idea, the same way as
-creating four IFS drivers for each FAT flavour&per.
+:p.:hp2.UUNIFAT&per.DLL and four forwarder DLL&apos.s&colon. 
+UFAT12&per.DLL, UFAT16&per.DLL, UFAT32&per.DLL, UEXFAT&per.DLL&colon. :ehp2.
+
+:p.UUNIFAT&per.DLL is FAT file system utility DLL&per. It currently supports CHKDSK, 
+FORMAT and SYS routines&per. Previously, there was one DLL, UFAT32&per.DLL and it 
+supported only FAT32 filesystem&per. Now FAT32&per.IFS supports different kinds of 
+FAT, like&colon. FAT12, FAT16, FAT32, exFAT&per. Since then, all functionality was 
+moved to a single UUNIFAT&per.DLL&per.
+
+:p.If an user calls :hp2.format d: /fs&colon.fat12:ehp2., UFAT12&per.DLL is loaded&per. 
+UFAT12 forwards all calls to the same routines in UUNIFAT&per. So, all 
+filesystems are handled by UUNIFAT&per.DLL&per. Note that all four kinds 
+of FAT are handled by a single code, because they are very similar, and 
+use the same routines, with a few differences&per. So creating four 
+almost identical DLL&apos.s would be a bad idea, the same way as creating 
+four IFS drivers for each FAT flavour&per.
+
+:p.Except for CHKDSK, SYS, FORMAT routines, and a stub for a RECOVER routine,
+UUNIFAT&per.DLL also contains a function for loading the Unicode translate table&per.
+It is called by :link reftype=hd refid=20045. CACHEF32&per.EXE :elink. and 
+also, it is used by CHKDSK and SYS code in UUNIFAT&per.DLL itself, to allow
+using Unicode long file names&per.
+
+:p.:hp2.UUNIFAT&per.DLL contains the following exported 16-bit functions&colon. :ehp2.
+
+:p.short _Far16 _Pascal _loadds CHKDSK(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp);
+.br
+short _Far16 _Pascal _loadds RECOVER(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp);
+.br
+short _Far16 _Pascal _loadds SYS(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp);
+.br
+short _Far16 _Pascal _loadds FORMAT(short argc, char *_Seg16 *_Seg16 argv, char *_Seg16 *_Seg16 envp);
+.br
+BOOL _Far16 _Pascal _loadds LOADTRANSTBL(BOOL fSilent, UCHAR ucSource);
+.br
+
+:p.:hp2.And also the 32-bit versions of the same functions&colon. :ehp2.
+
+:p.int chkdsk(int argc, char *argv[], char *envp[]);
+.br
+int recover(int argc, char *argv[], char *envp[]);
+.br
+int sys(int argc, char *argv[], char *envp[]);
+.br
+int format(int argc, char *argv[], char *envp[]);
+.br
+BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource);
+.br
+
+:p.These could be used in the future pure 32-bit/64-bit versions of
+CHKDSK&per.COM, RECOVER&per.COM, SYSINSTX&per.COM, FORMAT&per.COM 
+frontend programs&per.
 
 :h3 id=30047 res=31045.CHKDSK
 
@@ -1869,7 +1937,7 @@ disk, leaves the disk marked as not properly shutdown&per. You should boot to
 Windows and run SCANDISK on the drive to fix the remaining problems&per. 
 
 :p.F32STAT however, allows you for set the drive status, bypassing the normal 
-handling of FAT32&per.IFS&per. See the description of :link reftype=hd refid=50.F32STAT :elink.for more information&per. 
+handling of FAT32&per.IFS&per. See the description of :link reftype=hd refid=20053.F32STAT :elink.for more information&per. 
 
 :h3 id=30048 res=31046.FORMAT
 
@@ -2013,10 +2081,25 @@ implemented&per. You can add more files from standard FreeLDR installation, if y
 :p.QEMUIMG&per.DLL contains support for different disk image formats ported from QEMU 
 (http&colon.//www&per.qemu&per.org/)&per. It allows FAT32&per.IFS to mount the FAT 
 (FAT12/FAT16/FAT32/exFAT) filesystems contained in files of the following 
-formats&colon. :hp2.Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi&per. :ehp2. These are 
-mostly virtual machine disk images of different VM's like Bochs, VirtualPC, VirtualBox, QEMU, VMWare etc&per.
-Also, RAW images are supported, like diskette images&per. See :link reftype=hd refid=20054.F32MOUNT&per.EXE
-:elink. for more details on how to mount different file system images with FAT32&per.IFS&per.
+formats&colon.
+
+:ul.
+:li.RAW
+:li.Bochs
+:li.Linux Cloop (CryptoLOOP, the format used by Knoppix LiveCD)
+:li.Macintosh &per.dmg
+:li.VirtualPC &per.vhd
+:li.VMWare &per.vmdk
+:li.Parallels
+:li.QEMU vvfat, qcow, qcow2 formats
+:li.VBox &per.vdi
+:eul.
+ 
+:p.These are mostly virtual machine disk images of different VM's like Bochs, VirtualPC, 
+VirtualBox, QEMU, VMWare etc&per. Also, RAW images are supported, like diskette 
+images&per. See :link reftype=hd refid=20054.F32MOUNT&per.EXE
+:elink. for more details on how to mount different file system images with 
+FAT32&per.IFS&per.
 
 :p.For successful mounting of the disk images, a running :link reftype=hd refid=20045.CACHEF32&per.EXE :elink. 
 daemon is required&per. The daemon contains a special thread polling the IFS for OPEN/READ/WRITE/CLOSE 
@@ -2046,7 +2129,7 @@ takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30047.CH
 :p.FAT32SYS&per.EXE is a standalone version of FAT SYS/SYSINSTX&per. It is equivalent to SYS routine and
 takes the same parameters&per. (Look here&colon. :link reftype=hd refid=30049.SYSINSTX&per.EXE :elink. for more info)&per.
 
-:h2 id=20047 res=32051.F32CHK&per.EXE
+:h2 id=20051 res=32051.F32CHK&per.EXE
 
 :p.:hp2.F32CHK&per.EXE&colon. :ehp2.  
 
@@ -2116,7 +2199,7 @@ no time is lost in screen handling&per.
 :p. :link reftype=launch object='cmd.exe' data='cmd.exe  '. :hp3.START COMMAND PROMPT :ehp3.
 .br 
 :elink.  
-:h2 id=50 res=30047.F32STAT.EXE
+:h2 id=20053 res=30047.F32STAT.EXE
 
 :p.:hp2.THE PURPOSE OF F32STAT&per.EXE&colon. :ehp2.  
 
@@ -2167,7 +2250,7 @@ Windows 95 (OSR2) and later Windows versions, SCANDISK will be started&per.
 
 :h2 id=20054 res=30074.F32MOUNT&per.EXE
 
-:p.:hp2.F32MOUNT&per.EXE:colon. :ehp2.
+:p.:hp2.F32MOUNT&per.EXE&colon. :ehp2.
 
 :p. F32MOUNT&per.EXE allows to mount the file system images, e&per.g&per., diskette images and hard
 disk images, or partitions inside hard disk images&per. Also, we have ported a library from QEMU,
@@ -2180,7 +2263,8 @@ be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem should be FAT1
 too&per. So, you can access the image filesystem by changing the directory to the selected mount
 point subdirectory&per.
 
-:p. The IFS uses CACHEF32&per.EXE as a helper&per. It loads the QEMUIMG&per.DLL library, which contains
+:p. The IFS uses :link reftype=hd refid=20045.CACHEF32&per.EXE :elink. as a helper&per. It 
+loads the :link reftype=hd refid=20055. QEMUIMG&per.DLL :elink. library, which contains 
 functions to read data inside the virtual VM disk images of the above mentioned formats&per.
 
 :p.The syntax is the following&colon.
@@ -2228,6 +2312,10 @@ the partition table&per.)&per. Force format to RAW&per.
 
 :p.:hp2.CURRENT STATUS AND FEATURES&colon. :ehp2.
 
+:p.:link reftype=hd refid=100.FEATURES :elink.
+
+:p.:link reftype=hd refid=101.TODO :elink.
+
 :p.:link reftype=hd refid=53.LIMITATIONS :elink.
 
 :p.:link reftype=hd refid=54.REMOVABLE MEDIA :elink.
@@ -2242,54 +2330,154 @@ the partition table&per.)&per. Force format to RAW&per.
 
 :p.:link reftype=hd refid=20069.FAQ :elink.
 
-:p.:link reftype=hd refid=20070.TIPS/HOWTO&apos.s :elink.
+:p.:link reftype=hd refid=20070.HOWTO&apos.s :elink.
 .br 
+
+:h2 id=100 res=30100.Features
+
+:p.:hp2.Features :ehp2.
+
+:ul.
+
+:li.64 KB clusters support on FAT12/FAT16/FAT32, clusters of up to 32 MB on exFAT
+:li.support for files up to 4 GB on standard FAT12/FAT16/FAT32
+:li.support for FAT+ extension (a /plus switch is required), so that, 64-bit file
+size is possible on FAT32
+:li.support for VFAT LFN&apos.s on FAT12/FAT16 (for that, you should specify /fat key for fat32.ifs).
+:li.EA&apos.s support (/eas switch for FAT32&per.IFS is required)
+:li.exFAT support ("/exfat" switch is required).)
+:li.support for media with different sector sizes, up to 4096 bytes (according
+to BIOS parameter block)
+:li.supported different media, like floppies (physical and virtual), CD's, 
+flash sticks and hard disks with FAT12/FAT16/FAT32/exFAT filesystems. For 
+all these media types, FORMAT/CHKDSK/SYS should work. Also, virtual disk
+drivers like virtual floppies (vfdisk&per.sys by Daniela Engert), virtual 
+hard disks (vdisk&per.sys by IBM, svdisk&per.sys by Albert J&per. Shan,
+hd4disk&per.add by _dixie_) are tested to be working successfully&per.
+See :link reftype=hd refid=200701.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD 
+virtual disks :elink. for more details&per.
+:li.support for mounting FAT12/FAT16/FAT32/exFAT filesystem images on a 
+FAT12/FAT16/FAT32/exFAT disk subdirectory. raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi 
+formats are supported. (qemu code was used for support of VM images). For 
+partitioned images, a partition number could be specified. Support for 
+CHKDSK/FORMAT/SYSINSTX on a mounted image (this feature is alpha-quality, yet). 
+
+:eul.
+
+:h2 id=101 res=30101.Todo List
+
+:p.:hp2.Todo List :ehp2.
+
 
 :h2 id=53 res=30050.Limitations
 
 :p.:hp2.LIMITATIONS&colon. :ehp2.
 
-:p.Logically, FAT32 should now support up to 2 terabytes partitions in size
+:ul.
+
+:li.Logically, FAT32 should now support up to 2 terabytes partitions in size
 &per.  However, we cannot be sure that MS does not use another combination of sectors 
 per cluster and bytes per sector&per. If this is the case, the supported size could 
 be smaller&per. A FAT32 partition can contain files up to 4GB in size&per. The 4GB 
 is the limit of FAT32 file system itself&per. Files less than 2GB can be copied or 
 moved to a FAT32 partition&per. Files larger than 2GB cannot be read by some programs 
 such as xcopy&per. It appears that xcopy itself does not support files greater than 
-2GB&per. 
+2GB&per. :hp2.Note :ehp2.by Valery Sedletski&colon. I tested FAT32&per.IFS on hard disks with 
+sizes up to 1 TB -- I have a 1 TB USB hard disk formatted as FAT32, and it works fine&per.
+Also, flash sticks can have unlimited size -- 2 GB is a limit for SD cards, 32 GB is the 
+limit for SDHC cards, and 2 TB is the limit for SDXC cards&per. SDXC cards are formatted
+as exFAT on the factory, but can be optionally reformatted to FAT32, if preferred&per.
+I have a 128 GB microSDXC card, which I reformatted as FAT32, it works fine with 
+FAT32&per.IFS&per. Note that FAT32&per.IFS supports exFAT too&per. 2 GB file size 
+is the limit of some softrware, not supporting 64-bit file size&per. So, such software, 
+including most 16-bit IFS-es, support 32-bit signed file size, 2^31 == 2 GB&per. 
+But currently, we added support for 64-bit file size (aka "large file support") 
+into FAT32&per.IFS&per. Large file support is enabled on FAT32&per.IFS, if 
+"/largefile" is specified in FAT32&per.IFS command line&per. FAT family 
+filesystems (FAT12/FAT16/FAT32), however, have a 32-bit field for file size 
+in each directory entry, which limits file size to 4 GB == 2^32 bytes&per. A 
+cluster chain in the FAT table, however, can be unlimited&per. This allows 
+for files with unlimited size, if we&apos.ll store full 64-bit file size elsewhere, 
+but not in the directory entry&per. :link reftype=hd refid=200702.FAT+ :elink. 
+extension stores bits 32-34 in unused 0-2 bits of "EA mark byte"&per. This 
+allows for file sizes up to 32 GB&per. If the file size is even bigger, 
+the full 64-bit file size can be stored in special FAT_PLUS_FSZ EA&per. 
+EA&apos.s should be enabled with "/eas" switch, of course&per. Also, for 
+:link reftype=hd refid=200702.FAT+ :elink. support to be enabled, 
+you&apos.ll need to add the "/plus" switch to FAT32&per.IFS command 
+line&per. Note that file size is 64-bit in exFAT, so extensions like 
+:link reftype=hd refid=200702.FAT+ :elink. are not required here&per.
 
-:p.It only supports disks with a sector size of 512 bytes&per. (Are there 
-others?) 
+:li.Starting from FAT32&per.IFS v&per. 0&per.10, now clusters of sizes up to 64 KB
+are supported on FAT12/FAT16/FAT32&per. However, MS discourages the use of
+64 KB clusters, because such clusters may crash older MS OS-es like Win95
+or MSDOS, causing division by zero&per. But if you don't have such OS-es
+on your machine, such filesystems with 64 KB clusters may be useful, for
+example, you can use a :link reftype=hd refid=200700. 4 GB FAT16 partition 
+as a SADUMP partition :elink.&per. Clusters of sizes up to 32 MB are 
+supported on exFAT partitions&per.
 
-:p.You cannot BOOT from a FAT32 partition&per. 
+:li.FAT32&per.IFS previously supported only disks with a sector size of 
+512 bytes&per. However, this has been changed in FAT32&per.IFS ver&per. 
+0&per.10&per. CD/DVD/BD have 2048-byte sectors; MO drives have 1024-byte 
+sectors&per. Also, some modern hard disks support 4096-byte sectors, 
+though, these big sectors are seen by disk firmware, only&per. Every OS still 
+sees 512-byte "virtual" sectors&per. Also, I heard of some unusual USB hard disks
+with 4096-byte sectors, visible to an OS&per. Such hard drives are, of course, 
+currently unsupported by OS/2, but this can change in the future&per. 
+FAT32&per.IFS supports non-512-byte sectors&per. Sector size is detected
+according to BIOS parameter block&per. But such non-512-byte sectors are 
+supported on CD/DVD/BD and MO drives, only&per. Hard disks are limited 
+to 512-byte sectors on OS/2&per.)&per. Yes, FAT32&per.IFS supports 
+not only hard disks, but other media like MO drives (they are not 
+tested, though), floppies or CD/DVD/BD disks&per. See :link reftype=hd 
+refid=200704.Using CDRW&apos.s with FAT16/FAT32/exFAT filesystem&per. :elink.
+for more info&per.
 
-:p.You cannot place the SWAPPER&per.DAT on a FAT32 partition&per. 
+:li.You cannot BOOT OS/2 yet from a FAT32 partition as it done for HPFS/JFS&per. 
+This can change some day, though&per. Currently, SYSINSTX installs the FreeLDR 
+bootblock, so you can boot it from that partition&per. Later, a conventional 
+miniFSD support will be added, so you&apos.ll be able to boot OS/2 the same way
+as HPFS/JFS&per. Note also that booting OS/2 from FAT (FAT12/FAT16/FAT32/exFAT) 
+is possible with FreeLDR and its OS/2 booter, bootos2&per.mdl (used in Team Boot/2 
+boot disk -- universal OS/2 rescue/live system, supporting CD/flash/harddisk/etc 
+media)&per.
 
-:p.CHKDSK can diagnose a disk, but will only FIX lost clusters and an incorrect 
+:li.You cannot place the SWAPPER&per.DAT on a FAT32 partition yet&per. However,
+there is some incomplete swapping support written, and some day it will support
+swapping on FAT (FAT12/FAT16/FAT32/exFAT) partitions&per.
+
+:li.CHKDSK can diagnose a disk, but will only FIX lost clusters and an incorrect 
 free space count&per. For all other errors, you&apos.ll need to run Windows and 
 start SCANDISK to fix the problem&per. 
 
-:p.CHKDSK will always convert lost clusters to files and NEVER to directories
-&per. if you want that, use SCANDISK&per. 
+:li.CHKDSK will always convert lost clusters to files and NEVER to directories
+&per. If you want that, use WinNT CHKDSK&per. :hp2.Note :ehp2. by Valery Sedletski&colon.
+In FAT32&per.IFS v&per. 0&per.10, CHKDSK saves lost chains into new subdirectory
+on each CHKDSK run&per. So, this limitation also has been overcome&per.
 
-:p.The FORMAT, RECOVER and SYSINSTX commands are not supported&per. 
+:li.The RECOVER command is not supported&per. FORMAT and SYSINSTX are supported
+in FAT32&per.IFS v&per. 0&per.10, since some revision&per. SYSINSTX, however,
+still does not support os2boot (a miniFSD)&per. Currently, SYSINSTX only writes
+a bootblock of FreeLDR (a bootloader developed by the osFree project)&per.
 
-:p.Only last access date (and not last access time) is maintained by FAT32&per.
+:li.Only last access date (and not last access time) is maintained by FAT32&per.
 IFS&per. This is similar to Win95 (OSR2)&per. 
 
-:p.Long filenames are not by default supported in DOS and Win-OS/2 sessions, 
+:li.Long filenames are not by default supported in DOS and Win-OS/2 sessions, 
 they use only the shortnames&per. Please see :link reftype=hd refid=60.&apos.LONG FILENAMES IN OS/2 AND DOS 
 SESSIONS&apos.&per. :elink.
 
-:p.You&apos.d better NOT change codepages on the fly IF you have open files 
+:li.You&apos.d better NOT change codepages on the fly IF you have open files 
 with filenames that contain extended ASCII characters&per. 
 
-:p.If you are using :link reftype=hd refid=18.PARTFILT&per.FLT :elink.then FDISK, Partition Magic or any 
+:li.If you are using :link reftype=hd refid=18.PARTFILT&per.FLT :elink.then FDISK, Partition Magic or any 
 partition maintenance tools will show non-existing drives and other nonsense&per. 
 
-:p.This version needs the native NLS support from OS/2&per. This means Warp 3 
-fixpack 26 or higher or Warp 4&per. (You must have the LANGUAGE directory) 
-.br 
+:li.This version needs the native NLS support from OS/2&per. This means Warp 3 
+fixpack 26 or higher or Warp 4&per. (You must have the LANGUAGE directory)&per.
+
+:eul. 
   
 :h2 id=54 res=30075.Removable Media
 
@@ -2314,7 +2502,7 @@ old FAT16 flash disks with sizes like 512 MB can be used with FAT32&per.IFS too&
 too&per. For example, I have two flash sticks, one is 512 MB, the second is 2 GB&per. Both working like a charm&per.
 
 :p.Also, there were FAT16-only old mp3 players, like I had in the beginning of 2000&apos.s&per. It's size was 256 MB
-ant it was formatted with FAT16&per. It looks that FAT32 is unsupported by the firmware&per. These days, I copied files
+and it was formatted with FAT16&per. It looks that FAT32 is unsupported by the firmware&per. These days, I copied files
 via WPS with creating the &per.LONGNAME EA&apos.s, then used vfat2ea utility to convert &per.LONGNAME EA&apos.s to VFAT
 LFN&apos.s&per. Now this technique is obsolete&per. FAT16 with VFAT LFN&apos.s can be directly supported by FAT32&per.IFS&per.
 
@@ -2346,7 +2534,9 @@ Wohlgemuth&apos.s USB drivers are obsolete too&per. Please use Lars&apos. Erdman
 drivers from Hobbes (search them by "usbdrv" keyword)&per.
 
 :p.See :link reftype=hd refid=56.GETTING THE FAT32 DRIVER TO WORK WITH REMOVABLE MEDIA :elink.  
+
 :h3 id=55 res=30078.Types of USB Mass Storage Devices
+
 :hp2.TYPES OF USB MASS STORAGE DEVICES :ehp2.
 
 :p.There are two kinds of USB removable media&colon. partitionable media and 
@@ -2358,17 +2548,26 @@ disk tool (such as DFSee) which bypasses system detection of the device as a fix
 type, and then detaching and re-attaching the device so changes are recognized&per. 
 
 :p.Partitionable USB drives are seen by the system as if they were &osq.normal
-&osq. hard disks, so to get them to work with eCS or OS/2, you have the usual 
-limitations&colon. -OS2DASD&per.DMD must be at a certain level for large drives to be fully 
-recognized&per. -Also, volumes must be created (and have sticky drive letters assigned if 
-they are to be accessed) either from existing partitions, or from unassigned space 
-areas within the &osq.disk&osq.&per. Partitions on these devices should also have 
-their proper types set (i&per.e&per. 0B/0C for FAT32, 07 for HPFS/NTFS/exFAT, 06 for FAT16, 
-etc&per.) in order to avoid problems&per.   
+&osq. hard disks, so to get them to work with OS/2, you have the usual 
+limitations&colon. 
 
-:p. With recent versions of Lars&apos. Erdmann&apos.s USB drivers, Large floppies with FAT/FAT32/EXFAT filesystem
+:ul.
+
+:li.OS2DASD&per.DMD must be at a certain level for large drives to be fully 
+recognized&per. 
+:li.Also, volumes must be created (and have sticky drive letters assigned if 
+they are to be accessed) either from existing partitions, or from unassigned space 
+areas within the &osq.disk&osq.&per. 
+:li.Partitions on these devices should also have 
+their proper types set (i&per.e&per. 0B/0C for FAT32, 07 for HPFS/NTFS/exFAT, 06 for FAT16, 
+etc&per.) in order to avoid problems&per.
+
+:eul.
+
+:p. With recent versions of Lars&apos. Erdmann&apos.s USB drivers, Large floppies with FAT/FAT32/exFAT filesystem
 can be emulated on USBMSD driver level&per. The driver just emulates the 1st track with MBR and partition table, and
 DLAT sector with LVM info&per. This allows to see Large Floppy media created by Windows, with FAT32&per.IFS&per.
+See also :link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
 
 :h3 id=56 res=30076.Getting the FAT32 Driver to Work with Removable Media
 
@@ -2393,21 +2592,21 @@ I like using the /V option because it tells one whether the necessary drivers ar
 or not at bootup&per.  The /V option can always be removed later when your USB device are
 working properly&per.
 
-:p.REM BASEDEV=USBUHCD.SYS /V
+:p.REM BASEDEV=USBUHCD&per.SYS /V
 .br
-BASEDEV=USBOHCD.SYS /V
+BASEDEV=USBOHCD&per.SYS /V
 .br
-BASEDEV=USBOHCD.SYS /V
+BASEDEV=USBOHCD&per.SYS /V
 .br
-BASEDEV=USBEHCD.SYS /V
+BASEDEV=USBEHCD&per.SYS /V
 .br
-BASEDEV=USBD.SYS
+BASEDEV=USBD&per.SYS
 .br
-BASEDEV=USBHID.SYS
+BASEDEV=USBHID&per.SYS
 .br
-BASEDEV=USBMSD.ADD /FLOPPIES:0 /REMOVABLES:2 /V
+BASEDEV=USBMSD&per.ADD /FLOPPIES&colon.0 /REMOVABLES&colon.2 /V
 .br
-rem BASEDEV=USBCDROM.ADD
+rem BASEDEV=USBCDROM&per.ADD
 .br
 
 :p. Keep a copy of the file "hcimonit.exe" in a directory found in your config&per.sys Path statement&per.
@@ -2452,7 +2651,7 @@ cannot be read by the IBM drivers (LVM included)&per. To overcome this, try the 
 
 :p. a&per. Get to a Windows machine and reformat the drive&per.
 
-:p. b&per. Then boot to DFSee (in my opinion, this is a must utility for every eCS and OS/2 user)&per.
+:p. b&per. Then boot to DFSee (in my opinion, this is a must utility for every OS/2 user)&per.
 If you don&apos.t have it, download the latest version&per. It can be used in demo mode&per.
 
 :p. c&per. Using DFSee, create a new Master Boot Record with the tables erased&per.
@@ -2515,7 +2714,7 @@ Windows versions&per. Each Windows version has it own built in limitations&per.
 Partition Commander versions 8 and 9 (Limitations unknown)
 .br
 
-:p.:hp2.Note&colon. :ehp2. After formatting, always run chkdsk under eCS if using the OS/2 FAT32 driver&per. This
+:p.:hp2.Note&colon. :ehp2. After formatting, always run chkdsk under OS/2 if using the OS/2 FAT32 driver&per. This
 is probably true for any filesystem used&per.
 
 :p.If you still cannot get your drive to work, you can try the next steps&per.
@@ -2562,7 +2761,7 @@ work with the latest IBM drivers, you might try downloading some of the earlier
 versions of the USB drivers from the eComStation ftp site&per. The closer the IBM
 drivers are to the date of his released driver, the greater the chance of his
 driver working&per. Since he does not have access to the latest code, he had to use
-the the last available code from the DDK site&per. If you have a usbcalls&per.dll on
+the last available code from the DDK site&per. If you have a usbcalls&per.dll on
 your eComStation system, replace it with Martin&apos.s fixed usbcalls&per.dll&per. The driver
 has been patched to fix a nasty bug&per.
 
@@ -2704,26 +2903,26 @@ against Windows remote machines are likely to suffer problems with long file nam
 To be more precise&colon. 
 
 :p.If you have Windows NT, Windows 2000, Windows XP or newer, your long file 
-names (LFNs) are fully interoperable between eCS/OS2 and a Windows system over a 
+names (LFNs) are fully interoperable between OS/2 and a Windows system over a 
 network&per. 
 
 :p.If your Windows system is older than that (Windows 95, 98, and ME), you can 
-work flawlessly with LFNs on a remote eCS/OS2 machine from the Windows PC; however, 
+work flawlessly with LFNs on a remote OS/2 machine from the Windows PC; however, 
 it doesn&apos.t work the other way round&per. I&per.e&per. the Windows remote 
-machine will show LFNs to its other Windows pals in the network, but your eCS/OS2 
+machine will show LFNs to its other Windows pals in the network, but your OS/2 
 machine will be served just short filenames instead&per. 
 
 :p.:hp2.Why? :ehp2.
 
 :p.This is because of how each PC on the LAN identifies itself and its 
-capabilities to the other PCs in the network&per. eCS/OS2 says to the other machines it uses 
+capabilities to the other PCs in the network&per. OS/2 says to the other machines it uses 
 LM10 for compatibility&apos.s sake, which makes win9x machines treat this one like 
 it were DOS+W3&per.11 (i&per.e&per. no LFNs)&per. According to IBM, it can do LM30 
 perfectly - but do NOT try to patch the binaries or you&apos.ll get a trap&per.  Oh well, 
 this is just plain IBM&apos.s fault&per. 
 
-:p.OK, eCS/OS2 says it&apos.s LM10 and we can&apos.t blame Microsoft for that
-&per. However, other LAN eCS/OS2 pals have no difficulties whatsoever identifying the 
+:p.OK, OS/2 says it&apos.s LM10 and we can&apos.t blame Microsoft for that
+&per. However, other LAN OS/2 pals have no difficulties whatsoever identifying the 
 OS/2 behind this &apos.LM10&apos. label and allowing LFN operation without trouble
 &per. 
 
@@ -2981,7 +3180,7 @@ supported by OS2DASD&per.DMD are now also supported by the IFS&per.
 :p.All of the code is in plain 16 bits C (All of OS/2&apos.s IFS&apos.s are 16 
 bits!)&per. No assembly language code is used&per. 
 
-:p.The :link reftype=hd refid=20051.F32MON :elink.function takes a lot of time&per. Be sure to switch if off if you 
+:p.The :link reftype=hd refid=20052.F32MON :elink.function takes a lot of time&per. Be sure to switch if off if you 
 don&apos.t need it&per. 
 
 :p.You should probably experiment with the :link reftype=hd refid=46.CACHEF32 options :elink.to get the best 
@@ -3068,7 +3267,9 @@ I see two solutions here&colon. 1) convert FAT32&per.IFS to a 32-bit driver, or,
 entry points&per. 2) modify OS/2 kernel so that it will call FS_CHGFILEPTRL, as required&per. The latter variant is possible
 if I'd convince OS/4 developers to do such an enhancement&per. But it will not work for those who stick with IBM&apos.s kernels&per.
 
-:h2 id=20070 res=32064.TIPS/HOWTO&apos.s
+:h2 id=20070 res=32064.HOWTO&apos.s
+
+:p.:link reftype=hd refid=200699.How to prepare flash sticks for use with OS/2 :elink.
 
 :p.:link reftype=hd refid=200700.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs :elink.
 
@@ -3078,34 +3279,139 @@ if I'd convince OS/4 developers to do such an enhancement&per. But it will not w
 
 :p.:link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
 
-:p.:link reftype=hd refid=200704.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :elink.
+:p.:link reftype=hd refid=200704.Using CDRW&apos.s with FAT16/FAT32/exFAT filesystem&per. :elink.
 .br 
 
-:h3 id=200700 res=32065.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.
+:h3 id=200699 res=32062.How to prepare flash sticks for use with OS/2
 
-.br
-:p.:hp2.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs:ehp2.&colon. 
-.br
-.br
+:p.:hp2.How to prepare flash sticks for use with OS/2&colon. :ehp2.
+
+:p.File systems have their &apos.FS_MOUNT&apos. routines called by the kernel&per. 
+The kernel calls them in sequence, until some filesystem returns successful status&per.
+If no IFS&apos.es returned success, the fallback filesystem is called, which is in-kernel
+FAT driver&per. Also, in LVM-based systems, a drive letter is assigned according to LVM
+DLAT tables (Drive Letter Assignment Tables). If these tables are missing, the kernel
+only seems to call the in-kernel FAT driver&per. The same happens in case the kernel
+(together with OS2DASD) detects that the unit is a large floppy&per. 
+
+:p.So, the in-kernel FAT driver gets mounted&per. Because media is not FAT indeed, 
+it cannot be accessed&per. So, it looks like the drive is empty&per. When you open 
+such drive in FC/2, or change to this drive as a current one in CMD&per.EXE, 
+ERROR_NON_DOS_DISK == 26  is displayed&per. This means that no IFS had been 
+mounted this drive&per. The in-kernel FAT driver attempted to mount it, and 
+it doesn't recognise it, hence returning the ERROR_NON_DOS_DISK error&per. 
+So, this situation can be easily recognised by its error code, 26&per.
+
+:p.To get your filesystem mounted by your IFS, you should assign it an explicit
+drive letter&per. The drive letter can be assigned via LVM&per.EXE, or with DFSee,
+or any similar tool&per.
+
+:p.LVM&per.EXE is, however, very picky regarding the disk geometries in the
+Partition Table&per. IBM just refuses to do anything with the disk with a geometry
+disliked by LVM&per.EXE&per. IBM has its own reasons to do so, for example, they
+don't want to be responsible for any possible data losses&per. But this can cause
+many problems with flash sticks, or with modern hard disks with ADF (Advanced
+Disk Format) technology&per. Such disks have weird geometries&per. Also, all large
+disks (larger than 512 GB) are assigned weird geometries too&per. Disks of sizes
+from range 512 GB..1 TB have 127 sectors per track&per. Disks of sizes 1 TB..2 TB
+have 255 sectros per track&per. The usual sectors per track value is 63, and it
+is the only value which LVM.EXE accepts&per. So, for such disks, another tool is
+required&per. Such tools are&colon. 
+
+:ol.
+:li.ALVM (Modified LVM by Evgen Kotsuba), which has some relaxed restrictions, 
+compared to IBM&apos.s version of LVM&per.EXE&per.
+:li.MiniLVM, written by Alex Taylor specially for eComStation&per.
+:li.Disk manager from QSINIT, by _dixie_
+:li.DFSee, written by Jan van Wijk
+:eol.
+
+:p.From these four utilities the most universal and powerful is DFSee&per.
+It allows to do many useful operations, like&colon.
+
+:ul.
+:li.Wipe sectors on disk
+:li.Rewrite MBR (either with new boot code, keeping partition tables, or vice
+versa, erasing the Partition Table)
+:li.Fix some fields in bootsector, like Hidden Sectors, and other values
+:li.Editing sectors
+:li.Editing partition tables
+:li.Creating/editing LVM info
+:li.Creating or deleting partitions
+:li.Formatting FAT32 file systems
+:li.etc etc etc
+:eul.
+
+:p.The most common operation when preparing flash disks for use with OS/2 is
+assigning/editing the LVM info&per. In most cases it is sufficient to make a
+friend&apos.s or colleague&apos.s flash stick accessible from your OS/2 system&per. Note
+that DFSee allows to perform this operation indestructively, so that usually,
+no need to erase the beginning of the stick (which could be not acceptable if
+that stick is not your own one, but friend&apos.s, colleague&apos.s or your
+client&apos.s)&per. This is because LVM info resides in an unused disk area,
+like a sector in zero disk track right before the boot sector&per.
+
+:p.I did this operation with DFSee many times, and I never had problems with
+that&per. This can be done with any existing file systems like FAT/FAT32/exFAT/
+NTFS/HPFS/JFS/etc&per. DFSee is better than other tools because it can
+accept various disk geometries, in cases when other tools refuse to do so&per.
+They simply won&apos.t allow you to do anything with your stick, and scream
+about incorrect disk geometry, corrupted disk etc&per.
+
+:p.Some problems can occur in some rare cases, like Big Floppy media (there
+is a workaround for this problem, see the :link reftype=hd refid=200703.Notes 
+on large floppy media&per. :elink. section for more details) or another 
+strange case&colon. I had a SanDisk stick with mismatched "Hidden Sectors" 
+in the boot sector, and the offset of the beginning of that partitiion in 
+the Partition Table&per. The former was a standard 63 sectors, but the 
+latter was some bigger value, aligned to flash controller block size&per. 
+This was ignored on other OS&apos.es, but it confused OS/2 disk subsystem&per. 
+So, unfortunately, I needed to erase and repartition this stick, after 
+which it worked fine under OS/2&per.
+
+:p.However, it seems to be very rare unusual case&per. Most flash sticks
+can be made working under OS/2 by only assigning the LVM info with an 
+explicit drive letter&per.
+
+:p.To add the LVM info, you need to call the Edit->LVM Information->...&per.
+Pick your disk from the pull-down menu&per. Here, the disk name, volume name 
+and a drive letter can be set up&per. 
+
+:p.It is recommended to choose the explicit drive letter for your disk&per.
+This drive letter is carried together with your flash stick to any machine
+you plug it in&per. If this drive letter is occupied on that machine, the
+next available drive letter will be chosen&per. Also, it is possible to 
+select a "*:" as a drive letter&per. This instructs LVM to assign the first
+available drive letter&per. Though, an explicit drive letter should be preferred,
+because "*:" may not work reliably in some cases&per.
+
+:h3 id=200700 res=32065.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs
+
+:p.:hp2.Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs&colon. :ehp2.
+
 :p. It was discovered by me, that standard FAT OS2DUMP can be used to dump to a 4 GB FAT16 partition with 64 KB
 clusters&per. So, you create a 4 GB partition, with BIOS type 6 (FAT16 BIG), and a volume label "SADUMP"&per.
 Such a file system can be created with a command&colon.
 
-.br.br
+.br
+.br
 
 :p.:hp2. format /fs&colon.fat16 /c&colon.128 :ehp2.
 
-.br.br
+.br
+.br
 
 :p. Where 128 is the number of sectors per cluster&colon. 64 KB == 128 sectors&per.
 
 :p. Then you add the line&colon.
 
-.br.br
+.br
+.br
 
 :p.:hp2. TRAPDUMP=R0,I&colon. :ehp2.
 
-.br.br
+.br
+.br
 
 :p. to your CONFIG&per.SYS (where I&colon. is your 4 GB FAT16 drive) and reboot&per. You can test if creating
 the standalone dump begins by pressing a Ctrl-Alt-NumLock-NumLock (or Ctrl-Alt-F10-F10)&per.
@@ -3131,7 +3437,7 @@ using a QSINIT loader (aka "Tetris")&per. This can be achieved by adding a ",mem
 kernel parameters&per. After taking a dump, you can remove the "memlimit" string from os2ldr&per.ini,
 or leave it in a special menu item line which is used specially for dumping memory&per.
 
-:h3 id=200701 res=32066.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks:ehp2.
+:h3 id=200701 res=32066.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks
 
 :p.:hp2.VFDISK&per.SYS/VDISK&per.SYS/SVDISK&per.SYS/HD4DISK&per.ADD virtual disks :ehp2.
 
@@ -3142,7 +3448,7 @@ ramdisks, like PAE ramdisk, or any other &per.ADD-based virtual harddisk, should
 are FORMAT/CHKDSK/SYSINSTX/LOADDSKF/SAVEDSKF/DISKCOPY on such drives&per. It should work the same way IBM&apos.s FAT works,
 the bonus feature is VFAT long file names support&per.
 
-:h3 id=200702 res=32067.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
+:h3 id=200702 res=32067.Support for files > 4 GB on FAT/FAT32 (FAT+)
 
 :p.:hp2.Support for files > 4 GB on FAT/FAT32 (FAT+) :ehp2.
 
@@ -3169,7 +3475,7 @@ enables large files support too&per. Also, storing files with more than 35-bit s
 to be enabled&per. 35-bit size uses bits 0-2 of 12th reserved byte (EA mark byte)&per. 2^35 == 32 GB is the maximum
 file size with EA&apos.s disabled&per.
 
-:h3 id=200703 res=32068.Notes on large floppy media&per. :ehp2.
+:h3 id=200703 res=32068.Notes on large floppy media&per.
 
 :p.:hp2.Notes on large floppy media&per. :ehp2.
 
@@ -3208,9 +3514,9 @@ like such media and will show an error&per.
 :p.If you want to reformat the medium back as PRM, you&apos.ll need to erase it again, eject, reinsert it,
 create a partition on it, then reformat with FORMAT command&per.
 
-:h3 id=200704 res=32069.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
+:h3 id=200704 res=32069.Using CDRW&apos.s with FAT16/FAT32/exFAT filesystem&per.
 
-:p.:hp2.Using CDRW's with FAT16/FAT32/exFAT filesystem&per. :ehp2.
+:p.:hp2.Using CDRW&apos.s with FAT16/FAT32/exFAT filesystem&per. :ehp2.
 
 :p.It was discovered that if I create a FAT filesystem image with 2048 bytes per sector (it can be done by
 QSINIT bootloader utilities, for example), and burn it onto a CDRW disk, it can be successfully mounted by
@@ -3295,12 +3601,12 @@ to the drive :ehp2.
 be that the drive still contains a dirty flag&per. 
 .br 
 
-:p.:hp2.In addition to being unable to read/write to the drive, OS/2 or eCS tells you 
+:p.:hp2.In addition to being unable to read/write to the drive, OS/2 tells you 
 the unit is 32Mb large or some other incorrect size :ehp2.
 
 :p.Try creating a new Master Boot Record (MBR) with the partition tables erased
 &per. DFSee is a good program to do this&per.  If you have LVM, then create a new 
-partition using it&per.  If you do not have LVM, then use OS/2s FDISK&per. to create the 
+partition using it&per.  If you do not have LVM, then use OS/2&apos.s FDISK, to create the 
 new partition&per.  Remember, for non-removable hard drives using LVM, a 
 compatibility volume must be created&per.  Unfortunately, this means that all data on the 
 drive will be lost&per. Backup or copy your data and files to another drive&per. 
@@ -3519,7 +3825,7 @@ Netlabs or the Yahoo FAT32USER group&per.
 :p.:hp2.Revision r308 (valerius, Sun, 17 Sep 2017)&colon. :ehp2.
 
 :ul compact.
-:li. fat32&per.inf&colon Documentation update&per.
+:li. fat32&per.inf&colon. Documentation update&per.
 :eul.
 
 :p.:hp2.Revision r307 (valerius, Mon, 11 Sep 2017)&colon. :ehp2.
@@ -4274,7 +4580,7 @@ Add win32 makefile&per.
 
 :p.:hp2.Revision r191 (valerius, Tue, 14 Feb 2017)&colon. :ehp2.
 
-:p. UFAT32&per.DLL&colon Use more portable API&apos.s&per.
+:p. UFAT32&per.DLL&colon. Use more portable API&apos.s&per.
 
 :p. Use libc and other system-independent interfaces instead of OS/2 API&apos.s&per. This should
 be useful to create DOS and win32 versions of CHKDSK and SYSINSTX, together with
@@ -4587,7 +4893,7 @@ to a com port&per.
 
 :p.:hp2.Revision r135 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
 
-:p. fat32&per.ifs&colon Preliminary swap support (not working atm)&per.
+:p. fat32&per.ifs&colon. Preliminary swap support (not working atm)&per.
 .br
 
 :p.:hp2.Revision r134 (valerius, Fri, 14 Oct 2016)&colon. :ehp2.
@@ -4658,7 +4964,7 @@ write on the current iteration&per.
 
 :p.:hp2.Revision r121 (valerius, Wed, 24 Aug 2016)&colon. :ehp2.
 
-:p. Makefiles&colon Add root makefile&per. Add clean target&per.
+:p. Makefiles&colon. Add root makefile&per. Add clean target&per.
 .br
 
 :p.:hp2.Revision r120 (valerius, Sun, 21 Aug 2016)&colon. :ehp2.
@@ -5710,7 +6016,7 @@ been fixed&per.
 :p.:hp2.Contact&colon. :ehp2.  
 
 :p.Adrian Gschwend at :hp9.ktk&atsign.netlabs&per.org :ehp9.if you have some FAT32 patches, 
-or you can join the #netlabs channel atirc&per.anduin&per.net (IRC)&per. My nick 
+or you can join the #netlabs channel at irc&per.freenode&per.net (FreeNode IRC)&per. My nick 
 is ktk, Brian Smith is nuke&per. 
 
 :p.KO Myung-Hun at :hp9.komh&atsign.chollian&per.net :ehp9.concerning issues dealing the 
@@ -6374,6 +6680,33 @@ Ty Coon, President of Vice
 
 :p.That&apos.s all there is to it! 
 .br 
+
+:h1 id=78 res=30079.Sidecode licenses
+
+:p.:hp2. Sidecode licenses&colon. :ehp2.
+
+:p. There are some code we borrowed from other projects,
+which have their respective licenses (GPL-compatible)&colon.
+
+:p.
+:ul.
+
+:li. :link reftype=hd refid=30048.FORMAT :elink. is based on Fat32Format, (c) Tom Thornhill,
+licensed as GPL (no strict version),
+http&colon.//www&per.ridgecrop&per.demon&per.co&per.uk/index&per.htm?fat32format&per.htm;
+
+:li. :link reftype=hd refid=20055.QEMUIMG&per.DLL :elink. is based on QEMU code, (c) Fabrice Bellard and 
+contributors, licensed as GPL, version 2 (not higher),
+http&colon.//www&per.qemu&per.org
+
+:li. :link reftype=hd refid=18.PARTFILT&per.FLT:elink. is (c) Deon van der Westhuysen, 1995; 
+licensed as GPL, version 2, or any later version (at your option)
+
+:li. zlib is (c) Mark Adler, Jean-loup Gailly, licensed as a 3-clause BSD license (see zlib.h)
+
+:eul.
+
+:p.FAT32.IFS itself is licensed as LGPL&per.
 
 :fn id=fn78.
 

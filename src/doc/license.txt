@@ -17,3 +17,26 @@ More information about GNU Software can be found at http://www.gnu.org
 
 Adrian Gschwend <ktk@netlabs.org>
 http://www.netlabs.org
+
+
+Addition from 12. March 2018:
+
+There are some code we borrowed from other projects,
+which have their respective licenses (GPL-compatible):
+
+1) FORMAT is based on Fat32Format, (c) Tom Thornhill,
+licensed as GPL (no strict version),
+http://www.ridgecrop.demon.co.uk/index.htm?fat32format.htm;
+
+2) QEMUIMG.DLL is based on QEMU code, (c) Fabrice Bellard and 
+contributors, licensed as GPL, version 2 (not higher),
+http://www.qemu.org
+
+3) PARTFILT.FLT is (c) Deon van der Westhuysen, 1995; 
+licensed as GPL, version 2, or any later version (at your option)
+
+4) zlib is (c) Mark Adler, Jean-loup Gailly, licensed as a 
+3-clause BSD license (see zlib.h)
+
+Valery V. Sedletski <_valerius@mail.ru>
+http://osfree.org
