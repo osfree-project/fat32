@@ -1457,7 +1457,18 @@ USHORT    rc;
                            else
                               {
                               usMode = MODIFY_DIR_INSERT;
-                              pszLongNameOld = pszLongNameNew;
+
+                              pszLongNameOld = pszLongNameNew; //////
+
+                              usEntriesNeeded = 1;
+                              if (pszLongNameOld)
+#if 0
+                                 usEntriesNeeded += strlen(pszLongNameOld) / 13 +
+                                 (strlen(pszLongNameOld) % 13 ? 1 : 0);
+#else
+                                 usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
+#endif
+
                               ulCluster = ulDirCluster;
                               ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                               ulPrevCluster = pVolInfo->ulFatEof;

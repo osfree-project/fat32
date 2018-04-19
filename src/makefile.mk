@@ -39,6 +39,7 @@ dll      = &
 !endif
 
 util     = &
+ cachef32.cmd &
  cachef32.exe &
  f32parts.exe &
  f32mon.exe   &
@@ -107,7 +108,7 @@ distlist = &
  $(p)os2\docs\fat32\license.txt $(p)os2\docs\fat32\os2fat32.txt $(p)os2\docs\fat32\problems.txt &
  $(p)os2\docs\fat32\partfilt.txt $(p)os2\docs\fat32\message.txt &
  $(p)os2\system\country.kor $(p)os2\docs\fat32\fat32.kor &
- $(p)os2\boot\os2dasd.f32
+ $(p)os2\boot\os2dasd.f32 $(p)os2\cachef32.cmd
 p = $(BINROOT)\
 distfiles = $+ $(distlist) $-
 p =
@@ -174,7 +175,8 @@ $(BLDROOT)\bld.flg:
 $(BINROOT)\zip-os2.flg: $(distfiles)
  @echo ZIP      $(distfile1)
  @cd $(BINROOT)
- @zip -r $(distfile1) $(dist) >zip-os2.flg 2>&1
+ @echo "">zip-os2.flg
+ @for %i in ($(dist)) do @zip -r $(distfile1) %i >>zip-os2.flg 2>&1
  @cd ..\$(PROJ)
 
 $(BINROOT)\wpi.flg: $(distfiles)
@@ -210,7 +212,8 @@ $(BINROOT)\wpi.flg: $(distfiles)
 $(BINROOT)\zip-win32.flg: $(distfiles2)
  @echo ZIP      $(distfile3)
  @cd $(BINROOT)
- @zip -r $(distfile3) $(dist2) >zip-win32.flg 2>&1
+ @echo "">zip-win32.flg
+ @for %i in ($(dist2)) do @zip -r $(distfile3) %i >>zip-win32.flg 2>&1
  @cd ..\$(PROJ)
 
 clean: .symbolic
@@ -222,7 +225,7 @@ copy: $(BINROOT)\os2\boot\os2dasd.f32 $(BINROOT)\os2\system\country.kor &
  $(BINROOT)\os2\docs\fat32\deamon.txt $(BINROOT)\os2\docs\fat32\fat32.txt $(BINROOT)\os2\docs\fat32\lesser.txt &
  $(BINROOT)\os2\docs\fat32\license.txt $(BINROOT)\os2\docs\fat32\os2fat32.txt $(BINROOT)\os2\docs\fat32\problems.txt &
  $(BINROOT)\os2\docs\fat32\partfilt.txt $(BINROOT)\os2\docs\fat32\message.txt &
- $(BINROOT)\os2\docs\fat32\notes.txt .symbolic 
+ $(BINROOT)\os2\docs\fat32\notes.txt $(BINROOT)\os2\cachef32.cmd .symbolic 
 
 $(BINROOT)\os2\boot\os2dasd.f32: $(ROOT)\lib\os2dasd.f32
  @copy $< $^@ >nul 2>&1
@@ -264,6 +267,9 @@ $(BINROOT)\os2\docs\fat32\partfilt.txt: $(ROOT)\doc\partfilt.txt
  @copy $< $^@ >nul 2>&1
 
 $(BINROOT)\os2\docs\fat32\message.txt: $(ROOT)\doc\message.txt
+ @copy $< $^@ >nul 2>&1
+
+$(BINROOT)\os2\cachef32.cmd: $(ROOT)\lib\cachef32.cmd
  @copy $< $^@ >nul 2>&1
 
 .inf: $(BINROOT)

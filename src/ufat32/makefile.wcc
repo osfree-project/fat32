@@ -117,12 +117,12 @@ $(PROJ_BLD)\uunifat.lnk: $(PROJ_BLD)\uunifat.ols
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION MIXED1632
  @%append $@ OPTION NODEFAULTLIBS
- @%append $@ OPTION ST=128920
+ @%append $@ OPTION ST=4096
  @%append $@ OPTION NOSTUB,ELIMINATE
  @%append $@ DEBUG ALL
  @%append $@ segment type DATA LOADONCALL NONSHARED
  @%append $@ segment type CODE PRELOAD 
- @%append $@ OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=65536000
+ @%append $@ OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=18000000
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ EXPORT &
      CHKDSK,  &

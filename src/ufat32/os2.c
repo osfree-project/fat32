@@ -1066,7 +1066,7 @@ int mem_alloc(void **p, ULONG cb)
 int mem_alloc2(void **p, ULONG cb)
 {
     APIRET rc;
-    ULONG  ulParm = cb;
+    ULONG  ulParm = 4096;
     ULONG  cbParm = sizeof(ulParm);
     struct
     {
@@ -1086,8 +1086,8 @@ int mem_alloc2(void **p, ULONG cb)
                  0,
                  0,
                  OPEN_ACTION_OPEN_IF_EXISTS,
-                 OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYREADWRITE |
-                 OPEN_ACCESS_READWRITE,
+                 OPEN_FLAGS_WRITE_THROUGH | OPEN_FLAGS_FAIL_ON_ERROR |
+                 OPEN_SHARE_DENYNONE | OPEN_ACCESS_READWRITE,
                  NULL);
 
     printf("DosOpen rc=%lu\n", rc);
@@ -1095,7 +1095,8 @@ int mem_alloc2(void **p, ULONG cb)
         return rc;
 
     memset(&Data, 0, sizeof(Data));
-    Data.lRc  = -1;
+    //Data.ulLen = 4096;
+    Data.lRc = -1;
 
     rc = DosDevIOCtl(hf, 0x80, 0x28,
                      &ulParm, cbParm, &cbParm,

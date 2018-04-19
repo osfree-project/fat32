@@ -4328,7 +4328,7 @@ PSZ      szDstLongName = NULL;
    ulCluster = FindPathCluster(pVolInfo, ulSrcDirCluster, pszSrcFile, pDirSrcSHInfo, pDirEntry, pDirEntryStream, NULL);
    if (ulCluster == pVolInfo->ulFatEof)
       {
-      rc = ERROR_FILE_NOT_FOUND;
+      rc = ERROR_FILE_NOT_FOUND; //////
       goto FS_MOVEEXIT;
       }
 
@@ -4459,6 +4459,8 @@ PSZ      szDstLongName = NULL;
 
       rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
          MODIFY_DIR_RENAME, pDirOld, pDirEntry, pDirEntryStreamOld, pDirEntryStream, pszSrcFile, pszDstFile, 0);
+      //rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo,
+      //   MODIFY_DIR_RENAME, pDirOld, pDirEntry, pDirEntryStream, pDirEntryStreamOld, pszDstFile, 0);
       free(pDirOld);
       goto FS_MOVEEXIT;
       }
@@ -4467,7 +4469,7 @@ PSZ      szDstLongName = NULL;
       First delete old
    */
 
-   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, pszDstFile, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, pszSrcFile, NULL, 0); // was pszDstFile (originally, NULL)
    //rc = ModifyDirectory(pVolInfo, ulSrcDirCluster, pDirSrcSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pDirEntryStream, NULL, NULL, 0);
    if (rc)
       goto FS_MOVEEXIT;
@@ -4517,7 +4519,6 @@ PSZ      szDstLongName = NULL;
          }
       else
          {
-         Message("FS_MOVE: .. entry of moved directory not found!");
          rc = ERROR_PATH_NOT_FOUND;
          goto FS_MOVEEXIT;
          }
