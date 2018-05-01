@@ -1103,6 +1103,9 @@ you still can access IBM's standard FAT FORMAT routine, which supports checking 
 sectors and formatting on physical level (our format supports only "quick"/"high-level" format
 at the moment, but it has its own advantages too).
 
+:p. Also, there is PMFORMAT, written by Alex Taylor&per. It is a PM frontend for FORMAT routine
+of uunifat&per.dll. This frontend is included in ArcaOS&per.
+
 :h1 id=34 res=30033.Installation/Deinstallation
 
 :p.:hp2.INSTALL/DEINSTALL&colon. :ehp2.
@@ -3345,7 +3348,7 @@ versa, erasing the Partition Table)
 :p.The most common operation when preparing flash disks for use with OS/2 is
 assigning/editing the LVM info&per. In most cases it is sufficient to make a
 friend&apos.s or colleague&apos.s flash stick accessible from your OS/2 system&per. Note
-that DFSee allows to perform this operation indestructively, so that usually,
+that DFSee allows to perform this operation nondestructively, so that usually,
 no need to erase the beginning of the stick (which could be not acceptable if
 that stick is not your own one, but friend&apos.s, colleague&apos.s or your
 client&apos.s)&per. This is because LVM info resides in an unused disk area,
@@ -3362,7 +3365,7 @@ about incorrect disk geometry, corrupted disk etc&per.
 is a workaround for this problem, see the :link reftype=hd refid=200703.Notes 
 on large floppy media&per. :elink. section for more details) or another 
 strange case&colon. I had a SanDisk stick with mismatched "Hidden Sectors" 
-in the boot sector, and the offset of the beginning of that partitiion in 
+in the boot sector, and the offset of the beginning of that partition in 
 the Partition Table&per. The former was a standard 63 sectors, but the 
 latter was some bigger value, aligned to flash controller block size&per. 
 This was ignored on other OS&apos.es, but it confused OS/2 disk subsystem&per. 

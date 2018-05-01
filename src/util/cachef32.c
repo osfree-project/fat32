@@ -37,6 +37,7 @@ PRIVATE VOID APIENTRY EMThread(ULONG ulArg);
 PRIVATE VOID _LNK_CONV LWThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV EMThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV RWThread(PVOID ulArg);
+PRIVATE VOID _LNK_CONV RWThread2(PVOID ulArg);
 
 PRIVATE BOOL IsDiskClean(PSZ pszDrive);
 PRIVATE BOOL DoCheckDisk(BOOL fDoCheck);
@@ -54,6 +55,8 @@ int remount_all(void);
 BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource);
 
 HMODULE   hMod = 0;
+
+HFILE hLoop = 0;
 
 static PSZ rgPriority[]=
 {
@@ -160,6 +163,10 @@ UCHAR rgFirstInfo[256];
    if (pOptions->ulRWTID == -1)
           printf("_beginthread failed, rc = %d\n", -1);
 
+   pOptions->ulRWTID2 = _beginthread(RWThread2,NULL,32784,NULL);
+   if (pOptions->ulRWTID2 == -1)
+          printf("_beginthread failed, rc = %d\n", -1);
+
    ulParmSize = sizeof f32Parms;
    rc = DosFSCtl(
 	  NULL, 0, &ulDataSize,
@@ -186,7 +193,7 @@ UCHAR rgFirstInfo[256];
 /******************************************************************
 *
 ******************************************************************/
-VOID _LNK_CONV RWThread(PVOID ulArg)
+VOID _LNK_CONV RWThread(PVOID pArg)
 {
 BlockDriverState *bs;
 BlockDriver *drv = NULL;
@@ -199,7 +206,6 @@ ULONG ulAction;
 PCPDATA pCPData = NULL;
 char *pFmt;
 APIRET rc;
-FILE *fd;
 int ret;
 
    bdrv_init();
@@ -210,6 +216,8 @@ int ret;
    if (rc)
       return;
 
+   memset(pCPData, 0, sizeof(CPDATA));
+
    exbuf.buf = (ULONG)pCPData;
 
    rc = DosFSCtl(NULL, 0, NULL,
@@ -219,7 +227,7 @@ int ret;
    if (rc)
       return;
 
-   while (1)
+   while (! pOptions->fTerminate)
       {
       rc = DosFSCtl(NULL, 0, NULL,
                     NULL, 0, NULL,
@@ -296,6 +304,204 @@ int ret;
                  FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
 
    rc = DosFreeMem(pCPData);
+}
+
+#define CAT_LOOP 0x85
+
+#define FUNC_MOUNT           0x10
+#define FUNC_DAEMON_STARTED  0x11
+#define FUNC_DAEMON_STOPPED  0x12
+#define FUNC_DAEMON_DETACH   0x13
+#define FUNC_GET_REQ         0x14
+#define FUNC_DONE_REQ        0x15
+
+/******************************************************************
+*
+******************************************************************/
+VOID _LNK_CONV RWThread2(PVOID pArg)
+{
+BlockDriverState *bs;
+BlockDriver *drv = NULL;
+LONGLONG ibActual;
+ULONG ulDataSize;
+EXBUF exbuf;
+ULONG ulParmSize = sizeof(EXBUF);
+ULONG cbActual;
+ULONG ulAction;
+PCPDATA pCPData = NULL;
+char *pFmt;
+APIRET rc;
+HFILE hf;
+FILE *fd;
+int ret;
+
+   fd = fopen("d:\\log.txt", "w");
+
+   rc = DosAllocMem((void **)&pCPData, sizeof(CPDATA),
+                    PAG_COMMIT | PAG_READ | PAG_WRITE);
+
+   fprintf(fd, "000\n");
+   fflush(fd);
+   if (rc)
+      return;
+
+   memset(pCPData, 0, sizeof(CPDATA));
+
+   fprintf(fd, "001\n");
+   fflush(fd);
+   rc = DosOpen("\\DEV\\LOOP$", &hf, &ulAction, 0, FILE_NORMAL,
+                OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL);
+
+   fprintf(fd, "002\n");
+   fflush(fd);
+   if (rc)
+      return;
+
+   hLoop = hf;
+
+   exbuf.buf = (ULONG)pCPData;
+
+   fprintf(fd, "003\n");
+   fflush(fd);
+   rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DAEMON_STARTED,
+                    &exbuf, ulParmSize, &ulParmSize,
+                    NULL, 0, NULL);
+
+   fprintf(fd, "004: rc=%u\n", rc);
+   fflush(fd);
+   if (rc)
+      return;
+
+   while (! pOptions->fTerminate)
+      {
+      fprintf(fd, "005\n");
+      fflush(fd);
+      rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_GET_REQ, 
+                       NULL, 0, NULL,
+                       NULL, 0, NULL);
+
+      fprintf(fd, "005a: rc=%u\n", rc);
+      fflush(fd);
+      if (!rc || rc == ERROR_VOLUME_NOT_MOUNTED || rc == ERROR_INTERRUPT)
+         {
+         switch (pCPData->Op)
+            {
+            case OP_OPEN:
+               fprintf(fd, "005b\n");
+               fflush(fd);
+               if (pCPData->Buf[0] == 0)
+                  {
+                  rc = ERROR_INVALID_PATH;
+                  break;
+                  }
+
+               fprintf(fd, "005c\n");
+               fflush(fd);
+               bs = bdrv_new("");
+
+               if (! bs)
+                  {
+                  rc = ERROR_NOT_ENOUGH_MEMORY;
+                  break;
+                  }
+
+               fprintf(fd, "005d: bs=%lx\n", bs);
+               fflush(fd);
+
+               pFmt = pCPData->pFmt;
+
+               if (*pFmt)
+                  {
+                  drv = bdrv_find_format(pFmt);
+                  }
+
+               fprintf(fd, "005e\n");
+               fflush(fd);
+               if ((ret = bdrv_open2(bs, pCPData->Buf, 0, drv)) < 0)
+                  {
+                  fprintf(fd, "006: open file: %s, ret=%d\n", pCPData->Buf, ret);
+                  fflush(fd);
+                  rc = ERROR_FILE_NOT_FOUND;
+                  break;
+                  }
+               pCPData->hf = (ULONG)bs;
+               fprintf(fd, "006a: bs=%lx\n", bs);
+               break;
+
+            case OP_CLOSE:
+               fprintf(fd, "007\n");
+               fflush(fd);
+               bs = (BlockDriverState *)pCPData->hf;
+
+               fprintf(fd, "007, bs=%lx\n", bs);
+               fflush(fd);
+               bdrv_delete(bs);
+               fprintf(fd, "007a\n");
+               fflush(fd);
+               break;
+
+            case OP_READ:
+               fprintf(fd, "008\n");
+               fflush(fd);
+               bs = (BlockDriverState *)pCPData->hf;
+
+               if (bdrv_pread(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+                  {
+                  rc = ERROR_READ_FAULT;
+                  break;
+                  }
+
+               rc = NO_ERROR;
+               fprintf(fd, "008a\n");
+               fflush(fd);
+               break;
+
+            case OP_WRITE:
+               fprintf(fd, "009\n");
+               fflush(fd);
+               bs = (BlockDriverState *)pCPData->hf;
+
+               if (bdrv_pwrite(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+                  {
+                  rc = ERROR_WRITE_FAULT;
+                  break;
+                  }
+
+               rc = NO_ERROR;
+               fprintf(fd, "009a\n");
+               fflush(fd);
+               break;
+            }
+
+         pCPData->rc = rc;
+         }
+      fprintf(fd, "010\n");
+      fflush(fd);
+      rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DONE_REQ,
+                      NULL, 0, NULL,
+                      NULL, 0, NULL);
+      fprintf(fd, "011: %lx, rc=%lx\n", pCPData->hf, rc);
+      fflush(fd);
+      }
+
+   fprintf(fd, "012\n");
+   fflush(fd);
+   rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DAEMON_STOPPED,
+                    NULL, 0, NULL,
+                    NULL, 0, NULL);
+
+   fprintf(fd, "013\n");
+   fflush(fd);
+   DosClose(hf);
+
+   fprintf(fd, "014\n");
+   fflush(fd);
+   rc = DosFreeMem(pCPData);
+
+   fprintf(fd, "015\n");
+   fflush(fd);
+   fclose(fd);
 }
 
 /******************************************************************
@@ -525,6 +731,12 @@ ULONG	  ulParm;
                                   DosFSCtl(NULL, 0, NULL,
                                            NULL, 0, NULL,
                                            FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
+                                  if (hLoop)
+                                     {
+                                     DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
+                                                 NULL, 0, NULL,
+                                                 NULL, 0, NULL);
+                                     }
 				  DosExit(EXIT_PROCESS, 0);
 				  }
 			   printf("/Q is invalid, CACHEF32 is not running!\n");

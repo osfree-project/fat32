@@ -340,6 +340,7 @@ volatile USHORT fTerminate;
 ULONG  ulLWTID;
 ULONG  ulEMTID;
 ULONG  ulRWTID;
+ULONG  ulRWTID2;
 BYTE   bLWPrio;
 } LWOPTS, * PLWOPTS;
 

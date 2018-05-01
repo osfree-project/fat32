@@ -278,6 +278,9 @@ standard FAT FORMAT routine, which supports checking for bad sectors and formatt
 level (our format supports only "quick"/"high-level" format at the moment, but it has its own 
 advantages too).  
 
+Also, there is PMFORMAT, written by Alex Taylor. It is a PM frontend for FORMAT routine of 
+uunifat.dll. This frontend is included in ArcaOS.
+
 INSTALLATION:
 -------------
 

@@ -3,6 +3,17 @@
 #define MOUNT_RELEASE         0x02
 #define MOUNT_ACCEPT          0x03
 
+#define CAT_LOOP 0x85
+
+#define FUNC_MOUNT           0x10
+#define FUNC_DAEMON_STARTED  0x11
+#define FUNC_DAEMON_STOPPED  0x12
+#define FUNC_DAEMON_DETACH   0x13
+#define FUNC_GET_REQ         0x14
+#define FUNC_DONE_REQ        0x15
+
+#define REDISCOVER_DRIVE_IOCTL 0x6A
+
 #include "portable.h"
 #include "fat32def.h"
 
@@ -19,6 +30,25 @@
 //#include "vl.h"
 
 char FS_NAME[8] = "FAT32";
+
+typedef struct _DDI_Rediscover_param
+{
+    BYTE DDI_TotalDrives;
+    BYTE DDI_aDriveNums[1];
+} DDI_Rediscover_param, *PDDI_Rediscover_param;
+
+typedef struct _DDI_ExtendRecord
+{
+  BYTE  DDI_Volume_UnitID;
+  ULONG DDI_Volume_SerialNumber;
+} DDI_ExtendRecord;
+
+typedef struct _DDI_Rediscover_data
+{
+  BYTE NewIFSMUnits;
+  BYTE DDI_TotalExtends;
+  DDI_ExtendRecord DDI_aExtendRecords[1];
+} DDI_Rediscover_data, *PDDI_Rediscover_data;
 
 #pragma pack(1)
 
@@ -149,6 +179,7 @@ int main(int argc, char *argv[])
     ULONG cbData, cbParms = sizeof(MNTOPTS);
     BOOL fDelete = FALSE;
     BOOL fPart = FALSE;
+    BOOL fBlock = FALSE;
     char *p;
     ULONG ulPart = 0, ulSecSize = 512;
     ULONGLONG ullOffset = 0, ullSize = 0;
@@ -160,12 +191,13 @@ int main(int argc, char *argv[])
     char chDisk;
     char *arg;
     char *pFmt = NULL;
+    HFILE hf;
     APIRET rc;
     int i;
 
     if (argc == 1)
     {
-        printf("f32mount [d:\\somedir\\somefile.img [<somedir> | /d] [/p:<partition no>][/o:<offset>][/f:<format>]]\n\n"
+        printf("f32mount [d:\\somedir\\somefile.img [<somedir> | /d | block:] [/p:<partition no>][/o:<offset>][/f:<format>]]\n\n"
                "   Partitions 1..4 are primary partitions. Partitions 5..255 are logical partitions, 5 being the 1st logical.\n"
                "   Offsets can be decimal, as well as hexadecimals, starting from \"0x\".\n"
                "   The following formats are supported: raw, vpc, vmdk, vdi, vvfat, parallels, bochs, cloop, dmg, qcow, qcow2\n");
@@ -241,6 +273,10 @@ int main(int argc, char *argv[])
        {
           fDelete = TRUE;
        }
+       else if (!stricmp(arg, "/block"))
+       {
+          fBlock = TRUE;
+       }
        else if ((p = strstr(strlwr(arg), "/o:")))
        {
           p += 3;
@@ -273,13 +309,16 @@ int main(int argc, char *argv[])
           }
           else if (! fDelete && i == 2)
           {
-             rc = DosQueryPathInfo(szMntPoint,
-                                   FIL_STANDARDL,
-                                   &info,
-                                   sizeof(info));
+             if (! fBlock)
+             {
+                rc = DosQueryPathInfo(szMntPoint,
+                                      FIL_STANDARDL,
+                                      &info,
+                                      sizeof(info));
 
-             if (rc && rc != ERROR_ACCESS_DENIED)
-                goto err;
+                if (rc && rc != ERROR_ACCESS_DENIED)
+                   goto err;
+             }
           }
        }
     }
@@ -306,10 +345,25 @@ int main(int argc, char *argv[])
        if (rc)
           goto err;
 
-       rc = DosQueryPathInfo(szMntPoint,
-                             FIL_STANDARDL,
-                             &info,
-                             sizeof(info));
+       if (! fBlock)
+       {
+          rc = DosQueryPathInfo(szMntPoint,
+                                FIL_STANDARDL,
+                                &info,
+                                sizeof(info));
+
+          if (rc)
+             goto err;
+       }
+    }
+
+    if (fBlock)
+    {
+       ULONG ulAction;
+
+       rc = DosOpen("\\DEV\\LOOP$", &hf, &ulAction, 0, FILE_NORMAL,
+                    OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                    OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL);
 
        if (rc)
           goto err;
@@ -317,13 +371,24 @@ int main(int argc, char *argv[])
 
     if (fDelete)
     {
-        strcpy(opts.pMntPoint, szFilename);
-        opts.hf = 0;
-        opts.usOp = MOUNT_RELEASE;
+       strcpy(opts.pMntPoint, szFilename);
+       opts.hf = 0;
+       opts.usOp = MOUNT_RELEASE;
 
-        rc = DosFSCtl(NULL, 0, NULL,
-                      &opts, cbParms, &cbParms,
-                      FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+       if (! fBlock)
+       {
+          // mounting to a FAT subdir
+          rc = DosFSCtl(NULL, 0, NULL,
+                        &opts, cbParms, &cbParms,
+                        FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+       }
+       else
+       {
+          // mounting to a drive letter
+          rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_MOUNT,
+                           &opts, cbParms, &cbParms,
+                           NULL, 0, NULL);
+       }
     }
     else
     {
@@ -338,9 +403,20 @@ int main(int argc, char *argv[])
         if (pFmt)
            strcpy(opts.pFmt, pFmt);
 
-        rc = DosFSCtl(NULL, 0, NULL,
-                      &opts, cbParms, &cbParms,
-                      FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+        if (! fBlock)
+        {
+           // mounting to a FAT subdir
+           rc = DosFSCtl(NULL, 0, NULL,
+                         &opts, cbParms, &cbParms,
+                         FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+        }
+        else
+        {
+           // mounting to a drive letter
+           rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_MOUNT,
+                            &opts, cbParms, &cbParms,
+                            NULL, 0, NULL);
+        }
 
         if (rc == ERROR_VOLUME_NOT_MOUNTED)
         {
@@ -352,10 +428,93 @@ int main(int argc, char *argv[])
             opts.hf = 0;
             opts.usOp = MOUNT_ACCEPT;
 
-            rc = DosFSCtl(NULL, 0, &cbData,
-                          &opts, cbParms, &cbParms,
-                          FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+            if (! fBlock)
+            {
+               // mounting to a FAT subdir
+               rc = DosFSCtl(NULL, 0, &cbData,
+                             &opts, cbParms, &cbParms,
+                             FAT32_MOUNT, FS_NAME, -1, FSCTL_FSDNAME);
+            }
+            else
+            {
+               // mounting to a FAT subdir
+               rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_MOUNT,
+                               &opts, cbParms, &cbParms,
+                               NULL, 0, NULL);
+            }
         }
+
+
+       if (fBlock)
+       {
+          HFILE hfPhys;
+          DDI_Rediscover_param parm;
+          DDI_Rediscover_data  data;
+          ULONG cbData, cbParm, ulAction;
+
+          if (! fDelete)
+          {
+             // rediscover PRM
+             USHORT cbDrives = 0;
+             int i;
+
+             rc = DosPhysicalDisk(INFO_COUNT_PARTITIONABLE_DISKS,
+                                  &cbDrives,
+                                  sizeof(cbDrives),
+                                  NULL,
+                                  0);
+
+             if (rc)
+                goto err;
+
+             // get handle of first available disk
+             for (i = 0; i < cbDrives; i++)
+             {
+                 char drv[3];
+
+                 drv[0] = i + '0';
+                 drv[1] = ':';
+                 drv[2] = '\0';
+
+                 rc = DosPhysicalDisk(INFO_GETIOCTLHANDLE,
+                                      (PHFILE)&hfPhys,
+                                      2L,
+                                      drv,
+                                      sizeof(drv));
+
+                 if (! rc)
+                     break;
+             }
+
+             if (rc)
+                goto err;
+
+             parm.DDI_TotalDrives = 0; // do a PRM rediscover
+             parm.DDI_aDriveNums[0] = 1;
+             data.DDI_TotalExtends = 0;
+             data.NewIFSMUnits = 0;
+
+             cbData = (data.DDI_TotalExtends * sizeof(DDI_ExtendRecord)) + 
+                 sizeof(DDI_Rediscover_data) - sizeof(DDI_ExtendRecord);
+
+             cbParm = (parm.DDI_TotalDrives * sizeof(UCHAR)) + sizeof(DDI_Rediscover_param) - sizeof(BYTE);
+
+             rc = DosDevIOCtl(hfPhys, IOCTL_PHYSICALDISK, REDISCOVER_DRIVE_IOCTL,
+                              &parm, cbParm, &cbParm,
+                              &data, cbData, &cbData);
+
+             if (rc)
+                goto err;
+
+             rc = DosPhysicalDisk(INFO_FREEIOCTLHANDLE,
+                                  NULL,
+                                  0,
+                                  (PHFILE)&hfPhys,
+                                  2L);
+          }
+
+          DosClose(hf);
+       }
     }
 
 err:
@@ -370,8 +529,7 @@ err:
              return 1;
 
       case ERROR_INVALID_PATH:
-             printf ("Error: Invalid path");
-             return 1;
+             return 0;
 
       case ERROR_ALREADY_ASSIGNED:
              printf ("Error: This file is already in use");
