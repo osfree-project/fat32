@@ -9,9 +9,9 @@ public   _pIORBHead
 
 _DATA segment byte public 'DATA' use16
 
-_data_end dw offset data_end
-_code_end    dw offset code_end
-_pIORBHead   dd 0
+_data_end  dw  offset data_end
+_code_end  dw  offset code_end
+_pIORBHead dd  0
 
 _DATA ends
 

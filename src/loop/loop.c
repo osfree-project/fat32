@@ -43,46 +43,46 @@ typedef unsigned long long ULONGLONG, *PULONGLONG;
 
 typedef struct _exbuf
 {
-ULONG buf;
+    ULONG buf;
 } EXBUF, far *PEXBUF;
 
 typedef struct _cpdata
 {
-  long semSerialize;
-  long semRqAvail;
-  long semRqDone;
-  ULONG rc;
-  ULONG hf;
-  ULONG Op;
-  ULONG cbData;
-  LONGLONG llOffset;
-  UCHAR pFmt[8];
-  UCHAR Buf[32768];
+    long semSerialize;
+    long semRqAvail;
+    long semRqDone;
+    ULONG rc;
+    ULONG hf;
+    ULONG Op;
+    ULONG cbData;
+    LONGLONG llOffset;
+    UCHAR pFmt[8];
+    UCHAR Buf[32768];
 } CPDATA, far *PCPDATA;
 
 typedef struct _Mountoptions
 {
-UCHAR pFilename[CCHMAXPATHCOMP];
-UCHAR pMntPoint[CCHMAXPATHCOMP];
-UCHAR pFmt[8];
-ULONGLONG ullOffset;
-ULONGLONG ullSize;
-ULONG ulBytesPerSector;
-ULONG hf;
-USHORT usOp;
+    UCHAR pFilename[CCHMAXPATHCOMP];
+    UCHAR pMntPoint[CCHMAXPATHCOMP];
+    UCHAR pFmt[8];
+    ULONGLONG ullOffset;
+    ULONGLONG ullSize;
+    ULONG ulBytesPerSector;
+    ULONG hf;
+    USHORT usOp;
 } MNTOPTS, *PMNTOPTS;
 
 // unit data
 struct unit
 {
-UCHAR szName[260];
-BYTE bAllocated;
-BYTE bMounted;
-BYTE lock_state;
-ULONGLONG ullOffset;
-ULONGLONG ullSize;
-ULONG hf;
-UCHAR cUnitNo;
+    UCHAR szName[260];
+    BYTE bAllocated;
+    BYTE bMounted;
+    BYTE lock_state;
+    ULONGLONG ullOffset;
+    ULONGLONG ullSize;
+    ULONG hf;
+    UCHAR cUnitNo;
 };
 
 typedef struct _PTE
@@ -140,6 +140,7 @@ extern USHORT code_end;
 
 extern volatile ULONG pIORBHead;
 
+// !!! should be the 1st variable in the data segment !!!
 struct SysDev3 DevHeader = {
     {
         -1,
@@ -154,6 +155,7 @@ struct SysDev3 DevHeader = {
     },
     DEV_ADAPTER_DD | DEV_16MB | DEV_INITCOMPLETE | DEV_IOCTL2
 };
+// !!!
 
 void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
@@ -237,7 +239,7 @@ APIRET SemWait(long far *sem)
 
     if (*sem >= 0)
     {
-        rc = DevHelp_ProcBlock((ULONG)sem, -1, 1);
+        rc = DevHelp_ProcBlock((ULONG)sem, -1, 0);
     }
 
     return rc;
@@ -273,7 +275,7 @@ void init(PRPINITIN reqpkt)
     PDDD_PARM_LIST pADDParms;
     PSZ pCmdLine; 
     char far *p;
-    int nUnits = 1;
+    int nUnits = 3;
 
     // check for OS/4 loader signature at DOSHLP:0 seg
     if (*doshlp == 0x342F534F)
@@ -289,7 +291,7 @@ void init(PRPINITIN reqpkt)
         }
     }
 
-    LogPrint("loop.add started\n");
+    log_printf("%s\n", (char far *)"loop.add started");
 
     pADDParms = (PDDD_PARM_LIST)reqpkt->InitArgs;
     pCmdLine = MAKEP(SELECTOROF(pADDParms), (USHORT)pADDParms->cmd_line_args);
@@ -303,7 +305,7 @@ void init(PRPINITIN reqpkt)
 
     if (! nUnits)
     {
-        nUnits = 1;
+        nUnits = 3;
     }
 
     if (nUnits > 8)
@@ -722,7 +724,6 @@ struct unit _far *u;
             }
 
             memset(u, 0, sizeof(struct unit));
-
             break;
 
         default:
@@ -931,6 +932,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                 error = IOERR_CMD_NOT_SUPPORTED;
                         }
                     }
+                    break;
 
                 case IOCC_EXECUTE_IO:
                     {
@@ -992,7 +994,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
         }
 
         pIORB->ErrorCode = error;
-        pIORB->Status    = (error ? IORB_ERROR : 0) | IORB_DONE;
+        pIORB->Status    = ((error != IOERR_MEDIA_CHANGED ? error : 0) ? IORB_ERROR : 0) | IORB_DONE;
 
         // call to completion callback?
         if (rcont & IORB_ASYNC_POST)

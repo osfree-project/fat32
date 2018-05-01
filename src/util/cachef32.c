@@ -122,12 +122,12 @@ UCHAR rgFirstInfo[256];
           }
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
-				 NULL, 0, &ulParmSize,
-	  FAT32_STOPLW, FS_NAME, -1, FSCTL_FSDNAME);
+		 NULL, 0, &ulParmSize,
+                 FAT32_STOPLW, FS_NAME, -1, FSCTL_FSDNAME);
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
-				 NULL, 0, &ulParmSize,
-	  FAT32_STARTLW, FS_NAME, -1, FSCTL_FSDNAME);
+                 NULL, 0, &ulParmSize,
+                 FAT32_STARTLW, FS_NAME, -1, FSCTL_FSDNAME);
    if (rc)
 	  {
 	  printf("Starting LW failed, rc = %d\n", rc);
@@ -179,8 +179,8 @@ UCHAR rgFirstInfo[256];
 	  if (bPrevPrio != pOptions->bLWPrio)
 		 {
 		 DosSetPriority(PRTYS_THREAD,
-			pOptions->bLWPrio, 0, pOptions->ulLWTID);
-		 bPrevPrio = pOptions->bLWPrio;
+                                pOptions->bLWPrio, 0, pOptions->ulLWTID);
+                                bPrevPrio = pOptions->bLWPrio;
 		 }
 	  DosSleep(5000);
 	  }
@@ -372,12 +372,6 @@ int ret;
          switch (pCPData->Op)
             {
             case OP_OPEN:
-               if (pCPData->Buf[0] == 0)
-                  {
-                  rc = ERROR_INVALID_PATH;
-                  break;
-                  }
-
                bs = bdrv_new("");
 
                if (! bs)
@@ -505,11 +499,6 @@ ULONG  ulDataSize;
 VOID Handler(INT iSignal)
 {
    printf("Signal %d was received\n", iSignal);
-   
-   if (iSignal == SIGTERM)
-   {
-      pOptions->fTerminate = TRUE;
-   }
 
    DosFSCtl(NULL, 0, NULL,
             NULL, 0, NULL,
@@ -517,10 +506,15 @@ VOID Handler(INT iSignal)
 
    if (hLoop)
       {
-      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
+      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_DETACH,
                   NULL, 0, NULL,
                   NULL, 0, NULL);
       }
+   
+   if (iSignal == SIGTERM)
+   {
+      pOptions->fTerminate = TRUE;
+   }
 
    //exit(1);
 }

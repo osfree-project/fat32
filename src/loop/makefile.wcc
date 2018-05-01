@@ -3,7 +3,7 @@ PROJ=loop
 PATH=..\..\$(PROJ)
 DIRS=libc
 
-DEBUG=-dDEBUG
+# DEBUG=-dDEBUG
 
 !include ..\makefile.mk
 

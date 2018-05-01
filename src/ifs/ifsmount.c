@@ -1535,7 +1535,7 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
 
    pbpb = &pSect->bpb;
 
-   if (!pbpb->BytesPerSector)
+   if (! pbpb->BytesPerSector)
       {
       return FAT_TYPE_NONE;
       }
@@ -1580,14 +1580,14 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
       return FAT_TYPE_NONE;
       } /* endif */
 
-   DataSec = TotSec - NonDataSec;
-   CountOfClusters = DataSec / pbpb->SectorsPerCluster;
-
    if (! pSect->bpb.BigTotalSectors && ! pSect->bpb.TotalSectors)
       return FAT_TYPE_NONE;
 
    if (! pSect->bpb.BytesPerSector || ! pSect->bpb.SectorsPerCluster)
       return FAT_TYPE_NONE;
+
+   DataSec = TotSec - NonDataSec;
+   CountOfClusters = DataSec / pbpb->SectorsPerCluster;
 
    ulSector = pSect->bpb.ReservedSectors;
    ulNumFats = pSect->bpb.NumberOfFATs;
