@@ -511,6 +511,17 @@ VOID Handler(INT iSignal)
       pOptions->fTerminate = TRUE;
    }
 
+   DosFSCtl(NULL, 0, NULL,
+            NULL, 0, NULL,
+            FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
+
+   if (hLoop)
+      {
+      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
+                  NULL, 0, NULL,
+                  NULL, 0, NULL);
+      }
+
    //exit(1);
 }
 
@@ -519,9 +530,6 @@ VOID Handler(INT iSignal)
 ******************************************************************/
 VOID ExitHandler(VOID)
 {
-   DosFSCtl(NULL, 0, NULL,
-            NULL, 0, NULL,
-            FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
 }
 
 /******************************************************************

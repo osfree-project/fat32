@@ -109,6 +109,7 @@ typedef struct _DDD_Parm_List {
     USHORT machine_config_table; /* addr of Machine Config Info       */
 } DDD_PARM_LIST, far *PDDD_PARM_LIST;
 
+int strcmp(const char _far *s, const char _far *t);
 char _far *strstr(const char _far *s1, const char _far *s2);
 void _far *memcpy(void _far *in_dst, void _far *in_src, int len);
 char _far *strcpy(char _far *s, const char _far *t );
@@ -167,8 +168,6 @@ USHORT devhandle = 0;  // ADD handle
 ULONG hook_handle = 0; // Ctx Hook handle
 
 struct unit units[8] = {0};
-
-int bLastUnit = -1;
 
 ADAPTERINFO ainfo = {
    "loop device", 0, 8, AI_DEVBUS_OTHER | AI_DEVBUS_32BIT,
@@ -628,6 +627,7 @@ int Mount(MNTOPTS far *opts)
 {
 APIRET rc = 0;
 ULONG hf;
+int iUnitNo;
 struct unit _far *u;
 
     switch (opts->usOp)
@@ -665,36 +665,44 @@ struct unit _far *u;
                     return rc;
             }
 
-            if (bLastUnit == -1)
-                bLastUnit = 0;
-            else
-                bLastUnit++;
+            // find first free slot
+            for (iUnitNo = 0; iUnitNo < 8; iUnitNo++)
+            {
+                if (! units[iUnitNo].bMounted)
+                    break;
+            }
 
-            if (bLastUnit > 8)
+            if (iUnitNo == 8)
             {
                 rc = 1; // @todo better error
                 break;
             }
 
-            u = &units[bLastUnit];
+            u = &units[iUnitNo];
 
             strcpy(u->szName, opts->pFilename);
             u->ullOffset = opts->ullOffset;
             u->ullSize = opts->ullSize;
             u->hf = hf;
-            u->cUnitNo = bLastUnit;
+            u->cUnitNo = iUnitNo;
 
             u->bMounted = 1;
             break;
 
         case MOUNT_RELEASE:
-            if (bLastUnit == -1)
+            for (iUnitNo = 0; iUnitNo < 8; iUnitNo++)
             {
-                rc = 1;
-                break;
+                u = &units[iUnitNo];
+
+                if (u->cUnitNo == iUnitNo)
+                    break;
             }
 
-            u = &units[bLastUnit];
+            if ((iUnitNo == 8) || (iUnitNo == 0 && ! u->bMounted))
+            {
+                rc = 1; // @todo better error
+                break;
+            }
 
             if (! opts->hf)
             {
@@ -715,12 +723,6 @@ struct unit _far *u;
 
             memset(u, 0, sizeof(struct unit));
 
-            if (bLastUnit > 0)
-                bLastUnit--;
-            else
-                bLastUnit = -1;
-
-            u->bMounted = 0;
             break;
 
         default:

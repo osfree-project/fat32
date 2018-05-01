@@ -123,6 +123,14 @@ char _far *strstr(const char _far *s1, const char _far *s2)
     return( 0 );
 }
 
+int strcmp( const char _far *s, const char _far *t )
+{
+    for( ; *s == *t; s++, t++ )
+        if( *s == '\0' )
+            return( 0 );
+    return( *s - *t );
+}
+
 int isspace( int c )
 {
   switch (c)
