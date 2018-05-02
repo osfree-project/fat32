@@ -337,6 +337,8 @@ F32PARTS.EXE            \TOOLS\SYSTEM\BIN
 
 FAT32.IFS               \TOOLS\SYSTEM\BOOT
 
+LOOP.ADD               \TOOLS\SYSTEM\BOOT
+
 UUNIFAT.DLL and forwarders \TOOLS\SYSTEM\DLL
 
 FAT32.INF               \TOOLS\SYSTEM\BOOK
@@ -487,11 +489,13 @@ FAT32S
 
 Copy the following file to your \OS2\DLL directory:
 
-UUNIFAT.DLL / UFAT12.DLL / UFAT16.DLL/ UFAT32.DLL / UEXFAT.DLL 
+UUNIFAT.DLL / UFAT12.DLL / UFAT16.DLL/ UFAT32.DLL / UEXFAT.DLL / QEMUIMG.DLL
 
 Copy the following files to your \OS2\BOOT:   
 
 FAT32.IFS
+
+LOOP.ADD
 
 Copy documentation files to your \OS2\DOCS\FAT32 directory: 
   
@@ -731,16 +735,71 @@ The free space is not available on the disk.
 FAT32.IFS will internally keep track of the free space and update it on disk on
 shutdown.
 
+LOOP.ADD
+---------
+
+LOOP.ADD is the block device driver (Adapter Device Driver) for mounting disk images
+laying on an another file system. It allows to mount a disk image with any available
+IFS (besides FAT32.IFS). So, after attaching the image with F32MOUNT.EXE, a block 
+device appears in the system, which gets a drive letter assigned and then the kernel
+calls all IFS FS_MOUNT entry points, until it gets mounted.
+
+LOOP.ADD contains the same functionality that FAT32.IFS contains, needed to mount
+disk images. For successfull image mount, you need a running instance of CACHEF32.EXE
+which loads QEMUIMG.DLL to mount disk images. So that, as in FAT32.IFS case, we
+have CACHEF32.EXE running a loop, polling LOOP.ADD with a "GET_REQ" ioctl. If an 
+OPEN/CLOSE/READ/WRITE command is available, it executes it and returns back into the driver
+with an "DONE_REQ" ioctl&per. An actual file system is mounted to a block device served by
+LOOP.ADD. 
+
+Syntax:
+
+BASEDEV =  ÄÄ LOOP.ADD ÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÂ´
+                         ÀÄ arguments ÄÙ
+
+
+Options Description:
+
+/UNITS:<number of units>     Number of units to serve.
+
+This specifies how many images can be mounted at once. For each image a block device
+should be allocated&per. The number of block devices is fixed at the moment of loading the 
+driver.
+
+Examples:
+
+BASEDEV=LOOP.ADD /UNITS&colon.3
+
 
 THE PURPOSE OF CACHEF32.EXE
 ----------------------------
 
 CACHEF32.EXE is a helper program with the following functions:
-Check DISK state on boot, run CHKDSK if needed.
-Start the LAZY WRITE daemon.
-Set CACHE and READ-AHEAD parameters.
-Set Longname behavior.
-Load a CP to UNICODE translate table for longnames and the default codepage.
+
+- Check DISK state on boot, run CHKDSK if needed (but since FAT32.IFS 
+versiom 0.10, CHKDSK is no more run from CACHEF32.EXE. It is run
+from the IFS FS_INIT routine, as it should be)&per.
+- Start the LAZY WRITE daemon&per. 
+- Set CACHE and READ-AHEAD parameters.
+- Set Longname behavior.
+- Load a CP to UNICODE translate table for longnames and the default codepage.
+(Unicode translate table loading is moved to UUNIFAT.DLL. Now CACHEF32.EXE just
+calls corresponding function in this DLL.)
+- CACHEF32.EXE also runs a special helper thread executing a loop polling the IFS 
+for OPEN/READ/WRITE/CLOSE commands. So, this thread executes these commands and returns 
+results back to the IFS. This is required to support reading/writing sectors from/to 
+disk images laying on another file system&per. For reading the disk images, CACHEF32.EXE 
+uses QEMUIMG.DLL, which contains the disk image access code ported from QEMU 
+(http://www.qemu.org/).
+- CACHEF32.EXE is also running another thread, executing a second loop polling
+the LOOP.ADD for OPEN/READ/WRITE/CLOSE requests. So, this thread executes these
+commands and returns results back to the driver. This is required to support reading/
+writing sectors from/to disk images laying on another file system. For reading the 
+disk images, CACHEF32.EXE uses QEMUIMG.DLL, which contains the disk image access
+code ported from QEMU (http://www.qemu.org/).
+- CACHEF32.EXE also forces all FAT12/FAT16 drives to be remounted on startup.
+This is needed to cause these drives remounted by FAT32.IFS, instead of the
+in-kernel FAT driver. This is to avoid manual remount each time.
 
 When run in the foreground and CACHEF32 is already running, it displays the
 CACHE parameters and allows you to modify the values. If no other copy of
@@ -1133,17 +1192,24 @@ directory should be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesyst
 should be FAT12/FAT16/FAt32/exFAT too. So, you can access the image filesystem 
 by changing the directory to the selected mount point subdirectory.   
 
+Also, with LOOP.ADD, there is a possibility to mount images with any file system 
+(besides FAT12/FAT16/FAT32/exFAT) on a drive letter.
+
 The IFS uses CACHEF32.EXE as a helper. It loads the QEMUIMG.DLL library, which 
 contains functions to read data inside the virtual VM disk images of the above 
 mentioned formats.   
 
 The syntax is the following:   
 
-[c:\] f32mount [d:\somedir\somefile.img [<somedir> | /d] [/p:<partition no>][/o:<offset>][/f:<format>]]   
+[c:\] f32mount [d:\somedir\somefile.img [<somedir> | /block] [/d] [/p:<partition no>][/o:<offset>][/f:<format>]]   
 
-So, for the mount command, the first parameter is an image path (absolute or 
-relative), the second is the mount point (absolute or relative, too). Then the 
-following options are possible:   
+So, for the mount command, the first parameter is an image path (absolute or relative), the second 
+is the mount point (absolute or relative, too), or a "/block" parameter, which specifies that we should
+mount to a block device with LOOP.ADD. In the latter case, the image will be mounted to a drive
+letter, and F32MOUNT.EXE refreshes removable media, and the image gets mounted to a drive letter,
+with any available IFS (not only FAT32.IFS).
+
+:p.Then the following options are possible&colon.
 
 /d - specifies that we're unmouning the image, or a mountpoint, specified as a first parameter.   
 
@@ -1180,6 +1246,20 @@ Examples:
 
 - mounts the first primary partition on a DOSEMU FreeDOS image (having a 0x80-byte 
 header before the partition table.). Force format to RAW.
+
+The images are unmounted with the following command:
+
+[c:\] f32mount hdimage.freedos /d
+
+or
+
+[c:\] f32mount w:\tmp\0 /d
+
+or, in case the image was mounted to the block device,
+
+[c:\] eject j:
+
+:p. where j: is a block device drive letter.
 
 
 ==============================

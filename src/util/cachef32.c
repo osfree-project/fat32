@@ -510,11 +510,19 @@ VOID Handler(INT iSignal)
                   NULL, 0, NULL,
                   NULL, 0, NULL);
       }
+
+   if (iSignal == SIGSEGV)
+      {
+      // kill IFS polling thread
+      DosKillThread(4);
+      // kill ADD polling thread
+      DosKillThread(5);
+      }
    
    if (iSignal == SIGTERM)
-   {
+      {
       pOptions->fTerminate = TRUE;
-   }
+      }
 
    //exit(1);
 }

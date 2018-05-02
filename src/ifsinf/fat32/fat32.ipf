@@ -1190,6 +1190,8 @@ PARTFILT&per.FLT &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT
 .br 
 FAT32&per.IFS &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT 
 .br 
+LOOP&per.ADD &bsl.TOOLS&bsl.SYSTEM&bsl.BOOT 
+.br 
 
 .br 
 QEMUIMG&per.DLL &bsl.TOOLS&bsl.SYSTEM&bsl.DLL 
@@ -1407,6 +1409,8 @@ QEMU-IMG&per.EXE
 :p.Copy the following files to your &bsl.OS2&bsl.BOOT&colon.
 
 :p.FAT32&per.IFS
+
+:p.LOOP&per.ADD
 .br
 
 :p.Copy documentation files to your &bsl.OS2&bsl.DOCS&bsl.FAT32 directory&colon.
@@ -1464,6 +1468,8 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 
 :li.:link reftype=hd refid=20042.FAT32&per.IFS :elink.
 
+:li.:link reftype=hd refid=20043.LOOP&per.ADD :elink.
+
 :li.:link reftype=hd refid=20045.CACHEF32&per.EXE :elink.
 
 :li.:link reftype=hd refid=20047.UUNIFAT&per.DLL and forwarders :elink.
@@ -1500,6 +1506,8 @@ location to the STARTUP&per.CMD found in your root directory&per.  If you have n
 &per. 
 
 :p.:hp2.:link reftype=hd refid=20042.FAT32&per.IFS :elink.:ehp2.The actual IFS&per. 
+
+:p.:hp2.:link reftype=hd refid=20043.LOOP&per.ADD :elink.:ehp2.The disk image block device driver&per. 
 
 :p.:hp2.:link reftype=hd refid=18.PARTFILT&per.FLT:elink.:ehp2.Partition support filter (non-LVM systems, only)&per. 
 
@@ -1708,6 +1716,51 @@ will only redetermine the amount of free space if&colon.
 :p.FAT32&per.IFS will internally keep track of the free space and update it on 
 disk on shutdown&per. 
 
+:h2 id=20043 res=30046.LOOP&per.ADD
+
+:p.:hp2.LOOP&per.ADD&colon. :ehp2.
+
+:p.LOOP&per.ADD is the block device driver (Adapter Device Driver) for mounting disk images
+laying on an another file system&per. It allows to mount a disk image with any available
+IFS (besides FAT32&per.IFS)&per. So, after attaching the image with :link reftype=hd refid=20054.F32MOUNT&per.EXE
+:elink., a block device appears in the system, which gets a drive letter assigned and then
+the kernel calls all IFS FS_MOUNT entry points, until it gets mounted&per.
+
+:p.LOOP&per.ADD contains the same functionality that FAT32&per.IFS contains, needed to mount
+disk images&per. For successfull image mount, you need a running instance of :link reftype=hd 
+refid=20045.CACHEF32&per.EXE :elink. which loads :link reftype=hd refid=20055.QEMUIMG&per.DLL 
+:elink. to mount disk images&per. So that, as in FAT32&per.IFS case, we have CACHEF32&per.EXE
+running a loop, polling LOOP&per.ADD with a "GET_REQ" ioctl. If an  OPEN/CLOSE/READ/WRITE 
+command is available, it executes it and returns back into the driver with an "DONE_REQ" 
+ioctl&per. An actual file system is mounted to a block device served by LOOP&per.ADD&per. 
+
+:p.:hp2.Syntax&colon. :ehp2.
+
+:cgraphic.
+
+
+BASEDEV =  ÄÄ LOOP.ADD ÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÂ´
+                         ÀÄ arguments ÄÙ
+
+
+:ecgraphic.
+
+:p.:hp7.Options :ehp7.:hp7.Description :ehp7.
+
+:p.:hp2./UNITS&colon.<number of units> :ehp2.Number of units to serve&per.   
+
+:p.This specifies how many images can be mounted at once&per. For each image a block device
+should be allocated&per. The number of block devices is fixed at the moment of loading the 
+driver&per.
+
+:p.:hp2.Examples :ehp2.
+
+:cgraphic.
+
+BASEDEV=LOOP.ADD /UNITS&colon.3
+
+:ecgraphic.
+
 :p.
 :h2 id=20045 res=30043.CACHEF32.EXE
 
@@ -1728,11 +1781,18 @@ from the IFS FS_INIT routine, as it should be)&per.
 UUNIFAT&per.DLL :elink.&per. Now CACHEF32&per.EXE just calls corresponding function
 in this DLL&per.)
 :li.CACHEF32&per.EXE also runs a special helper thread executing a loop polling the IFS 
-for OPEN/READ/WRITE/CLOSE commands. So, this thread executes these commands and returns 
+for OPEN/READ/WRITE/CLOSE commands&per. So, this thread executes these commands and returns 
 results back to the IFS&per. This is required to support reading/writing sectors from/to 
 disk images laying on another file system&per. For reading the disk images, CACHEF32&per.EXE 
 uses :link reftype=hd refid=20055.QEMUIMG&per.DLL :elink., which contains the disk image 
 access code ported from QEMU (http&colon.//www&per.qemu&per.org/)&per.
+:li.CACHEF32&per.EXE is also running another thread, executing a second loop polling
+the :link reftype=hd refid=20043.LOOP&per.ADD :elink. for OPEN/READ/WRITE/CLOSE requests&per.
+So, this thread executes these commands and returns results back to the driver&per.
+This is required to support reading/writing sectors from/to disk images laying on 
+another file system&per. For reading the disk images, CACHEF32&per.EXE uses 
+:link reftype=hd refid=20055.QEMUIMG&per.DLL :elink., which contains the disk 
+image access code ported from QEMU (http&colon.//www&per.qemu&per.org/)&per.
 :li.CACHEF32&per.EXE also forces all FAT12/FAT16 drives to be remounted on startup&per.
 This is needed to cause these drives remounted by FAT32&per.IFS, instead of the
 in-kernel FAT driver&per. This is to avoid manual remount each time&per.
@@ -2107,6 +2167,8 @@ FAT32&per.IFS&per.
 :p.For successful mounting of the disk images, a running :link reftype=hd refid=20045.CACHEF32&per.EXE :elink. 
 daemon is required&per. The daemon contains a special thread polling the IFS for OPEN/READ/WRITE/CLOSE 
 requests, executing these requests and returning the results back, via a shared memory buffer&per.
+Also, there is a similar thread polling :link reftype=hd refid=20043.LOOP&per.ADD :elink. for the 
+same commands&per.
 
 :p.QEMUIMG&per.DLL is a shared component&per. It is loaded by both :link reftype=hd 
 refid=20045.CACHEF32&per.EXE :elink. and :link reftype=hd refid=20054.F32MOUNT&per.EXE :elink.
@@ -2266,16 +2328,24 @@ be on a FAT12/FAT16/FAT32/exFAT drive, and the mounted filesystem should be FAT1
 too&per. So, you can access the image filesystem by changing the directory to the selected mount
 point subdirectory&per.
 
+:p.Also, with LOOP&per.ADD, there is a possibility to mount images with any file system 
+(besides FAT12/FAT16/FAT32/exFAT) on a drive letter&per.
+
 :p. The IFS uses :link reftype=hd refid=20045.CACHEF32&per.EXE :elink. as a helper&per. It 
 loads the :link reftype=hd refid=20055. QEMUIMG&per.DLL :elink. library, which contains 
 functions to read data inside the virtual VM disk images of the above mentioned formats&per.
 
 :p.The syntax is the following&colon.
 
-:p.:hp2.[c&colon.\] f32mount [d&colon.\somedir\somefile&per.img [<somedir> | /d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
+:p.:hp2.[c&colon.\] f32mount [d&colon.\somedir\somefile&per.img [<somedir> | /block] [/d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
 
 :p. So, for the mount command, the first parameter is an image path (absolute or relative), the second 
-is the mount point (absolute or relative, too)&per. Then the following options are possible&colon.
+is the mount point (absolute or relative, too), or a "/block" parameter, which specifies that we should
+mount to a block device with LOOP&per.ADD&per. In the latter case, the image will be mounted to a drive
+letter, and F32MOUNT&per.EXE refreshes removable media, and the image gets mounted to a drive letter, with
+any available IFS (not only FAT32&per.IFS).
+
+:p.Then the following options are possible&colon.
 
 :p.:hp2. /d :ehp2. - specifies that we're unmouning the image, or a mountpoint, specified as a first parameter&per.
 
@@ -2310,6 +2380,20 @@ The following format names are defined&colon. :hp2.Raw/bochs/cloop/dmg/vpc/vmdk/
 
 :p. - mounts the first primary partition on a DOSEMU FreeDOS image (having a 0x80-byte header before
 the partition table&per.)&per. Force format to RAW&per.
+
+:p.The images are unmounted with the following command&colon.
+
+:p.:hp2. [c&colon.\] f32mount hdimage&per.freedos /d:ehp2.
+
+:p.or
+
+:p.:hp2. [c&colon.\] f32mount w&colon.\tmp\0 /d:ehp2.
+
+:p.or, in case the image was mounted to the block device,
+
+:p.:hp2. [c&colon.\] eject j&colon.:ehp2.
+
+:p. where j&colon. is a block device drive letter&per.
 
 :h1 id=52 res=30049.Current Status and Features
 

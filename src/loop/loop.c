@@ -632,10 +632,12 @@ ULONG hf;
 int iUnitNo;
 struct unit _far *u;
 
+    DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+
     switch (opts->usOp)
     {
         case MOUNT_MOUNT:
-            DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+            //DevHelp_SemClear((ULONG)&pCPData->semSerialize);
 
             if (opts->hf)
             {
@@ -815,7 +817,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                     PIORB_UNIT_CONTROL cpUI = (PIORB_UNIT_CONTROL)pIORB;
 
                                     if (cpUI->UnitInfoLen == sizeof(UNITINFO))
-                                        memcpy(u, cpUI->pUnitInfo, sizeof(UNITINFO));
+                                        memcpy(&ainfo.UnitInfo[u->cUnitNo], cpUI->pUnitInfo, sizeof(UNITINFO));
                                     else
                                         error = IOERR_CMD_SYNTAX;
                                 }
@@ -1091,7 +1093,7 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
     SEL sel;
     int i;
 
-    if (! u->bMounted)
+    if (! u->bMounted || ! daemonStarted)
     {
         return IOERR_UNIT_NOT_READY;
     }
