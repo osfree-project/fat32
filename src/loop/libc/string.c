@@ -62,6 +62,22 @@ char _far *strlwr(char _far *s)
     {
         if (*t >= 'A' && *t <= 'Z')
         {
+            *t += 0x20;
+        }
+        t++;
+    }
+
+    return s;
+}
+
+char _far *strupr(char _far *s)
+{
+    char _far *t = s;
+
+    while( *t )
+    {
+        if (*t >= 'A' && *t <= 'Z')
+        {
             *t -= 0x20;
         }
         t++;

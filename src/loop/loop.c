@@ -131,13 +131,14 @@ APIRET daemonStarted(PEXBUF pexbuf);
 APIRET daemonStopped(void);
 int Mount(MNTOPTS far *opts);
 APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG sector, USHORT count, UCHAR write);
+void _cdecl memlcpy(LIN lDst, LIN lSrc, ULONG numBytes);
 APIRET SemClear(long far *sem);
 APIRET SemSet(long far *sem);
 APIRET SemWait(long far *sem);
 
 extern USHORT data_end;
 extern USHORT code_end;
-
+extern USHORT FlatDS;
 extern volatile ULONG pIORBHead;
 
 // !!! should be the 1st variable in the data segment !!!
@@ -506,6 +507,7 @@ USHORT usCount;
 
    if (rc)
       {
+      log_printf("ps: %s\n", (char far *)"000");
       DevHelp_SemClear((ULONG)&pCPData->semSerialize);
       return rc;
       }
@@ -514,6 +516,7 @@ USHORT usCount;
 
    rc = SemWait(&pCPData->semRqDone);
 
+   log_printf("ps: %s\n", (char far *)"001");
    if (rc)
       return rc;
 
@@ -630,14 +633,12 @@ int Mount(MNTOPTS far *opts)
 APIRET rc = 0;
 ULONG hf;
 int iUnitNo;
-struct unit _far *u;
-
-    DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+struct unit *u;
 
     switch (opts->usOp)
     {
         case MOUNT_MOUNT:
-            //DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+            DevHelp_SemClear((ULONG)&pCPData->semSerialize);
 
             if (opts->hf)
             {
@@ -672,7 +673,9 @@ struct unit _far *u;
             // find first free slot
             for (iUnitNo = 0; iUnitNo < 8; iUnitNo++)
             {
-                if (! units[iUnitNo].bMounted)
+                u = &units[iUnitNo];
+
+                if (! u->bMounted)
                     break;
             }
 
@@ -681,8 +684,6 @@ struct unit _far *u;
                 rc = 1; // @todo better error
                 break;
             }
-
-            u = &units[iUnitNo];
 
             strcpy(u->szName, opts->pFilename);
             u->ullOffset = opts->ullOffset;
@@ -698,8 +699,14 @@ struct unit _far *u;
             {
                 u = &units[iUnitNo];
 
-                if (u->cUnitNo == iUnitNo)
+                strlwr(u->szName);
+                strlwr(opts->pMntPoint);
+
+                if (! strcmp(u->szName, opts->pMntPoint) && u->hf)
                     break;
+
+                //if (u->cUnitNo == iUnitNo && u->hf)
+                //    break;
             }
 
             if ((iUnitNo == 8) || (iUnitNo == 0 && ! u->bMounted))
@@ -720,9 +727,6 @@ struct unit _far *u;
                 pCPData->hf = u->hf;
 
                 rc = PostSetup();
-
-                if (rc)
-                    return rc;
             }
 
             memset(u, 0, sizeof(struct unit));
@@ -843,7 +847,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         pgeo->BytesPerSector  = 512;
                         pgeo->Reserved        = 0;
 
-                        if (u->ullSize)
+                        if (u->bMounted)
                         {
                             pgeo->TotalSectors    = u->ullSize / 512;
                             pgeo->NumHeads        = 255;
@@ -853,10 +857,11 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         else
                         {
                             // 96 MB disk geometry (as it's done in usbmsd.add)
-                            pgeo->TotalSectors    = 0x30000;
-                            pgeo->NumHeads        = 12;
-                            pgeo->SectorsPerTrack = 32;
-                            pgeo->TotalCylinders  = 512;
+                            //pgeo->TotalSectors    = 0x30000;
+                            //pgeo->NumHeads        = 12;
+                            //pgeo->SectorsPerTrack = 32;
+                            //pgeo->TotalCylinders  = 512;
+                            error = IOERR_UNIT_NOT_READY;
                         }
                     }
                     break;
@@ -921,7 +926,13 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                             strcpy(opts.pMntPoint, u->szName);
                                             opts.hf = 0;
                                             opts.usOp = MOUNT_RELEASE;
+
                                             rc = Mount(&opts);
+
+                                            if (rc)
+                                            {
+                                                error = IOERR_CMD_ABORTED;
+                                            }
                                         }
                                         error = IOERR_MEDIA_CHANGED;
                                         break;
@@ -1082,7 +1093,9 @@ ULONG crc32(UCHAR far *buf, ULONG len)
     return crc;
 }
 
-DLA_Table_Sector dlat;
+char buf[512];
+
+DLA_Table_Sector far *dlat;
 DLA_Entry far *dlae;
 
 APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USHORT count, UCHAR write)
@@ -1093,12 +1106,43 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
     SEL sel;
     int i;
 
+    struct
+    {
+        ULONG PhysAddr;
+        ULONG Size;
+    } pagelist;
+
+    void far *pl = &pagelist;
+    char far *pBuf = (char far *)&buf;
+
+    LIN linaddr, cpdata_linaddr, sg_linaddr, buf_linaddr;
+
     if (! u->bMounted || ! daemonStarted)
     {
         return IOERR_UNIT_NOT_READY;
     }
 
-    rc = DevHelp_AllocGDTSelector(&sel, 1);
+    rc = DevHelp_VirtToLin(SELECTOROF(pl),
+                           OFFSETOF(pl),
+                           &linaddr);
+
+    if (rc)
+    {
+        return IOERR_CMD_ABORTED;
+    }
+
+    rc = DevHelp_VirtToLin(SELECTOROF(p),
+                           OFFSETOF(p),
+                           &cpdata_linaddr);
+
+    if (rc)
+    {
+        return IOERR_CMD_ABORTED;
+    }
+
+    rc = DevHelp_VirtToLin(SELECTOROF(pBuf),
+                           OFFSETOF(pBuf),
+                           &buf_linaddr);
 
     if (rc)
     {
@@ -1108,19 +1152,21 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
     for (i = 0; i < cSGList; i++)
     {
         USHORT flag = 0;
-        char far *pBuf;
 
         sge = &SGList[i];
 
-        rc = DevHelp_PhysToGDTSelector(sge->ppXferBuf, sge->XferBufLen, sel);
+        pagelist.PhysAddr = sge->ppXferBuf;
+        pagelist.Size = sge->XferBufLen;
+
+        rc = DevHelp_PageListToLin(sge->XferBufLen,
+                                   linaddr,
+                                   &sg_linaddr);
 
         if (rc)
         {
             rc = IOERR_CMD_ABORTED;
             break;
         }
-
-        pBuf = (char far *)MAKEP(sel, 0);
 
         if (rba < 63)
         {
@@ -1174,21 +1220,23 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
                 case 62:
                     // DLAT
-                    dlat.DLA_Signature1 = DLA_TABLE_SIGNATURE1;
-                    dlat.DLA_Signature2 = DLA_TABLE_SIGNATURE2;
+                    dlat = (DLA_Table_Sector far *)pBuf;
 
-                    dlat.Disk_Serial_Number = 0x4a93f05eUL;
-                    dlat.Boot_Disk_Serial_Number = 0x4a93f05eUL;
+                    dlat->DLA_Signature1 = DLA_TABLE_SIGNATURE1;
+                    dlat->DLA_Signature2 = DLA_TABLE_SIGNATURE2;
 
-                    dlat.Cylinders = Cyl0;
-                    dlat.Heads_Per_Cylinder = 255;
-                    dlat.Sectors_Per_Track = 63;
+                    dlat->Disk_Serial_Number = 0x4a93f05eUL;
+                    dlat->Boot_Disk_Serial_Number = 0x4a93f05eUL;
 
-                    memcpy(&dlat.Disk_Name, (char far *)"Loop Device ", 12);
-                    dlat.Disk_Name[12] = u->cUnitNo + '0';
-                    dlat.Disk_Name[13] = '\0';
+                    dlat->Cylinders = Cyl0;
+                    dlat->Heads_Per_Cylinder = 255;
+                    dlat->Sectors_Per_Track = 63;
 
-                    dlae = (DLA_Entry far *)&dlat.DLA_Array;
+                    memcpy(&dlat->Disk_Name, (char far *)"Loop Device ", 12);
+                    dlat->Disk_Name[12] = u->cUnitNo + '0';
+                    dlat->Disk_Name[13] = '\0';
+
+                    dlae = (DLA_Entry far *)&dlat->DLA_Array;
 
                     dlae->Volume_Serial_Number = 0xfb8ed8f6UL;
                     dlae->Partition_Serial_Number = 0x824be8efUL;
@@ -1206,10 +1254,9 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
                     dlae->Drive_Letter = '*';
 
-                    dlat.DLA_CRC = 0;
-                    memcpy(pBuf, (char far *)&dlat, sizeof(DLA_Table_Sector));
+                    dlat->DLA_CRC = 0;
                     CRC32 = crc32(pBuf, 0x200);
-                    ((DLA_Table_Sector far *)pBuf)->DLA_CRC = CRC32;
+                    dlat->DLA_CRC = CRC32;
                     break;
 
                 default:
@@ -1217,6 +1264,7 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
                     break;
             }
 
+            memlcpy(sg_linaddr, buf_linaddr, 0x200);
             return 0;
         }
         else
@@ -1234,8 +1282,8 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
             pCPData->Op = OP_WRITE;
             pCPData->hf = u->hf;
             pCPData->llOffset = (LONGLONG)u->ullOffset + rba * 512;
-            pCPData->cbData = count * 512;
-            memcpy(p, pBuf, sge->XferBufLen);
+            pCPData->cbData = sge->XferBufLen;
+            memlcpy(cpdata_linaddr, sg_linaddr, sge->XferBufLen);
             p += sge->XferBufLen;
 
             rc = PostSetup();
@@ -1255,20 +1303,18 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
             pCPData->Op = OP_READ;
             pCPData->hf = u->hf;
             pCPData->llOffset = (LONGLONG)u->ullOffset + rba * 512;
-            pCPData->cbData = count * 512;
+            pCPData->cbData = sge->XferBufLen;
 
             rc = PostSetup();
 
             if (rc)
                 break;
 
-            memcpy(pBuf, p, sge->XferBufLen);
+            memlcpy(sg_linaddr, cpdata_linaddr, sge->XferBufLen);
             p += sge->XferBufLen;
             rc = pCPData->rc;
         }
     }
-
-    DevHelp_FreeGDTSelector(sel);
 
     return rc;
 }

@@ -71,6 +71,7 @@ $(PROJ_BLD)\loop.ols: $(OBJS) makefile.wcc ..\makefile.mk
  # @%append $@ segment 'InitCode'
  #@%append $@ libpath $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;
  #@%append $@ lib clibc
+ @%append $@ import DOS32FLATDS DOSCALLS.370
  @%append $@ @$[@
 
 # 'DDHeader'	CLASS 'DATA'

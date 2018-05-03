@@ -1,5 +1,6 @@
 .486p
 
+extrn    DOS32FLATDS :abs
 extrn    _strategy   :near
 
 public   _strat
@@ -11,6 +12,7 @@ _DATA segment byte public 'DATA' use16
 
 _data_end  dw  offset data_end
 _code_end  dw  offset code_end
+_FlatDS    dw  DOS32FLATDS
 _pIORBHead dd  0
 
 _DATA ends
@@ -98,8 +100,45 @@ _notify_hook    proc    far
 		        ret
 _notify_hook    endp
 
+public _memlcpy
+; void memlcpy(LIN lDst, LIN lSrc, ULONG numBytes)
+_memlcpy        proc   near
+lDst    equ  dword ptr [bp + 4]
+lSrc    equ  dword ptr [bp + 8]
+nBytes  equ  dword ptr [bp + 0ch]
+
+                push    bp
+                mov     bp,  sp
+
+                push    esi
+                push    edi
+                push    ds
+
+                mov     ax,  _FlatDS
+                mov     es,  ax
+                mov     ds,  ax
+                mov     esi, lSrc
+                mov     edi, lDst
+                mov     ecx, nBytes
+                mov     bl,  cl
+                shr     ecx, 2
+                cld
+            rep movs    dword ptr es:[edi], dword ptr ds:[esi]
+                mov     cl,  bl
+                and     ecx, 3
+            rep movs    byte ptr es:[edi],  byte  ptr ds:[esi]
+
+                pop     ds
+                pop     edi
+                pop     esi
+
+                pop     bp
+
+                ret 
+_memlcpy        endp
+
 code_end label word
 
 _TEXT ends
 
-    end
+      end

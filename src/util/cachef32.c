@@ -500,7 +500,7 @@ VOID Handler(INT iSignal)
 {
    printf("Signal %d was received\n", iSignal);
 
-   DosFSCtl(NULL, 0, NULL,
+   /* DosFSCtl(NULL, 0, NULL,
             NULL, 0, NULL,
             FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
 
@@ -509,16 +509,8 @@ VOID Handler(INT iSignal)
       DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_DETACH,
                   NULL, 0, NULL,
                   NULL, 0, NULL);
-      }
+      } */
 
-   if (iSignal == SIGSEGV)
-      {
-      // kill IFS polling thread
-      DosKillThread(4);
-      // kill ADD polling thread
-      DosKillThread(5);
-      }
-   
    if (iSignal == SIGTERM)
       {
       pOptions->fTerminate = TRUE;
