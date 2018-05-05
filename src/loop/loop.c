@@ -927,6 +927,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                 {
                                     PIORB_ADAPTER_PASSTHRU cpPT = (PIORB_ADAPTER_PASSTHRU)pIORB;
 
+                                    // handle 'eject' command
                                     if (cpPT->pControllerCmd[0] == 0x1b)
                                     {
                                         // SCSI Start stop unit command
@@ -1023,7 +1024,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
         // call to completion callback?
         if (rcont & IORB_ASYNC_POST)
         {
-           /* a short story:
+           /* a short story (from _dixie_, copied from hd4disk.add):
             * if we set MaxHWSGList in adapter info to >=16 - IORB_NotifyCall
               became recursive and reach stack limit!
               It designed to be async-called from interrupt, but we call it
@@ -1361,6 +1362,9 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
 
             memlcpy(sg_linaddr, buf_linaddr, 0x200);
 
+            cpIO->iorbh.ErrorCode = rc;
+            cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+
             IORB_NotifyCall((PIORBH)cpIO);
         }
         else
@@ -1389,6 +1393,9 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
     return rc;
 
 io_end:
+    cpIO->iorbh.ErrorCode = rc;
+    cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+
     IORB_NotifyCall((PIORBH)cpIO);
 
     return rc;

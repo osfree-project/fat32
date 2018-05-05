@@ -1727,7 +1727,7 @@ IFS (besides FAT32&per.IFS)&per. So, after attaching the image with :link reftyp
 the kernel calls all IFS FS_MOUNT entry points, until it gets mounted&per.
 
 :p.LOOP&per.ADD contains the same functionality that FAT32&per.IFS contains, needed to mount
-disk images&per. For successfull image mount, you need a running instance of :link reftype=hd 
+disk images&per. For successful image mount, you need a running instance of :link reftype=hd 
 refid=20045.CACHEF32&per.EXE :elink. which loads :link reftype=hd refid=20055.QEMUIMG&per.DLL 
 :elink. to mount disk images&per. So that, as in FAT32&per.IFS case, we have CACHEF32&per.EXE
 running a loop, polling LOOP&per.ADD with a "GET_REQ" ioctl. If an  OPEN/CLOSE/READ/WRITE 
