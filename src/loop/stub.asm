@@ -2,17 +2,20 @@
 
 extrn    DOS32FLATDS :abs
 extrn    _strategy   :near
+extrn    _IoHook     :near
 
 public   _strat
 public   _code_end
 public   _data_end
 public   _pIORBHead
+public   _DS
 
 _DATA segment byte public 'DATA' use16
 
 _data_end  dw  offset data_end
 _code_end  dw  offset code_end
 _FlatDS    dw  DOS32FLATDS
+_DS        dw  DGROUP
 _pIORBHead dd  0
 
 _DATA ends
@@ -73,8 +76,10 @@ _put_IORB       endp
                 public  _notify_hook
 _notify_hook    proc    far
                 pushad
+
                 push    ds
                 push    es
+
                 xor     eax,eax
                 xchg    _pIORBHead,eax
                 or      eax,eax
@@ -96,11 +101,32 @@ _notify_hook    proc    far
 @@nh_exit:
                 pop     es
                 pop     ds
+
                 popad
-		        ret
+
+	        ret
 _notify_hook    endp
 
-public _memlcpy
+                public _io_hook
+_io_hook        proc    far
+                pushad
+
+                push    ds
+                push    es
+
+                push    eax
+                call    _IoHook
+                add     sp, 4
+
+                pop     es
+                pop     ds
+
+                popad
+
+                ret
+_io_hook        endp
+
+                public _memlcpy
 ; void memlcpy(LIN lDst, LIN lSrc, ULONG numBytes)
 _memlcpy        proc   near
 lDst    equ  dword ptr [bp + 4]

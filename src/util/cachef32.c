@@ -361,12 +361,12 @@ int ret;
    if (rc)
       return;
 
+   rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_GET_REQ, 
+                    NULL, 0, NULL,
+                    NULL, 0, NULL);
+
    while (! pOptions->fTerminate)
       {
-      rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_GET_REQ, 
-                       NULL, 0, NULL,
-                       NULL, 0, NULL);
-
       if (!rc || rc == ERROR_VOLUME_NOT_MOUNTED || rc == ERROR_INTERRUPT)
          {
          switch (pCPData->Op)

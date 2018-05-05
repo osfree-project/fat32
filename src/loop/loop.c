@@ -99,6 +99,18 @@ typedef struct _PTE
     unsigned long total_sectors;
 } PTE;
 
+typedef struct
+{
+    struct unit far *u;
+    PIORB_EXECUTEIO cpIO;
+    ULONG  rba;
+    ULONG  len;
+    LIN    lCp;
+    LIN    lSg;
+    UCHAR  write;
+    APIRET rc;
+} HookData;
+
 #pragma pack()
 
 typedef struct _DDD_Parm_List {
@@ -122,6 +134,7 @@ void _cdecl _loadds strategy(RPH _far *reqpkt);
 void init(PRPINITIN reqpkt);
 void ioctl(RP_GENIOCTL far *reqpkt);
 void _cdecl notify_hook(void);
+void _cdecl io_hook(void);
 void _cdecl put_IORB(IORBH far *);
 int PreSetup(void);
 int PostSetup(void);
@@ -130,7 +143,8 @@ LIN virtToLin(void far *p);
 APIRET daemonStarted(PEXBUF pexbuf);
 APIRET daemonStopped(void);
 int Mount(MNTOPTS far *opts);
-APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG sector, USHORT count, UCHAR write);
+int _cdecl IoHook(HookData far *data);
+APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write);
 void _cdecl memlcpy(LIN lDst, LIN lSrc, ULONG numBytes);
 APIRET SemClear(long far *sem);
 APIRET SemSet(long far *sem);
@@ -139,6 +153,7 @@ APIRET SemWait(long far *sem);
 extern USHORT data_end;
 extern USHORT code_end;
 extern USHORT FlatDS;
+extern USHORT DS;
 extern volatile ULONG pIORBHead;
 
 // !!! should be the 1st variable in the data segment !!!
@@ -162,16 +177,21 @@ void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
 #define log_printf(str, ...)  if (LogPrint) (*LogPrint)("loop: " str, __VA_ARGS__)
 
+ULONG hook_handle = 0; // Ctx Hook handle
+ULONG io_hook_handle = 0; // Ctx Hook handle
+
 // DevHelp entry point
 ULONG Device_Help = 0;
 USHORT pidDaemon = 0;
 CPDATA far *pCPData = NULL;
 LIN lock = 0;
 USHORT devhandle = 0;  // ADD handle
-ULONG hook_handle = 0; // Ctx Hook handle
+//ULONG hook_handle = 0; // Ctx Hook handle
+//ULONG io_hook_handle = 0; // Ctx Hook handle
 
 struct unit units[8] = {0};
 
+// !!! these two structures must be consecutive !!!
 ADAPTERINFO ainfo = {
    "loop device", 0, 8, AI_DEVBUS_OTHER | AI_DEVBUS_32BIT,
    AI_IOACCESS_MEMORY_MAP, AI_HOSTBUS_OTHER | AI_BUSWIDTH_64BIT, 0, 0, AF_16M,
@@ -190,6 +210,7 @@ UNITINFO u2[7] = {
    { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[6], 0, UIB_TYPE_DISK, 16, 0, 0 },
    { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[7], 0, UIB_TYPE_DISK, 16, 0, 0 }
 };
+// !!!
 
 void IORB_NotifyCall(IORBH far *pIORB);
 #pragma aux IORB_NotifyCall = \
@@ -324,7 +345,7 @@ void init(PRPINITIN reqpkt)
     // register as an ADD
     DevHelp_RegisterDeviceClass(ainfo.AdapterName, (PFN)iohandler, 0, 1, &devhandle);
 
-    DevHelp_AllocateCtxHook((NPFN)notify_hook, &hook_handle);
+    DevHelp_AllocateCtxHook((NPFN)io_hook, &io_hook_handle);
 
     ((PRPINITOUT)reqpkt)->rph.Status = STATUS_DONE;
     ((PRPINITOUT)reqpkt)->CodeEnd = code_end;
@@ -412,6 +433,28 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             rc = daemonStopped();
             break;
 
+        case FUNC_DONE_REQ:
+#ifdef DEBUG
+            log_printf("ioctl: %s\n", (char far *)"done_req");
+#endif
+            if (! pidDaemon)
+            {
+                rc = ERROR_I24_INVALID_PARAMETER;
+                //return ERROR_INVALID_PROCID;
+                goto ioctl_exit;
+            }
+
+            if (queryCurrentPid() != pidDaemon)
+            {
+                rc = ERROR_I24_INVALID_PARAMETER;
+                //rc = ERROR_ALREADY_ASSIGNED;
+                goto ioctl_exit;
+            }
+
+            rc = SemClear(&pCPData->semRqDone);
+            // fall through
+            //break;
+
         case FUNC_GET_REQ:
 #ifdef DEBUG
             log_printf("ioctl: %s\n", (char far *)"get_req");
@@ -438,27 +481,6 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                 break;
          
             rc = SemSet(&pCPData->semRqAvail);
-            break;
-
-        case FUNC_DONE_REQ:
-#ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"done_req");
-#endif
-            if (! pidDaemon)
-            {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //return ERROR_INVALID_PROCID;
-                goto ioctl_exit;
-            }
-
-            if (queryCurrentPid() != pidDaemon)
-            {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //rc = ERROR_ALREADY_ASSIGNED;
-                goto ioctl_exit;
-            }
-
-            rc = SemClear(&pCPData->semRqDone);
             break;
 
         default:
@@ -507,7 +529,6 @@ USHORT usCount;
 
    if (rc)
       {
-      log_printf("ps: %s\n", (char far *)"000");
       DevHelp_SemClear((ULONG)&pCPData->semSerialize);
       return rc;
       }
@@ -516,7 +537,6 @@ USHORT usCount;
 
    rc = SemWait(&pCPData->semRqDone);
 
-   log_printf("ps: %s\n", (char far *)"001");
    if (rc)
       return rc;
 
@@ -704,9 +724,6 @@ struct unit *u;
 
                 if (! strcmp(u->szName, opts->pMntPoint) && u->hf)
                     break;
-
-                //if (u->cUnitNo == iUnitNo && u->hf)
-                //    break;
             }
 
             if ((iUnitNo == 8) || (iUnitNo == 0 && ! u->bMounted))
@@ -856,11 +873,6 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         }
                         else
                         {
-                            // 96 MB disk geometry (as it's done in usbmsd.add)
-                            //pgeo->TotalSectors    = 0x30000;
-                            //pgeo->NumHeads        = 12;
-                            //pgeo->SectorsPerTrack = 32;
-                            //pgeo->TotalCylinders  = 512;
                             error = IOERR_UNIT_NOT_READY;
                         }
                     }
@@ -978,8 +990,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                 error = IOERR_CMD_SGLIST_BAD;
                         }
 
-                        rc = doio(u, cpIO->pSGList, cpIO->cSGList, cpIO->RBA,
-                                  cpIO->BlockCount, scode > IOCM_READ_PREFETCH);
+                        rc = doio(u, cpIO, scode > IOCM_READ_PREFETCH);
 
                         if (rc)
                             error = rc;
@@ -1040,19 +1051,14 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
               BUT - if any basedev will try to call us directly from own
               IOCM_COMPLETE_INIT - we will stop system here, I think ;)
             */
-            if (ccode == IOCC_EXECUTE_IO && next)
-                put_IORB(pIORB);
-            else
+            if (ccode != IOCC_EXECUTE_IO)
+            {
                 IORB_NotifyCall(pIORB);
+            }
         }
         // chained request?
         pIORB = next;
     } while (pIORB);
-
-    if (pIORBHead)
-    {
-        DevHelp_ArmCtxHook(0, hook_handle);
-    }
 }
 
 ULONG crc_table[256];
@@ -1098,11 +1104,96 @@ char buf[512];
 DLA_Table_Sector far *dlat;
 DLA_Entry far *dlae;
 
-APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USHORT count, UCHAR write)
+HookData hookdata;
+
+int _cdecl IoHook(HookData far *data)
 {
     APIRET rc;
-    PSCATGATENTRY sge;
+    USHORT rcont;
+    PIORBH next;
+
+    do
+    {
+        if (data->rc)
+            break;
+
+        if (data->write)
+        {
+            rc = PreSetup();
+
+            if (rc)
+                break;
+
+            pCPData->Op = OP_WRITE;
+            pCPData->hf = data->u->hf;
+            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * 512;
+            pCPData->cbData = data->len;
+            memlcpy(data->lCp, data->lSg, data->len);
+
+            rc = PostSetup();
+
+            if (rc)
+                break;
+
+            rc = pCPData->rc;
+        }
+        else
+        {
+            rc = PreSetup();
+
+            if (rc)
+                break;
+
+            pCPData->Op = OP_READ;
+            pCPData->hf = data->u->hf;
+            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * 512;
+            pCPData->cbData = data->len;
+
+            rc = PostSetup();
+
+            if (rc)
+                break;
+
+            memlcpy(data->lSg, data->lCp, data->len);
+            rc = pCPData->rc;
+        }
+    } while (0);
+
+    rcont = data->cpIO->iorbh.RequestControl;
+    next = rcont & IORB_CHAIN ? data->cpIO->iorbh.pNxtIORB : 0;
+
+    if (rcont & IORB_ASYNC_POST)
+    {
+        if (next)
+        {
+            put_IORB((PIORBH)data->cpIO);
+        }
+        else
+        {
+            IORB_NotifyCall((PIORBH)data->cpIO);
+        }
+    }
+
+    if (pIORBHead)
+    {
+        notify_hook();
+    }
+
+    return rc;
+}
+
+
+APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
+{
+    PSCATGATENTRY SGList = cpIO->pSGList;
+    USHORT cSGList = cpIO->cSGList;
+    ULONG rba = cpIO->RBA;
+    USHORT count = cpIO->BlockCount;
     char far *p = pCPData->Buf;
+    PSCATGATENTRY sge;
+    USHORT rcont;
+    PIORBH next;
+    APIRET rc;
     SEL sel;
     int i;
 
@@ -1119,7 +1210,8 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
     if (! u->bMounted || ! daemonStarted)
     {
-        return IOERR_UNIT_NOT_READY;
+        rc = IOERR_UNIT_NOT_READY;
+        goto io_end;
     }
 
     rc = DevHelp_VirtToLin(SELECTOROF(pl),
@@ -1128,7 +1220,8 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
     if (rc)
     {
-        return IOERR_CMD_ABORTED;
+        rc = IOERR_CMD_ABORTED;
+        goto io_end;
     }
 
     rc = DevHelp_VirtToLin(SELECTOROF(p),
@@ -1137,7 +1230,8 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
     if (rc)
     {
-        return IOERR_CMD_ABORTED;
+        rc = IOERR_CMD_ABORTED;
+        goto io_end;
     }
 
     rc = DevHelp_VirtToLin(SELECTOROF(pBuf),
@@ -1146,7 +1240,8 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
 
     if (rc)
     {
-        return IOERR_CMD_ABORTED;
+        rc = IOERR_CMD_ABORTED;
+        goto io_end;
     }
 
     for (i = 0; i < cSGList; i++)
@@ -1265,56 +1360,36 @@ APIRET doio(struct unit *u, PSCATGATENTRY SGList, USHORT cSGList, ULONG rba, USH
             }
 
             memlcpy(sg_linaddr, buf_linaddr, 0x200);
-            return 0;
+
+            IORB_NotifyCall((PIORBH)cpIO);
         }
         else
         {
             rba -= 63;
-        }
 
-        if (write)
-        {
-            rc = PreSetup();
+            cpIO->iorbh.ErrorCode = rc;
+            cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
 
-            if (rc)
-                break;
+            hookdata.u = MAKEP(DS, u);
+            hookdata.cpIO = cpIO;
+            hookdata.rba = rba;
+            hookdata.len = sge->XferBufLen;
+            hookdata.lCp = cpdata_linaddr;
+            hookdata.lSg = sg_linaddr;
+            hookdata.write = write;
+            hookdata.rc = rc;
 
-            pCPData->Op = OP_WRITE;
-            pCPData->hf = u->hf;
-            pCPData->llOffset = (LONGLONG)u->ullOffset + rba * 512;
-            pCPData->cbData = sge->XferBufLen;
-            memlcpy(cpdata_linaddr, sg_linaddr, sge->XferBufLen);
-            p += sge->XferBufLen;
-
-            rc = PostSetup();
+            rc = DevHelp_ArmCtxHook((ULONG)(HookData far *)&hookdata, io_hook_handle);
 
             if (rc)
-                break;
-
-            rc = pCPData->rc;
-        }
-        else
-        {
-            rc = PreSetup();
-
-            if (rc)
-                break;
-
-            pCPData->Op = OP_READ;
-            pCPData->hf = u->hf;
-            pCPData->llOffset = (LONGLONG)u->ullOffset + rba * 512;
-            pCPData->cbData = sge->XferBufLen;
-
-            rc = PostSetup();
-
-            if (rc)
-                break;
-
-            memlcpy(sg_linaddr, cpdata_linaddr, sge->XferBufLen);
-            p += sge->XferBufLen;
-            rc = pCPData->rc;
+                return rc;
         }
     }
+
+    return rc;
+
+io_end:
+    IORB_NotifyCall((PIORBH)cpIO);
 
     return rc;
 }
