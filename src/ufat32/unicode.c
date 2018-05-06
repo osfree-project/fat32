@@ -306,7 +306,7 @@ BOOL LoadTranslateTable(BOOL fSilent, UCHAR ucSource)
 
       for (;;)
          {
-         chChar = getch();
+         chChar = getchar();
          switch (chChar)
             {
             case 'y':

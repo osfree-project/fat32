@@ -487,7 +487,7 @@ PSZ      szDstLongName = NULL;
 #endif
       }
 #endif
-   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, pTarEntry, NULL, pTarStreamEntry, pszDstFile, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, pTarEntry, NULL, pTarStreamEntry, pszDstFile, pszDstFile, 0);
    if (rc)
       goto FS_COPYEXIT;
 #ifdef EXFAT
@@ -2023,7 +2023,7 @@ ULONG  ulDirEntries = 0;
    else
       {
       rc = ModifyDirectory(pVolInfo, pVolInfo->BootSect.bpb.RootDirStrtClus, NULL,
-         MODIFY_DIR_INSERT, NULL, pDirEntry, NULL, NULL, pszVolLabel, NULL, DVIO_OPWRTHRU);
+         MODIFY_DIR_INSERT, NULL, pDirEntry, NULL, NULL, pszVolLabel, pszVolLabel, DVIO_OPWRTHRU);
       }
    if (rc)
       {
@@ -4478,7 +4478,7 @@ PSZ      szDstLongName = NULL;
       Then insert new
    */
 
-   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, pDirEntry, NULL, pDirEntryStream, pszDstFile, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulDstDirCluster, pDirDstSHInfo, MODIFY_DIR_INSERT, NULL, pDirEntry, NULL, pDirEntryStream, pszDstFile, pszDstFile, 0);
    if (rc)
       goto FS_MOVEEXIT;
 
@@ -6933,7 +6933,7 @@ USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInf
       }
 
    return ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_INSERT,
-      NULL, pNew, NULL, pNewStream, pszName, NULL, 0);
+      NULL, pNew, NULL, pNewStream, pszName, pszName, 0);
 }
 
 

@@ -291,8 +291,7 @@ void serout(unsigned short port, char *s)
 // accessing the system trace
 APIRET trace(const char *fmt, va_list va)
 {
-static BOOL fInitted = FALSE;
-static BOOL fTraceEnabled;
+BOOL fTraceEnabled;
 static char pData[512];
 USHORT cbData = 0;
 BOOL fLong, fLongLong;
@@ -303,12 +302,8 @@ char *pBuf = pData;
 char *pszValue;
 APIRET rc;
 
-   if (! fInitted)
-      {
-      // check if tracing with TRACE_MAJOR is enabled
-      fTraceEnabled = pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8));
-      }
-   fInitted = TRUE;
+   // check if tracing with TRACE_MAJOR is enabled
+   fTraceEnabled = pGI->amecRAS[TRACE_MAJOR / 8] & (0x80 >> (TRACE_MAJOR % 8));
 
    if (! fTraceEnabled)
       return 0;

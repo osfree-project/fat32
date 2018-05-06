@@ -992,7 +992,7 @@ ULONG dummy = 0;
       for (;;)
          {
          if (!pCD->fAutoRecover)
-            bChar = (BYTE)getch();
+            bChar = (BYTE)getchar();
          else
             bChar = 'Y';
          if (bChar == 'Y' || bChar == 'y')

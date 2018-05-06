@@ -657,32 +657,32 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
-      if (!pNew || !pszLongNameOld)
+      if (!pNew || !pszLongNameNew)
          return ERROR_INVALID_PARAMETER;
 
       memcpy(&DirNew, pNew, sizeof (DIRENTRY));
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongNameOld, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, pszLongNameNew, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             return ERROR_FILE_EXISTS;
          set_datetime(&DirNew);
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
-            pszLongNameOld = NULL;
+            pszLongNameNew = NULL;
          }
       else
-         pszLongNameOld = NULL;
+         pszLongNameNew = NULL;
 
       usEntriesNeeded = 1;
-      if (pszLongNameOld)
+      if (pszLongNameNew)
          {
 #if 0
-         usEntriesNeeded += strlen(pszLongNameOld) / 13 +
-            (strlen(pszLongNameOld) % 13 ? 1 : 0);
+         usEntriesNeeded += strlen(pszLongNameNew) / 13 +
+            (strlen(pszLongNameNew) % 13 ? 1 : 0);
 #else
-         usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
+         usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
 #endif
          }
       }
@@ -889,7 +889,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                pWork = (PDIRENTRY)CompactDir(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameOld, bCheck);
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameNew, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                if (ulPrevCluster == 1)
                   // reading root directory on FAT12/FAT16
@@ -922,7 +922,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
                BYTE bCheck = GetVFATCheckSum(&DirNew);
 
                pWork = (PDIRENTRY)CompactDir(pDir2, ulBytesToRead, usEntriesNeeded);
-               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameOld, bCheck);
+               pWork = (PDIRENTRY)fSetLongName(pWork, pszLongNameNew, bCheck);
                memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                if (ulCluster == 1)
                   // reading root directory on FAT12/FAT16
@@ -1060,11 +1060,12 @@ USHORT ModifyDirectory1(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
 {
 PDIRENTRY1 pDirectory;
 PDIRENTRY1 pDir2, pDir1;
-PDIRENTRY1 pWork, pWork2, pWorkStream, pWorkFile;
+PDIRENTRY1 pWork, pWork2, pWorkStream, pWorkFile, pWorkFileName;
 PDIRENTRY1 pMax;
 USHORT    usEntriesNeeded;
 USHORT    usFreeEntries;
 DIRENTRY1  DirNew;
+PSZ       szLongName;
 ULONG     ulCluster;
 ULONG     ulPrevCluster;
 //ULONG     ulPrevBlock;
@@ -1081,10 +1082,12 @@ ULONG     ulPrevSector;
 ULONG     ulBytesToRead;
 ULONG     ulPrevBytesToRead = 0;
 ULONG     ulBytesRemained;
-USHORT    usNumSecondary;
+USHORT    usNumSecondary  = 0;
+USHORT    usNumSecondary2 = 0;
 USHORT    usFileName, usIndex;
 USHORT    usNameHash;
 BOOL      fFound;
+BOOL      fCrossBorder;
 
    //if (f32Parms.fMessageActive & LOG_FUNCS)
    //   Message("ModifyDirectory DirCluster %ld, Mode = %d",
@@ -1093,7 +1096,7 @@ BOOL      fFound;
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
-      if (!pNew || !pszLongNameOld)
+      if (!pNew || !pszLongNameNew)
          {
          return ERROR_INVALID_PARAMETER;
          }
@@ -1101,7 +1104,7 @@ BOOL      fFound;
       memcpy(&DirNew, pNew, sizeof (DIRENTRY1));
       /* if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongNameOld, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, pszLongNameNew, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             {
             Message("Modify directory: Longname error");
@@ -1111,20 +1114,20 @@ BOOL      fFound;
          memcpy(pNew, &DirNew, sizeof (DIRENTRY));
 
          if (rc == LONGNAME_OFF)
-            pszLongNameOld = NULL;
+            pszLongNameNew = NULL;
          }
       else
-         pszLongNameOld = NULL; */
+         pszLongNameNew = NULL; */
 
       //usEntriesNeeded = 1;
       usEntriesNeeded = 2;
-      if (pszLongNameOld)
+      if (pszLongNameNew)
 #if 0
-         usEntriesNeeded += strlen(pszLongNameOld) / 13 +
-            (strlen(pszLongNameOld) % 13 ? 1 : 0);
+         usEntriesNeeded += strlen(pszLongNameNew) / 13 +
+            (strlen(pszLongNameNew) % 13 ? 1 : 0);
 #else
-         //usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
-         usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 14 ) / 15;
+         //usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
+         usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 14 ) / 15;
 #endif
       }
 
@@ -1233,58 +1236,79 @@ BOOL      fFound;
            /*
                Find old entry
             */
- 
-            fFound = FALSE;
-            pWorkFile = NULL;
-            pWork = pDirectory;
-            //pWork = pDir2;
-            pDir1 = NULL;
-            pMax = (PDIRENTRY1)((PBYTE)pDirectory + ulBytesToRead);
-            while (pWorkFile < pMax && !pLNStart)
-            //while (pWork != pMax)
-               {
-               //if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY)
-               if ((pWork->bEntryType != ENTRY_TYPE_EOD) && (pWork->bEntryType & ENTRY_TYPE_IN_USE_STATUS))
-                  {
-                  //if (pWork->bAttr == FILE_LONGNAME)
-                  if (pWork->bEntryType == ENTRY_TYPE_FILE_NAME)
+
+                  fFound = FALSE;
+                  fCrossBorder = FALSE;
+                  pWork = pDirectory;
+                  pDir1 = NULL;
+                  pMax = (DIRENTRY1 *)((BYTE *)pDirectory + ulBytesToRead);
+                  while (!pLNStart)
                      {
-                     //usNumSecondary--;
-                     //fGetLongName1(pDir, szLongName, sizeof szLongName);
-                     if (!pLNStart && !usFileName && fFound)
-                        {
-                        pLNStart = pWork;
+                     if (pWork->bEntryType == ENTRY_TYPE_EOD)
                         break;
-                        }
-                     usFileName++;
-                     }
-                  else if (pWork->bEntryType == ENTRY_TYPE_FILE)
-                     {
-                     usFileName = 0;
-                     usNumSecondary = pWork->u.File.bSecondaryCount;
-                     pWorkFile = pWork;
-                     }
-                  //else if ((pWork->bAttr & 0x0F) != FILE_VOLID)
-                  else if (pWork->bEntryType == ENTRY_TYPE_STREAM_EXT)
-                     {
-                     //usNumSecondary--;
-                     //if (!memcmp(pWork->bFileName, pOld->bFileName, 11) &&
-                     //    pWork->wCluster     == pOld->wCluster &&
-                     //    pWork->wClusterHigh == pOld->wClusterHigh)
-                     pWorkStream = pWork;
-                     if (pWork->u.Stream.ulFirstClus == pStreamOld->u.Stream.ulFirstClus)
+                     //if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY)
+                     if (pWork->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
                         {
-                        fFound = TRUE;
+                        //if (pWork->bAttr == FILE_LONGNAME)
+                        if (pWork->bEntryType == ENTRY_TYPE_FILE_NAME)
+                           {
+                           usNumSecondary2--;
+                           usFileName++;
+                           fGetLongName1(pWork, szLongName, FAT32MAXPATHCOMP);
+
+                           if (pWork == pMax - 1)
+                              fCrossBorder = TRUE;
+
+                           if ( !pLNStart && !usNumSecondary2 && pWorkStream && pStreamOld &&
+                                //pWorkStream->u.Stream.ulFirstClus == pStreamOld->u.Stream.ulFirstClus &&
+                                ( !stricmp(szLongName, pszLongNameOld) ) )
+                           //if (!pLNStart && !usFileName && fFound)
+                              {
+                              pWorkFileName = pWork;
+                              pLNStart = pWork - usFileName + 1;
+                              fFound = TRUE;
+                              //pLNStart = pWork;
+                              break;
+                              }
+                           //usFileName++;
+                           }
+                        else if (pWork->bEntryType == ENTRY_TYPE_FILE)
+                           {
+                           usFileName = 0;
+                           usNumSecondary = usNumSecondary2 = pWork->u.File.bSecondaryCount;
+
+                           if (pWork == pMax - 1)
+                              fCrossBorder = TRUE;
+                           else if (pWork >= pMax)
+                              break;
+
+                           pWorkFile = pWork;
+                           //*szLongName = '\0';
+                           memset(szLongName, 0, FAT32MAXPATHCOMP);
+                           }
+                        //else if ((pWork->bAttr & 0x0F) != FILE_VOLID)
+                        else if (pWork->bEntryType == ENTRY_TYPE_STREAM_EXT)
+                           {
+                           usNumSecondary2--;
+                           //if (!memcmp(pWork->bFileName, pOld->bFileName, 11) &&
+                           //    pWork->wCluster     == pOld->wCluster &&
+                           //    pWork->wClusterHigh == pOld->wClusterHigh)
+
+                           if (pWork == pMax - 1)
+                              fCrossBorder = TRUE;
+
+                           pWorkStream = pWork;
+                           pLNStart = NULL;
+                           }
+                        else
+                           pLNStart = NULL;
                         }
-                     pLNStart = NULL;
+                     else
+                        pLNStart = NULL;
+                     if (fCrossBorder && !usNumSecondary2)
+                        break;
+                     pWork++;
                      }
-                  else
-                     pLNStart = NULL;
-                  }
-               else
-                  pLNStart = NULL;
-               pWork++;
-               }
 
             if (fFound)
             //if (pWork != pMax)
@@ -1422,14 +1446,14 @@ BOOL      fFound;
                //   Message(" Inserting entry into 2 clusters");
 
                pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-               //pWork = fSetLongName(pWork, pszLongNameOld, bCheck);
+               //pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
-               pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
+               pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
 
                pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
-               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
+               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
                memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
                   sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
@@ -1470,12 +1494,12 @@ BOOL      fFound;
                //   Message(" Inserting entry into 1 cluster");
 
                pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
-               pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
+               pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
 
                pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
-               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
+               pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
                memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                (pWork-2)->u.File.usSetCheckSum = GetChkSum16((char *)(pWork-2),
                   sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));

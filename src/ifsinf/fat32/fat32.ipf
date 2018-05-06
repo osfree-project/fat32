@@ -1950,6 +1950,9 @@ was in an inconsistent state at boot (No questions asked)&per.
 :p.:hp2./P :ehp2.Serves for using with a PM frontend, like pmchkdsk.exe&per. If specified, it writes
 additional messages to stdout, then a PM frontend parses them and updates its controls&per.
 
+:p.:hp2./M&colon.<mountpoint> :ehp2.Specify mountpoint of a mounted disk image&per. This setting
+overrides the disk name&per. Disk name should point to a FAT disk, for UUNIFAT&per.DLL to be started&per.
+
 :p.:hp2.Note&colon. :ehp2.At the moment, CHKDSK supports checking FAT12/FAT16/FAT32/EXFAT filesystems&per.
 
 .br 
@@ -2037,6 +2040,9 @@ additional messages to stdout, then a PM frontend parses them and updates its co
 
 :p.:hp2./C&colon.<number> :ehp2.Cluster size&per. The following cluster sizes are
 supported&colon.
+
+:p.:hp2./M&colon.<mountpoint> :ehp2.Specify mountpoint of a mounted disk image&per. This setting
+overrides the disk name&per. Disk name should point to a FAT disk, for UUNIFAT&per.DLL to be started&per.
 
 :p.:hp2.FAT12 :ehp2.
 
@@ -2136,6 +2142,9 @@ and several FreeLDR main files&per. No OS2BOOT is installed at this moment as it
 implemented&per. You can add more files from standard FreeLDR installation, if you need&per.
 
 :p.The SYS command is supported for FAT12/FAT16/FAT32/exFAT&per.
+
+:p.:hp2./M&colon.<mountpoint> :ehp2.Specify mountpoint of a mounted disk image&per. This setting
+overrides the disk name&per. Disk name should point to a FAT disk, for UUNIFAT&per.DLL to be started&per.
 
 :h2 id=20055 res=30069.QEMUIMG&per.DLL
 
@@ -2448,6 +2457,8 @@ FAT12/FAT16/FAT32/exFAT disk subdirectory. raw/bochs/cloop/dmg/vpc/vmdk/parallel
 formats are supported. (qemu code was used for support of VM images). For 
 partitioned images, a partition number could be specified. Support for 
 CHKDSK/FORMAT/SYSINSTX on a mounted image (this feature is alpha-quality, yet). 
+:li.Support for mounting not-FAT disk images to a drive letter with :link reftype=hd 
+refid=20043.LOOP&per.ADD :elink. driver&per.
 
 :eul.
 
@@ -2455,6 +2466,13 @@ CHKDSK/FORMAT/SYSINSTX on a mounted image (this feature is alpha-quality, yet).
 
 :p.:hp2.Todo List :ehp2.
 
+:ul.
+:li.Swapping to FAT12/FAT16/FAT32/exFAT partition support
+:li.Booting from FAT12/FAT16/FAT32/exFAT support
+:li.Performance enhancements and proper caching
+:li.Convert FAT32&per.IFS to a 32-bit FS and port it to osFree, so that, as a side effect,
+64-bit file seek will work&per.
+:eul.
 
 :h2 id=53 res=30050.Limitations
 

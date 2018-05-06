@@ -300,6 +300,17 @@ int main(int argc, char *argv[])
           if (strlen(p + 3) <= 8)
              pFmt = p + 3;
        }
+       else if ((p = strstr(strlwr(arg), "/s:")))
+       {
+           p += 3;
+
+           if (strstr(p, "0x"))
+              base = 16;
+           else
+              base = 10;
+
+           ulSecSize = strtol(p, &q, base);
+       }
        else
        {
           if (argc == 2 || i > 2)

@@ -510,7 +510,7 @@ PSHOPENINFO pSrcSHInfo = NULL;
    /*
       Make new direntry
    */
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, pszTarEAName, 0);
 
 
 usCopyEASExit:
@@ -614,7 +614,7 @@ PDIRENTRY1 pSrcStreamEntry = NULL, pTarStreamEntry = NULL;
    if (rc)
       goto usMoveEASExit;
 
-   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, NULL, 0);
+   rc = ModifyDirectory(pVolInfo, ulTarDirCluster, pDirTarSHInfo, MODIFY_DIR_INSERT, NULL, pSrcEntry, NULL, pSrcStreamEntry, pszTarEAName, pszTarEAName, 0);
 
 usMoveEASExit:
    if (pszSrcEAName)

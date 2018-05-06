@@ -82,6 +82,7 @@ struct unit
     ULONGLONG ullOffset;
     ULONGLONG ullSize;
     ULONG hf;
+    ULONG ulBytesPerSector;
     UCHAR cUnitNo;
 };
 
@@ -179,15 +180,11 @@ void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
 ULONG hook_handle = 0; // Ctx Hook handle
 ULONG io_hook_handle = 0; // Ctx Hook handle
-
-// DevHelp entry point
-ULONG Device_Help = 0;
+ULONG Device_Help = 0; // DevHelp entry point
 USHORT pidDaemon = 0;
 CPDATA far *pCPData = NULL;
 LIN lock = 0;
 USHORT devhandle = 0;  // ADD handle
-//ULONG hook_handle = 0; // Ctx Hook handle
-//ULONG io_hook_handle = 0; // Ctx Hook handle
 
 struct unit units[8] = {0};
 
@@ -709,6 +706,7 @@ struct unit *u;
             u->ullOffset = opts->ullOffset;
             u->ullSize = opts->ullSize;
             u->hf = hf;
+            u->ulBytesPerSector = opts->ulBytesPerSector;
             u->cUnitNo = iUnitNo;
 
             u->bMounted = 1;
@@ -861,18 +859,19 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             break;
                         }
 
-                        pgeo->BytesPerSector  = 512;
                         pgeo->Reserved        = 0;
 
                         if (u->bMounted)
                         {
-                            pgeo->TotalSectors    = u->ullSize / 512;
+                            pgeo->BytesPerSector  = u->ulBytesPerSector;
+                            pgeo->TotalSectors    = u->ullSize / u->ulBytesPerSector;
                             pgeo->NumHeads        = 255;
                             pgeo->SectorsPerTrack = 63;
                             pgeo->TotalCylinders  = pgeo->TotalSectors / (pgeo->NumHeads * pgeo->SectorsPerTrack);
                         }
                         else
                         {
+                            pgeo->BytesPerSector = 512;
                             error = IOERR_UNIT_NOT_READY;
                         }
                     }
@@ -977,11 +976,11 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             break;
                         }
 
-                        if (cpIO->BlockSize != 512)
-                        {
-                            error = IOERR_ADAPTER_REQ_NOT_SUPPORTED;
-                            break;
-                        }
+                        //if (cpIO->BlockSize != 512)
+                        //{
+                        //    error = IOERR_ADAPTER_REQ_NOT_SUPPORTED;
+                        //    break;
+                        //}
 
                         cpIO->BlocksXferred = 0;
 
@@ -1100,7 +1099,7 @@ ULONG crc32(UCHAR far *buf, ULONG len)
     return crc;
 }
 
-char buf[512];
+char buf[4096];
 
 DLA_Table_Sector far *dlat;
 DLA_Entry far *dlae;
@@ -1127,7 +1126,7 @@ int _cdecl IoHook(HookData far *data)
 
             pCPData->Op = OP_WRITE;
             pCPData->hf = data->u->hf;
-            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * 512;
+            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * data->u->ulBytesPerSector;
             pCPData->cbData = data->len;
             memlcpy(data->lCp, data->lSg, data->len);
 
@@ -1147,7 +1146,7 @@ int _cdecl IoHook(HookData far *data)
 
             pCPData->Op = OP_READ;
             pCPData->hf = data->u->hf;
-            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * 512;
+            pCPData->llOffset = (LONGLONG)data->u->ullOffset + data->rba * data->u->ulBytesPerSector;
             pCPData->cbData = data->len;
 
             rc = PostSetup();
@@ -1267,7 +1266,7 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
         if (rba < 63)
         {
             PTE far *pte;
-            ULONG Size = u->ullSize / 512;
+            ULONG Size = u->ullSize / u->ulBytesPerSector;
             USHORT Cyl, Head, Sec, Cyl0;
             ULONG CRC32;
 
@@ -1310,8 +1309,8 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
                     pte->relative_sector = 63;
                     pte->total_sectors = Size;
 
-                    pBuf[510] = 0x55;
-                    pBuf[511] = 0xaa;
+                    pBuf[u->ulBytesPerSector - 2] = 0x55;
+                    pBuf[u->ulBytesPerSector - 1] = 0xaa;
                     break;
 
                 case 62:
@@ -1360,7 +1359,7 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
                     break;
             }
 
-            memlcpy(sg_linaddr, buf_linaddr, 0x200);
+            memlcpy(sg_linaddr, buf_linaddr, u->ulBytesPerSector);
 
             cpIO->iorbh.ErrorCode = rc;
             cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;

@@ -1221,7 +1221,7 @@ USHORT    rc;
       if (usMode == MODIFY_DIR_RENAME ||
           usMode == MODIFY_DIR_INSERT)
          {
-         if (!pNew || !pszLongNameOld)
+         if (!pNew || !pszLongNameNew)
             {
             Message("Modify directory: Invalid parameters 1");
             free(pDirNew);
@@ -1231,7 +1231,7 @@ USHORT    rc;
          memcpy(pDirNew, pNew, sizeof (DIRENTRY));
          if ((pNew->bAttr & 0x0F) != FILE_VOLID)
             {
-            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameOld, pDirNew->bFileName);
+            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameNew, pDirNew->bFileName);
             if (rc == LONGNAME_ERROR)
                {
                Message("Modify directory: Longname error");
@@ -1241,18 +1241,18 @@ USHORT    rc;
             memcpy(pNew, pDirNew, sizeof (DIRENTRY));
 
             if (rc == LONGNAME_OFF)
-               pszLongNameOld = NULL;
+               pszLongNameNew = NULL;
             }
          else
-            pszLongNameOld = NULL;
+            pszLongNameNew = NULL;
 
          usEntriesNeeded = 1;
-         if (pszLongNameOld)
+         if (pszLongNameNew)
 #if 0
-            usEntriesNeeded += strlen(pszLongNameOld) / 13 +
-               (strlen(pszLongNameOld) % 13 ? 1 : 0);
+            usEntriesNeeded += strlen(pszLongNameNew) / 13 +
+               (strlen(pszLongNameNew) % 13 ? 1 : 0);
 #else
-            usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
+            usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
 #endif
          }
 
@@ -1460,15 +1460,6 @@ USHORT    rc;
 
                               pszLongNameOld = pszLongNameNew; //////
 
-                              usEntriesNeeded = 1;
-                              if (pszLongNameOld)
-#if 0
-                                 usEntriesNeeded += strlen(pszLongNameOld) / 13 +
-                                 (strlen(pszLongNameOld) % 13 ? 1 : 0);
-#else
-                                 usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
-#endif
-
                               ulCluster = ulDirCluster;
                               ulBytesRemained = pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                               ulPrevCluster = pVolInfo->ulFatEof;
@@ -1492,7 +1483,7 @@ USHORT    rc;
                      MessageL(LOG_FUNCS, " Inserting entry into 2 clusters%m", 0x400c);
 
                      pWork = CompactDir(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-                     pWork = fSetLongName(pWork, pszLongNameOld, bCheck);
+                     pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                      memcpy(pWork, pDirNew, sizeof (DIRENTRY));
 
                      if (ulPrevCluster == 1)
@@ -1530,7 +1521,7 @@ USHORT    rc;
                      MessageL(LOG_FUNCS, " Inserting entry into 1 cluster%m", 0x400d);
 
                      pWork = CompactDir(pDir2, ulBytesToRead, usEntriesNeeded);
-                     pWork = fSetLongName(pWork, pszLongNameOld, bCheck);
+                     pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                      memcpy(pWork, pDirNew, sizeof (DIRENTRY));
                      if (ulCluster == 1)
                         // reading root directory on FAT12/FAT16
@@ -1706,7 +1697,7 @@ USHORT    rc;
       if (usMode == MODIFY_DIR_RENAME ||
           usMode == MODIFY_DIR_INSERT)
          {
-         if (!pNew || !pszLongNameOld)
+         if (!pNew || !pszLongNameNew)
             {
             free(szLongName);
             free(pDirNew);
@@ -1716,7 +1707,7 @@ USHORT    rc;
          memcpy(pDirNew, pNew, sizeof (DIRENTRY1));
          /* if ((pNew->bAttr & 0x0F) != FILE_VOLID)
             {
-            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameOld, pDirNew->bFileName);
+            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameNew, pDirNew->bFileName);
             if (rc == LONGNAME_ERROR)
                {
                Message("Modify directory: Longname error");
@@ -1727,20 +1718,20 @@ USHORT    rc;
             memcpy(pNew, pDirNew, sizeof (DIRENTRY));
 
             if (rc == LONGNAME_OFF)
-               pszLongNameOld = NULL;
+               pszLongNameNew = NULL;
             }
          else
-            pszLongNameOld = NULL; */
+            pszLongNameNew = NULL; */
 
          //usEntriesNeeded = 1;
          usEntriesNeeded = 2;
-         if (pszLongNameOld)
+         if (pszLongNameNew)
 #if 0
-            usEntriesNeeded += strlen(pszLongNameOld) / 13 +
-               (strlen(pszLongNameOld) % 13 ? 1 : 0);
+            usEntriesNeeded += strlen(pszLongNameNew) / 13 +
+               (strlen(pszLongNameNew) % 13 ? 1 : 0);
 #else
-            //usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 12 ) / 13;
-            usEntriesNeeded += ( DBCSStrlen( pszLongNameOld ) + 14 ) / 15;
+            //usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
+            usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 14 ) / 15;
 #endif
          }
 
@@ -2068,13 +2059,13 @@ USHORT    rc;
                      MessageL(LOG_FUNCS, " Inserting entry into 2 clusters%m", 0x400c);
 
                      pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
-                     //pWork = fSetLongName(pWork, pszLongNameOld, bCheck);
+                     //pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                      //memcpy(pWork, pDirNew, sizeof (DIRENTRY));
-                     pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
+                     pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
                      pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                      memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                      pStreamNew->u.Stream.usNameHash = usNameHash;
-                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
+                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
                      memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                      (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
                         sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
@@ -2118,11 +2109,11 @@ USHORT    rc;
 
                      //pWork = CompactDir1(pDirectory, ulBytesToRead, usEntriesNeeded);
                      pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
-                     pWork3 = fSetLongName1(pWork+2, pszLongNameOld, &usNameHash);
+                     pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
                      pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                      memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                      pStreamNew->u.Stream.usNameHash = usNameHash;
-                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameOld);
+                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
                      memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
                      (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
                         sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
