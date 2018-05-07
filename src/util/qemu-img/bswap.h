@@ -5,73 +5,38 @@
 
 #include <inttypes.h>
 
-#ifdef HAVE_BYTESWAP_H
-#include <byteswap.h>
-#else
-
-#define bswap_16(x) \
-({\
-	((uint16_t)( \
-		(((uint16_t)(x) & (uint16_t)0x00ffU) << 8) | \
-		(((uint16_t)(x) & (uint16_t)0xff00U) >> 8) )); \
-})
-
-#define bswap_32(x) \
-({\
-	((uint32_t)( \
-		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
-		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
-		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
-		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) )); \
-})
-
-#define bswap_64(x) \
-({\
-	((uint64_t)( \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000000000ffULL) << 56) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x000000000000ff00ULL) << 40) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x0000000000ff0000ULL) << 24) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000ff000000ULL) <<  8) | \
-	        (uint64_t)(((uint64_t)(x) & (uint64_t)0x000000ff00000000ULL) >>  8) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x0000ff0000000000ULL) >> 24) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00ff000000000000ULL) >> 40) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0xff00000000000000ULL) >> 56) )); \
-})
-
-#endif /* !HAVE_BYTESWAP_H */
-
 #if !defined(_MACHINE_ENDIAN_H)
 
 static inline uint16_t bswap16(uint16_t x)
 {
     uint16_t __x = x;
-    return 	((uint16_t)( \
-		(((uint16_t)(__x) & (uint16_t)0x00ffU) << 8) | \
-		(((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) ));
+    return      ((uint16_t)( \
+                (((uint16_t)(__x) & (uint16_t)0x00ffU) << 8) | \
+                (((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) ));
 };
 
 static inline uint32_t bswap32(uint32_t x)
 {
     uint32_t __x = x;
-    return 	((uint32_t)( \
-		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
-		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
-		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
-		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ));
+    return      ((uint32_t)( \
+                (((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
+                (((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
+                (((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
+                (((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ));
 };
 
 static inline uint64_t bswap64(uint64_t x)
 {
     uint64_t __x = x;
-    return 	((uint64_t)( \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000000000ffULL) << 56) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x000000000000ff00ULL) << 40) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x0000000000ff0000ULL) << 24) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000ff000000ULL) <<  8) | \
-	        (uint64_t)(((uint64_t)(x) & (uint64_t)0x000000ff00000000ULL) >>  8) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x0000ff0000000000ULL) >> 24) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0x00ff000000000000ULL) >> 40) | \
-		(uint64_t)(((uint64_t)(x) & (uint64_t)0xff00000000000000ULL) >> 56) ));
+    return      ((uint64_t)( \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000000000ffULL) << 56) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x000000000000ff00ULL) << 40) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x0000000000ff0000ULL) << 24) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x00000000ff000000ULL) <<  8) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x000000ff00000000ULL) >>  8) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x0000ff0000000000ULL) >> 24) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0x00ff000000000000ULL) >> 40) | \
+                (uint64_t)(((uint64_t)(x) & (uint64_t)0xff00000000000000ULL) >> 56) ));
 };
 
 #endif
@@ -160,7 +125,7 @@ static inline void cpu_to_le16wu(uint16_t *p, uint16_t v)
 {
     uint8_t *p1 = (uint8_t *)p;
 
-    p1[0] = v;
+    p1[0] = v & 0xff;
     p1[1] = v >> 8;
 }
 
@@ -168,7 +133,7 @@ static inline void cpu_to_le32wu(uint32_t *p, uint32_t v)
 {
     uint8_t *p1 = (uint8_t *)p;
 
-    p1[0] = v;
+    p1[0] = v & 0xff;
     p1[1] = v >> 8;
     p1[2] = v >> 16;
     p1[3] = v >> 24;
@@ -191,7 +156,7 @@ static inline void cpu_to_be16wu(uint16_t *p, uint16_t v)
     uint8_t *p1 = (uint8_t *)p;
 
     p1[0] = v >> 8;
-    p1[1] = v;
+    p1[1] = v & 0xff;
 }
 
 static inline void cpu_to_be32wu(uint32_t *p, uint32_t v)
@@ -201,7 +166,7 @@ static inline void cpu_to_be32wu(uint32_t *p, uint32_t v)
     p1[0] = v >> 24;
     p1[1] = v >> 16;
     p1[2] = v >> 8;
-    p1[3] = v;
+    p1[3] = v & 0xff;
 }
 
 #endif

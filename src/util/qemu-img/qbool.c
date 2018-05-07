@@ -25,21 +25,10 @@
 
 static void qbool_destroy_obj(QObject *obj);
 
-#ifdef __GNUC__
-
 static const QType qbool_type = {
     .code = QTYPE_QBOOL,
     .destroy = qbool_destroy_obj,
 };
-
-#else
-
-static const QType qbool_type = {
-    QTYPE_QBOOL,
-    qbool_destroy_obj,
-};
-
-#endif
 
 /**
  * qbool_from_int(): Create a new QBool from an int

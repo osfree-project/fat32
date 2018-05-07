@@ -25,21 +25,10 @@
 
 static void qfloat_destroy_obj(QObject *obj);
 
-#ifdef __GNUC__
-
 static const QType qfloat_type = {
     .code = QTYPE_QFLOAT,
     .destroy = qfloat_destroy_obj,
 };
-
-#else
-
-static const QType qfloat_type = {
-    QTYPE_QFLOAT,
-    qfloat_destroy_obj,
-};
-
-#endif
 
 /**
  * qfloat_from_int(): Create a new QFloat from a float

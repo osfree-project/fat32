@@ -138,14 +138,6 @@ int qemu_aio_process_queue(void)
     return ret;
 }
 
-#if 0 // def __OS2__
-
-void qemu_aio_wait(void)
-{
-}
-
-#else
-
 void qemu_aio_wait(void)
 {
     int ret;
@@ -234,5 +226,3 @@ void qemu_aio_wait(void)
         }
     } while (ret == 0);
 }
-
-#endif

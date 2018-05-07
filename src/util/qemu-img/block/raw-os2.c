@@ -266,9 +266,9 @@ static int64_t raw_getlength(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
     int fd = s->fd;
-    struct stat st;
+    struct _stati64 st;
 
-    if (fstat(fd, &st))
+    if (_fstati64(fd, &st))
         return -1;
     else
         return st.st_size;

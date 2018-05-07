@@ -17,21 +17,10 @@
 
 static void qerror_destroy_obj(QObject *obj);
 
-#ifdef __GNUC__
-
 static const QType qerror_type = {
     .code = QTYPE_QERROR,
     .destroy = qerror_destroy_obj,
 };
-
-#else
-
-static const QType qerror_type = {
-    QTYPE_QERROR,
-    qerror_destroy_obj,
-};
-
-#endif
 
 /**
  * The 'desc' parameter is a printf-like string, the format of the format

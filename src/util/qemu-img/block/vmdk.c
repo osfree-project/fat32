@@ -344,7 +344,7 @@ static int vmdk_parent_open(BlockDriverState *bs, const char * filename)
 
     if ((p_name = strstr(desc,"parentFileNameHint")) != NULL) {
         char *end_name;
-        struct stat file_buf;
+        struct _stati64 file_buf;
 
         p_name += sizeof("parentFileNameHint") + 1;
         if ((end_name = strchr(p_name,'\"')) == NULL)
@@ -353,7 +353,7 @@ static int vmdk_parent_open(BlockDriverState *bs, const char * filename)
             return -1;
 
         pstrcpy(bs->backing_file, end_name - p_name + 1, p_name);
-        if (stat(bs->backing_file, &file_buf) != 0) {
+        if (_stati64(bs->backing_file, &file_buf) != 0) {
             path_combine(parent_img_name, sizeof(parent_img_name),
                          filename, bs->backing_file);
         } else {

@@ -481,22 +481,10 @@ static void vdi_aio_cancel(BlockDriverAIOCB *blockacb)
     qemu_aio_release(acb);
 }
 
-#ifdef __GNUC__
-
 static AIOPool vdi_aio_pool = {
     .aiocb_size = sizeof(VdiAIOCB),
     .cancel = vdi_aio_cancel,
 };
-
-#else
-
-static AIOPool vdi_aio_pool = {
-    vdi_aio_cancel,
-    sizeof(VdiAIOCB),
-    NULL
-};
-
-#endif
 
 static VdiAIOCB *vdi_aio_setup(BlockDriverState *bs, int64_t sector_num,
         QEMUIOVector *qiov, int nb_sectors,

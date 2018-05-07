@@ -15,21 +15,10 @@
 
 static void qint_destroy_obj(QObject *obj);
 
-#ifdef __GNUC__
-
 static const QType qint_type = {
     .code = QTYPE_QINT,
     .destroy = qint_destroy_obj,
 };
-
-#else
-
-static const QType qint_type = {
-    QTYPE_QINT,
-    qint_destroy_obj,
-};
-
-#endif
 
 /**
  * qint_from_int(): Create a new QInt from an int64_t

@@ -763,7 +763,7 @@ static int read_directory(BDRVVVFATState* s, int mapping_index)
 	unsigned int length=strlen(dirname)+2+strlen(entry->d_name);
         char* buffer;
 	direntry_t* direntry;
-        struct stat st;
+        struct _stati64 st;
 	int is_dot=!strcmp(entry->d_name,".");
 	int is_dotdot=!strcmp(entry->d_name,"..");
 
@@ -773,7 +773,7 @@ static int read_directory(BDRVVVFATState* s, int mapping_index)
 	buffer=(char*)qemu_malloc(length);
 	snprintf(buffer,length,"%s/%s",dirname,entry->d_name);
 
-	if(stat(buffer,&st)<0) {
+	if(_stati64(buffer,&st)<0) {
 	    free(buffer);
             continue;
 	}
@@ -795,11 +795,11 @@ static int read_directory(BDRVVVFATState* s, int mapping_index)
 	    set_begin_of_direntry(direntry, first_cluster);
 	else
 	    direntry->begin=0; /* do that later */
-        /* if (st.st_size > 0x7fffffff) {
+        if (st.st_size > 0x7fffffff) {
 	    fprintf(stderr, "File %s is larger than 2GB\n", buffer);
 	    free(buffer);
 	    return -2;
-        } */
+        }
 	direntry->size=cpu_to_le32(S_ISDIR(st.st_mode)?0:st.st_size);
 
 	/* create mapping for this file */
@@ -2803,28 +2803,11 @@ static void write_target_close(BlockDriverState *bs) {
     free(s->qcow_filename);
 }
 
-#ifdef __GNUC__
-
 static BlockDriver vvfat_write_target = {
     .format_name        = "vvfat_write_target",
     .bdrv_write         = write_target_commit,
     .bdrv_close         = write_target_close,
 };
-
-#else
-
-static BlockDriver vvfat_write_target = {
-    "vvfat_write_target",
-    0,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    write_target_commit,
-    write_target_close,
-};
-
-#endif
 
 static int enable_write_target(BDRVVVFATState *s)
 {
