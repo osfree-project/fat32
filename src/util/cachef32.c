@@ -108,11 +108,11 @@ UCHAR rgFirstInfo[256];
    if (fForeGround)
 	  {
 	  //DoCheckDisk(TRUE);
-	  //if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
-	//	 printf("Cache size has been set to zero, lazy writer will not be started!\n");
-	  //else if (fLoadDeamon)
-	//	 StartMe(rgArgv[0]);
-	  //DosExit(EXIT_PROCESS, 0);
+	  if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
+             printf("Cache size has been set to zero, lazy writer will not be started!\n");
+	  else if (fLoadDeamon)
+             StartMe(rgArgv[0]);
+	  DosExit(EXIT_PROCESS, 0);
 	  }
    else
           {

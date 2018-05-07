@@ -2803,11 +2803,28 @@ static void write_target_close(BlockDriverState *bs) {
     free(s->qcow_filename);
 }
 
+#ifdef __GNUC__
+
 static BlockDriver vvfat_write_target = {
     .format_name        = "vvfat_write_target",
     .bdrv_write         = write_target_commit,
     .bdrv_close         = write_target_close,
 };
+
+#else
+
+static BlockDriver vvfat_write_target = {
+    "vvfat_write_target",
+    0,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    write_target_commit,
+    write_target_close,
+};
+
+#endif
 
 static int enable_write_target(BDRVVVFATState *s)
 {

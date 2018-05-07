@@ -511,10 +511,22 @@ static void qcow_aio_cancel(BlockDriverAIOCB *blockacb)
     qemu_aio_release(acb);
 }
 
+#ifdef __GNUC__
+
 static AIOPool qcow_aio_pool = {
     .aiocb_size         = sizeof(QCowAIOCB),
     .cancel             = qcow_aio_cancel,
 };
+
+#else
+
+static AIOPool qcow_aio_pool = {
+    qcow_aio_cancel,
+    sizeof(QCowAIOCB),
+    NULL
+};
+
+#endif
 
 static QCowAIOCB *qcow_aio_setup(BlockDriverState *bs,
         int64_t sector_num, QEMUIOVector *qiov, int nb_sectors,

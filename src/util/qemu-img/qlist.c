@@ -16,11 +16,22 @@
 
 static void qlist_destroy_obj(QObject *obj);
 
+#ifdef __GNUC__
+
 static const QType qlist_type = {
     .code = QTYPE_QLIST,
     .destroy = qlist_destroy_obj,
 };
  
+#else
+
+static const QType qlist_type = {
+    QTYPE_QLIST,
+    qlist_destroy_obj,
+};
+
+#endif
+
 /**
  * qlist_new(): Create a new QList
  *

@@ -20,10 +20,21 @@
 
 static void qdict_destroy_obj(QObject *obj);
 
+#ifdef __GNUC__
+
 static const QType qdict_type = {
     .code = QTYPE_QDICT,
     .destroy = qdict_destroy_obj,
 };
+
+#else
+
+static const QType qdict_type = {
+    QTYPE_QDICT,
+    qdict_destroy_obj,
+};
+
+#endif
 
 /**
  * qdict_new(): Create a new QDict

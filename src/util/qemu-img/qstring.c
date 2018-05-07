@@ -15,10 +15,21 @@
 
 static void qstring_destroy_obj(QObject *obj);
 
+#ifdef __GNUC__
+
 static const QType qstring_type = {
     .code = QTYPE_QSTRING,
     .destroy = qstring_destroy_obj,
 };
+
+#else
+
+static const QType qstring_type = {
+    QTYPE_QSTRING,
+    qstring_destroy_obj,
+};
+
+#endif
 
 /**
  * qstring_new(): Create a new empty QString

@@ -138,7 +138,7 @@ int qemu_aio_process_queue(void)
     return ret;
 }
 
-#ifdef __OS2__
+#if 0 // def __OS2__
 
 void qemu_aio_wait(void)
 {
@@ -162,13 +162,13 @@ void qemu_aio_wait(void)
 
     do {
         AioHandler *node;
-        fd_set rdfds, wrfds;
+        //fd_set rdfds, wrfds;
         int max_fd = -1;
 
         walking_handlers = 1;
 
-        FD_ZERO(&rdfds);
-        FD_ZERO(&wrfds);
+        //FD_ZERO(&rdfds);
+        //FD_ZERO(&wrfds);
 
         /* fill fd sets */
         QLIST_FOREACH(node, &aio_handlers, node) {
@@ -180,11 +180,11 @@ void qemu_aio_wait(void)
                 continue;
 
             if (!node->deleted && node->io_read) {
-                FD_SET(node->fd, &rdfds);
+            //    FD_SET(node->fd, &rdfds);
                 max_fd = MAX(max_fd, node->fd + 1);
             }
             if (!node->deleted && node->io_write) {
-                FD_SET(node->fd, &wrfds);
+            //    FD_SET(node->fd, &wrfds);
                 max_fd = MAX(max_fd, node->fd + 1);
             }
         }
@@ -196,9 +196,9 @@ void qemu_aio_wait(void)
             break;
 
         /* wait until next event */
-        ret = select(max_fd, &rdfds, &wrfds, NULL, NULL);
-        if (ret == -1 && errno == EINTR)
-            continue;
+        //ret = select(max_fd, &rdfds, &wrfds, NULL, NULL);
+        //if (ret == -1 && errno == EINTR)
+        //    continue;
 
         /* if we have any readable fds, dispatch event */
         if (ret > 0) {
@@ -211,12 +211,12 @@ void qemu_aio_wait(void)
                 AioHandler *tmp;
 
                 if (!node->deleted &&
-                    FD_ISSET(node->fd, &rdfds) &&
+                    //FD_ISSET(node->fd, &rdfds) &&
                     node->io_read) {
                     node->io_read(node->opaque);
                 }
                 if (!node->deleted &&
-                    FD_ISSET(node->fd, &wrfds) &&
+                    //FD_ISSET(node->fd, &wrfds) &&
                     node->io_write) {
                     node->io_write(node->opaque);
                 }
