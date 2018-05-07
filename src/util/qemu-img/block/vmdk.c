@@ -339,11 +339,9 @@ static int vmdk_parent_open(BlockDriverState *bs, const char * filename)
     char parent_img_name[1024];
 
     /* the descriptor offset = 0x200 */
-    fflush(stderr);
     if (bdrv_pread(s->hd, 0x200, desc, DESC_SIZE) != DESC_SIZE)
         return -1;
 
-    fflush(stderr);
     if ((p_name = strstr(desc,"parentFileNameHint")) != NULL) {
         char *end_name;
         struct stat file_buf;
@@ -430,10 +428,8 @@ static int vmdk_open(BlockDriverState *bs, const char *filename, int flags)
             s->is_parent = 0;
 
         // try to open parent images, if exist
-        fflush(stderr);
         if (vmdk_parent_open(bs, filename) != 0)
             goto fail;
-        fflush(stderr);
         // write the CID once after the image creation
         s->parent_cid = vmdk_read_cid(bs,1);
     } else {
@@ -458,11 +454,9 @@ static int vmdk_open(BlockDriverState *bs, const char *filename, int flags)
         }
     }
 
-    fflush(stderr);
     s->l2_cache = qemu_malloc(s->l2_size * L2_CACHE_SIZE * sizeof(uint32_t));
     return 0;
  fail:
-    fflush(stderr);
     qemu_free(s->l1_backup_table);
     qemu_free(s->l1_table);
     qemu_free(s->l2_cache);
@@ -862,6 +856,7 @@ static void vmdk_flush(BlockDriverState *bs)
     BDRVVmdkState *s = bs->opaque;
     bdrv_flush(s->hd);
 }
+
 
 static QEMUOptionParameter vmdk_create_options[] = {
     {

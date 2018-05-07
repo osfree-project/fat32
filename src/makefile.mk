@@ -68,7 +68,10 @@ korean   = &
  system\country.kor docs\fat32\fat32.kor
 
 adddrv   = &
- os2dasd.f32 partfilt.flt loop.add
+ os2dasd.f32 partfilt.flt
+
+loopdrv  = &
+ loop.add
 
 sym      = &
  boot\fat32.sym system\trace\trc00fe.tff dll\uunifat.sym &
@@ -77,7 +80,10 @@ sym      = &
  qemu-img.sym dll\qemuimg.sym
 
 adddrvsym = &
- boot\partfilt.sym boot\loop.sym
+ boot\partfilt.sym
+
+loopsym  = &
+ boot\loop.sym
 
 adddrvdoc = &
  partfilt.doc partfilt.txt
@@ -200,13 +206,17 @@ $(BINROOT)\wpi.flg: $(distfiles)
  @for %file in ($(korean)) do @if exist os2\%file @%append $(distname)-os2.pkg %file
  @%append $(distname)-os2.pkg 7 -c.\os2\boot
  @for %file in ($(adddrv)) do @if exist os2\boot\%file @%append $(distname)-os2.pkg %file
- @%append $(distname)-os2.pkg 8 -c.\os2
- @for %file in ($(sym)) do @if exist os2\%file @%append $(distname)-os2.pkg %file
+ @%append $(distname)-os2.pkg 8 -c.\os2\boot
+ @for %file in ($(loopdrv)) do @if exist os2\boot\%file @%append $(distname)-os2.pkg %file
  @%append $(distname)-os2.pkg 9 -c.\os2
+ @for %file in ($(sym)) do @if exist os2\%file @%append $(distname)-os2.pkg %file
+ @%append $(distname)-os2.pkg 10 -c.\os2
  @for %file in ($(adddrvsym)) do @if exist os2\%file @%append $(distname)-os2.pkg %file
- @%append $(distname)-os2.pkg 10 -c.\os2\docs\fat32
+ @%append $(distname)-os2.pkg 11 -c.\os2
+ @for %file in ($(loopsym)) do @if exist os2\%file @%append $(distname)-os2.pkg %file
+ @%append $(distname)-os2.pkg 12 -c.\os2\docs\fat32
  @for %file in ($(adddrvdoc)) do @if exist os2\docs\fat32\%file @%append $(distname)-os2.pkg %file
- @%append $(distname)-os2.pkg 11 -c.\os2\book
+ @%append $(distname)-os2.pkg 13 -c.\os2\book
  @for %file in ($(ifsinf)) do @if exist os2\book\%file @%append $(distname)-os2.pkg %file
  @%append $(distname)-os2.pkg -s ..\lib\fat32_010.wis
  @$(WIC) @$(distname)-os2.pkg >wpi.flg 2>&1

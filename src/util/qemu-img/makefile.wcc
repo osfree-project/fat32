@@ -10,10 +10,12 @@ TARGETS=$(LIBROOT)\qemu-block.lib &
 
 !include ..\..\makefile.mk
 
+# DEBUG=-dCONFIG_VDI_DEBUG
+
 # OBJEXT=obj
 OBJEXT=obd
 
-COPT=-3s -s -db -d2 -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
+COPT=-3s -s -db -d2 -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL $(DEBUG) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
 OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
      $(PROJ_BLD)\qemu-malloc.$(OBJEXT) &
      $(PROJ_BLD)\qemu-tool.$(OBJEXT) &

@@ -907,6 +907,7 @@ static int qcow_get_info(BlockDriverState *bs, BlockDriverInfo *bdi)
     return 0;
 }
 
+
 static QEMUOptionParameter qcow_create_options[] = {
     {
         .name = BLOCK_OPT_SIZE,

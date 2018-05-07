@@ -55,21 +55,6 @@ static int bdrv_read_em(BlockDriverState *bs, int64_t sector_num,
 static int bdrv_write_em(BlockDriverState *bs, int64_t sector_num,
                          const uint8_t *buf, int nb_sectors);
 
-//void do_qemu_init_bdrv_raw_init(void);
-//#if !defined(_WIN32) && !defined(__OS2__)
-//void do_qemu_init_bdrv_cow_init(void);
-//#endif
-//void do_qemu_init_bdrv_qcow_init(void);
-//void do_qemu_init_bdrv_qcow2_init(void);
-//void do_qemu_init_bdrv_vdi_init(void);
-//void do_qemu_init_bdrv_vmdk_init(void);
-//void do_qemu_init_bdrv_cloop_init(void);
-//void do_qemu_init_bdrv_dmg_init(void);
-//void do_qemu_init_bdrv_bochs_init(void);
-//void do_qemu_init_bdrv_vpc_init(void);
-//void do_qemu_init_bdrv_parallels_init(void);
-//void do_qemu_init_bdrv_vvfat_init(void);
-
 BlockDriverState *bdrv_first;
 
 static BlockDriver *first_drv;
@@ -472,7 +457,7 @@ int bdrv_open2(BlockDriverState *bs, const char *filename, int flags,
     else
         ret = drv->bdrv_open(bs, filename, open_flags);
     if ((ret == -EACCES || ret == -EPERM) && !(flags & BDRV_O_FILE)) {
-        ret = drv->bdrv_open(bs, filename, open_flags & ~BDRV_O_RDWR);
+        ret = drv->bdrv_open(bs, filename, open_flags & ~BDRV_O_RDWR); ////
         bs->read_only = 1;
     }
     if (ret < 0) {
@@ -717,23 +702,21 @@ int bdrv_pread(BlockDriverState *bs, int64_t offset,
     if (len > 0) {
         if (bdrv_read(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
-        memcpy(buf, tmp_buf + (offset & (BDRV_SECTOR_SIZE - 1)), len);
+        memcpy(buf2, tmp_buf + (offset & (BDRV_SECTOR_SIZE - 1)), len);
         count -= len;
         if (count == 0)
             return count1;
         sector_num++;
-        //buf += len;
         buf2 += len;
     }
 
     /* read the sectors "in place" */
     nb_sectors = count >> BDRV_SECTOR_BITS;
     if (nb_sectors > 0) {
-        if (bdrv_read(bs, sector_num, buf, nb_sectors) < 0)
+        if (bdrv_read(bs, sector_num, buf2, nb_sectors) < 0)
             return -EIO;
         sector_num += nb_sectors;
         len = nb_sectors << BDRV_SECTOR_BITS;
-        //buf += len;
         buf2 += len;
         count -= len;
     }
@@ -742,7 +725,7 @@ int bdrv_pread(BlockDriverState *bs, int64_t offset,
     if (count > 0) {
         if (bdrv_read(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
-        memcpy(buf, tmp_buf, count);
+        memcpy(buf2, tmp_buf, count);
     }
     return count1;
 }
@@ -764,25 +747,23 @@ int bdrv_pwrite(BlockDriverState *bs, int64_t offset,
     if (len > 0) {
         if (bdrv_read(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
-        memcpy(tmp_buf + (offset & (BDRV_SECTOR_SIZE - 1)), buf, len);
+        memcpy(tmp_buf + (offset & (BDRV_SECTOR_SIZE - 1)), buf2, len);
         if (bdrv_write(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
         count -= len;
         if (count == 0)
             return count1;
         sector_num++;
-        //buf += len;
         buf2 += len;
     }
 
     /* write the sectors "in place" */
     nb_sectors = count >> BDRV_SECTOR_BITS;
     if (nb_sectors > 0) {
-        if (bdrv_write(bs, sector_num, buf, nb_sectors) < 0)
+        if (bdrv_write(bs, sector_num, buf2, nb_sectors) < 0)
             return -EIO;
         sector_num += nb_sectors;
         len = nb_sectors << BDRV_SECTOR_BITS;
-        //buf += len;
         buf2 += len;
         count -= len;
     }
@@ -791,7 +772,7 @@ int bdrv_pwrite(BlockDriverState *bs, int64_t offset,
     if (count > 0) {
         if (bdrv_read(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
-        memcpy(tmp_buf, buf, count);
+        memcpy(tmp_buf, buf2, count);
         if (bdrv_write(bs, sector_num, tmp_buf, 1) < 0)
             return -EIO;
     }

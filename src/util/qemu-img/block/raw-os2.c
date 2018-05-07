@@ -238,18 +238,40 @@ static int raw_write(BlockDriverState *bs, int64_t sector_num,
 }
 
 
-/* static void raw_flush(BlockDriverState *bs)
+static void raw_flush(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
     //FlushFileBuffers(s->hfile);
-    flush(s->fd);
-} */
+    qemu_fdatasync(s->fd);
+}
 
 static void raw_close(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
     //CloseHandle(s->hfile);
     close(s->fd);
+}
+
+static int raw_truncate(BlockDriverState *bs, int64_t offset)
+{
+    BDRVRawState *s = bs->opaque;
+    //if (s->type != FTYPE_FILE)
+    //    return -ENOTSUP;
+    if (ftruncate(s->fd, offset) < 0)
+        return -errno;
+    return 0;
+}
+
+static int64_t raw_getlength(BlockDriverState *bs)
+{
+    BDRVRawState *s = bs->opaque;
+    int fd = s->fd;
+    struct stat st;
+
+    if (fstat(fd, &st))
+        return -1;
+    else
+        return st.st_size;
 }
 
 #if 0
@@ -368,11 +390,11 @@ BlockDriver bdrv_raw = {
     .bdrv_open		= raw_open,
     .bdrv_close		= raw_close,
     .bdrv_create	= raw_create,
-    //.bdrv_flush		= raw_flush,
+    .bdrv_flush		= raw_flush,
     .bdrv_read		= raw_read,
     .bdrv_write		= raw_write,
-    //.bdrv_truncate	= raw_truncate,
-    //.bdrv_getlength	= raw_getlength,
+    .bdrv_truncate	= raw_truncate,
+    .bdrv_getlength	= raw_getlength,
 
     .create_options = raw_create_options,
 };

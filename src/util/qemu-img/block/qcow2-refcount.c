@@ -630,7 +630,8 @@ int qcow2_update_snapshot_refcount(BlockDriverState *bs,
  *
  * Returns the number of errors in the image that were found
  */
-static int inc_refcounts(BlockDriverState *bs,
+//static 
+int inc_refcounts(BlockDriverState *bs,
                           uint16_t *refcount_table,
                           int refcount_table_size,
                           int64_t offset, int64_t size)
@@ -672,7 +673,8 @@ static int inc_refcounts(BlockDriverState *bs,
  * Returns the number of errors found by the checks or -errno if an internal
  * error occurred.
  */
-static int check_refcounts_l2(BlockDriverState *bs,
+//static 
+int check_refcounts_l2(BlockDriverState *bs,
     uint16_t *refcount_table, int refcount_table_size, int64_t l2_offset,
     int check_copied)
 {
@@ -755,7 +757,8 @@ fail:
  * Returns the number of errors found by the checks or -errno if an internal
  * error occurred.
  */
-static int check_refcounts_l1(BlockDriverState *bs,
+//static 
+int check_refcounts_l1(BlockDriverState *bs,
                               uint16_t *refcount_table,
                               int refcount_table_size,
                               int64_t l1_table_offset, int l1_size,

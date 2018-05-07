@@ -129,7 +129,7 @@ return object
   TARGET="=("FindPath NetLabs\ESES\DrvPck CONFIG DEFAULT ?:\os2\boot")"
   SELECT
   NODESELECT
-  CONFIGSYS="ifs=$(1)\fat32.ifs /cache:2048 /h /q /ac:* /largefiles | UNIQUE(fat32.ifs) ADDAFTER(hpfs.ifs)"
+  CONFIGSYS="ifs=$(1)\fat32.ifs /cache:2048 /h /q /ac:* /largefiles /fat /exfat | UNIQUE(fat32.ifs) ADDAFTER(hpfs.ifs)"
 ></PCK>
 
 <PCK INDEX=2
@@ -187,27 +187,42 @@ return object
 ></PCK>
 
 <PCK INDEX=8
+   PACKAGEID="NetLabs\FAT32.IFS\Driver for mounting disk images\0\10\1"
+   TITLE="Optional driver (loop.add)"
+   FIXED
+   TARGET="?:\os2\boot"
+   CONFIGSYS="basedev=loop.add | UNIQUE(loop.add) ADDBEFORE(fat32.ifs)"
+></PCK>
+
+<PCK INDEX=9
    PACKAGEID="NetLabs\FAT32.IFS\Debug symbols\0\10\1"
    TITLE="Debug symbols for all binaries"
    FIXED
    TARGET="?:\os2"
 ></PCK>
 
-<PCK INDEX=9
+<PCK INDEX=10
    PACKAGEID="NetLabs\FAT32.IFS\Optional drivers' sym files\0\10\1"
    TITLE="Optional drivers' symbol files"
    FIXED
    TARGET="?:\os2\boot"
 ></PCK>
 
-<PCK INDEX=10
+<PCK INDEX=11
+   PACKAGEID="NetLabs\FAT32.IFS\Driver' for mounting disk images symbol file.\0\10\1"
+   TITLE="Optional driver (loop.add) symbol file"
+   FIXED
+   TARGET="?:\os2\boot"
+></PCK>
+
+<PCK INDEX=12
    PACKAGEID="NetLabs\FAT32.IFS\Optional drivers' doc files\0\10\1"
    TITLE="Optional drivers' documentation files"
    FIXED
    TARGET="?:\os2\docs\fat32"
 ></PCK>
 
-<PCK INDEX=11
+<PCK INDEX=13
   PACKAGEID="NetLabs\FAT32.IFS\IFS INF\0\10\1"
   TITLE="The updated Installable File System document"
   FIXED

@@ -247,9 +247,6 @@ static inline int64_t get_sector_offset(BlockDriverState *bs,
     uint64_t bitmap_offset, block_offset;
     uint32_t pagetable_index, pageentry_index;
 
-    fprintf(stderr, "gso000a: sector_num=%lld\n", sector_num);
-    fprintf(stderr, "gso000b: write=%ld\n", write);
-    fprintf(stderr, "gso000c: offset=%lld\n", offset);
     pagetable_index = offset / s->block_size;
     pageentry_index = (offset % s->block_size) / 512;
 
@@ -264,19 +261,15 @@ static inline int64_t get_sector_offset(BlockDriverState *bs,
     // bitmap each time we write to a new block. This might cause Virtual PC to
     // miss sparse read optimization, but it's not a problem in terms of
     // correctness.
-    fprintf(stderr, "gso000\n");
     if (write && (s->last_bitmap_offset != bitmap_offset)) {
         //uint8_t bitmap[s->bitmap_size];
         uint8_t *bitmap;
 
-        fprintf(stderr, "gso001\n");
         bitmap = qemu_malloc(s->bitmap_size);
 
-        fprintf(stderr, "gso002\n");
         if (! bitmap)
             return -1;
 
-        fprintf(stderr, "gso003\n");
         s->last_bitmap_offset = bitmap_offset;
         memset(bitmap, 0xff, s->bitmap_size);
         bdrv_pwrite(s->hd, bitmap_offset, bitmap, s->bitmap_size);
@@ -315,7 +308,6 @@ static inline int64_t get_sector_offset(BlockDriverState *bs,
 #endif
 #endif
 
-    fprintf(stderr, "gso004\n");
     return block_offset;
 }
 
@@ -408,28 +400,21 @@ static int vpc_read(BlockDriverState *bs, int64_t sector_num,
     int ret;
     int64_t offset;
 
-    fprintf(stderr, "r000\n");
     while (nb_sectors > 0) {
         offset = get_sector_offset(bs, sector_num, 0);
 
-        fprintf(stderr, "r001a: sector_num=%lld\n", sector_num);
-        fprintf(stderr, "r001b: offset=%lld\n", offset);
         if (offset == -1) {
-            fprintf(stderr, "r002\n");
             memset(buf, 0, 512);
         } else {
-            fprintf(stderr, "r003\n");
             ret = bdrv_pread(s->hd, offset, buf, 512);
             if (ret != 512)
                 return -1;
         }
 
-        fprintf(stderr, "r004\n");
         nb_sectors--;
         sector_num++;
         buf += 512;
     }
-    fprintf(stderr, "r005\n");
     return 0;
 }
 

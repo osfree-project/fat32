@@ -108,11 +108,11 @@ UCHAR rgFirstInfo[256];
    if (fForeGround)
 	  {
 	  //DoCheckDisk(TRUE);
-	  if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
-		 printf("Cache size has been set to zero, lazy writer will not be started!\n");
-	  else if (fLoadDeamon)
-		 StartMe(rgArgv[0]);
-	  DosExit(EXIT_PROCESS, 0);
+	  //if (!f32Parms.usCacheSize && !f32Parms.fForceLoad )
+	//	 printf("Cache size has been set to zero, lazy writer will not be started!\n");
+	  //else if (fLoadDeamon)
+	//	 StartMe(rgArgv[0]);
+	  //DosExit(EXIT_PROCESS, 0);
 	  }
    else
           {
@@ -335,6 +335,9 @@ HFILE hf;
 FILE *fd;
 int ret;
 
+   //fd = fopen("d:\\log.txt", "w+");
+   fd = stderr;
+
    rc = DosAllocMem((void **)&pCPData, sizeof(CPDATA),
                     PAG_COMMIT | PAG_READ | PAG_WRITE);
 
@@ -343,9 +346,13 @@ int ret;
 
    memset(pCPData, 0, sizeof(CPDATA));
 
+   fprintf(fd, "000\n");
+   fflush(fd);
    rc = DosOpen("\\DEV\\LOOP$", &hf, &ulAction, 0, FILE_NORMAL,
                 OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
                 OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL);
+   fprintf(fd, "001\n");
+   fflush(fd);
 
    if (rc)
       return;
@@ -354,16 +361,24 @@ int ret;
 
    exbuf.buf = (ULONG)pCPData;
 
+   fprintf(fd, "002\n");
+   fflush(fd);
    rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DAEMON_STARTED,
                     &exbuf, ulParmSize, &ulParmSize,
                     NULL, 0, NULL);
+   fprintf(fd, "003\n");
+   fflush(fd);
 
    if (rc)
       return;
 
+   fprintf(fd, "004\n");
+   fflush(fd);
    rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_GET_REQ, 
                     NULL, 0, NULL,
                     NULL, 0, NULL);
+   fprintf(fd, "005\n");
+   fflush(fd);
 
    while (! pOptions->fTerminate)
       {
@@ -372,7 +387,11 @@ int ret;
          switch (pCPData->Op)
             {
             case OP_OPEN:
+               fprintf(fd, "006\n");
+               fflush(fd);
                bs = bdrv_new("");
+               fprintf(fd, "007\n");
+               fflush(fd);
 
                if (! bs)
                   {
@@ -382,45 +401,71 @@ int ret;
 
                pFmt = pCPData->pFmt;
 
+               fprintf(fd, "008\n");
+               fflush(fd);
                if (*pFmt)
                   {
                   drv = bdrv_find_format(pFmt);
                   }
+               fprintf(fd, "009\n");
+               fflush(fd);
 
+               fprintf(fd, "010\n");
+               fflush(fd);
                if ((ret = bdrv_open2(bs, pCPData->Buf, 0, drv)) < 0)
                   {
                   rc = ERROR_FILE_NOT_FOUND;
                   break;
                   }
+               fprintf(fd, "011\n");
+               fflush(fd);
                pCPData->hf = (ULONG)bs;
                break;
 
             case OP_CLOSE:
+               fprintf(fd, "012\n");
+               fflush(fd);
                bs = (BlockDriverState *)pCPData->hf;
 
+               fprintf(fd, "013\n");
+               fflush(fd);
                bdrv_delete(bs);
+               fprintf(fd, "014\n");
+               fflush(fd);
                break;
 
             case OP_READ:
+               fprintf(fd, "015\n");
+               fflush(fd);
                bs = (BlockDriverState *)pCPData->hf;
 
+               fprintf(fd, "016\n");
+               fflush(fd);
                if (bdrv_pread(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_READ_FAULT;
                   break;
                   }
+               fprintf(fd, "017\n");
+               fflush(fd);
 
                rc = NO_ERROR;
                break;
 
             case OP_WRITE:
+               fprintf(fd, "018\n");
+               fflush(fd);
                bs = (BlockDriverState *)pCPData->hf;
 
+               fprintf(fd, "019\n");
+               fflush(fd);
                if (bdrv_pwrite(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_WRITE_FAULT;
                   break;
                   }
+               fprintf(fd, "020\n");
+               fflush(fd);
 
                rc = NO_ERROR;
                break;
@@ -428,9 +473,13 @@ int ret;
 
          pCPData->rc = rc;
          }
+      fprintf(fd, "021\n");
+      fflush(fd);
       rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DONE_REQ,
                       NULL, 0, NULL,
                       NULL, 0, NULL);
+      fprintf(fd, "022\n");
+      fflush(fd);
       }
 
    rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DAEMON_STOPPED,
@@ -440,6 +489,7 @@ int ret;
    DosClose(hf);
 
    rc = DosFreeMem(pCPData);
+   //fclose(fd);
 }
 
 /******************************************************************
