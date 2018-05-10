@@ -551,6 +551,7 @@ static BlockDriver bdrv_host_device = {
     .bdrv_probe_device	= hdev_probe_device,
     .bdrv_open		= hdev_open,
     .bdrv_close		= raw_close,
+    .bdrv_create        = raw_create,
     .bdrv_flush		= raw_flush,
 
     .bdrv_read		= raw_read,
