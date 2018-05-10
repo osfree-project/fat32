@@ -23,7 +23,7 @@
  */
 #include "config-host.h"
 #include "qemu-common.h"
-#include "monitor.h"
+//#include "monitor.h"
 #include "block_int.h"
 #include "module.h"
 #include "qemu-objects.h"
@@ -501,6 +501,7 @@ int bdrv_open2(BlockDriverState *bs, const char *filename, int flags,
         if (bs->change_cb)
             bs->change_cb(bs->change_opaque);
     }
+
     return 0;
 }
 
@@ -1151,6 +1152,8 @@ int bdrv_is_allocated(BlockDriverState *bs, int64_t sector_num, int nb_sectors,
     return bs->drv->bdrv_is_allocated(bs, sector_num, nb_sectors, pnum);
 }
 
+#if 0
+
 static void bdrv_print_dict(QObject *obj, void *opaque)
 {
     QDict *bs_dict;
@@ -1349,6 +1352,8 @@ void bdrv_info_stats(Monitor *mon, QObject **ret_data)
 
     *ret_data = QOBJECT(devices);
 }
+
+#endif
 
 const char *bdrv_get_encrypted_filename(BlockDriverState *bs)
 {

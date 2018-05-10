@@ -22,18 +22,13 @@ OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
      $(PROJ_BLD)\osdep.$(OBJEXT) &
      $(PROJ_BLD)\porting.$(OBJEXT) &
      $(PROJ_BLD)\aes.$(OBJEXT) &
-     $(PROJ_BLD)\cache-utils.$(OBJEXT) &
+#     $(PROJ_BLD)\cache-utils.$(OBJEXT) &
      $(PROJ_BLD)\cutils.$(OBJEXT) &
-     $(PROJ_BLD)\json-lexer.$(OBJEXT) &
-     $(PROJ_BLD)\json-parser.$(OBJEXT) &
-     $(PROJ_BLD)\json-streamer.$(OBJEXT) &
      $(PROJ_BLD)\module.$(OBJEXT) &
      $(PROJ_BLD)\qbool.$(OBJEXT) &
      $(PROJ_BLD)\qdict.$(OBJEXT) &
-     $(PROJ_BLD)\qerror.$(OBJEXT) &
      $(PROJ_BLD)\qfloat.$(OBJEXT) &
      $(PROJ_BLD)\qint.$(OBJEXT) &
-     $(PROJ_BLD)\qjson.$(OBJEXT) &
      $(PROJ_BLD)\qlist.$(OBJEXT) &
      $(PROJ_BLD)\qstring.$(OBJEXT) &
      $(PROJ_BLD)\aio.$(OBJEXT) &

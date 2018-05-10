@@ -368,9 +368,6 @@ ULONG buf;
 
 typedef struct _cpdata
 {
-  ULONG semSerialize;
-  ULONG semRqAvail;
-  ULONG semRqDone;
   ULONG rc;
   ULONG hf;
   ULONG Op;

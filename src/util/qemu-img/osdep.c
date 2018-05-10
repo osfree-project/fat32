@@ -50,7 +50,7 @@
 #endif
 
 #include "qemu-common.h"
-#include "sysemu.h"
+//#include "sysemu.h"
 //#include "qemu_socket.h"
 
 #if !defined(_POSIX_C_SOURCE) || defined(_WIN32) || defined(__OS2__) || defined(__sun__)

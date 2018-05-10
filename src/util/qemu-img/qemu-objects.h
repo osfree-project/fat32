@@ -19,6 +19,6 @@
 #include "qstring.h"
 #include "qdict.h"
 #include "qlist.h"
-#include "qjson.h"
+//#include "qjson.h"
 
 #endif /* QEMU_OBJECTS_H */

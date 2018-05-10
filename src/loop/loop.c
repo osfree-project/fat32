@@ -48,9 +48,6 @@ typedef struct _exbuf
 
 typedef struct _cpdata
 {
-    long semSerialize;
-    long semRqAvail;
-    long semRqDone;
     ULONG rc;
     ULONG hf;
     ULONG Op;
@@ -134,8 +131,8 @@ void _far _cdecl _loadds iohandler(PIORB pIORB);
 void _cdecl _loadds strategy(RPH _far *reqpkt);
 void init(PRPINITIN reqpkt);
 void ioctl(RP_GENIOCTL far *reqpkt);
-void _cdecl notify_hook(void);
-void _cdecl io_hook(void);
+void _far _cdecl notify_hook(void);
+void _far _cdecl io_hook(void);
 void _cdecl put_IORB(IORBH far *);
 int PreSetup(void);
 int PostSetup(void);
@@ -178,12 +175,15 @@ void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
 #define log_printf(str, ...)  if (LogPrint) (*LogPrint)("loop: " str, __VA_ARGS__)
 
+long semSerialize = 0;
+long semRqAvail = 0;
+long semRqDone = 0;
 ULONG hook_handle = 0; // Ctx Hook handle
 ULONG io_hook_handle = 0; // Ctx Hook handle
 ULONG Device_Help = 0; // DevHelp entry point
-USHORT pidDaemon = 0;
+PID pidDaemon = 0;
 CPDATA far *pCPData = NULL;
-LIN lock = 0;
+BYTE lock[12] = {0};
 USHORT devhandle = 0;  // ADD handle
 
 struct unit units[8] = {0};
@@ -380,6 +380,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             if (! pParm)
             {
                 rc = ERROR_I24_INVALID_PARAMETER;
+                break;
             }
 
             rc = Mount((MNTOPTS far *)pParm);
@@ -387,19 +388,20 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             if (rc)
             {
                 rc = ERROR_I24_INVALID_PARAMETER; // ???
+                break;
             }
             break;
 
         case FUNC_DAEMON_STARTED:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"daemon_started");
+           log_printf("ioctl: %s\n", (char far *)"daemon_started");
 #endif
-           //if (pidDaemon)
-           //{
-           //    rc = ERROR_I24_BAD_COMMAND;
-           //    //rc = ERROR_ALREADY_EXISTS;
-           //    goto ioctl_exit;
-           //}
+           if (pidDaemon)
+           {
+               rc = ERROR_I24_BAD_COMMAND;
+               //rc = ERROR_ALREADY_EXISTS;
+               goto ioctl_exit;
+           }
 
            if (cbParm < sizeof(EXBUF))
            {
@@ -448,7 +450,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                 goto ioctl_exit;
             }
 
-            rc = SemClear(&pCPData->semRqDone);
+            rc = SemClear(&semRqDone);
             // fall through
             //break;
 
@@ -470,14 +472,14 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                 goto ioctl_exit;
             }
 
-            DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+            DevHelp_SemClear((ULONG)&semSerialize);
 
-            rc = SemWait(&pCPData->semRqAvail);
+            rc = SemWait(&semRqAvail);
 
             if (rc)
                 break;
          
-            rc = SemSet(&pCPData->semRqAvail);
+            rc = SemSet(&semRqAvail);
             break;
 
         default:
@@ -498,16 +500,16 @@ USHORT rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = DevHelp_SemRequest((ULONG)&pCPData->semSerialize, -1);
+   rc = DevHelp_SemRequest((ULONG)&semSerialize, -1);
 
    if (rc)
       return rc;
 
-   rc = SemWait(&pCPData->semRqDone);
+   rc = SemWait(&semRqDone);
 
    if (rc)
       {
-      DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+      DevHelp_SemClear((ULONG)&semSerialize);
       return rc;
       }
 
@@ -522,17 +524,17 @@ USHORT usCount;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = SemSet(&pCPData->semRqDone);
+   rc = SemSet(&semRqDone);
 
    if (rc)
       {
-      DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+      DevHelp_SemClear((ULONG)&semSerialize);
       return rc;
       }
 
-   SemClear(&pCPData->semRqAvail);
+   SemClear(&semRqAvail);
 
-   rc = SemWait(&pCPData->semRqDone);
+   rc = SemWait(&semRqDone);
 
    if (rc)
       return rc;
@@ -579,6 +581,8 @@ APIRET rc;
 PAGELIST pagelist[17];
 ULONG pages;
 LIN linaddr;
+PAGELIST far *pPagelist = (PAGELIST far *)&pagelist;
+BYTE far *pLock = (BYTE far *)&lock;
 
    rc = DevHelp_AllocGDTSelector((PSEL)&SELECTOROF(pCPData), 1);
 
@@ -594,8 +598,8 @@ LIN linaddr;
 
    rc = DevHelp_VMLock(VMDHL_WRITE | VMDHL_LONG,
                        linaddr, sizeof(CPDATA),
-                       virtToLin(pagelist),
-                       virtToLin(&lock),
+                       virtToLin(pPagelist),
+                       virtToLin(pLock),
                        &pages);
 
    if (rc)
@@ -609,14 +613,17 @@ LIN linaddr;
 
    pidDaemon = queryCurrentPid();
 
-   rc = SemSet(&pCPData->semRqAvail);
+   //rc = SemSet(&semRqAvail);
+
+   //if (rc)
+   //   return rc;
+
+   rc = SemClear(&semRqDone); ////
 
    if (rc)
       return rc;
-
-   rc = SemClear(&pCPData->semRqDone); ////
    
-   rc = DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+   rc = DevHelp_SemClear((ULONG)&semSerialize);
 
    return rc;
 }
@@ -624,19 +631,21 @@ LIN linaddr;
 APIRET daemonStopped(void)
 {
 APIRET rc;
+BYTE far *pLock = (BYTE far *)&lock;
 
    pidDaemon = 0;
 
-   SemClear(&pCPData->semRqDone);
+   //SemClear(&semRqDone);
+   SemSet(&semRqDone); ////
 
-   rc = DevHelp_SemRequest((ULONG)&pCPData->semSerialize, -1);
+   rc = DevHelp_SemRequest((ULONG)&semSerialize, -1);
 
    if (rc)
       return rc;
 
-   rc = DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+   rc = DevHelp_SemClear((ULONG)&semSerialize);
 
-   DevHelp_VMUnLock(virtToLin(&lock));
+   DevHelp_VMUnLock(virtToLin(pLock));
    DevHelp_FreeGDTSelector(SELECTOROF(pCPData));
 
    if (rc)
@@ -652,10 +661,15 @@ ULONG hf;
 int iUnitNo;
 struct unit *u;
 
+    if (! pidDaemon)
+    {
+        return ERROR_INVALID_PROCID;
+    }
+
     switch (opts->usOp)
     {
         case MOUNT_MOUNT:
-            DevHelp_SemClear((ULONG)&pCPData->semSerialize);
+            DevHelp_SemClear((ULONG)&semSerialize);
 
             if (opts->hf)
             {
@@ -920,6 +934,12 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
 
                 case IOCC_ADAPTER_PASSTHRU:
                     {
+                        if (! u->bMounted || ! pidDaemon)
+                        {
+                            rc = IOERR_UNIT_NOT_READY;
+                            break;
+                        }
+
                         switch (scode)
                         {
                             case IOCM_EXECUTE_CDB:
@@ -976,11 +996,11 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             break;
                         }
 
-                        //if (cpIO->BlockSize != 512)
-                        //{
-                        //    error = IOERR_ADAPTER_REQ_NOT_SUPPORTED;
-                        //    break;
-                        //}
+                        if (cpIO->BlockSize != 512)
+                        {
+                            error = IOERR_ADAPTER_REQ_NOT_SUPPORTED;
+                            break;
+                        }
 
                         cpIO->BlocksXferred = 0;
 
@@ -1208,7 +1228,7 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, UCHAR write)
 
     LIN linaddr, cpdata_linaddr, sg_linaddr, buf_linaddr;
 
-    if (! u->bMounted || ! daemonStarted)
+    if (! u->bMounted || ! pidDaemon)
     {
         rc = IOERR_UNIT_NOT_READY;
         goto io_end;

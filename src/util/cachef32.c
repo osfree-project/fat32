@@ -79,6 +79,15 @@ static ULONG	 ulDriveMap = 0;
 
 char FS_NAME[8] = "FAT32";
 
+#define CAT_LOOP 0x85
+
+#define FUNC_MOUNT           0x10
+#define FUNC_DAEMON_STARTED  0x11
+#define FUNC_DAEMON_STOPPED  0x12
+#define FUNC_DAEMON_DETACH   0x13
+#define FUNC_GET_REQ         0x14
+#define FUNC_DONE_REQ        0x15
+
 /******************************************************************
 *
 ******************************************************************/
@@ -182,8 +191,19 @@ UCHAR rgFirstInfo[256];
                                 pOptions->bLWPrio, 0, pOptions->ulLWTID);
                                 bPrevPrio = pOptions->bLWPrio;
 		 }
-	  DosSleep(5000);
+	  DosSleep(1000); // 5000
 	  }
+
+   if (hLoop)
+      {
+      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
+                  NULL, 0, NULL,
+                  NULL, 0, NULL);
+      }
+
+   DosFSCtl(NULL, 0, NULL,
+            NULL, 0, NULL,
+            FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
 
    DosExit(EXIT_PROCESS, 0);
 
@@ -227,12 +247,12 @@ int ret;
    if (rc)
       return;
 
+   rc = DosFSCtl(NULL, 0, NULL,
+                 NULL, 0, NULL,
+                 FAT32_GET_REQ, FS_NAME, -1, FSCTL_FSDNAME);
+
    while (! pOptions->fTerminate)
       {
-      rc = DosFSCtl(NULL, 0, NULL,
-                    NULL, 0, NULL,
-                    FAT32_GET_REQ, FS_NAME, -1, FSCTL_FSDNAME);
-
       if (!rc || rc == ERROR_VOLUME_NOT_MOUNTED || rc == ERROR_INTERRUPT)
          {
          switch (pCPData->Op)
@@ -305,15 +325,6 @@ int ret;
 
    rc = DosFreeMem(pCPData);
 }
-
-#define CAT_LOOP 0x85
-
-#define FUNC_MOUNT           0x10
-#define FUNC_DAEMON_STARTED  0x11
-#define FUNC_DAEMON_STOPPED  0x12
-#define FUNC_DAEMON_DETACH   0x13
-#define FUNC_GET_REQ         0x14
-#define FUNC_DONE_REQ        0x15
 
 /******************************************************************
 *
@@ -499,17 +510,6 @@ ULONG  ulDataSize;
 VOID Handler(INT iSignal)
 {
    printf("Signal %d was received\n", iSignal);
-
-   /* DosFSCtl(NULL, 0, NULL,
-            NULL, 0, NULL,
-            FAT32_DAEMON_DETACH, FS_NAME, -1, FSCTL_FSDNAME);
-
-   if (hLoop)
-      {
-      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_DETACH,
-                  NULL, 0, NULL,
-                  NULL, 0, NULL);
-      } */
 
    if (iSignal == SIGTERM)
       {

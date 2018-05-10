@@ -12,10 +12,10 @@
  */
 
 #include "qemu-common.h"
-#include "monitor.h"
-#include "sysemu.h"
+//#include "monitor.h"
+//#include "sysemu.h"
 #include "qemu-timer.h"
-#include "qemu-log.h"
+//#include "qemu-log.h"
 
 #include <sys/time.h>
 
@@ -56,9 +56,9 @@ int get_async_context_id(void)
     return 0;
 }
 
-void monitor_protocol_event(MonitorEvent event, QObject *data)
-{
-}
+//void monitor_protocol_event(MonitorEvent event, QObject *data)
+//{
+//}
 
 QEMUBH *qemu_bh_new(QEMUBHFunc *cb, void *opaque)
 {

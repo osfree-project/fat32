@@ -2854,7 +2854,7 @@ USHORT MakeDirEntry(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo,
 #endif
 
    return ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_INSERT, 
-      NULL, pNew, NULL, pNewStream, pszName, NULL);
+      NULL, pNew, NULL, pNewStream, pszName, pszName);
 }
 
 /******************************************************************

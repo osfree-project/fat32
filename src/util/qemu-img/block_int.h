@@ -194,7 +194,7 @@ void *qemu_blockalign(BlockDriverState *bs, size_t size);
 
 extern BlockDriverState *bdrv_first;
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__OS2__)
 int is_windows_drive(const char *filename);
 #endif
 

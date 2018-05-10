@@ -39,7 +39,7 @@ static BYTE szBanner[]=
 "Made by Henk Kelder + Netlabs";
 
 PCPDATA pCPData = NULL;
-LIN lock = 0;
+BYTE lock[12] = {0};
 PID pidDaemon = 0;
 
 USHORT NameHash(USHORT *pszFilename, int NameLen);
@@ -79,6 +79,10 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
 
 int PreSetup(void);
 int PostSetup(void);
+
+ULONG semSerialize = 0;
+ULONG semRqAvail = 0;
+ULONG semRqDone = 0;
 
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
@@ -1030,7 +1034,7 @@ LIN linaddr;
    rc = DevHelp_VMLock(VMDHL_WRITE | VMDHL_LONG,
                        linaddr, sizeof(CPDATA),
                        virtToLin(pagelist),
-                       virtToLin(&lock),
+                       virtToLin(lock),
                        &pages);
 
    if (rc)
@@ -1044,12 +1048,12 @@ LIN linaddr;
 
    pidDaemon = queryCurrentPid();
 
-   rc = FSH_SEMSET(&pCPData->semRqAvail);
+   rc = FSH_SEMSET(&semRqAvail);
 
    if (rc)
       return rc;
    
-   rc = FSH_SEMCLEAR(&pCPData->semSerialize);
+   rc = FSH_SEMCLEAR(&semSerialize);
 
    return rc;
 }
@@ -1060,16 +1064,16 @@ APIRET rc;
 
    pidDaemon = 0;
 
-   FSH_SEMCLEAR(&pCPData->semRqDone);
+   FSH_SEMCLEAR(&semRqDone);
 
-   rc = FSH_SEMREQUEST(&pCPData->semSerialize, -1);
+   rc = FSH_SEMREQUEST(&semSerialize, -1);
 
    if (rc)
       return rc;
 
-   rc = FSH_SEMCLEAR(&pCPData->semSerialize);
+   rc = FSH_SEMCLEAR(&semSerialize);
 
-   DevHelp_VMUnLock(virtToLin(&lock));
+   DevHelp_VMUnLock(virtToLin(lock));
    DevHelp_FreeGDTSelector(SELECTOROF(pCPData));
 
    if (rc)
@@ -1493,24 +1497,6 @@ POPENINFO pOpenInfo;
         rc = daemonStopped();
         break;
 
-     case FAT32_GET_REQ:
-         if (! pidDaemon)
-             return ERROR_INVALID_PROCID;
-
-         if (queryCurrentPid() != pidDaemon)
-            {
-            rc = ERROR_ALREADY_ASSIGNED;
-            goto FS_FSCTLEXIT;
-            }
-
-         rc = FSH_SEMWAIT(&pCPData->semRqAvail, TO_INFINITE);
-
-         if (rc)
-            break;
-         
-         rc = FSH_SEMSET(&pCPData->semRqAvail);
-         break;
-
       case FAT32_DONE_REQ:
          if (! pidDaemon)
              return ERROR_INVALID_PROCID;
@@ -1521,7 +1507,26 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
-         rc = FSH_SEMCLEAR(&pCPData->semRqDone);
+         rc = FSH_SEMCLEAR(&semRqDone);
+         // fall through
+         //break;
+
+     case FAT32_GET_REQ:
+         if (! pidDaemon)
+             return ERROR_INVALID_PROCID;
+
+         if (queryCurrentPid() != pidDaemon)
+            {
+            rc = ERROR_ALREADY_ASSIGNED;
+            goto FS_FSCTLEXIT;
+            }
+
+         rc = FSH_SEMWAIT(&semRqAvail, TO_INFINITE);
+
+         if (rc)
+            break;
+         
+         rc = FSH_SEMSET(&semRqAvail);
          break;
 
       case FAT32_GETVOLLABEL:

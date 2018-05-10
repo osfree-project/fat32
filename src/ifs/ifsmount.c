@@ -62,6 +62,10 @@ IMPORT SEL cdecl SaSSel(void);
 
 UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect);
 
+extern ULONG semSerialize;
+extern ULONG semRqAvail;
+extern ULONG semRqDone;
+
 ULONG fat_mask = 0;
 ULONG fat32_mask = 0;
 #ifdef EXFAT
@@ -298,16 +302,16 @@ APIRET rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = FSH_SEMREQUEST(&pCPData->semSerialize, -1);
+   rc = FSH_SEMREQUEST(&semSerialize, -1);
 
    if (rc)
       return rc;
 
-   rc = FSH_SEMWAIT(&pCPData->semRqDone, -1);
+   rc = FSH_SEMWAIT(&semRqDone, -1);
 
    if (rc)
       {
-      FSH_SEMCLEAR(&pCPData->semSerialize);
+      FSH_SEMCLEAR(&semSerialize);
       return rc;
       }
 
@@ -321,19 +325,19 @@ APIRET rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = FSH_SEMSET(&pCPData->semRqDone);
+   rc = FSH_SEMSET(&semRqDone);
 
    if (rc)
       {
-      FSH_SEMCLEAR(&pCPData->semSerialize);
+      FSH_SEMCLEAR(&semSerialize);
       return rc;
       }
 
-   FSH_SEMCLEAR(&pCPData->semRqAvail);
+   FSH_SEMCLEAR(&semRqAvail);
 
-   rc = FSH_SEMWAIT(&pCPData->semRqDone, -1);
+   rc = FSH_SEMWAIT(&semRqDone, -1);
 
-   FSH_SEMCLEAR(&pCPData->semSerialize);
+   FSH_SEMCLEAR(&semSerialize);
 
    if (rc)
       return rc;
@@ -360,7 +364,7 @@ ULONG hf;
             return ERROR_ALREADY_EXISTS;
             }
 
-         FSH_SEMCLEAR(&pCPData->semSerialize);
+         FSH_SEMCLEAR(&semSerialize);
 
          if (opts->hf)
             {
