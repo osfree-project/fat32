@@ -1062,6 +1062,7 @@ PDIRENTRY1 pDirectory;
 PDIRENTRY1 pDir2, pDir1;
 PDIRENTRY1 pWork, pWork2, pWorkStream, pWorkFile, pWorkFileName;
 PDIRENTRY1 pMax;
+PDIRENTRY1 pNew1 = (PDIRENTRY1)pNew;
 USHORT    usEntriesNeeded;
 USHORT    usFreeEntries;
 DIRENTRY1  DirNew;
@@ -1079,7 +1080,7 @@ ULONG     ulSector;
 ULONG     ulPrevSector;
 //USHORT    usSectorsRead;
 //USHORT    usSectorsPerBlock;
-ULONG     ulBytesToRead;
+ULONG     ulBytesToRead = 0;
 ULONG     ulPrevBytesToRead = 0;
 ULONG     ulBytesRemained;
 USHORT    usNumSecondary  = 0;
@@ -1093,11 +1094,18 @@ BOOL      fCrossBorder;
    //   Message("ModifyDirectory DirCluster %ld, Mode = %d",
    //   ulDirCluster, usMode);
 
+   szLongName = (PSZ)malloc(FAT32MAXPATHCOMP);
+   if (!szLongName)
+      {
+      return ERROR_NOT_ENOUGH_MEMORY;
+      }
+
    if (usMode == MODIFY_DIR_RENAME ||
        usMode == MODIFY_DIR_INSERT)
       {
       if (!pNew || !pszLongNameNew)
          {
+         free(szLongName);
          return ERROR_INVALID_PARAMETER;
          }
 
@@ -1137,15 +1145,17 @@ BOOL      fCrossBorder;
       {
       if (!pOld)
          {
+         free(szLongName);
          return ERROR_INVALID_PARAMETER;
          }
       }
 
-   //pDirectory = (PDIRENTRY1)malloc(2 * (size_t)pCD->ulClusterSize);
-   rc = mem_alloc((void **)&pDirectory, 2 * (size_t)pCD->ulClusterSize);
-   //if (!pDirectory)
-   if (rc)
+   pDirectory = (PDIRENTRY1)malloc(2 * (size_t)pCD->ulClusterSize);
+   //rc = mem_alloc((void **)&pDirectory, 2 * (size_t)pCD->ulClusterSize);
+   if (!pDirectory)
+   //if (rc)
       {
+      free(szLongName);
       return ERROR_NOT_ENOUGH_MEMORY;
       }
    memset(pDirectory, 0, (size_t)pCD->ulClusterSize);
@@ -1170,6 +1180,8 @@ BOOL      fCrossBorder;
    //   ulBytesRemained = pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
    //   }
 
+   pWorkFile = NULL;
+   pWorkFileName = NULL;
    while (ulCluster != pCD->ulFatEof)
       {
 #ifdef CALL_YIELD
@@ -1200,8 +1212,9 @@ BOOL      fCrossBorder;
          //   }
          if (rc)
             {
-            //free(pDirectory);
-            mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+            free(szLongName);
+            free(pDirectory);
+            //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
             return rc;
             }
          }
@@ -1225,8 +1238,9 @@ BOOL      fCrossBorder;
                rc = ReadCluster(pCD, ulCluster2, pDir2);
                if (rc)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                }
@@ -1237,80 +1251,88 @@ BOOL      fCrossBorder;
                Find old entry
             */
 
-                  fFound = FALSE;
-                  fCrossBorder = FALSE;
-                  pWork = pDirectory;
-                  pDir1 = NULL;
-                  pMax = (DIRENTRY1 *)((BYTE *)pDirectory + ulBytesToRead);
-                  while (!pLNStart)
-                     {
-                     if (pWork->bEntryType == ENTRY_TYPE_EOD)
-                        break;
-                     //if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY)
-                     if (pWork->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
-                        {
-                        //if (pWork->bAttr == FILE_LONGNAME)
-                        if (pWork->bEntryType == ENTRY_TYPE_FILE_NAME)
-                           {
-                           usNumSecondary2--;
-                           usFileName++;
-                           fGetLongName1(pWork, szLongName, FAT32MAXPATHCOMP);
+          fFound = FALSE;
+          fCrossBorder = FALSE;
+          pWork = pDirectory;
+          pDir1 = NULL;
+          pMax = (DIRENTRY1 *)((BYTE *)pDirectory + ulBytesToRead);
+          while (!pLNStart)
+             {
+             if (pWork->bEntryType == ENTRY_TYPE_EOD)
+                break;
+             //if (pWork->bFileName[0] && pWork->bFileName[0] != DELETED_ENTRY)
+             if (pWork->bEntryType & ENTRY_TYPE_IN_USE_STATUS)
+                {
+                //if (pWork->bAttr == FILE_LONGNAME)
+                if (pWork->bEntryType == ENTRY_TYPE_FILE_NAME)
+                   {
+                   usNumSecondary2--;
+                   usFileName++;
+                   fGetLongName1(pWork, szLongName, FAT32MAXPATHCOMP);
 
-                           if (pWork == pMax - 1)
-                              fCrossBorder = TRUE;
+                   if (pWork == pMax - 1)
+                      fCrossBorder = TRUE;
 
-                           if ( !pLNStart && !usNumSecondary2 && pWorkStream && pStreamOld &&
-                                //pWorkStream->u.Stream.ulFirstClus == pStreamOld->u.Stream.ulFirstClus &&
-                                ( !stricmp(szLongName, pszLongNameOld) ) )
-                           //if (!pLNStart && !usFileName && fFound)
-                              {
-                              pWorkFileName = pWork;
-                              pLNStart = pWork - usFileName + 1;
-                              fFound = TRUE;
-                              //pLNStart = pWork;
-                              break;
-                              }
-                           //usFileName++;
-                           }
-                        else if (pWork->bEntryType == ENTRY_TYPE_FILE)
-                           {
-                           usFileName = 0;
-                           usNumSecondary = usNumSecondary2 = pWork->u.File.bSecondaryCount;
+                   if ( !pLNStart && !usNumSecondary2 && pWorkStream && pStreamOld &&
+                        //pWorkStream->u.Stream.ulFirstClus == pStreamOld->u.Stream.ulFirstClus &&
+                        ( !stricmp(szLongName, pszLongNameOld) ) )
+                   //if (!pLNStart && !usFileName && fFound)
+                      {
+                      pWorkFileName = pWork;
+                      pLNStart = pWork - usFileName + 1;
+                      fFound = TRUE;
+                      //pLNStart = pWork;
+                      break;
+                      }
+                   //usFileName++;
+                   }
+                else if (pWork->bEntryType == ENTRY_TYPE_FILE)
+                   {
+                   usFileName = 0;
+                   usNumSecondary = usNumSecondary2 = pWork->u.File.bSecondaryCount;
 
-                           if (pWork == pMax - 1)
-                              fCrossBorder = TRUE;
-                           else if (pWork >= pMax)
-                              break;
+                   if (pWork == pMax - 1)
+                      fCrossBorder = TRUE;
+                   else if (pWork >= pMax)
+                      break;
 
-                           pWorkFile = pWork;
-                           //*szLongName = '\0';
-                           memset(szLongName, 0, FAT32MAXPATHCOMP);
-                           }
-                        //else if ((pWork->bAttr & 0x0F) != FILE_VOLID)
-                        else if (pWork->bEntryType == ENTRY_TYPE_STREAM_EXT)
-                           {
-                           usNumSecondary2--;
-                           //if (!memcmp(pWork->bFileName, pOld->bFileName, 11) &&
-                           //    pWork->wCluster     == pOld->wCluster &&
-                           //    pWork->wClusterHigh == pOld->wClusterHigh)
+                   pWorkFile = pWork;
+                   //*szLongName = '\0';
+                   memset(szLongName, 0, FAT32MAXPATHCOMP);
+                   }
+                //else if ((pWork->bAttr & 0x0F) != FILE_VOLID)
+                else if (pWork->bEntryType == ENTRY_TYPE_STREAM_EXT)
+                   {
+                   usNumSecondary2--;
+                   //if (!memcmp(pWork->bFileName, pOld->bFileName, 11) &&
+                   //    pWork->wCluster     == pOld->wCluster &&
+                   //    pWork->wClusterHigh == pOld->wClusterHigh)
 
-                           if (pWork == pMax - 1)
-                              fCrossBorder = TRUE;
+                   if (pWork == pMax - 1)
+                      fCrossBorder = TRUE;
 
-                           pWorkStream = pWork;
-                           pLNStart = NULL;
-                           }
-                        else
-                           pLNStart = NULL;
-                        }
-                     else
-                        pLNStart = NULL;
-                     if (fCrossBorder && !usNumSecondary2)
-                        break;
-                     pWork++;
-                     }
+                   pWorkStream = pWork;
+                   pLNStart = NULL;
+                   }
+                else
+                   pLNStart = NULL;
+                }
+             else
+                pLNStart = NULL;
+             if (fCrossBorder && !usNumSecondary2)
+                break;
+             pWork++;
+             }
 
-            if (fFound)
+            if (!fFound)
+               {
+               if (usMode == MODIFY_DIR_UPDATE ||
+                   usMode == MODIFY_DIR_DELETE ||
+                   usMode == MODIFY_DIR_RENAME)
+                  // copy it back
+                  memmove(pDir2, pDirectory, (size_t)ulBytesToRead);
+               }
+            else
             //if (pWork != pMax)
                {
                switch (usMode)
@@ -1318,10 +1340,12 @@ BOOL      fCrossBorder;
                   case MODIFY_DIR_UPDATE:
                      //if (f32Parms.fMessageActive & LOG_FUNCS)
                      //   Message(" Updating cluster");
+                     pNew1->bEntryType = ENTRY_TYPE_FILE;
                      memcpy(pWorkFile, pNew, sizeof (DIRENTRY1));
                      set_datetime1(pWorkFile);
                      if (pStreamNew)
                         {
+                        pStreamNew->bEntryType = ENTRY_TYPE_STREAM_EXT;
                         memcpy(pWorkStream, pStreamNew, sizeof (DIRENTRY1));
                         }
                      pWorkFile->u.File.usSetCheckSum = GetChkSum16((char *)pWorkFile,
@@ -1329,11 +1353,12 @@ BOOL      fCrossBorder;
                      rc = WriteCluster(pCD, ulCluster, pDirectory);
                      if (rc)
                         {
-                        //free(pDirectory);
-                        mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                        free(szLongName);
+                        free(pDirectory);
+                        //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                         return rc;
                         }
-                     if (ulCluster2 != pCD->ulFatEof)
+                     if (ulCluster2 != pCD->ulFatEof && pWorkFileName > pMax)
                         {
                         //if (ulCluster == 1)
                         //   // reading root directory on FAT12/FAT16
@@ -1342,8 +1367,9 @@ BOOL      fCrossBorder;
                            rc = WriteCluster(pCD, ulCluster2, pDir2);
                         if (rc)
                            {
-                           //free(pDirectory);
-                           mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                           free(szLongName);
+                           free(pDirectory);
+                           //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                            return rc;
                            }
                         }
@@ -1369,35 +1395,17 @@ BOOL      fCrossBorder;
                      pWorkStream->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
 
                      /*
-                        Write previous cluster if LN start lies there
-                     */
-                     //if (ulPrevCluster != pCD->ulFatEof &&
-                     //   pLNStart < pDir2)
-                     //   {
-                     //   if (ulPrevCluster == 1)
-                     //      // reading root directory on FAT12/FAT16
-                     //      rc = WriteSector(pCD, ulPrevSector + ulPrevCluster * usSectorsPerCluster, usSectorsPerCluster, (void *)pDirectory);
-                     //   else
-                     //      rc = WriteCluster(pCD, ulPrevCluster, pDirectory);
-                     //   if (rc)
-                     //      {
-                     //      //free(pDirectory);
-                     //      mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
-                     //      return rc;
-                     //      }
-                     //   }
-
-                     /*
                      Write current cluster
                      */
                      rc = WriteCluster(pCD, ulCluster, pDirectory);
                      if (rc)
                         {
-                        //free(pDirectory);
-                        mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                        free(szLongName);
+                        free(pDirectory);
+                        //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                         return rc;
                         }
-                     if (ulCluster2 != pCD->ulFatEof)
+                     if (ulCluster2 != pCD->ulFatEof && pWorkFileName > pMax)
                         {
                         //if (ulCluster == 1)
                         //   // reading root directory on FAT12/FAT16
@@ -1406,8 +1414,9 @@ BOOL      fCrossBorder;
                            rc = WriteCluster(pCD, ulCluster2, pDir2);
                         if (rc)
                            {
-                           //free(pDirectory);
-                           mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                           free(szLongName);
+                           free(pDirectory);
+                           //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                            return rc;
                            }
                         }
@@ -1419,7 +1428,6 @@ BOOL      fCrossBorder;
                         usMode = MODIFY_DIR_INSERT;
                         pszLongNameOld = pszLongNameNew;
                         ulCluster = ulDirCluster;
-                        ulBytesRemained = pCD->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
                         ulPrevCluster = pCD->ulFatEof;
                         ulPrevSector = 0;
                         //ulPrevBlock = 0;
@@ -1434,7 +1442,7 @@ BOOL      fCrossBorder;
             break;
 
          case MODIFY_DIR_INSERT:
-            pNew->bEntryType = ENTRY_TYPE_FILE;
+            pNew1->bEntryType = ENTRY_TYPE_FILE;
             pStreamNew->bEntryType = ENTRY_TYPE_STREAM_EXT;
 
             if (ulPrevCluster != pCD->ulFatEof && GetFreeEntries((PDIRENTRY)pDirectory, ulPrevBytesToRead + ulBytesToRead) >= usEntriesNeeded)
@@ -1449,8 +1457,7 @@ BOOL      fCrossBorder;
                //pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                //memcpy(pWork, &DirNew, sizeof (DIRENTRY));
                pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
-
-               pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
+               pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
                pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
@@ -1465,8 +1472,9 @@ BOOL      fCrossBorder;
                   rc = WriteCluster(pCD, ulPrevCluster, pDirectory);
                if (rc)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                //if (ulCluster == 1)
@@ -1476,8 +1484,9 @@ BOOL      fCrossBorder;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                ulCluster = pCD->ulFatEof;
@@ -1495,8 +1504,7 @@ BOOL      fCrossBorder;
 
                pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
                pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
-
-               pNew->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
+               pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
                memcpy(pWork++, pNew, sizeof (DIRENTRY1));
                pStreamNew->u.Stream.usNameHash = usNameHash;
                pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
@@ -1510,8 +1518,9 @@ BOOL      fCrossBorder;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                ulCluster = pCD->ulFatEof;
@@ -1527,8 +1536,9 @@ BOOL      fCrossBorder;
                   rc = WriteCluster(pCD, ulCluster, pDir2);
                if (rc)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return rc;
                   }
                }
@@ -1569,8 +1579,9 @@ BOOL      fCrossBorder;
                 usMode == MODIFY_DIR_DELETE ||
                 usMode == MODIFY_DIR_RENAME)
                {
-               //free(pDirectory);
-               mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+               free(szLongName);
+               free(pDirectory);
+               //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                return ERROR_FILE_NOT_FOUND;
                }
             else
@@ -1584,8 +1595,9 @@ BOOL      fCrossBorder;
                   ulNextCluster = SetNextCluster(pCD, ulCluster, FAT_ASSIGN_NEW);
                if (ulNextCluster == pCD->ulFatEof)
                   {
-                  //free(pDirectory);
-                  mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+                  free(szLongName);
+                  free(pDirectory);
+                  //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
                   return ERROR_DISK_FULL;
                   }
                fNewCluster = TRUE;
@@ -1595,8 +1607,9 @@ BOOL      fCrossBorder;
          }
       }
 
-   //free(pDirectory);
-   mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
+   free(szLongName);
+   free(pDirectory);
+   //mem_free(pDirectory, 2 * (size_t)pCD->ulClusterSize);
    return 0;
 }
 
@@ -2559,7 +2572,7 @@ APIRET SetFileSize(PCDINFO pCD, PFILESIZEDATA pFileSize)
 
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-      &DirEntry, &DirNew, &DirStream, &DirStreamNew, pszFile, NULL);
+      &DirEntry, &DirNew, &DirStream, &DirStreamNew, pszFile, pszFile);
 
    return rc;
 }
@@ -3478,7 +3491,7 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
          if (ulOldCluster != pCD->ulFatEof)
             {
             DeleteFatChain(pCD, ulOldCluster);
-            ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &OldOldEntry, NULL, &OldOldEntryStream, NULL, pszOldFile, NULL);
+            ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, &OldOldEntry, NULL, &OldOldEntryStream, NULL, pszOldFile, pszOldFile);
             }
          }
 
@@ -3542,10 +3555,14 @@ APIRET MakeFile(PCDINFO pCD, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ psz
       }
 
    if (! file_exists || pszOldFile)
+   {
       rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, &NewEntry, &NewEntryStream, pszFileName);
+   }
    else
+   {
       rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
-              &OldEntry, &NewEntry, &OldEntryStream, &NewEntryStream, pszFileName, NULL);
+              &OldEntry, &NewEntry, &OldEntryStream, &NewEntryStream, pszFileName, pszFileName);
+   }
 
    if (rc)
       goto MakeFileEnd;
@@ -3623,7 +3640,7 @@ APIRET rc;
       }
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE,
-                        &DirEntry, NULL, &DirEntryStream, NULL, pszFilename, NULL);
+                        &DirEntry, NULL, &DirEntryStream, NULL, pszFilename, pszFilename);
    if (rc)
       goto DeleteFileExit;
 

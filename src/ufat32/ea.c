@@ -407,7 +407,7 @@ USHORT rc;
       }
 
    rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo,
-      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName, NULL);
+      MODIFY_DIR_UPDATE, pOldEntry, pNewEntry, pOldEntryStream, NULL, pszFileName, pszFileName);
 
 MarkFileEASExit:
    if (pOldEntry)
@@ -584,7 +584,7 @@ ULONG    ulCluster;
       rc = 0;
       goto usDeleteEASExit;
       }
-   rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName, NULL);
+   rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_DELETE, pDirEntry, NULL, pStreamEntry, NULL, pszEAName, pszEAName);
    if (rc)
       goto usDeleteEASExit;
 
@@ -756,7 +756,7 @@ PSHOPENINFO pSHInfo = NULL;
          rc = MakeDirEntry(pCD, ulDirCluster, pDirSHInfo, pDirNew, pDirStreamNew, pszEAName);
       else
          rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo,
-            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL);
+            MODIFY_DIR_UPDATE, pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, pszEAName);
       if (rc)
          {
          free(pszEAName);
@@ -793,7 +793,7 @@ PSHOPENINFO pSHInfo = NULL;
          }
 #endif
       rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, NULL);
+           pDirEntry, pDirNew, pDirStream, pDirStreamNew, pszEAName, pszEAName);
       if (rc)
          {
          free(pszEAName);

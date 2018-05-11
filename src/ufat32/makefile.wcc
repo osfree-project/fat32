@@ -32,8 +32,8 @@ OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc $(PROJ_BLD)
 OBJS4=$(PROJ_BLD)\sys.obs $(PROJ_BLD)\os2.obs $(PROJ_BLD)\clus.obs &
       $(PROJ_BLD)\msg.obs $(PROJ_BLD)\log.obs $(PROJ_BLD)\util.obs $(PROJ_BLD)\unicode.obs
 OBJS5=$(PROJ_BLD)\stub.obd
-COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-C16OPT=-s -sg -mc -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+COPT=-3s -s -sg -hw -mf -d3 -db -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+C16OPT=-s -sg -mc -d3 -db -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
 
 TARGETS=$(BINROOT)\os2\fat32fmt.sym &
         $(BINROOT)\os2\fat32chk.sym &

@@ -182,7 +182,7 @@ USHORT rc;
             else
                pDirNew->bAttr = (BYTE)*pAttr;
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               pDirEntry, pDirNew, NULL, NULL, pszFile, NULL, 0);
+               pDirEntry, pDirNew, NULL, NULL, pszFile, pszFile, 0);
             //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
             //   pDirEntry, pDirNew, NULL, NULL, NULL, 0);
 #ifdef EXFAT
@@ -210,7 +210,7 @@ USHORT rc;
             memset(pDirNew1->u.File.bResvd2, 0, sizeof(pDirNew1->u.File.bResvd2));
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               pDirEntry, (PDIRENTRY)pDirNew1, pDirEntryStream, NULL, pszFile, NULL, 0);
+               pDirEntry, (PDIRENTRY)pDirNew1, pDirEntryStream, NULL, pszFile, pszFile, 0);
             //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
             //   pDirEntry, (PDIRENTRY)pDirNew1, pDirEntryStream, NULL, NULL, 0);
             free(pDirNew1);
@@ -961,7 +961,7 @@ USHORT rc;
 #endif
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, NULL, 0);
+               pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, pszFile, 0);
             //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
             //   pDirEntry, pDirNew, pDirEntryStream, NULL, NULL, 0);
             break;
@@ -1094,7 +1094,7 @@ USHORT rc;
 #endif
 
             rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-               pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, NULL, 0);
+               pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, pszFile, 0);
             //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
             //   pDirEntry, pDirNew, pDirEntryStream, NULL, NULL, 0);
             break;
@@ -1123,7 +1123,7 @@ USHORT rc;
                pDirNew->wLastWriteTime.minutes = pGI->minutes;
                pDirNew->wLastWriteTime.twosecs = pGI->seconds / 2;
                rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                  pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, NULL, 0);
+                  pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, pszFile, 0);
                //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                //   pDirEntry, pDirNew, pDirEntryStream, NULL, NULL, 0);
 #endif

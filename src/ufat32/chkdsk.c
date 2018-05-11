@@ -1400,7 +1400,7 @@ USHORT usSectorsRead;
                               memcpy(&DirNew, &DirEntry, sizeof(DIRENTRY));
                               DirNew.bAttr = FILE_NORMAL;
                               rc = ModifyDirectory(pCD, ulDirCluster, NULL, MODIFY_DIR_UPDATE,
-                                                   &DirEntry, &DirNew, NULL, NULL, pszFile, NULL);
+                                                   &DirEntry, &DirNew, NULL, NULL, pszFile, pszFile);
                               }
                            }
                         if (!rc)
@@ -2073,7 +2073,7 @@ BOOL fEAS;
                                  memcpy(&DirStreamNew, &DirStream, sizeof(DIRENTRY1));
                                  DirNew.u.File.usFileAttr = FILE_NORMAL;
                                  rc = ModifyDirectory(pCD, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, pszFile, NULL);
+                                                      (PDIRENTRY)&DirEntry, (PDIRENTRY)&DirNew, &DirStream, &DirStreamNew, pszFile, pszFile);
                                  }
                               }
                            if (!rc)

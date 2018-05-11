@@ -767,7 +767,7 @@ USHORT rc;
                {
                ulCluster = 0;
                rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-                  pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, NULL, usIOMode);
+                  pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, pszFile, usIOMode);
                //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
                //   pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
                if (!rc)
@@ -781,7 +781,7 @@ USHORT rc;
                }
             }
          rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
-            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, NULL, usIOMode);
+            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, pszFile, usIOMode);
          //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
          //   pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, NULL, usIOMode);
          if (rc)
@@ -3157,7 +3157,7 @@ USHORT rc;
             }
 
          rc = ModifyDirectory(pVolInfo, pOpenInfo->pSHInfo->ulDirCluster, pOpenInfo->pDirSHInfo, MODIFY_DIR_UPDATE,
-            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, NULL, usIOFlag);
+            pDirOld, pDirEntry, pDirOldStream, pDirEntryStream, pszFile, pszFile, usIOFlag);
          if (!rc)
             psffsi->sfi_tstamp = 0;
          if (pDirEntry)
