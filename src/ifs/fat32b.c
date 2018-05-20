@@ -1723,16 +1723,23 @@ USHORT    rc;
          else
             pszLongNameNew = NULL; */
 
-         //usEntriesNeeded = 1;
-         usEntriesNeeded = 2;
-         if (pszLongNameNew)
+         if (pStreamNew)
+            {
+            //usEntriesNeeded = 1;
+            usEntriesNeeded = 2;
+            if (pszLongNameNew)
 #if 0
-            usEntriesNeeded += strlen(pszLongNameNew) / 13 +
-               (strlen(pszLongNameNew) % 13 ? 1 : 0);
+               usEntriesNeeded += strlen(pszLongNameNew) / 13 +
+                  (strlen(pszLongNameNew) % 13 ? 1 : 0);
 #else
-            //usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
-            usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 14 ) / 15;
+               //usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 12 ) / 13;
+               usEntriesNeeded += ( DBCSStrlen( pszLongNameNew ) + 14 ) / 15;
 #endif
+            }
+         else
+            {
+            usEntriesNeeded = 1;
+            }
          }
 
       if (usMode == MODIFY_DIR_RENAME ||
@@ -2048,8 +2055,11 @@ USHORT    rc;
                   break;
 
                case MODIFY_DIR_INSERT:
-                  pNew1->bEntryType = ENTRY_TYPE_FILE;
-                  pStreamNew->bEntryType = ENTRY_TYPE_STREAM_EXT;
+                  if (pStreamNew)
+                  {
+                     pNew1->bEntryType = ENTRY_TYPE_FILE;
+                     pStreamNew->bEntryType = ENTRY_TYPE_STREAM_EXT;
+                  }
 
                   if (ulPrevCluster != pVolInfo->ulFatEof && GetFreeEntries1(pDirectory, ulPrevBytesToRead + ulBytesToRead) >= usEntriesNeeded)
                      {
@@ -2061,14 +2071,21 @@ USHORT    rc;
                      pWork = CompactDir1(pDirectory, ulPrevBytesToRead + ulBytesToRead, usEntriesNeeded);
                      //pWork = fSetLongName(pWork, pszLongNameNew, bCheck);
                      //memcpy(pWork, pDirNew, sizeof (DIRENTRY));
-                     pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
-                     pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
-                     memcpy(pWork++, pNew, sizeof (DIRENTRY1));
-                     pStreamNew->u.Stream.usNameHash = usNameHash;
-                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
-                     memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
-                        sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
+                     if (pStreamNew)
+                        {
+                        pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
+                        pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
+                        memcpy(pWork++, pNew, sizeof (DIRENTRY1));
+                        pStreamNew->u.Stream.usNameHash = usNameHash;
+                        pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
+                        memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
+                        (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
+                           sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
+                        }
+                     else
+                        {
+                        memcpy(pWork, pNew, sizeof (DIRENTRY));
+                        }
 
                      //if (ulPrevCluster == 1)
                      //   // reading root directory on FAT12/FAT16
@@ -2109,14 +2126,22 @@ USHORT    rc;
 
                      //pWork = CompactDir1(pDirectory, ulBytesToRead, usEntriesNeeded);
                      pWork = CompactDir1(pDir2, ulBytesToRead, usEntriesNeeded);
-                     pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
-                     pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
-                     memcpy(pWork++, pNew, sizeof (DIRENTRY1));
-                     pStreamNew->u.Stream.usNameHash = usNameHash;
-                     pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
-                     memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
-                     (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
-                        sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
+                     
+                     if (pStreamNew)
+                        {
+                        pWork3 = fSetLongName1(pWork+2, pszLongNameNew, &usNameHash);
+                        pNew1->u.File.bSecondaryCount = (BYTE)(pWork3 - pWork - 1);
+                        memcpy(pWork++, pNew, sizeof (DIRENTRY1));
+                        pStreamNew->u.Stream.usNameHash = usNameHash;
+                        pStreamNew->u.Stream.bNameLen = (BYTE)strlen(pszLongNameNew);
+                        memcpy(pWork++, pStreamNew, sizeof (DIRENTRY1));
+                        (pWork-2)->u.File.usSetCheckSum = GetChkSum16((UCHAR *)(pWork-2),
+                           sizeof(DIRENTRY1) * ((pWork-2)->u.File.bSecondaryCount + 1));
+                        }
+                     else
+                        {
+                        memcpy(pWork, pNew, sizeof (DIRENTRY));
+                        }
                      //if (ulCluster == 1)
                      //   // reading root directory on FAT12/FAT16
                      //   rc = WriteSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDir2, usIOMode);

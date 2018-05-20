@@ -10,19 +10,18 @@ TARGETS=$(LIBROOT)\qemu-block.lib &
 
 !include ..\..\makefile.mk
 
-# DEBUG=-dCONFIG_VDI_DEBUG
+DEBUG= -db -d2 # -dCONFIG_VDI_DEBUG
 
 # OBJEXT=obj
 OBJEXT=obd
 
-COPT=-3s -s -db -d2 -sg -hw -mf -od -zq -q -fp3 -fpi87 -dQEMU_TOOL $(DEBUG) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
+COPT=-3s -s -sg -sg -hw -mf -od -zq -q -ze -fp3 -fpi87 -dQEMU_TOOL $(DEBUG) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
 OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
      $(PROJ_BLD)\qemu-malloc.$(OBJEXT) &
      $(PROJ_BLD)\qemu-tool.$(OBJEXT) &
      $(PROJ_BLD)\osdep.$(OBJEXT) &
      $(PROJ_BLD)\porting.$(OBJEXT) &
      $(PROJ_BLD)\aes.$(OBJEXT) &
-#     $(PROJ_BLD)\cache-utils.$(OBJEXT) &
      $(PROJ_BLD)\cutils.$(OBJEXT) &
      $(PROJ_BLD)\module.$(OBJEXT) &
      $(PROJ_BLD)\qbool.$(OBJEXT) &
@@ -91,7 +90,7 @@ $(PROJ_BLD)\qemuimg.lnk: $(PROJ_BLD)\qemuimg.ols
  @%append $@ OPTION ST=384000
  @%append $@ OPTION HEAP=384000
  @%append $@ OPTION QUIET
- @%append $@ DEBUG ALL
+ # @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s,zlib

@@ -69,7 +69,7 @@ _put_IORB       proc    near
                 pop     di
                 pop     es
                 pop     bp
-                ret
+                ret     4
 _put_IORB       endp
 
 
@@ -104,7 +104,7 @@ _notify_hook    proc    far
 
                 popad
 
-	        ret
+    	        ret
 _notify_hook    endp
 
                 public _io_hook

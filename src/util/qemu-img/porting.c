@@ -1,12 +1,18 @@
 #include <stdlib.h>
 #include <io.h> 
 
+#define  INCL_LONGLONG
+#define  INCL_BASE
+#include <os2.h>
 
-int ftruncate( int handle, long size )
+int ftruncate( int handle, int64_t size )
 {  
    int rc = 0;
-   if (size < filelength(handle)) {
-      rc = chsize(handle, size);
+   HFILE hf = _os_handle(handle);
+   
+   if (size < _filelengthi64(handle)) {
+      //rc = chsize(handle, size);
+      rc = DosSetFileSizeL(hf, size);
    }
    
    if (rc) { 

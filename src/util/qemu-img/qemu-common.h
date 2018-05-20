@@ -80,7 +80,7 @@ static inline char *realpath(const char *path, char *resolved_path)
 
 #elif defined(__OS2__)
 #define lseek _lseeki64
-int  ftruncate( int handle, long size );
+int  ftruncate( int handle, int64_t size );
 char *realpath(const char *path, char *resolved_path);
 #endif
 

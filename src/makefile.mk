@@ -21,7 +21,7 @@ CLEANUP  = $(PROJ_BLD)\*.obj $(PROJ_BLD)\*.obd $(PROJ_BLD)\*.obc $(PROJ_BLD)\*.l
            $(PROJ_BLD)\*.map $(PROJ_BLD)\*.ols $(PROJ_BLD)\*.err $(BLDROOT)\..\include\ver.h &
            $(BLDROOT)\lib\*.lib $(BINROOT)\zip-*.flg $(BINROOT)\wpi.flg
 # compress executables
-# LXLITE   = 1
+LXLITE   = 1
 # enable exFAT support (change it to 0 to get a build without exFAT)
 EXFAT    = 1
 

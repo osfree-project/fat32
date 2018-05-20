@@ -80,9 +80,9 @@ static void SetFatEntryEx(PVOLINFO pVolInfo, PBYTE pFatStart, ULONG ulCluster, U
 int PreSetup(void);
 int PostSetup(void);
 
-ULONG semSerialize = 0;
-ULONG semRqAvail = 0;
-ULONG semRqDone = 0;
+LONG semSerialize = 0;
+LONG semRqAvail = 0;
+LONG semRqDone = 0;
 
 extern ULONG autocheck_mask;
 extern ULONG force_mask;
@@ -93,6 +93,52 @@ extern ULONG exfat_mask;
 #endif
 
 void _cdecl autocheck(char *args);
+
+APIRET SemClear(long far *sem)
+{
+    USHORT usValue;
+    APIRET rc = 0;
+
+    (*sem)--;
+
+#ifdef DEBUG
+    log_printf("%lx\n", *sem);
+#endif
+
+    rc = DevHelp_ProcRun((ULONG)sem, &usValue);
+
+    return rc;
+}
+
+APIRET SemSet(long far *sem)
+{
+    USHORT usValue;
+    APIRET rc = 0;
+
+    (*sem)++;
+
+#ifdef DEBUG
+    log_printf("%lx\n", *sem);
+#endif
+
+    return rc;
+}
+
+APIRET SemWait(long far *sem)
+{
+    APIRET rc = 0;
+
+#ifdef DEBUG
+    log_printf("%lx\n", *sem);
+#endif
+
+    if (*sem >= 0)
+    {
+        rc = DevHelp_ProcBlock((ULONG)sem, -1, 0);
+    }
+
+    return rc;
+}
 
 /******************************************************************
 *
@@ -1048,7 +1094,8 @@ LIN linaddr;
 
    pidDaemon = queryCurrentPid();
 
-   rc = FSH_SEMSET(&semRqAvail);
+   rc = SemClear(&semRqDone); ////
+   //rc = SemSet(&semRqAvail);
 
    if (rc)
       return rc;
@@ -1064,7 +1111,10 @@ APIRET rc;
 
    pidDaemon = 0;
 
-   FSH_SEMCLEAR(&semRqDone);
+   SemClear(&semRqDone);
+
+   SemSet(&semRqDone); ////
+   SemSet(&semRqDone); ////
 
    rc = FSH_SEMREQUEST(&semSerialize, -1);
 
@@ -1507,7 +1557,7 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
-         rc = FSH_SEMCLEAR(&semRqDone);
+         rc = SemClear(&semRqDone);
          // fall through
          //break;
 
@@ -1521,12 +1571,21 @@ POPENINFO pOpenInfo;
             goto FS_FSCTLEXIT;
             }
 
-         rc = FSH_SEMWAIT(&semRqAvail, TO_INFINITE);
+         FSH_SEMCLEAR(&semSerialize);
+
+         rc = SemWait(&semRqAvail);
+
+         if (rc == WAIT_INTERRUPTED)
+            {
+            daemonStopped();
+            rc = ERROR_INTERRUPT;
+            break;
+            }
 
          if (rc)
             break;
          
-         rc = FSH_SEMSET(&semRqAvail);
+         rc = SemSet(&semRqAvail);
          break;
 
       case FAT32_GETVOLLABEL:
@@ -1956,7 +2015,7 @@ ULONG  ulDirEntries = 0;
 
          // additional sanity checks
          if (((PDIRENTRY1)pDirEntry)->u.VolLbl.bCharCount > 11)
-            {
+            {            
             free(pDirEntry);
             return ERROR_INVALID_PARAMETER;
             }

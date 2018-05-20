@@ -10,7 +10,7 @@ OBJEXT=obd
 
 !include ..\..\makefile.mk
 
-COPT=-3s -s -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
 OBJS=$(PROJ_BLD)\adler32.$(OBJEXT) &
      $(PROJ_BLD)\compress.$(OBJEXT) &
      $(PROJ_BLD)\crc32.$(OBJEXT) &

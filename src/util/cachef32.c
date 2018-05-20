@@ -149,7 +149,7 @@ UCHAR rgFirstInfo[256];
    signal(SIGSEGV, Handler);
    signal(SIGFPE, Handler);
 
-   atexit(ExitHandler);
+   //atexit(ExitHandler);
 
 /*
    rc = DosCreateThread(&pOptions->ulEMTID, EMThread, 0L, 0, 8196);
@@ -511,7 +511,7 @@ VOID Handler(INT iSignal)
 {
    printf("Signal %d was received\n", iSignal);
 
-   if (iSignal == SIGTERM)
+   //if (iSignal == SIGTERM)
       {
       pOptions->fTerminate = TRUE;
       }

@@ -80,6 +80,10 @@ extern PCPDATA pCPData;
 
 #pragma optimize("eglt",off)
 
+APIRET SemClear(long far *sem);
+APIRET SemSet(long far *sem);
+APIRET SemWait(long far *sem);
+
 int far pascal _loadds FS_MOUNT(unsigned short usFlag,  /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
                         struct vpfsd far * pvpfsd,      /* pvpfsd   */
@@ -307,7 +311,7 @@ APIRET rc;
    if (rc)
       return rc;
 
-   rc = FSH_SEMWAIT(&semRqDone, -1);
+   rc = SemWait(&semRqDone);
 
    if (rc)
       {
@@ -325,7 +329,7 @@ APIRET rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = FSH_SEMSET(&semRqDone);
+   rc = SemSet(&semRqDone);
 
    if (rc)
       {
@@ -333,9 +337,9 @@ APIRET rc;
       return rc;
       }
 
-   FSH_SEMCLEAR(&semRqAvail);
+   SemClear(&semRqAvail);
 
-   rc = FSH_SEMWAIT(&semRqDone, -1);
+   rc = SemWait(&semRqDone);
 
    FSH_SEMCLEAR(&semSerialize);
 
