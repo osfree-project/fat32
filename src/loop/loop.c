@@ -19,9 +19,13 @@ typedef unsigned long long ULONGLONG, *PULONGLONG;
 #include <iorb.h>
 #include <fsd.h>
 
+#define ERROR_I24_NOT_READY             2
 #define ERROR_I24_BAD_COMMAND           3
+#define ERROR_I24_NOT_DOS_DISK          7
+#define ERROR_I24_GEN_FAILURE           12
 #define ERROR_I24_CHAR_CALL_INTERRUPTED 17
 #define ERROR_I24_INVALID_PARAMETER     19
+#define ERROR_I24_DEVICE_IN_USE         20
 
 #define CAT_LOOP 0x85
 
@@ -31,9 +35,10 @@ typedef unsigned long long ULONGLONG, *PULONGLONG;
 #define FUNC_DAEMON_DETACH   0x13
 #define FUNC_GET_REQ         0x14
 #define FUNC_DONE_REQ        0x15
+#define FUNC_MOUNTED         0x16
 
 #define FUNC_FIRST FUNC_MOUNT
-#define FUNC_LAST  FUNC_DONE_REQ
+#define FUNC_LAST  FUNC_MOUNTED
 
 #define OP_OPEN  0UL
 #define OP_CLOSE 1UL
@@ -356,7 +361,7 @@ void _cdecl _loadds strategy(RPH _far *reqpkt)
 
         case CMDClose:
             open_refcnt--;
-            if (driver_handle && driver_handle == ((PRP_OPENCLOSE)reqpkt)->sfn)
+            if (! open_refcnt && driver_handle == ((PRP_OPENCLOSE)reqpkt)->sfn)
             {
                 SemClear(&semRqAvail);
                 SemClear(&semRqDone);
@@ -456,7 +461,7 @@ void init(PRPINITIN reqpkt)
 
 void ioctl(RP_GENIOCTL far *reqpkt)
 {
-    APIRET rc;
+    APIRET rc = NO_ERROR;
     USHORT usCount;
 
     void far *pParm = reqpkt->ParmPacket;
@@ -492,30 +497,69 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
             if (rc)
             {
-                rc = ERROR_I24_INVALID_PARAMETER; // ???
+                log_printf("ioctl: %s, rc=%d\n", (char far *)"mount:", rc);
+                rc = ERROR_I24_NOT_DOS_DISK;
                 break;
+            }
+            break;
+
+        case FUNC_MOUNTED:
+#ifdef DEBUG
+            log_printf("ioctl: %s\n", (char far *)"mounted");
+#endif
+
+            {
+                typedef struct
+                {
+                    UCHAR ucIsMounted;
+                    char szPath[CCHMAXPATHCOMP];
+                } Data;
+
+                Data far *pData2 = (Data far *)pData;
+                struct unit *u;
+                int iUnitNo;
+
+                strlwr(pData2->szPath);
+
+                for (iUnitNo = 0; iUnitNo < 8; iUnitNo++)
+                {
+                    u = &units[iUnitNo];
+
+                    if (!strcmp(pData2->szPath, u->szName))
+                        break;
+                };
+
+                if (iUnitNo == 8)
+                    pData2->ucIsMounted = 0;
+                else
+                    pData2->ucIsMounted = 1;
             }
             break;
 
         case FUNC_DAEMON_STARTED:
 #ifdef DEBUG
-           log_printf("ioctl: %s\n", (char far *)"daemon_started");
+            log_printf("ioctl: %s\n", (char far *)"daemon_started");
 #endif
-           if (pidDaemon)
-           {
-               rc = ERROR_I24_BAD_COMMAND;
-               //rc = ERROR_ALREADY_EXISTS;
-               goto ioctl_exit;
-           }
+            if (pidDaemon)
+            {
+                rc = ERROR_I24_DEVICE_IN_USE;
+                break;
+            }
 
-           if (cbParm < sizeof(EXBUF))
-           {
-               rc = ERROR_I24_INVALID_PARAMETER;
-               goto ioctl_exit;
-           }
+            if (cbParm < sizeof(EXBUF))
+            {
+                rc = ERROR_I24_INVALID_PARAMETER;
+                break;
+            }
 
-           rc = daemonStarted((PEXBUF)pParm);
-           break;
+            rc = daemonStarted((PEXBUF)pParm);
+           
+            if (rc)
+            {
+                rc = ERROR_I24_NOT_READY;
+                break;
+            }
+            break;
 
         case FUNC_DAEMON_STOPPED:
 #ifdef DEBUG
@@ -524,10 +568,15 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             if (! pidDaemon)
             {
                 rc = NO_ERROR;
-                goto ioctl_exit;
+                break;
             }
 
             rc = daemonStopped();
+            if (rc)
+            {
+                rc = ERROR_I24_NOT_READY;
+                break;
+            }
             break;
 
         case FUNC_DAEMON_DETACH:
@@ -535,6 +584,11 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             log_printf("ioctl: %s\n", (char far *)"daemon_detach");
 #endif
             rc = daemonStopped();
+            if (rc)
+            {
+                rc = ERROR_I24_NOT_READY;
+                break;
+            }
             break;
 
         case FUNC_DONE_REQ:
@@ -543,19 +597,23 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 #endif
             if (! pidDaemon)
             {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //return ERROR_INVALID_PROCID;
-                goto ioctl_exit;
+                rc = ERROR_I24_NOT_READY;
+                break;
             }
 
             if (queryCurrentPid() != pidDaemon)
             {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //rc = ERROR_ALREADY_ASSIGNED;
-                goto ioctl_exit;
+                rc = ERROR_I24_DEVICE_IN_USE;
+                break;
             }
 
             rc = SemClear(&semRqDone);
+            
+            if (rc)
+            {
+                rc = ERROR_I24_GEN_FAILURE;
+                break;
+            }
             // fall through
             //break;
 
@@ -565,16 +623,14 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 #endif
             if (! pidDaemon)
             {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //return ERROR_INVALID_PROCID;
-                goto ioctl_exit;
+                rc = ERROR_I24_NOT_READY;
+                break;
             }
 
             if (queryCurrentPid() != pidDaemon)
             {
-                rc = ERROR_I24_INVALID_PARAMETER;
-                //rc = ERROR_ALREADY_ASSIGNED;
-                goto ioctl_exit;
+                rc = ERROR_I24_DEVICE_IN_USE;
+                break;
             }
 
             DevHelp_SemClear((ULONG)&semSerialize);
@@ -589,9 +645,18 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             }
 
             if (rc)
+            {
+                rc = ERROR_I24_GEN_FAILURE;
                 break;
+            }
          
             rc = SemSet(&semRqAvail);
+            
+            if (rc)
+            {
+                rc = ERROR_I24_GEN_FAILURE;
+                break;
+            }
             break;
 
         default:
@@ -600,7 +665,10 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
 ioctl_exit:
     if (rc)
+    {
+        log_printf("ioctl: rc=%d\n", rc);
         reqpkt->rph.Status = STDON | STERR | rc;
+    }
     else
         reqpkt->rph.Status = STDON;
 }
@@ -618,6 +686,12 @@ USHORT rc;
       return rc;
 
    rc = SemWait(&semRqDone);
+
+   if (rc == WAIT_INTERRUPTED)
+   {
+       daemonStopped();
+       return ERROR_INTERRUPT;
+   }
 
    if (rc)
       {
@@ -648,6 +722,12 @@ USHORT usCount;
 
    rc = SemWait(&semRqDone);
 
+   if (rc == WAIT_INTERRUPTED)
+   {
+       daemonStopped();
+       return ERROR_INTERRUPT;
+   }
+   
    if (rc)
       return rc;
 
@@ -770,15 +850,15 @@ ULONG hf;
 int iUnitNo;
 struct unit *u;
 
-    if (! pidDaemon)
-    {
-        return ERROR_INVALID_PROCID;
-    }
-
     switch (opts->usOp)
     {
         case MOUNT_MOUNT:
             DevHelp_SemClear((ULONG)&semSerialize);
+
+            if (! pidDaemon)
+            {
+                return ERROR_INVALID_PROCID;
+            }
 
             if (opts->hf)
             {
@@ -825,6 +905,7 @@ struct unit *u;
                 break;
             }
 
+            strlwr(opts->pFilename);
             strcpy(u->szName, opts->pFilename);
             u->ullOffset = opts->ullOffset;
             u->ullSize = opts->ullSize;

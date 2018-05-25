@@ -49,6 +49,8 @@ PRIVATE BOOL IsDiskFat32(PSZ pszDisk);
 PRIVATE VOID ShowRASectors(VOID);
 PRIVATE BOOL SetRASectors(PSZ pszArg);
 PRIVATE void WriteLogMessage(PSZ pszMessage);
+PRIVATE int GetLine(FILE *fd, char *pszLine);
+PRIVATE void ProcessFsTab(BOOL isUnmount);
 
 int remount_all(void);
 
@@ -87,6 +89,7 @@ char FS_NAME[8] = "FAT32";
 #define FUNC_DAEMON_DETACH   0x13
 #define FUNC_GET_REQ         0x14
 #define FUNC_DONE_REQ        0x15
+#define FUNC_MOUNTED         0x16
 
 /******************************************************************
 *
@@ -100,10 +103,13 @@ BYTE  bPrevPrio;
 UCHAR rgFirstInfo[256];
    //DoCheckDisk(FALSE);
 
+   //ProcessFsTab(FALSE);
+   //return 0;
+   
    rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
                   NULL, 0, &ulParmSize,
                   FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
-
+   
    if (rc != ERROR_INVALID_FSD_NAME)
       {
       // use "UNIFAT" instead of "FAT32" as FS name
@@ -112,7 +118,9 @@ UCHAR rgFirstInfo[256];
 
    InitProg(iArgc, rgArgv);
    if (fActive)
+   {
 	  DosExit(EXIT_PROCESS, 0);
+   }
 
    if (fForeGround)
 	  {
@@ -124,11 +132,11 @@ UCHAR rgFirstInfo[256];
 	  DosExit(EXIT_PROCESS, 0);
 	  }
    else
-          {
-          // remount all FAT disks on cachef32.exe start
-          // (they may be mounted previously by the in-kernel FAT driver)
-          remount_all();
-          }
+      {
+      // remount all FAT disks on cachef32.exe start
+      // (they may be mounted previously by the in-kernel FAT driver)
+      remount_all();
+      }
 
    rc = DosFSCtl(NULL, 0, &ulDataSize,
 		 NULL, 0, &ulParmSize,
@@ -182,6 +190,8 @@ UCHAR rgFirstInfo[256];
 	  (PVOID)&f32Parms, ulParmSize, &ulParmSize,
 	  FAT32_SETPARMS, FS_NAME, -1, FSCTL_FSDNAME);
 
+   ProcessFsTab(FALSE);
+   
    bPrevPrio = pOptions->bLWPrio;
    while (!pOptions->fTerminate)
 	  {
@@ -191,7 +201,7 @@ UCHAR rgFirstInfo[256];
                                 pOptions->bLWPrio, 0, pOptions->ulLWTID);
                                 bPrevPrio = pOptions->bLWPrio;
 		 }
-	  DosSleep(1000); // 5000
+	  DosSleep(1000);
 	  }
 
    if (hLoop)
@@ -208,6 +218,36 @@ UCHAR rgFirstInfo[256];
    DosExit(EXIT_PROCESS, 0);
 
    return 0;
+}
+
+void ProcessFsTab(BOOL isUnmount)
+{
+char szArgs[1024];
+char szObjName[260];
+RESULTCODES res;
+int pos;
+   
+   strcpy(szArgs, "f32mount.exe");
+   pos = strlen("f32mount.exe") + 1;
+
+   if (isUnmount)
+   {
+      strcpy(&szArgs[pos], "/u");
+      pos += strlen("/u") + 1;
+   }
+   else
+   {
+      strcpy(&szArgs[pos], "/a");
+      pos += strlen("/a") + 1;
+   }
+
+   szArgs[pos] = '\0';
+   
+   // if not mounted, then mount it
+   // start f32mount.exe  with given parameters
+   DosExecPgm(szObjName, sizeof(szObjName),
+              EXEC_SYNC, szArgs, NULL,
+              &res, szArgs);
 }
 
 /******************************************************************
@@ -440,8 +480,8 @@ int ret;
          pCPData->rc = rc;
          }
       rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DONE_REQ,
-                      NULL, 0, NULL,
-                      NULL, 0, NULL);
+                       NULL, 0, NULL,
+                       NULL, 0, NULL);
       }
 
    rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_DAEMON_STOPPED,
@@ -511,7 +551,7 @@ VOID Handler(INT iSignal)
 {
    printf("Signal %d was received\n", iSignal);
 
-   //if (iSignal == SIGTERM)
+   if (iSignal == SIGTERM)
       {
       pOptions->fTerminate = TRUE;
       }
@@ -672,17 +712,18 @@ ULONG	  ulParm;
 				  {
 				  if (pOptions->fTerminate)
 					 printf("Terminate request already set!\n");
-				  pOptions->fTerminate = TRUE;
 				  printf("Terminating CACHEF32.EXE...\n");
-                                  DosFSCtl(NULL, 0, NULL,
-                                           NULL, 0, NULL,
-                                           FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
-                                  if (hLoop)
-                                     {
-                                     DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
-                                                 NULL, 0, NULL,
-                                                 NULL, 0, NULL);
-                                     }
+                  ProcessFsTab(TRUE); // unmount
+				  pOptions->fTerminate = TRUE;
+				  DosFSCtl(NULL, 0, NULL,
+                           NULL, 0, NULL,
+                           FAT32_DAEMON_STOPPED, FS_NAME, -1, FSCTL_FSDNAME);
+                  if (hLoop)
+                     {
+                     DosDevIOCtl(hLoop, CAT_LOOP, FUNC_DAEMON_STOPPED,
+                                 NULL, 0, NULL,
+                                 NULL, 0, NULL);
+                     }
 				  DosExit(EXIT_PROCESS, 0);
 				  }
 			   printf("/Q is invalid, CACHEF32 is not running!\n");

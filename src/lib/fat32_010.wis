@@ -231,6 +231,14 @@ return object
 >
 </PCK>
 
+<PCK INDEX=14
+  PACKAGEID="NetLabs\FAT32.IFS\Automount config file example\0\10\1"
+  TITLE="Automount config file example"
+  FIXED
+  TARGET=="?:\os2\boot"
+>
+</PCK>
+
 </HEAD>
 
 <BODY>

@@ -1,7 +1,22 @@
-# all needed includes.
+//# all needed includes.
+
+#define  INCL_BASE
+#include <os2.h>
 
 #include <uconv.h>
 
+#include "fat32c.h"
+
+#include <stdio.h>
+#include <conio.h>
+
+BOOL LoadTranslateTable(VOID);
+
+int main(void)
+{
+   LoadTranslateTable();
+   return 0;
+}
 
 BOOL LoadTranslateTable(VOID)
 {
@@ -11,7 +26,11 @@ BYTE   rgData[256];
 PBYTE  pIn;
 USHORT rgTranslate[256];
 PUSHORT pOut;
+HMODULE hModLang;
 UconvObject  uconv_object = NULL;
+PFN pUniCreateUconvObject;
+PFN pUniUconvToUcs;
+F32PARMS f32Parms;
 INT iIndex;
 size_t       in_bytes_left;
 size_t       uni_chars_left;

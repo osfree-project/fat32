@@ -11,6 +11,7 @@
 #define FUNC_DAEMON_DETACH   0x13
 #define FUNC_GET_REQ         0x14
 #define FUNC_DONE_REQ        0x15
+#define FUNC_MOUNTED         0x16
 
 #define REDISCOVER_DRIVE_IOCTL 0x6A
 
@@ -73,7 +74,29 @@ struct _MBR
     unsigned short boot_ind; /* 0x55aa */
 };
 
+struct args
+{
+    char szFilename[256];
+    char szMntPoint[256];
+    BOOL fDelete;
+    BOOL fPart;
+    BOOL fBlock;
+    BOOL fMountAll;
+    BOOL fUnmountAll;
+    ULONG ulPart; 
+    ULONG ulSecSize;
+    ULONGLONG ullOffset;
+    ULONGLONG ullSize;
+    char pFmt[16];
+};
+
+#define LINE_MAX_LEN 1024
+
 #pragma pack()
+
+int ParseOpt(int argc, char *argv[], struct args *args);
+int ProcessFsTab(BOOL isUnmount);
+int Mount(struct args *args);
 
 APIRET parsePartTable(char *pszFilename,
                       char *pFmt,
@@ -91,8 +114,6 @@ LONGLONG ibActual;
 struct _MBR mbr;
 PTE pte;
 int i;
-
-   bdrv_init();
 
    bs = bdrv_new("");
 
@@ -172,35 +193,270 @@ int i;
    return rc;
 }
 
-int main(int argc, char *argv[])
+int GetLine(FILE *fd, char *pszLine)
 {
-    FILESTATUS3L info;
-    MNTOPTS opts;
-    ULONG cbData, cbParms = sizeof(MNTOPTS);
-    BOOL fDelete = FALSE;
-    BOOL fPart = FALSE;
-    BOOL fBlock = FALSE;
-    char *p;
-    ULONG ulPart = 0, ulSecSize = 512;
-    ULONGLONG ullOffset = 0, ullSize = 0;
-    char szFilename[256];
-    char szMntPoint[256];
-    ULONG cbDir;
+static char prevbuf[LINE_MAX_LEN] = {0};
+static int cb = 0;
+char *p, *p1, *p2, *p3, *p4;
+
+   if (! fd || ! pszLine)
+      return 1;
+      
+   for (;;)
+   {
+      p1 = strstr(prevbuf, "\r\n");
+      p2 = strchr(prevbuf, '\r');
+      p3 = strchr(prevbuf, '\n');
+      p4 = strchr(prevbuf, '\0');
+
+      if ( cb && ( p1 || p2 || p3 || p4 ) )
+      {
+         char *r = NULL, *r1 = NULL, *r2 = NULL;
+         int len, l = 0;
+
+         p = prevbuf + LINE_MAX_LEN;
+
+         if (p1 && p1 < p)
+            p = p1;
+         if (p2 && p2 < p)
+            p = p2;
+         if (p3 && p3 < p)
+            p = p3;
+         if (p4 && p4 < p)
+            p = p4;
+
+         // skip comments
+         r = prevbuf + LINE_MAX_LEN;
+
+         r1 = strchr(prevbuf, ';');
+         r2 = strchr(prevbuf, '#');
+
+         if (r1 && r1 < r)
+            r = r1;
+         if (r2 && r2 < r)
+            r = r2;
+            
+         if (r < p)
+            len = r - prevbuf;
+         else
+            len = p - prevbuf;
+
+         strncpy(pszLine, prevbuf, len);
+         pszLine[len] = '\0';
+
+         if (p1)
+            p += 2;
+         else
+            p += 1;
+
+         if (r < p)
+            cb -= p - r;
+         else
+            cb -= p - prevbuf;
+
+         strncpy(prevbuf, p, cb);
+         prevbuf[cb] = '\0';
+
+         return 0;
+      }
+      else
+      {
+         if (! feof(fd))
+            cb += fread(prevbuf + cb, 1, LINE_MAX_LEN - cb, fd);
+         else
+            // line too long or empty
+            return 1;
+      }
+   }
+
+   return 1;
+}
+
+int ProcessFsTab(BOOL isUnmount)
+{
+char szCfg[CCHMAXPATHCOMP];
+char szImgName[CCHMAXPATHCOMP];
+char szLine[LINE_MAX_LEN];
+char szArgs[LINE_MAX_LEN];
+struct args args;
+char *argv[32];
+int argc;
+FILE *fd;
+ULONG ulTemp;
+int rc;
+char *p, *q;
+int len, pos, i;
+
+struct
+{
+   UCHAR ucIsMounted;
+   char szPath[CCHMAXPATHCOMP];
+} Data;
+
+ULONG cbData;
+
+   DosQuerySysInfo(QSV_BOOT_DRIVE, QSV_BOOT_DRIVE, &ulTemp, sizeof(ulTemp));
+   
+   szCfg[0] = 'a' + ulTemp - 1;
+   szCfg[1] = ':';
+   strcpy(&szCfg[2], "\\os2\\boot\\fstab.cfg");
+   
+   fd = fopen(szCfg, "r");
+
+   while ( ! GetLine(fd, (char *)szLine) )
+   {
+      // skip empty lines
+      if (! *szLine)
+         continue;
+
+      // change tabs to spaces
+      while ( (p = strchr(szLine, '\t')) )
+      {
+         *p = ' ';
+      }
+
+      // remove duplicate spaces
+      while ( (p = strstr(szLine, "  ")) )
+      {
+         strncpy(p + 1, p + 2, LINE_MAX_LEN - (p - szLine) - 1);
+         p[LINE_MAX_LEN - (p - szLine)] = '\0';
+      }
+
+      memset(szArgs, 0, sizeof(szArgs));
+      memset(szImgName, 0, sizeof(szImgName));
+
+      if (strlen(szLine) + strlen("f32mount.exe") + 5 > LINE_MAX_LEN)
+      {
+          printf("Command line too long!");
+          return 1;
+      }
+
+      strcpy(szArgs, "f32mount.exe");
+
+      pos = strlen(szArgs) + 1;
+      argv[0] = szArgs;
+      argc = 1;
+
+      strcpy(&szArgs[pos], szLine);
+      p = &szArgs[pos];
+
+      while (p)
+      {
+          argv[argc] = p;
+
+          q = strchr(p + 1, ' ');
+          
+          if (! q)
+          {
+              pos += strlen(&szArgs[pos]) + 1;
+              p = NULL;
+          }
+          else
+          {
+              szArgs[pos + q - p] = '\0';
+              pos += q - p + 1;
+              argc++;
+              p = &szArgs[pos];
+          }
+
+          if (argc > 32)
+          {
+              printf("Too many command line parameters!\n");
+              return 1;
+          }
+      }
+      
+      if (isUnmount)
+      {
+          // unmount operation
+          strcat(&szArgs[pos], "/d");
+          len += 3;
+          argv[argc] = &szArgs[pos];
+          pos += strlen(&szArgs[pos]) + 1;
+          argc++;
+      }
+
+      /* for (i = 0; i < argc; i++)
+      {
+          printf("argv[%d]=%s\n", i, argv[i]);
+      } */
+
+      strcpy(szImgName, argv[1]);
+
+      cbData = sizeof(Data);
+      memset(&Data, 0, sizeof(Data));
+      strcpy(Data.szPath, szImgName);
+
+      // determine if this image is already mounted
+      if (strstr(&szArgs[pos], "/block"))
+      {
+         ULONG ulAction;
+         HFILE hf;
+
+         rc = DosOpen("\\DEV\\LOOP$", &hf, &ulAction, 0, FILE_NORMAL,
+                      OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                      OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL);
+
+         if (rc)
+             return rc;
+
+         rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_MOUNTED,
+                          NULL, 0, NULL,
+                          &Data, cbData, &cbData);
+
+         DosClose(hf);
+      }
+      else
+      {
+         rc = DosFSCtl(&Data, cbData, &cbData,
+                       NULL, 0, NULL,
+                       FAT32_MOUNTED, "FAT32", -1, FSCTL_FSDNAME);
+      }
+
+      //printf("%s: %s\n", szImgName, Data.ucIsMounted ? "mounted" : "not mounted");
+
+      rc = ParseOpt(argc, argv, &args);
+
+      if (rc)
+          return rc;
+
+      Mount(&args);
+   }
+
+   fclose(fd);
+   return 0;
+}
+
+int ParseOpt(int argc, char *argv[], struct args *args)
+{
     ULONG ulDriveNum, ulDriveMap;
     char szDir[256];
+    ULONG cbDir;
     char chDisk;
-    char *arg;
-    char *pFmt = NULL;
-    HFILE hf;
     APIRET rc;
+    char *arg;
+    char *p;
     int i;
+    
+    memset(args, 0, sizeof(struct args));
+    args->ulSecSize = 512;
 
     if (argc == 1)
     {
-        printf("f32mount [d:\\somedir\\somefile.img [<somedir> | /d | block:] [/p:<partition no>][/o:<offset>][/f:<format>]]\n\n"
+        printf("f32mount [d:\\somedir\\somefile.img [/a | /u] [<somedir> | /d | block:] [/p:<partition no>][/o:<offset>][/f:<format>][/s:<sector size>]]\n\n"
                "   Partitions 1..4 are primary partitions. Partitions 5..255 are logical partitions, 5 being the 1st logical.\n"
                "   Offsets can be decimal, as well as hexadecimals, starting from \"0x\".\n"
                "   The following formats are supported: raw, vpc, vmdk, vdi, vvfat, parallels, bochs, cloop, dmg, qcow, qcow2\n");
+        return 0;
+    }
+
+    if (argc == 2)
+    {
+        if (!strcmp(strlwr(argv[1]), "/a"))
+            args->fMountAll = TRUE;
+        else if (!strcmp(strlwr(argv[1]), "/u"))
+            args->fUnmountAll = TRUE;
+
         return 0;
     }
 
@@ -212,35 +468,35 @@ int main(int argc, char *argv[])
 
     if (argv[1][1] != ':')
     {
-       szFilename[0] = chDisk;
-       szFilename[1] = ':';
-       szFilename[2] = '\\';
-       szFilename[3] = '\0';
-       strcat(szFilename, szDir);
+       args->szFilename[0] = chDisk;
+       args->szFilename[1] = ':';
+       args->szFilename[2] = '\\';
+       args->szFilename[3] = '\0';
+       strcat(args->szFilename, szDir);
 
-       if (strrchr(szFilename, '\\') != szFilename + strlen(szFilename) - 1)
-          strcat(szFilename, "\\");
+       if (strrchr(args->szFilename, '\\') != args->szFilename + strlen(args->szFilename) - 1)
+          strcat(args->szFilename, "\\");
 
-       strcat(szFilename, argv[1]);
+       strcat(args->szFilename, argv[1]);
     }
     else
-       strcpy(szFilename, argv[1]);
+       strcpy(args->szFilename, argv[1]);
 
     if (argv[2][1] != ':')
     {
-       szMntPoint[0] = chDisk;
-       szMntPoint[1] = ':';
-       szMntPoint[2] = '\\';
-       szMntPoint[3] = '\0';
-       strcat(szMntPoint, szDir);
+       args->szMntPoint[0] = chDisk;
+       args->szMntPoint[1] = ':';
+       args->szMntPoint[2] = '\\';
+       args->szMntPoint[3] = '\0';
+       strcat(args->szMntPoint, szDir);
 
-       if (strrchr(szMntPoint, '\\') != szMntPoint + strlen(szMntPoint) - 1)
-          strcat(szMntPoint, "\\");
+       if (strrchr(args->szMntPoint, '\\') != args->szMntPoint + strlen(args->szMntPoint) - 1)
+          strcat(args->szMntPoint, "\\");
 
-       strcat(szMntPoint, argv[2]);
+       strcat(args->szMntPoint, argv[2]);
     }
     else
-       strcpy(szMntPoint, argv[2]);
+       strcpy(args->szMntPoint, argv[2]);
 
     // parse options
     for (i = 1; i < argc; i++)
@@ -271,11 +527,11 @@ int main(int argc, char *argv[])
 
        if (!stricmp(arg, "/d"))
        {
-          fDelete = TRUE;
+          args->fDelete = TRUE;
        }
        else if (!stricmp(arg, "/block"))
        {
-          fBlock = TRUE;
+          args->fBlock = TRUE;
        }
        else if ((p = strstr(strlwr(arg), "/o:")))
        {
@@ -286,19 +542,19 @@ int main(int argc, char *argv[])
           else
              base = 10;
 
-          ullOffset = strtoll(p, &q, base);
+          args->ullOffset = strtoll(p, &q, base);
        }
        else if ((p = strstr(strlwr(arg), "/p:")))
        {
-          fPart = TRUE;
+          args->fPart = TRUE;
           p += 3;
 
-          ulPart = atol(p);
+          args->ulPart = atol(p);
        }
        else if ((p = strstr(strlwr(arg), "/f:")))
        {
           if (strlen(p + 3) <= 8)
-             pFmt = p + 3;
+             strcpy(args->pFmt, p + 3);
        }
        else if ((p = strstr(strlwr(arg), "/s:")))
        {
@@ -309,32 +565,29 @@ int main(int argc, char *argv[])
            else
               base = 10;
 
-           ulSecSize = strtol(p, &q, base);
+           args->ulSecSize = strtol(p, &q, base);
        }
        else
        {
           if (argc == 2 || i > 2)
           {
-             rc = ERROR_INVALID_PARAMETER;
-             goto err;
-          }
-          else if (! fDelete && i == 2)
-          {
-             if (! fBlock)
-             {
-                rc = DosQueryPathInfo(szMntPoint,
-                                      FIL_STANDARDL,
-                                      &info,
-                                      sizeof(info));
-
-                if (rc && rc != ERROR_ACCESS_DENIED)
-                   goto err;
-             }
+             return ERROR_INVALID_PARAMETER;
           }
        }
     }
 
-    rc = DosQueryPathInfo(szFilename,
+    return NO_ERROR;
+}
+
+int Mount(struct args *args)
+{
+    FILESTATUS3L info;
+    MNTOPTS opts;
+    ULONG cbData, cbParms = sizeof(MNTOPTS);
+    HFILE hf;
+    APIRET rc;
+
+    rc = DosQueryPathInfo(args->szFilename,
                           FIL_STANDARDL,
                           &info,
                           sizeof(info));
@@ -342,23 +595,23 @@ int main(int argc, char *argv[])
     if (rc && rc != ERROR_ACCESS_DENIED)
        goto err;
 
-    ullSize = info.cbFile;
+    args->ullSize = info.cbFile;
 
-    if (! fDelete && fPart)
+    if (! args->fDelete && args->fPart)
     {
-       rc = parsePartTable(szFilename,
-                           pFmt,
-                           &ullOffset,
-                           &ullSize,
-                           &ulSecSize,
-                           ulPart);
+       rc = parsePartTable(args->szFilename,
+                           args->pFmt,
+                           &args->ullOffset,
+                           &args->ullSize,
+                           &args->ulSecSize,
+                           args->ulPart);
 
        if (rc)
           goto err;
 
-       if (! fBlock)
+       if (! args->fBlock)
        {
-          rc = DosQueryPathInfo(szMntPoint,
+          rc = DosQueryPathInfo(args->szMntPoint,
                                 FIL_STANDARDL,
                                 &info,
                                 sizeof(info));
@@ -368,7 +621,7 @@ int main(int argc, char *argv[])
        }
     }
 
-    if (fBlock)
+    if (args->fBlock)
     {
        ULONG ulAction;
 
@@ -380,13 +633,13 @@ int main(int argc, char *argv[])
           goto err;
     }
 
-    if (fDelete)
+    if (args->fDelete)
     {
-       strcpy(opts.pMntPoint, szFilename);
+       strcpy(opts.pMntPoint, args->szFilename);
        opts.hf = 0;
        opts.usOp = MOUNT_RELEASE;
 
-       if (! fBlock)
+       if (! args->fBlock)
        {
           // mounting to a FAT subdir
           rc = DosFSCtl(NULL, 0, NULL,
@@ -403,18 +656,18 @@ int main(int argc, char *argv[])
     }
     else
     {
-        strcpy(opts.pFilename, szFilename);
-        strcpy(opts.pMntPoint, szMntPoint);
-        opts.ullOffset = ullOffset;
-        opts.ullSize = ullSize;
-        opts.ulBytesPerSector = ulSecSize;
+        strcpy(opts.pFilename, args->szFilename);
+        strcpy(opts.pMntPoint, args->szMntPoint);
+        opts.ullOffset = args->ullOffset;
+        opts.ullSize = args->ullSize;
+        opts.ulBytesPerSector = args->ulSecSize;
         opts.hf = 0;
         opts.usOp = MOUNT_MOUNT;
 
-        if (pFmt)
-           strcpy(opts.pFmt, pFmt);
+        if (args->pFmt)
+           strcpy(opts.pFmt, args->pFmt);
 
-        if (! fBlock)
+        if (! args->fBlock)
         {
            // mounting to a FAT subdir
            rc = DosFSCtl(NULL, 0, NULL,
@@ -431,15 +684,15 @@ int main(int argc, char *argv[])
 
         if (rc == ERROR_VOLUME_NOT_MOUNTED)
         {
-            strcpy(opts.pFilename, szFilename);
-            strcpy(opts.pMntPoint, szMntPoint);
-            opts.ullOffset = ullOffset;
-            opts.ullSize = ullSize;
-            opts.ulBytesPerSector = ulSecSize;
+            strcpy(opts.pFilename, args->szFilename);
+            strcpy(opts.pMntPoint, args->szMntPoint);
+            opts.ullOffset = args->ullOffset;
+            opts.ullSize = args->ullSize;
+            opts.ulBytesPerSector = args->ulSecSize;
             opts.hf = 0;
             opts.usOp = MOUNT_ACCEPT;
 
-            if (! fBlock)
+            if (! args->fBlock)
             {
                // mounting to a FAT subdir
                rc = DosFSCtl(NULL, 0, &cbData,
@@ -456,14 +709,14 @@ int main(int argc, char *argv[])
         }
 
 
-       if (fBlock)
+       if (args->fBlock)
        {
           HFILE hfPhys;
           DDI_Rediscover_param parm;
           DDI_Rediscover_data  data;
           ULONG cbData, cbParm, ulAction;
 
-          if (! fDelete)
+          if (! args->fDelete)
           {
              // rediscover PRM
              USHORT cbDrives = 0;
@@ -514,7 +767,7 @@ int main(int argc, char *argv[])
                               &parm, cbParm, &cbParm,
                               &data, cbData, &cbData);
 
-             if (rc)
+             if (rc != ERROR_BAD_COMMAND)
                 goto err;
 
              rc = DosPhysicalDisk(INFO_FREEIOCTLHANDLE,
@@ -532,28 +785,50 @@ err:
     switch (rc)
     {
       case ERROR_INVALID_FSD_NAME:
-             printf ("Error: IFS=FAT32.IFS not loaded in CONFIG.SYS");
+             printf ("Error: IFS=FAT32.IFS not loaded in CONFIG.SYS\n");
              return 1;
 
       case ERROR_INVALID_PROCID:
-             printf ("Error: cachef32.exe is not running");
+             printf ("Error: cachef32.exe is not running\n");
              return 1;
 
       case ERROR_INVALID_PATH:
              return 0;
 
       case ERROR_ALREADY_ASSIGNED:
-             printf ("Error: This file is already in use");
+             printf ("Error: This file is already in use\n");
              return 1;
  
       case NO_ERROR:
-             printf ("OK");
+             printf ("OK\n");
              return 0;
 
       default:
-             printf ("Error mounting image, rc=%lu", rc);
+             printf ("Error mounting image, rc=%lu\n", rc);
              return 1;
     }
 
     return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    struct args args;
+    APIRET rc = NO_ERROR;
+    
+    bdrv_init();
+
+    rc = ParseOpt(argc, argv, &args);
+    
+    if (rc)
+       return 1;
+    
+    if (args.fMountAll)
+       rc = ProcessFsTab(FALSE);
+    else if (args.fUnmountAll)
+       rc = ProcessFsTab(TRUE);
+    else
+       rc = Mount(&args);
+
+    return rc;
 }

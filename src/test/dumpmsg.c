@@ -34,7 +34,7 @@ PSZ GetOS2Error(USHORT rc)
 static BYTE szErrorBuf[MAX_MESSAGE] = "";
 static BYTE szErrNo[12] = "";
 USHORT rc2;
-USHORT usReplySize;
+ULONG usReplySize;
 
    memset(szErrorBuf, 0, sizeof szErrorBuf);
    if (rc)

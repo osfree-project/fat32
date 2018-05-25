@@ -62,9 +62,9 @@ IMPORT SEL cdecl SaSSel(void);
 
 UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect);
 
-extern ULONG semSerialize;
-extern ULONG semRqAvail;
-extern ULONG semRqDone;
+extern LONG semSerialize;
+extern LONG semRqAvail;
+extern LONG semRqDone;
 
 ULONG fat_mask = 0;
 ULONG fat32_mask = 0;
@@ -83,6 +83,8 @@ extern PCPDATA pCPData;
 APIRET SemClear(long far *sem);
 APIRET SemSet(long far *sem);
 APIRET SemWait(long far *sem);
+
+APIRET daemonStopped(void);
 
 int far pascal _loadds FS_MOUNT(unsigned short usFlag,  /* flag     */
                         struct vpfsi far * pvpfsi,      /* pvpfsi   */
@@ -313,6 +315,12 @@ APIRET rc;
 
    rc = SemWait(&semRqDone);
 
+   if (rc == WAIT_INTERRUPTED)
+      {
+      daemonStopped();
+      return ERROR_INTERRUPT;
+      }
+   
    if (rc)
       {
       FSH_SEMCLEAR(&semSerialize);
@@ -341,6 +349,12 @@ APIRET rc;
 
    rc = SemWait(&semRqDone);
 
+   if (rc == WAIT_INTERRUPTED)
+      {
+      daemonStopped();
+      return ERROR_INTERRUPT;
+      }
+
    FSH_SEMCLEAR(&semSerialize);
 
    if (rc)
@@ -357,9 +371,6 @@ UCHAR pBoot[512];
 USHORT usVolCount;
 ULONG hf;
 
-   if (! pidDaemon)
-      return ERROR_INVALID_PROCID;
-
    switch (opts->usOp)
       {
       case MOUNT_MOUNT:
@@ -370,6 +381,9 @@ ULONG hf;
 
          FSH_SEMCLEAR(&semSerialize);
 
+         if (! pidDaemon)
+            return ERROR_INVALID_PROCID;
+         
          if (opts->hf)
             {
             /* already opened */

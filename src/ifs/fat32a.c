@@ -1517,6 +1517,32 @@ POPENINFO pOpenInfo;
         }
         break;
 
+      case FAT32_MOUNTED:
+         {
+         PVOLINFO pVolInfo2 = pGlobVolInfo;
+
+         typedef struct
+            {
+            UCHAR ucIsMounted;
+            char szPath[CCHMAXPATHCOMP];
+            } Data;
+
+         Data far *pData2 = (Data far *)pData;
+
+         while (pVolInfo2)
+            {
+            if (pVolInfo2->pbFilename && !stricmp(pVolInfo2->pbFilename, pData2->szPath))
+               break;
+            pVolInfo2 = pVolInfo2->pNextVolInfo;
+            }
+         
+         if (! pVolInfo2)
+            pData2->ucIsMounted = 0;
+         else
+            pData2->ucIsMounted = 1;
+         }
+         break;
+
       case FAT32_DAEMON_STARTED:
          if (pidDaemon)
             {
@@ -1542,10 +1568,6 @@ POPENINFO pOpenInfo;
 
          rc = daemonStopped();
          break;
-
-     case FAT32_DAEMON_DETACH:
-        rc = daemonStopped();
-        break;
 
       case FAT32_DONE_REQ:
          if (! pidDaemon)

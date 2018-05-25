@@ -70,7 +70,7 @@ APIRET rc;
 ULONG ulAction;
 #else
 USHORT rc;
-USHORT ulAction;
+ULONG ulAction;
 #endif
 
    sprintf(szFileName, "FILE%4.4u.DAT", iNr);

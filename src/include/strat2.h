@@ -97,7 +97,7 @@
  #define RH_ABORTED            0x40
 
  //
- // start2 error code
+ // strat2 error code
  //
 
  #define RH_PB_REQUEST         0x01

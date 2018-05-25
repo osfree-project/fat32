@@ -953,7 +953,7 @@
     USHORT usIntWaitFlag
  );
 
- #pragma aux DevHelp_ProcBlock = \
+/* #pragma aux DevHelp_ProcBlock = \
     "mov     dl, 4" \
     "xchg    di, cx" \
     "xchg    ax, bx" \
@@ -963,8 +963,27 @@
     "error:" \
     value [ax] \
     parm caller nomemory [ax bx] [di cx] [dh] \
-    modify nomemory exact [ax bx cx dl di];
+    modify nomemory exact [ax bx cx dl di]; */
 
+#pragma aux DevHelp_ProcBlock = \
+   "mov     dl, 4" \
+   "xchg    cx, di" \
+   "xchg    bx, ax" \
+   "call    dword ptr ds:[Device_Help]" \
+   "jnc     success" \
+   "jnz     interrupted" \
+   "mov     ax, 8001h" \
+   "jmp     quit" \
+   "interrupted:" \
+   "mov     ax, 8003h" \
+   "jmp     quit" \
+   "success:" \
+   "mov     ax, 0" \
+   "quit:" \
+   value [ax] \
+   parm caller nomemory [ax bx] [di cx] [dh] \
+   modify nomemory exact [ax bx cx dl di];
+   
  APIRET DevHelp_DevDone(
     PBYTE pReqPktAddr
  );

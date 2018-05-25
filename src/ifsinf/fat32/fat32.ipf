@@ -1796,6 +1796,9 @@ image access code ported from QEMU (http&colon.//www&per.qemu&per.org/)&per.
 :li.CACHEF32&per.EXE also forces all FAT12/FAT16 drives to be remounted on startup&per.
 This is needed to cause these drives remounted by FAT32&per.IFS, instead of the
 in-kernel FAT driver&per. This is to avoid manual remount each time&per.
+:li.CACHEF32&per.EXE also starts F32MOUNT&per.EXE with "/a" parameter, to automatically
+mount all images specified in d&colon.\os2\boot\fstab&per.cfg on startup, and also starts
+F32MOUNT&per.EXE with "/u" parameter on exit, to automatically unmount all images&per.
 
 :eul. 
 
@@ -2346,7 +2349,7 @@ functions to read data inside the virtual VM disk images of the above mentioned 
 
 :p.The syntax is the following&colon.
 
-:p.:hp2.[c&colon.\] f32mount [d&colon.\somedir\somefile&per.img [<somedir> | /block] [/d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
+:p.:hp2.[c&colon.\] f32mount [/a | /u] [d&colon.\somedir\somefile&per.img [<somedir> | /block] [/d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
 
 :p. So, for the mount command, the first parameter is an image path (absolute or relative), the second 
 is the mount point (absolute or relative, too), or a "/block" parameter, which specifies that we should
@@ -2355,6 +2358,12 @@ letter, and F32MOUNT&per.EXE refreshes removable media, and the image gets mount
 any available IFS (not only FAT32&per.IFS).
 
 :p.Then the following options are possible&colon.
+
+:p.:hp2. /a :ehp2. - automount all images specified in d&colon.\os2\boot\fstab&per.cfg (where d&colon. is OS/2 boot 
+drive letter)&per.
+
+:p.:hp2. /u :ehp2. - autounmount all images specified in d&colon.\os2\boot\fstab&per.cfg (where d&colon. is OS/2 boot 
+drive letter)&per.
 
 :p.:hp2. /d :ehp2. - specifies that we're unmouning the image, or a mountpoint, specified as a first parameter&per.
 
@@ -2403,6 +2412,30 @@ the partition table&per.)&per. Force format to RAW&per.
 :p.:hp2. [c&colon.\] eject j&colon.:ehp2.
 
 :p. where j&colon. is a block device drive letter&per.
+
+:p.:hp2. [c&colon.\] f32mount /a:ehp2.
+
+:p. automatically mount all images specified in d&colon.\os2\boot\fstab&per.cfg
+
+:p.:hp2. [c&colon.\] f32mount /u:ehp2.
+
+:p. automatically unmount all images specified in d&colon.\os2\boot\fstab&per.cfg
+
+:p. d&colon.\os2\boot\fstab&per.cfg file specifies what images should be automounted/autounmounted,
+and with which options. Each line should be the same as f32mount&per.exe file command line looks like,
+except for the first "f32mount" word, which is omitted&per. For example, the following line&colon.
+
+:p. l&colon.\data\vm\img\z&per.iso /block
+
+:p. will automount l&colon.\data\vm\img\z&per.iso file at the drive letter&per. The line &colon.
+
+:p. l&colon.\data\vm\img\winxp&per.vhd w&colon.\tmp\0 /p&colon.1
+
+:p. will automount the l&colon.\data\vm\img\winxp&per.vhd file at the w&colon.\tmp\0
+mountpoint on the FAT drive w&colon., 1st primary partition will be mounted&per.
+
+:p. Also, except for "mount" lines, comment lines are possible, which sholud start with "#"
+or ";" symbols&per. These lines are ignored&per.
 
 :h1 id=52 res=30049.Current Status and Features
 

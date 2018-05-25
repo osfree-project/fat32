@@ -14,6 +14,7 @@
 
 #define MAX_OPEN 1
 
+#define FSAIL_QUERYNAME 1
 
 INT main(INT iArgc, PSZ rgArgv[])
 {
@@ -50,5 +51,3 @@ USHORT rc;
    return 0;
 
 }
-
-

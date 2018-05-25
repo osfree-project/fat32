@@ -225,6 +225,7 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define FAT32_GET_REQ           0x8014
 #define FAT32_DONE_REQ          0x8015
 #define FAT32_NEXT_CMD          0x8016
+#define FAT32_MOUNTED           0x8017
 
 #define FAT32_SECTORIO        0x9014
 

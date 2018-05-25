@@ -1,0 +1,63 @@
+ROOT=..\..
+PROJ=test\16bit
+PATH=..\..\$(PROJ)
+
+DESC="Test cases"
+
+!include ..\..\makefile.mk
+
+COPT=-3 -s -sg -db -d2 -hw -ml -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+
+TARGETS=$(BINROOT)\test\memtest.exe $(BINROOT)\test\memtest.sym &
+        $(BINROOT)\test\qfs.exe $(BINROOT)\test\qfs.sym &
+        $(BINROOT)\test\test.exe $(BINROOT)\test\test.sym
+
+OBJS1=$(PROJ_BLD)\memtest.obj
+OBJS2=$(PROJ_BLD)\qfs.obj
+OBJS3=$(PROJ_BLD)\test.obj
+
+SYS=os2
+
+$(BINROOT)\test\memtest.exe:
+
+$(BINROOT)\test\qfs.exe:
+
+$(BINROOT)\test\test.exe:
+
+$(BINROOT)\test\memtest.sym:
+
+$(BINROOT)\test\qfs.sym:
+
+$(BINROOT)\test\test.sym:
+
+$(PROJ_BLD)\memtest.lnk: $(PROJ_BLD)\memtest.ols
+
+$(PROJ_BLD)\qfs.lnk: $(PROJ_BLD)\qfs.ols
+
+$(PROJ_BLD)\test.lnk: $(PROJ_BLD)\test.ols
+
+$(PROJ_BLD)\memtest.ols: $(OBJS1) makefile.wcc ..\..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS1)) do @%append $^@ FILE %e
+ 
+$(PROJ_BLD)\qfs.ols: $(OBJS2) makefile.wcc ..\..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS2)) do @%append $^@ FILE %e
+
+$(PROJ_BLD)\test.ols: $(OBJS3) makefile.wcc ..\..\makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS3)) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)\test\$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION ST=32000
+ @%append $@ OPTION HEAP=32000
+ @%append $@ OPTION QUIET
+ @%append $@ DEBUG ALL
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;$(LIBROOT)
+ @%append $@ LIB os2,clibs
+ @%append $@ @$[@

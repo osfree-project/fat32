@@ -7,10 +7,13 @@
 #define INCL_DOSDEVIOCTL
 #define INCL_DOSDEVICES
 #define INCL_DOSERRORS
+#define INCL_NOPMAPI
 
 #include "os2.h"
-#include "portable.h"
-#include "msg.h"
+//#include "portable.h"
+//#include "msg.h"
+
+#define errmsg printf
 
 #define HEAP_SIZE      (0xFFF0)
 #define MAX_SELECTORS  10
