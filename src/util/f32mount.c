@@ -340,12 +340,21 @@ ULONG cbData;
       strcpy(&szArgs[pos], szLine);
       p = &szArgs[pos];
 
-      while (p)
+      while (p && *p)
       {
-          argv[argc] = p;
+          if (*p == '"')
+          {
+             p++;
+             q = strchr(p, '"');
+             
+             if (q)
+                q++;
+          }
+          else
+             q = strchr(p + 1, ' ');
 
-          q = strchr(p + 1, ' ');
-          
+          argv[argc++] = p;
+
           if (! q)
           {
               pos += strlen(&szArgs[pos]) + 1;
@@ -355,8 +364,12 @@ ULONG cbData;
           {
               szArgs[pos + q - p] = '\0';
               pos += q - p + 1;
-              argc++;
               p = &szArgs[pos];
+              if (*p == ' ')
+              {
+                 p++;
+                 pos++;
+              }
           }
 
           if (argc > 32)
@@ -375,11 +388,6 @@ ULONG cbData;
           pos += strlen(&szArgs[pos]) + 1;
           argc++;
       }
-
-      /* for (i = 0; i < argc; i++)
-      {
-          printf("argv[%d]=%s\n", i, argv[i]);
-      } */
 
       strcpy(szImgName, argv[1]);
 
@@ -410,10 +418,8 @@ ULONG cbData;
       {
          rc = DosFSCtl(&Data, cbData, &cbData,
                        NULL, 0, NULL,
-                       FAT32_MOUNTED, "FAT32", -1, FSCTL_FSDNAME);
+                       FAT32_MOUNTED, FS_NAME, -1, FSCTL_FSDNAME);
       }
-
-      //printf("%s: %s\n", szImgName, Data.ucIsMounted ? "mounted" : "not mounted");
 
       rc = ParseOpt(argc, argv, &args);
 
@@ -427,15 +433,18 @@ ULONG cbData;
    return 0;
 }
 
+
+
 int ParseOpt(int argc, char *argv[], struct args *args)
 {
     ULONG ulDriveNum, ulDriveMap;
+    char fn[256];
     char szDir[256];
     ULONG cbDir;
     char chDisk;
     APIRET rc;
     char *arg;
-    char *p;
+    char *p, *q;
     int i;
     
     memset(args, 0, sizeof(struct args));
@@ -466,7 +475,16 @@ int ParseOpt(int argc, char *argv[], struct args *args)
     rc = DosQueryCurrentDir(0, szDir, &cbDir);
     rc = DosQueryCurrentDir(0, szDir, &cbDir);
 
-    if (argv[1][1] != ':')
+    q = fn;
+
+    for (p = argv[1]; *p; p++)
+    {
+       if (*p != '"')
+          *q++ = *p;
+    }
+    *q++ = '\0';
+    
+    if (fn[1] != ':')
     {
        args->szFilename[0] = chDisk;
        args->szFilename[1] = ':';
@@ -477,12 +495,21 @@ int ParseOpt(int argc, char *argv[], struct args *args)
        if (strrchr(args->szFilename, '\\') != args->szFilename + strlen(args->szFilename) - 1)
           strcat(args->szFilename, "\\");
 
-       strcat(args->szFilename, argv[1]);
+       strcat(args->szFilename, fn);
     }
     else
-       strcpy(args->szFilename, argv[1]);
+       strcpy(args->szFilename, fn);
 
-    if (argv[2][1] != ':')
+    q = fn;
+
+    for (p = argv[2]; *p; p++)
+    {
+       if (*p != '"')
+          *q++ = *p;
+    }
+    *q++ = '\0';
+
+    if (fn[1] != ':')
     {
        args->szMntPoint[0] = chDisk;
        args->szMntPoint[1] = ':';
@@ -493,10 +520,10 @@ int ParseOpt(int argc, char *argv[], struct args *args)
        if (strrchr(args->szMntPoint, '\\') != args->szMntPoint + strlen(args->szMntPoint) - 1)
           strcat(args->szMntPoint, "\\");
 
-       strcat(args->szMntPoint, argv[2]);
+       strcat(args->szMntPoint, fn);
     }
     else
-       strcpy(args->szMntPoint, argv[2]);
+       strcpy(args->szMntPoint, fn);
 
     // parse options
     for (i = 1; i < argc; i++)
@@ -507,20 +534,17 @@ int ParseOpt(int argc, char *argv[], struct args *args)
        arg = argv[i];
 
        // join args enclosed in quotes as a single arg
-       if (strstr(arg, "\""))
+       if (*arg == '"')
        {
           memset(szDir, 0, sizeof(szDir));
-          i++;
 
           do
           {
              arg = argv[i];
-             strcat(szDir, arg);
              i++;
+             strcat(szDir, arg);
           }
           while (!strstr(arg, "\""));
-
-          strcat(szDir, arg);
 
           arg = szDir;
        }
@@ -615,7 +639,7 @@ int Mount(struct args *args)
                                 FIL_STANDARDL,
                                 &info,
                                 sizeof(info));
-
+          
           if (rc)
              goto err;
        }
@@ -707,7 +731,6 @@ int Mount(struct args *args)
                                NULL, 0, NULL);
             }
         }
-
 
        if (args->fBlock)
        {

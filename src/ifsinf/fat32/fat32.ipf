@@ -2349,7 +2349,7 @@ functions to read data inside the virtual VM disk images of the above mentioned 
 
 :p.The syntax is the following&colon.
 
-:p.:hp2.[c&colon.\] f32mount [/a | /u] [d&colon.\somedir\somefile&per.img [<somedir> | /block] [/d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>]] :ehp2.
+:p.:hp2.[c&colon.\] f32mount [/a | /u] [d&colon.\somedir\somefile&per.img [<somedir> | /block] [/d] [/p&colon.<partition no>][/o&colon.<offset>][/f&colon.<format>][/s&colon.<sector size>]] :ehp2.
 
 :p. So, for the mount command, the first parameter is an image path (absolute or relative), the second 
 is the mount point (absolute or relative, too), or a "/block" parameter, which specifies that we should
@@ -2379,6 +2379,10 @@ decimal, or hexadecimal&per. Hexadecimal offsets start with "0x"&per.
 :p.:hp2. /f&colon.<format> :ehp2. - force the use of specified format, instead of autodetecting
 it, which is the default&per. Usually, the format is autodetected by the QEMUIMG&per.DLL library&per.
 The following format names are defined&colon. :hp2.Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi&per. :ehp2.
+
+:p.:hp2. /s&colon<sector size> :ehp2. - force sector size value&per. Note that currently, OS2DASD&per.DMD
+does not support sector size values other than 512 bytes, and attempt to specify the value of, for
+example, 4096 bytes will cause a trap in OS2DASD&per.DMD&per.
 
 :p.:hp2. Examples&colon. :ehp2.
 
@@ -2432,7 +2436,7 @@ except for the first "f32mount" word, which is omitted&per. For example, the fol
 :p. l&colon.\data\vm\img\winxp&per.vhd w&colon.\tmp\0 /p&colon.1
 
 :p. will automount the l&colon.\data\vm\img\winxp&per.vhd file at the w&colon.\tmp\0
-mountpoint on the FAT drive w&colon., 1st primary partition will be mounted&per.
+mount point on the FAT drive w&colon., 1st primary partition will be mounted&per.
 
 :p. Also, except for "mount" lines, comment lines are possible, which sholud start with "#"
 or ";" symbols&per. These lines are ignored&per.

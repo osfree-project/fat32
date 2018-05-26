@@ -800,6 +800,9 @@ code ported from QEMU (http://www.qemu.org/).
 - CACHEF32.EXE also forces all FAT12/FAT16 drives to be remounted on startup.
 This is needed to cause these drives remounted by FAT32.IFS, instead of the
 in-kernel FAT driver. This is to avoid manual remount each time.
+- CACHEF32.EXE also starts F32MOUNT.EXE with "/a" parameter, to automatically
+mount all images specified in d:\os2\boot\fstab.cfg on startup, and also starts
+F32MOUNT.EXE with "/u" parameter on exit, to automatically unmount all images.
 
 When run in the foreground and CACHEF32 is already running, it displays the
 CACHE parameters and allows you to modify the values. If no other copy of
@@ -1201,7 +1204,7 @@ mentioned formats.
 
 The syntax is the following:   
 
-[c:\] f32mount [d:\somedir\somefile.img [<somedir> | /block] [/d] [/p:<partition no>][/o:<offset>][/f:<format>]]   
+[c:\] f32mount [/a | /u] [d:\somedir\somefile.img [<somedir> | /block] [/d] [/p:<partition no>][/o:<offset>][/f:<format>][/s:<sector size>]]   
 
 So, for the mount command, the first parameter is an image path (absolute or relative), the second 
 is the mount point (absolute or relative, too), or a "/block" parameter, which specifies that we should
@@ -1227,6 +1230,11 @@ with any available IFS (not only FAT32.IFS).
                       is the default. Usually, the format is autodetected by the QEMUIMG.DLL 
                       library. The following format names are defined: 
                       Raw/bochs/cloop/dmg/vpc/vmdk/parallels/vvfat/qcow/qcow2/vdi.   
+
+/s:<sector size>    - force sector size value. Note that currently, OS2DASD.DMD does not 
+                      support sector size values other than 512 bytes, and attempt to 
+                      specify the value of, for example, 4096 bytes will cause a trap 
+                      in OS2DASD.DMD.
 
 Examples:   
 
@@ -1259,7 +1267,31 @@ or, in case the image was mounted to the block device,
 
 [c:\] eject j:
 
-:p. where j: is a block device drive letter.
+where j: is a block device drive letter.
+
+[c:\] f32mount /a
+
+automatically mount all images specified in d:\os2\boot\fstab.cfg
+
+[c:\] f32mount /u
+
+automatically unmount all images specified in d:\os2\boot\fstab.cfg
+
+d:\os2\boot\fstab.cfg file specifies what images should be automounted/autounmounted,
+and with which options. Each line should be the same as f32mount.exe file command line looks like,
+except for the first "f32mount" word, which is omitted. For example, the following line:
+
+l:\data\vm\img\z.iso /block
+
+will automount l:\data\vm\img\z.iso file at the drive letter. The line:
+
+l:\data\vm\img\winxp.vhd w:\tmp\0 /p:1
+
+will automount the l:\data\vm\img\winxp.vhd file at the w:\tmp\0
+mount point on the FAT drive w:, 1st primary partition will be mounted.
+
+Also, except for "mount" lines, comment lines are possible, which sholud start with "#"
+or ";" symbols. These lines are ignored.
 
 
 ==============================
