@@ -433,9 +433,7 @@ USHORT rc;
 #endif
                   pDirEntry->wCluster = LOUSHORT(ulCluster);
                   pDirEntry->wClusterHigh = HIUSHORT(ulCluster);
-                  //Message("006");
                   //FileSetSize(pVolInfo, pDirEntry, ulDirCluster, pOpenInfo->pDirSHInfo, pszFile, size);
-                  //Message("007");
 #ifdef EXFAT
                   }
                else

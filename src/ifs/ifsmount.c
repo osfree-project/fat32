@@ -107,37 +107,39 @@ USHORT rc = NO_ERROR;
    _asm push es;
    _asm sti;
 
-   MessageL(LOG_FS, "FS_MOUNT%m for %c (%d):, flag = %d", 0x0001,
+   MessageL(LOG_FS, "FS_MOUNT%m for %c (%d):, flag = %d, hVPB=%d", 0x0001,
             pvpfsi->vpi_drive + 'A',
             pvpfsi->vpi_unit,
-            usFlag);
+            usFlag,
+            hVBP);
 
+   if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
+      hDupVBP = 0;
+
+   if (hDupVBP)  /* remount of volume */
+      {
+      Message("hDupVPB=%d", hDupVBP);
+      FSH_GETVOLPARM(hDupVBP, &pvpfsi, &pvpfsd);        /* Get the volume dependent/independent structure from the original volume block */
+      if ( *((ULONG *)pvpfsd->vpd_work + 1) == FAT32_VPB_MAGIC )
+         {
+         /* good VPB magic, valid VPB - retrieve VOLINFO from it */
+         pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
+         hVBP = hDupVBP;                                /* indicate that the old duplicate will become the remaining block */
+                                                        /* since the new VPB will be discarded if there already is an old one according to IFS.INF */
+         }
+      else
+         {
+         /* bad VPB magic, do an initial mount then too */
+         hDupVBP = 0;
+         }
+      }
+      
    switch (usFlag)
       {
       case MOUNT_MOUNT  :
          pSect = (PBOOTSECT)pBoot;
 
-         if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
-            hDupVBP = 0;
-
-         if (hDupVBP)  /* remount of volume */
-            {
-            if ( *((ULONG *)pvpfsd->vpd_work + 1) == FAT32_VPB_MAGIC )
-               {
-               /* good VPB magic, valid VPB - retrieve VOLINFO from it */
-               FSH_GETVOLPARM(hDupVBP,&pvpfsi,&pvpfsd);       /* Get the volume dependent/independent structure from the original volume block */
-               pVolInfo = *((PVOLINFO *)(pvpfsd->vpd_work));  /* Get the pointer to the FAT32 Volume structure from the original block */
-               hVBP = hDupVBP;                                /* indicate that the old duplicate will become the remaining block */
-                                                              /* since the new VPB will be discarded if there already is an old one according to IFS.INF */
-               }
-            else
-               {
-               /* bad VPB magic, do an initial mount then too */
-               hDupVBP = 0;
-               }
-            }
-
-         if (!hDupVBP)   /* initial mounting of the volume */
+         if (! hDupVBP)   /* initial mounting of the volume */
             {
             pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
             if (!pVolInfo)
@@ -150,8 +152,6 @@ USHORT rc = NO_ERROR;
 
             if (!ulCacheSectors)
                Message("FAT32: Warning CACHE size is zero!");
-            //else
-            //   InitCache(ulCacheSectors);
 
             pVolInfo->hVBP    = hVBP;
             pVolInfo->hDupVBP = hDupVBP;
@@ -194,15 +194,6 @@ USHORT rc = NO_ERROR;
          break;
 
       case MOUNT_ACCEPT :
-         if (FSH_FINDDUPHVPB(hVBP, &hDupVBP))
-            hDupVBP = 0;
-
-         //if (pvpfsi->vpi_bsize != SECTOR_SIZE)
-         //   {
-         //   rc = ERROR_VOLUME_NOT_MOUNTED;
-         //   goto FS_MOUNT_EXIT;
-         //   }
-      
          pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
          if (!pVolInfo)
             {
@@ -259,18 +250,9 @@ USHORT rc = NO_ERROR;
          break;
 
       case MOUNT_RELEASE:
-
-         if ( *((ULONG *)pvpfsd->vpd_work + 1) != FAT32_VPB_MAGIC )
-            {
-            /* VPB magic is invalid, so it is not the VPB
-               created by fat32.ifs */
-            rc = ERROR_VOLUME_NOT_MOUNTED;
-            goto FS_MOUNT_EXIT;
-            }
-
          pVolInfo = GetVolInfo(hVBP);
 
-         if (!pVolInfo)
+         if (! pVolInfo)
             {
             if (f32Parms.fMessageActive & LOG_FS)
                Message("pVolInfo == 0\n");
@@ -279,8 +261,17 @@ USHORT rc = NO_ERROR;
             goto FS_MOUNT_EXIT;
             }
 
-         rc = mount(usFlag, pVolInfo, pBoot);
-
+         if (! hDupVBP)
+            {
+            // no dup hVPB, unmount
+            rc = mount(usFlag, pVolInfo, pBoot);
+            }
+         else
+            {
+            // release dup hVPB
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            }
+            
          if (rc)
             goto FS_MOUNT_EXIT;
 
@@ -1393,7 +1384,7 @@ int i;
              ! pVolInfo->fRemovable && (pVolInfo->bFatType != FAT_TYPE_FAT12) )
             {
                usFlushVolume( pVolInfo, FLUSH_DISCARD, TRUE, PRIO_URGENT );
-               UpdateFSInfo(pVolInfo);
+               UpdateFSInfo(pVolInfo); ////
 
                // ignore dirty status on floppies (and FAT12)
                MarkDiskStatus(pVolInfo, pVolInfo->fDiskCleanOnMount);

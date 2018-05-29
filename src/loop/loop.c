@@ -198,6 +198,7 @@ UCHAR init_complete = 0;
 ULONG io_hook_handle = 0; // Ctx Hook handle
 ULONG hook_handle = 0; // Ctx Hook handle
 LIN ppTransferBuf;
+char fStrat1 = FALSE;
 
 struct unit units[8] = {0};
 
@@ -289,6 +290,8 @@ void far *malloc(ULONG size)
                          -1,
                          &lin,
                          &sysresvd);
+
+    log_printf("VMAlloc rc=%d\n", rc);
 
     if (rc)
         return NULL;
@@ -442,6 +445,13 @@ void init(PRPINITIN reqpkt)
     }
 
     ainfo.AdapterUnits = nUnits;
+
+    if ( strstr(pCmdLine, (char far *)"/1") )
+    {
+        fStrat1 = TRUE;
+        ainfo.MaxHWSGList = 1;
+        log_printf("%s\n", (char far *)"strat1 mode is on");
+    }
 
     // DevHelp entry point
     Device_Help = (ULONG)reqpkt->DevHlpEP;
@@ -1210,7 +1220,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         else
                             cpIO->BlocksXferred = cpIO->BlockCount;
 
-                        if (error)
+                        //if (error)
                         {
                             PSCATGATENTRY pt = cpIO->pSGList;
                             int i;
@@ -1384,7 +1394,7 @@ APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO,
 
     if (rcont & IORB_ASYNC_POST)
     {
-        if (init_complete)
+        if (! fStrat1 && init_complete)
         {
             put_IORB((PIORBH)cpIO);
         }
@@ -1672,7 +1682,9 @@ APIRET _cdecl IoHook(HookData far *data)
 
     if (pIORBHead)
     {
-        notify_hook();
+        //notify_hook();
+        log_printf("%s\n", (char far *)"Arm notify_hook");
+        DevHelp_ArmCtxHook(0, hook_handle);
     }
     
     free(data);
@@ -1708,7 +1720,10 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd)
     hookdata->cmd = cmd;
 
     if (init_complete)
+    {
+        log_printf("%s\n", (char far *)"Arm io_hook");
         DevHelp_ArmCtxHook((ULONG)hookdata, io_hook_handle);
+    }
     else
         IoHook(hookdata);
 

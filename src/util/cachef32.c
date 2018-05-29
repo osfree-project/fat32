@@ -246,7 +246,7 @@ int pos;
    // if not mounted, then mount it
    // start f32mount.exe  with given parameters
    DosExecPgm(szObjName, sizeof(szObjName),
-              EXEC_SYNC, szArgs, NULL,
+              EXEC_BACKGROUND, szArgs, NULL,
               &res, szArgs);
 }
 

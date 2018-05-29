@@ -6,5 +6,6 @@
 ;---------------------------------------------------------;
 ;l:\data\vm\img\flash-512.img	w:\tmp\0	/p:1          ;
 ;l:\data\vm\img\w.vhd			w:\tmp\1	/p:1          ;
-;l:\data\vm\img\z.iso			/block                    ;
+;"l:\data\vm\img\qwe rty\z.iso"	/block                    ;
+;l:\data\vm\img\hdimage.freedos	w:\tmp\2	/p:1 /o:0x80  ;
 ;---------------------------------------------------------;

@@ -303,6 +303,11 @@ ULONG cbData;
    
    fd = fopen(szCfg, "r");
 
+   if (! fd)
+   {
+      return 1;
+   }
+   
    while ( ! GetLine(fd, (char *)szLine) )
    {
       // skip empty lines
@@ -456,7 +461,7 @@ int ParseOpt(int argc, char *argv[], struct args *args)
                "   Partitions 1..4 are primary partitions. Partitions 5..255 are logical partitions, 5 being the 1st logical.\n"
                "   Offsets can be decimal, as well as hexadecimals, starting from \"0x\".\n"
                "   The following formats are supported: raw, vpc, vmdk, vdi, vvfat, parallels, bochs, cloop, dmg, qcow, qcow2\n");
-        return 0;
+        return 1;
     }
 
     if (argc == 2)
