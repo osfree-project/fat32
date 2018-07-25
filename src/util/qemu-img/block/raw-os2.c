@@ -1,7 +1,8 @@
 /*
- * Block driver for RAW files (win32)
+ * Block driver for RAW files (os2)
  *
  * Copyright (c) 2006 Fabrice Bellard
+ * Copyright (c) 2018 Valery V. Sedletski
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,95 +27,97 @@
 #include "block_int.h"
 #include "module.h"
 
-#if 0
+#define  INCL_DOSMODULEMGR
+#define  INCL_DOSFILEMGR
+#define  INCL_DOSERRORS
+#define  INCL_LONGLONG
+#include <os2.h>
 
-#include <windows.h>
-#include <winioctl.h>
+int largefile = 0;
 
-#define FTYPE_FILE 0
-#define FTYPE_CD     1
-#define FTYPE_HARDDISK 2
-
-typedef struct BDRVRawState {
-    HANDLE hfile;
-    int type;
-    char drive_path[16]; /* format: "d:\" */
-} BDRVRawState;
-
-#endif
+APIRET APIENTRY (*pDosOpenL)(PSZ, PHFILE, PULONG, ULONGLONG,
+             ULONG, ULONG, ULONG, PEAOP2) = 0;
+APIRET APIENTRY (*pDosSetFilePtrL)(HFILE, LONGLONG, ULONG, PULONGLONG) = 0;
+APIRET APIENTRY (*pDosSetFileSizeL)(HFILE, ULONGLONG) = 0;
 
 typedef struct BDRVRawState {
-    int fd;
+    HFILE hf;
 } BDRVRawState;
 
-#if 0
-
-int qemu_ftruncate64(int fd, int64_t length)
+int is_largefile_supported(void)
 {
-    LARGE_INTEGER li;
-    LONG high;
-    HANDLE h;
-    BOOL res;
+    HMODULE hmod;
+    PFN pfn;
+    APIRET rc;
 
-    if ((GetVersion() & 0x80000000UL) && (length >> 32) != 0)
-	return -1;
+    // find DOSCALLS handle
+    DosQueryModuleHandle("DOSCALLS", &hmod);
 
-    h = (HANDLE)_get_osfhandle(fd);
+    // find DosOpenL address
+    rc = DosQueryProcAddr(hmod, 981, NULL, &pfn);
 
-    /* get current position, ftruncate do not change position */
-    li.HighPart = 0;
-    li.LowPart = SetFilePointer (h, 0, &li.HighPart, FILE_CURRENT);
-    if (li.LowPart == 0xffffffffUL && GetLastError() != NO_ERROR)
-	return -1;
+    if (! rc)
+        pDosOpenL = (void *)pfn;
 
-    high = length >> 32;
-    if (!SetFilePointer(h, (DWORD) length, &high, FILE_BEGIN))
-	return -1;
-    res = SetEndOfFile(h);
+    // find DosSetFilePtrL address
+    rc = DosQueryProcAddr(hmod, 988, NULL, &pfn);
 
-    /* back to old position */
-    SetFilePointer(h, li.LowPart, &li.HighPart, FILE_BEGIN);
-    return res ? 0 : -1;
-}
+    if (! rc)
+        pDosSetFilePtrL = (void *)pfn;
+    
+    // find DosSetFileSizeL address
+    rc = DosQueryProcAddr(hmod, 989, NULL, &pfn);
 
-static int set_sparse(int fd)
-{
-    DWORD returned;
-    return (int) DeviceIoControl((HANDLE)_get_osfhandle(fd), FSCTL_SET_SPARSE,
-				 NULL, 0, NULL, 0, &returned, NULL);
+    if (! rc)
+        pDosSetFileSizeL = (void *)pfn;
+
+    if (pDosOpenL)
+        return 1;
+
+    return 0;
 }
 
 static int raw_open(BlockDriverState *bs, const char *filename, int flags)
 {
     BDRVRawState *s = bs->opaque;
-    int access_flags, create_flags;
-    DWORD overlapped;
-
-    s->type = FTYPE_FILE;
+    ULONG open_flags, open_mode;
+    ULONG action = 0;
+    APIRET rc;
 
     if ((flags & BDRV_O_ACCESS) == O_RDWR) {
-        access_flags = GENERIC_READ | GENERIC_WRITE;
+        open_mode = OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYWRITE;
     } else {
-        access_flags = GENERIC_READ;
+        open_mode = OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE;
     }
     if (flags & BDRV_O_CREAT) {
-        create_flags = CREATE_ALWAYS;
+        open_flags = OPEN_ACTION_CREATE_IF_NEW;
     } else {
-        create_flags = OPEN_EXISTING;
+        open_flags = OPEN_ACTION_OPEN_IF_EXISTS;
     }
-    overlapped = FILE_ATTRIBUTE_NORMAL;
     if ((flags & BDRV_O_NOCACHE))
-        overlapped |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
+        open_mode |= OPEN_FLAGS_NO_CACHE;
     else if (!(flags & BDRV_O_CACHE_WB))
-        overlapped |= FILE_FLAG_WRITE_THROUGH;
-    s->hfile = CreateFile(filename, access_flags,
-                          FILE_SHARE_READ, NULL,
-                          create_flags, overlapped, NULL);
-    if (s->hfile == INVALID_HANDLE_VALUE) {
-        int err = GetLastError();
+        open_mode |= OPEN_FLAGS_WRITE_THROUGH;
 
-        if (err == ERROR_ACCESS_DENIED)
+    if (largefile)
+    {
+        rc = (pDosOpenL)((PSZ)filename, &s->hf, &action,
+                      0, 0, open_flags, open_mode,
+                      NULL);
+    }
+    else
+    {
+        rc = DosOpen(filename, &s->hf, &action,
+                     0, 0, open_flags, open_mode,
+                     NULL);
+    }
+
+    if (rc || s->hf == NULLHANDLE)
+    {
+        if (rc == ERROR_ACCESS_DENIED)
+        {
             return -EACCES;
+        }
         return -1;
     }
     return 0;
@@ -124,168 +127,90 @@ static int raw_read(BlockDriverState *bs, int64_t sector_num,
                     uint8_t *buf, int nb_sectors)
 {
     BDRVRawState *s = bs->opaque;
-    OVERLAPPED ov;
-    DWORD ret_count;
-    int ret;
-    int64_t offset = sector_num * 512;
-    int count = nb_sectors * 512;
+    LONGLONG offset = sector_num * 512;
+    ULONG count = nb_sectors * 512;
+    ULONGLONG actual = 0;
+    APIRET rc;
 
-    memset(&ov, 0, sizeof(ov));
-    ov.Offset = offset;
-    ov.OffsetHigh = offset >> 32;
-    ret = ReadFile(s->hfile, buf, count, &ret_count, &ov);
-    if (!ret)
-        return ret_count;
-    if (ret_count == count)
-        ret_count = 0;
-    return ret_count;
+    if (largefile)
+    {
+        rc = (pDosSetFilePtrL)(s->hf, offset, FILE_BEGIN, &actual);
+
+        if (rc)
+            return -1;
+    }
+    else
+    {
+        rc = DosSetFilePtr(s->hf, offset, FILE_BEGIN, (PULONG)&actual);
+
+        if (rc)
+            return -1;
+    }
+    rc = DosRead(s->hf, buf, count, (PULONG)&actual);
+    if (rc)
+        return actual;
+    if (actual == count)
+        actual = 0;
+    return actual;
 }
 
 static int raw_write(BlockDriverState *bs, int64_t sector_num,
                      const uint8_t *buf, int nb_sectors)
 {
     BDRVRawState *s = bs->opaque;
-    OVERLAPPED ov;
-    DWORD ret_count;
-    int ret;
-    int64_t offset = sector_num * 512;
-    int count = nb_sectors * 512;
+    LONGLONG offset = sector_num * 512;
+    ULONG count = nb_sectors * 512;
+    ULONGLONG actual = 0;
+    APIRET rc;
 
-    memset(&ov, 0, sizeof(ov));
-    ov.Offset = offset;
-    ov.OffsetHigh = offset >> 32;
-    ret = WriteFile(s->hfile, buf, count, &ret_count, &ov);
-    if (!ret)
-        return ret_count;
-    if (ret_count == count)
-        ret_count = 0;
-    return ret_count;
-}
-
-#endif
-
-static int raw_open(BlockDriverState *bs, const char *filename, int flags)
-//static int raw_open(BlockDriverState *bs, const char *filename)
-{
-    BDRVRawState *s = bs->opaque;
-    int fd;
-    int64_t size;
-#ifdef _BSD
-    struct stat sb;
-#endif
-    int open_flags = 0;
-
-    //s->type = FTYPE_FILE;
-    if (flags & BDRV_O_CREAT)
-        open_flags = O_CREAT | O_TRUNC;
-
-    open_flags = open_flags | O_BINARY | O_LARGEFILE;
-    //open_flags &= ~O_ACCMODE;
-    if ((flags & BDRV_O_ACCESS) == BDRV_O_RDWR) {
-        open_flags |= O_RDWR;
-    } else {
-        open_flags |= O_RDONLY;
-        bs->read_only = 1;
-    }
-
-    fd = open(filename, open_flags);
-#ifdef _BSD
-    if (!fstat(fd, &sb) && (S_IFCHR & sb.st_mode)) {
-#ifdef DIOCGMEDIASIZE
-	if (ioctl(fd, DIOCGMEDIASIZE, (off_t *)&size))
-#endif
-	    size = lseek(fd, 0LL, SEEK_END);
-    } else
-#endif
+    if (largefile)
     {
-        size = lseek(fd, 0, SEEK_END);
+        rc = (pDosSetFilePtrL)(s->hf, offset, FILE_BEGIN, &actual);
+
+        if (rc)
+            return -1;
     }
-#ifdef _WIN32
-    /* On Windows hosts it can happen that we're unable to get file size
-       for CD-ROM raw device (it's inherent limitation of the CDFS driver). */
-    if (size == -1)
-        size = LONGLONG_MAX;
-#endif
-    bs->total_sectors = size / 512;
-    s->fd = fd;
-    return 0;
-}
+    else
+    {
+        rc = DosSetFilePtr(s->hf, offset, FILE_BEGIN, (PULONG)&actual);
 
-static int raw_read(BlockDriverState *bs, int64_t sector_num, 
-                    uint8_t *buf, int nb_sectors)
-{
-    BDRVRawState *s = bs->opaque;
-    int ret;
-    
-    lseek(s->fd, sector_num * 512, SEEK_SET);
-    ret = read(s->fd, buf, nb_sectors * 512);
-    if (ret != nb_sectors * 512) 
-        return -1;
-    return 0;
+        if (rc)
+            return -1;
+    }
+    rc = DosWrite(s->hf, (void *)buf, count, (PULONG)&actual);
+    if (rc)
+        return actual;
+    return actual;
+    if (actual == count)
+         actual = 0;
+    return actual;
 }
-
-static int raw_write(BlockDriverState *bs, int64_t sector_num, 
-                     const uint8_t *buf, int nb_sectors)
-{
-    BDRVRawState *s = bs->opaque;
-    int ret;
-    
-    lseek(s->fd, sector_num * 512, SEEK_SET);
-    ret = write(s->fd, buf, nb_sectors * 512);
-    if (ret != nb_sectors * 512) 
-        return -1;
-    return 0;
-}
-
 
 static void raw_flush(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
-    //FlushFileBuffers(s->hfile);
-    qemu_fdatasync(s->fd);
+    DosResetBuffer(s->hf);
 }
 
 static void raw_close(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
-    //CloseHandle(s->hfile);
-    close(s->fd);
+    DosClose(s->hf);
 }
 
 static int raw_truncate(BlockDriverState *bs, int64_t offset)
 {
     BDRVRawState *s = bs->opaque;
-    //if (s->type != FTYPE_FILE)
-    //    return -ENOTSUP;
-    if (ftruncate(s->fd, offset) < 0)
-        return -errno;
-    return 0;
-}
-
-static int64_t raw_getlength(BlockDriverState *bs)
-{
-    BDRVRawState *s = bs->opaque;
-    int fd = s->fd;
-    struct _stati64 st;
-
-    if (_fstati64(fd, &st))
-        return -1;
+    APIRET rc;
+    if (largefile)
+    {
+        rc = (pDosSetFileSizeL)(s->hf, offset);
+    }
     else
-        return st.st_size;
-}
-
-#if 0
-
-static int raw_truncate(BlockDriverState *bs, int64_t offset)
-{
-    BDRVRawState *s = bs->opaque;
-    LONG low, high;
-
-    low = offset;
-    high = offset >> 32;
-    if (!SetFilePointer(s->hfile, low, &high, FILE_BEGIN))
-	return -EIO;
-    if (!SetEndOfFile(s->hfile))
+    {
+        rc = DosSetFileSize(s->hf, offset);
+    }
+    if (rc)
         return -EIO;
     return 0;
 }
@@ -293,87 +218,67 @@ static int raw_truncate(BlockDriverState *bs, int64_t offset)
 static int64_t raw_getlength(BlockDriverState *bs)
 {
     BDRVRawState *s = bs->opaque;
-    LARGE_INTEGER l;
-    ULARGE_INTEGER available, total, total_free;
-    DISK_GEOMETRY_EX dg;
-    DWORD count;
-    BOOL status;
+    ULONGLONG size;
+    APIRET rc;
 
-    switch(s->type) {
-    case FTYPE_FILE:
-        l.LowPart = GetFileSize(s->hfile, (PDWORD)&l.HighPart);
-        if (l.LowPart == 0xffffffffUL && GetLastError() != NO_ERROR)
-            return -EIO;
-        break;
-    case FTYPE_CD:
-        if (!GetDiskFreeSpaceEx(s->drive_path, &available, &total, &total_free))
-            return -EIO;
-        l.QuadPart = total.QuadPart;
-        break;
-    case FTYPE_HARDDISK:
-        status = DeviceIoControl(s->hfile, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
-                                 NULL, 0, &dg, sizeof(dg), &count, NULL);
-        if (status != 0) {
-            l = dg.DiskSize;
-        }
-        break;
-    default:
-        return -EIO;
+    if (largefile)
+    {
+        FILESTATUS3L Info;
+
+        rc = DosQueryFileInfo(s->hf, FIL_STANDARDL, &Info, sizeof(Info));
+        size = Info.cbFile;
     }
-    return l.QuadPart;
+    else
+    {
+        FILESTATUS3 Info;
+
+        rc = DosQueryFileInfo(s->hf, FIL_STANDARD, &Info, sizeof(Info));
+        size = (ULONGLONG)Info.cbFile;
+    }
+    if (rc)
+        return -EIO;
+    return size;
 }
 
 static int raw_create(const char *filename, QEMUOptionParameter *options)
 {
-    int fd;
+    HFILE hf;
     int64_t total_size = 0;
+    ULONG action;
+    APIRET rc;
 
     /* Read out options */
-    while (options && options->name) {
-        if (!strcmp(options->name, BLOCK_OPT_SIZE)) {
+    while (options && options->name)
+    {
+        if (!strcmp(options->name, BLOCK_OPT_SIZE))
+        {
             total_size = options->value.n / 512;
         }
         options++;
     }
 
-    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
-              0644);
-    if (fd < 0)
-        return -EIO;
-    set_sparse(fd);
-    ftruncate(fd, total_size * 512);
-    close(fd);
-    return 0;
-}
-
-#endif
-
-static int raw_create(const char *filename, QEMUOptionParameter *options)
-//static int raw_create(const char *filename, int64_t total_size,
-//                      const char *backing_file, int flags)
-{
-    int fd;
-    int64_t total_size = 0;
-
-    /* Read out options */
-    while (options && options->name) {
-        if (!strcmp(options->name, BLOCK_OPT_SIZE)) {
-            total_size = options->value.n / 512;
-        }
-        options++;
+    if (largefile)
+    {
+        rc = (*pDosOpenL)((PSZ)filename, &hf, &action, total_size * 512, 0,
+                      OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS,
+                      OPEN_ACCESS_WRITEONLY | OPEN_SHARE_DENYWRITE,
+                      NULL);
     }
-
-    //if (flags || backing_file)
-    //    return -ENOTSUP;
-
-    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_LARGEFILE, 
-              0644);
-    if (fd < 0)
+    else
+    {
+        rc = DosOpen(filename, &hf, &action, (ULONG)total_size * 512, 0,
+                     OPEN_ACTION_CREATE_IF_NEW | OPEN_ACTION_REPLACE_IF_EXISTS,
+                     OPEN_ACCESS_WRITEONLY | OPEN_SHARE_DENYWRITE,
+                     NULL);
+    }
+    if (rc || ! hf)
         return -EIO;
-    ftruncate(fd, total_size * 512);
-    close(fd);
+    DosClose(hf);
     return 0;
 }
+
+/***********************************************/
+/* host device */
 
 static QEMUOptionParameter raw_create_options[] = {
     {
@@ -398,173 +303,3 @@ BlockDriver bdrv_raw = {
 
     .create_options = raw_create_options,
 };
-
-/***********************************************/
-/* host device */
-
-#if 0
-
-static int find_cdrom(char *cdrom_name, int cdrom_name_size)
-{
-    char drives[256], *pdrv = drives;
-    UINT type;
-
-    memset(drives, 0, sizeof(drives));
-    GetLogicalDriveStrings(sizeof(drives), drives);
-    while(pdrv[0] != '\0') {
-        type = GetDriveType(pdrv);
-        switch(type) {
-        case DRIVE_CDROM:
-            snprintf(cdrom_name, cdrom_name_size, "\\\\.\\%c:", pdrv[0]);
-            return 0;
-            break;
-        }
-        pdrv += lstrlen(pdrv) + 1;
-    }
-    return -1;
-}
-
-static int find_device_type(BlockDriverState *bs, const char *filename)
-{
-    BDRVRawState *s = bs->opaque;
-    UINT type;
-    const char *p;
-
-    if (strstart(filename, "\\\\.\\", &p) ||
-        strstart(filename, "//./", &p)) {
-        if (stristart(p, "PhysicalDrive", NULL))
-            return FTYPE_HARDDISK;
-        snprintf(s->drive_path, sizeof(s->drive_path), "%c:\\", p[0]);
-        type = GetDriveType(s->drive_path);
-        switch (type) {
-        case DRIVE_REMOVABLE:
-        case DRIVE_FIXED:
-            return FTYPE_HARDDISK;
-        case DRIVE_CDROM:
-            return FTYPE_CD;
-        default:
-            return FTYPE_FILE;
-        }
-    } else {
-        return FTYPE_FILE;
-    }
-}
-
-static int hdev_probe_device(const char *filename)
-{
-    if (strstart(filename, "/dev/cdrom", NULL))
-        return 100;
-    if (is_windows_drive(filename))
-        return 100;
-    return 0;
-}
-
-static int hdev_open(BlockDriverState *bs, const char *filename, int flags)
-{
-    BDRVRawState *s = bs->opaque;
-    int access_flags, create_flags;
-    DWORD overlapped;
-    char device_name[64];
-
-    if (strstart(filename, "/dev/cdrom", NULL)) {
-        if (find_cdrom(device_name, sizeof(device_name)) < 0)
-            return -ENOENT;
-        filename = device_name;
-    } else {
-        /* transform drive letters into device name */
-        if (((filename[0] >= 'a' && filename[0] <= 'z') ||
-             (filename[0] >= 'A' && filename[0] <= 'Z')) &&
-            filename[1] == ':' && filename[2] == '\0') {
-            snprintf(device_name, sizeof(device_name), "\\\\.\\%c:", filename[0]);
-            filename = device_name;
-        }
-    }
-    s->type = find_device_type(bs, filename);
-
-    if ((flags & BDRV_O_ACCESS) == O_RDWR) {
-        access_flags = GENERIC_READ | GENERIC_WRITE;
-    } else {
-        access_flags = GENERIC_READ;
-    }
-    create_flags = OPEN_EXISTING;
-
-    overlapped = FILE_ATTRIBUTE_NORMAL;
-    if ((flags & BDRV_O_NOCACHE))
-        overlapped |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
-    else if (!(flags & BDRV_O_CACHE_WB))
-        overlapped |= FILE_FLAG_WRITE_THROUGH;
-    s->hfile = CreateFile(filename, access_flags,
-                          FILE_SHARE_READ, NULL,
-                          create_flags, overlapped, NULL);
-    if (s->hfile == INVALID_HANDLE_VALUE) {
-        int err = GetLastError();
-
-        if (err == ERROR_ACCESS_DENIED)
-            return -EACCES;
-        return -1;
-    }
-    return 0;
-}
-
-#endif
-
-#if 0
-/***********************************************/
-/* removable device additional commands */
-
-static int raw_is_inserted(BlockDriverState *bs)
-{
-    return 1;
-}
-
-static int raw_media_changed(BlockDriverState *bs)
-{
-    return -ENOTSUP;
-}
-
-static int raw_eject(BlockDriverState *bs, int eject_flag)
-{
-    DWORD ret_count;
-
-    if (s->type == FTYPE_FILE)
-        return -ENOTSUP;
-    if (eject_flag) {
-        DeviceIoControl(s->hfile, IOCTL_STORAGE_EJECT_MEDIA,
-                        NULL, 0, NULL, 0, &lpBytesReturned, NULL);
-    } else {
-        DeviceIoControl(s->hfile, IOCTL_STORAGE_LOAD_MEDIA,
-                        NULL, 0, NULL, 0, &lpBytesReturned, NULL);
-    }
-}
-
-static int raw_set_locked(BlockDriverState *bs, int locked)
-{
-    return -ENOTSUP;
-}
-#endif
-
-#if 0
-
-static BlockDriver bdrv_host_device = {
-    .format_name	= "host_device",
-    .instance_size	= sizeof(BDRVRawState),
-    .bdrv_probe_device	= hdev_probe_device,
-    .bdrv_open		= hdev_open,
-    .bdrv_close		= raw_close,
-    .bdrv_create        = raw_create,
-    .bdrv_flush		= raw_flush,
-
-    .bdrv_read		= raw_read,
-    .bdrv_write	        = raw_write,
-    .bdrv_getlength	= raw_getlength,
-};
-
-static void bdrv_raw_init(void)
-{
-    bdrv_register(&bdrv_raw);
-    bdrv_register(&bdrv_host_device);
-}
-
-block_init(bdrv_raw_init);
-
-#endif

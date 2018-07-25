@@ -42,6 +42,10 @@
 #include <windows.h>
 #endif
 
+extern int largefile;
+
+int is_largefile_supported(void);
+
 static BlockDriverAIOCB *bdrv_aio_readv_em(BlockDriverState *bs,
         int64_t sector_num, QEMUIOVector *qiov, int nb_sectors,
         BlockDriverCompletionFunc *cb, void *opaque);
@@ -631,7 +635,7 @@ int bdrv_read(BlockDriverState *bs, int64_t sector_num,
               uint8_t *buf, int nb_sectors)
 {
     BlockDriver *drv = bs->drv;
-
+    
     if (!drv)
         return -ENOMEDIUM;
     if (bdrv_check_request(bs, sector_num, nb_sectors))
@@ -1579,7 +1583,7 @@ BlockDriverAIOCB *bdrv_aio_writev(BlockDriverState *bs, int64_t sector_num,
 {
     BlockDriver *drv = bs->drv;
     BlockDriverAIOCB *ret;
-
+  
     if (!drv)
         return NULL;
     if (bs->read_only)
@@ -1593,7 +1597,6 @@ BlockDriverAIOCB *bdrv_aio_writev(BlockDriverState *bs, int64_t sector_num,
 
     ret = drv->bdrv_aio_writev(bs, sector_num, qiov, nb_sectors,
                                cb, opaque);
-
     if (ret) {
 	/* Update stats even though technically transfer has not happened. */
 	bs->wr_bytes += (unsigned) nb_sectors * BDRV_SECTOR_SIZE;
@@ -2002,6 +2005,9 @@ fail:
 
 void bdrv_init(void)
 {
+    if (is_largefile_supported() == 1)
+        largefile = 1;
+
     bdrv_register(&bdrv_raw);
     //bdrv_register(&bdrv_host_device);
 

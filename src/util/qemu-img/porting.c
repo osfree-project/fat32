@@ -5,6 +5,10 @@
 #define  INCL_BASE
 #include <os2.h>
 
+extern int largefile;
+
+extern APIRET APIENTRY (*pDosSetFileSizeL)(HFILE, ULONGLONG);
+
 int ftruncate( int handle, int64_t size )
 {  
    int rc = 0;
@@ -12,7 +16,10 @@ int ftruncate( int handle, int64_t size )
    
    if (size < _filelengthi64(handle)) {
       //rc = chsize(handle, size);
-      rc = DosSetFileSizeL(hf, size);
+      if (largefile)
+          rc = (*pDosSetFileSizeL)(hf, size);
+      else
+          rc = DosSetFileSize(hf, (ULONG)size);
    }
    
    if (rc) { 
