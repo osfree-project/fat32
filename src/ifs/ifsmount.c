@@ -1029,10 +1029,10 @@ int i;
          else
             {
             // exFAT case
-            pVolInfo->ulClusterSize =  (ULONG)(1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift);
-            pVolInfo->ulClusterSize *= 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
+            pVolInfo->ulClusterSize =  (1UL) << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
+            pVolInfo->ulClusterSize *= (1UL) << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
             pVolInfo->BootSect.bpb.BytesPerSector = 1 << ((PBOOTSECT1)pSect)->bBytesPerSectorShift;
-            pVolInfo->SectorsPerCluster = 1 << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
+            pVolInfo->SectorsPerCluster = (1UL) << ((PBOOTSECT1)pSect)->bSectorsPerClusterShift;
             pVolInfo->BootSect.bpb.ReservedSectors = (USHORT)((PBOOTSECT1)pSect)->ulFatOffset;
             pVolInfo->BootSect.bpb.RootDirStrtClus = ((PBOOTSECT1)pSect)->RootDirStrtClus;
             pVolInfo->BootSect.bpb.BigSectorsPerFat = ((PBOOTSECT1)pSect)->ulFatLength;
@@ -1173,6 +1173,15 @@ int i;
 #endif
             }
 #endif
+
+         if (! pVolInfo->ulClusterSize || ! pVolInfo->SectorsPerCluster ||
+             ! pVolInfo->BootSect.bpb.ReservedSectors || ! pVolInfo->BootSect.bpb.RootDirStrtClus ||
+             (! pVolInfo->BootSect.bpb.BigSectorsPerFat && ! pVolInfo->BootSect.bpb.SectorsPerFat) || 
+              ! pVolInfo->BootSect.bpb.BigTotalSectors || ! pVolInfo->BootSect.bpb.NumberOfFATs)
+            {
+            rc = ERROR_VOLUME_NOT_MOUNTED;
+            goto MOUNT_EXIT;
+            }
 
          if (fValidBoot)
             {

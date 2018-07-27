@@ -45,7 +45,7 @@ int far pascal _loadds FS_OPENCREATE(
 )
 {
 PVOLINFO pVolInfo;
-ULONG    ulCluster;
+ULONG    ulCluster, ulSec;
 ULONG    ulDirCluster;
 PSZ      pszFile;
 PDIRENTRY pDirEntry;
@@ -202,6 +202,13 @@ USHORT rc;
          &pszFile,
          pDirStream);
 
+      Message("FS_OPENCREATE: ulDirCluster=%lx", ulDirCluster);
+
+      ulSec = pVolInfo->BootSect.bpb.ReservedSectors +
+      (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
+
+      Message("FS_OPENCREATE: ulDirSec=%lx", ulSec);
+
       if (ulDirCluster == pVolInfo->ulFatEof)
          {
          free(szLongName);
@@ -230,6 +237,13 @@ USHORT rc;
 #endif
       ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo,
          pDirEntry, pDirEntryStream, NULL);
+
+      Message("FS_OPENCREATE: ulCluster=%lx", ulCluster);
+
+      ulSec = pVolInfo->BootSect.bpb.ReservedSectors +
+      (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
+
+      Message("FS_OPENCREATE: ulSec=%lx", ulSec);
 
       if (pOpenInfo->pSHInfo->sOpenCount > 1)
          {
@@ -739,7 +753,7 @@ USHORT rc;
                   //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
                   {
-
+	
                   ULONGLONG ullRest;
 
                   Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);

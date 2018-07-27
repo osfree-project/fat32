@@ -739,7 +739,7 @@ int format_volume (char *path, format_params *params)
     else if (params->bFatType == FAT_TYPE_EXFAT)
     {
         USHORT usSectorSize  = (USHORT)dp.BytesPerSect;
-        USHORT usClusterSize = (USHORT)params->sectors_per_cluster;
+        ULONG ulClusterSize = (ULONG)params->sectors_per_cluster;
 
         // fill out the boot sector and fs info
         pEXFATBootSect->sJmpBoot[0]=0xEB;
@@ -779,9 +779,9 @@ int format_volume (char *path, format_params *params)
 
         pEXFATBootSect->bSectorsPerClusterShift = 0;
 
-        while (usClusterSize)
+        while (ulClusterSize)
         {
-            usClusterSize >>= 1;
+            ulClusterSize >>= 1;
             pEXFATBootSect->bSectorsPerClusterShift ++;
         }
         pEXFATBootSect->bSectorsPerClusterShift --;

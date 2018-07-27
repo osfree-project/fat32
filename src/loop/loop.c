@@ -1389,8 +1389,11 @@ APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO,
     rcont = cpIO->iorbh.RequestControl;
     next = rcont & IORB_CHAIN ? cpIO->iorbh.pNxtIORB : 0;
 
-    //cpIO->iorbh.ErrorCode = rc ? IOERR_CMD_ABORTED : 0;
-    //cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+    log_printf("IoFunc: rc=0x%x\n", rc);
+
+    ////
+    cpIO->iorbh.ErrorCode = rc ? IOERR_CMD_ABORTED : 0;
+    cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
 
     if (rcont & IORB_ASYNC_POST)
     {
@@ -1529,6 +1532,14 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
         if (rcont & IORB_ASYNC_POST)
         {
             IORB_NotifyCall((PIORBH)cpIO);
+            //if (! fStrat1 && init_complete)
+            //{
+            //    put_IORB((PIORBH)cpIO);
+            //}
+            //else
+            //{
+            //    IORB_NotifyCall((PIORBH)cpIO);
+            //}
         }
 
         return rc;
@@ -1537,8 +1548,8 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
     {
         rba -= 63;
 
-        cpIO->iorbh.ErrorCode = rc;
-        cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+        ////cpIO->iorbh.ErrorCode = rc;
+        ////cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
 
         rc = IoFunc(u, cpIO, rba, len, cpdata_linaddr, sg_linaddr, cmd);
 
@@ -1554,6 +1565,14 @@ rw_end:
     if (rcont & IORB_ASYNC_POST)
     {
         IORB_NotifyCall((PIORBH)cpIO);
+        //if (! fStrat1 && init_complete)
+        //{
+        //    put_IORB((PIORBH)cpIO);
+        //}
+        //else
+        //{
+        //    IORB_NotifyCall((PIORBH)cpIO);
+        //}
     }
 
     return rc;
@@ -1636,6 +1655,8 @@ APIRET _cdecl IoHook(HookData far *data)
                                            linaddr,
                                            &sg_linaddr);
 
+                log_printf("IOCM_%s: rc=%x\n", (char far *)(data->cmd == IOCM_READ ? "READ" : "WRITE"), rc);
+
                 if (rc)
                 {
                     rc = IOERR_CMD_ABORTED;
@@ -1697,6 +1718,14 @@ io_end:
     if (rcont & IORB_ASYNC_POST)
     {
         IORB_NotifyCall((PIORBH)data->cpIO);
+        //if (! fStrat1 && init_complete)
+        //{
+        //    put_IORB((PIORBH)data->cpIO);
+        //}
+        //else
+        //{
+        //    IORB_NotifyCall((PIORBH)data->cpIO);
+        //}
     }
     
     free(data);

@@ -461,7 +461,7 @@ int bdrv_open2(BlockDriverState *bs, const char *filename, int flags,
     else
         ret = drv->bdrv_open(bs, filename, open_flags);
     if ((ret == -EACCES || ret == -EPERM) && !(flags & BDRV_O_FILE)) {
-        ret = drv->bdrv_open(bs, filename, open_flags & ~BDRV_O_RDWR); ////
+        ret = drv->bdrv_open(bs, filename, open_flags & ~BDRV_O_RDWR);
         bs->read_only = 1;
     }
     if (ret < 0) {
