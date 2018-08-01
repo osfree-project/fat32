@@ -477,6 +477,9 @@ int ParseOpt(int argc, char *argv[], struct args *args)
     rc = DosQueryCurrentDisk (&ulDriveNum, &ulDriveMap);
     chDisk=(UCHAR)(ulDriveNum+'A'-1);
 
+    memset(szDir, 0, sizeof(szDir));
+    cbDir = 0;
+
     rc = DosQueryCurrentDir(0, szDir, &cbDir);
     rc = DosQueryCurrentDir(0, szDir, &cbDir);
 
