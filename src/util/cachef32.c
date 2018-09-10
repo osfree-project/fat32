@@ -38,6 +38,7 @@ PRIVATE VOID _LNK_CONV LWThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV EMThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV RWThread(PVOID ulArg);
 PRIVATE VOID _LNK_CONV RWThread2(PVOID ulArg);
+PRIVATE VOID _LNK_CONV IOThread(PVOID ulArg);
 
 PRIVATE BOOL IsDiskClean(PSZ pszDrive);
 PRIVATE BOOL DoCheckDisk(BOOL fDoCheck);
@@ -90,6 +91,7 @@ char FS_NAME[8] = "FAT32";
 #define FUNC_GET_REQ         0x14
 #define FUNC_DONE_REQ        0x15
 #define FUNC_MOUNTED         0x16
+#define FUNC_PROC_IO         0x17
 
 /******************************************************************
 *
@@ -182,6 +184,10 @@ UCHAR rgFirstInfo[256];
 
    pOptions->ulRWTID2 = _beginthread(RWThread2,NULL,32784,NULL);
    if (pOptions->ulRWTID2 == -1)
+          printf("_beginthread failed, rc = %d\n", -1);
+
+   pOptions->ulIOTID = _beginthread(IOThread,NULL,32784,NULL);
+   if (pOptions->ulIOTID == -1)
           printf("_beginthread failed, rc = %d\n", -1);
 
    ulParmSize = sizeof f32Parms;
@@ -383,7 +389,6 @@ PCPDATA pCPData = NULL;
 char *pFmt;
 APIRET rc;
 HFILE hf;
-FILE *fd;
 int ret;
 
    rc = DosAllocMem((void **)&pCPData, sizeof(CPDATA),
@@ -491,6 +496,21 @@ int ret;
    DosClose(hf);
 
    rc = DosFreeMem(pCPData);
+}
+
+/******************************************************************
+*
+******************************************************************/
+VOID _LNK_CONV IOThread(PVOID pArg)
+{
+   for (;;)
+      {
+      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_PROC_IO,
+                  NULL, 0, NULL,
+                  NULL, 0, NULL);
+
+      DosSleep(1);
+      }
 }
 
 /******************************************************************

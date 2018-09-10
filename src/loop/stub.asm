@@ -2,7 +2,7 @@
 
 extrn    DOS32FLATDS :abs
 extrn    _strategy   :near
-extrn    _IoHook     :near
+;extrn    _IoHook     :near
 
 public   _strat
 public   _code_end
@@ -69,62 +69,90 @@ _put_IORB       proc    near
                 pop     di
                 pop     es
                 pop     bp
-                ret     4
+                ret
 _put_IORB       endp
 
+                public  _get_IORB
+_get_IORB       proc    near
+                push    bp
+                mov     bp, sp
 
-                public  _notify_hook
-_notify_hook    proc    far
-                pushad
-
-                push    ds
                 push    es
+                push    di
 
-                xor     eax,eax
-                xchg    _pIORBHead,eax
-                or      eax,eax
-                jz      @@nh_exit
-                mov     bp,sp
-                push    eax
-                push    eax
-@@nh_loop:
-                les     di,[bp-8]
-                mov     eax,es:[di+18h]
-                mov     [bp-4],eax
-                call    far ptr es:[di+1Ch]
+                mov     eax, [bp+4]
 
-                mov     eax,[bp-4]
-                mov     [bp-8],eax
-                or      eax,eax
-                jnz     @@nh_loop
-                mov     sp,bp
-@@nh_exit:
+                test    eax, eax
+                jz      @@getIORB_exit
+
+                les     di, [bp+4]
+                mov     eax, es:[di+18h]
+
+           lock xchg    _pIORBHead, eax
+
+@@getIORB_exit:
+                mov     edx, eax
+                shr     edx, 16
+
+                pop     di
                 pop     es
-                pop     ds
 
-                popad
-
-    	        ret
-_notify_hook    endp
-
-                public _io_hook
-_io_hook        proc    far
-                pushad
-
-                push    ds
-                push    es
-
-                push    eax
-                call    _IoHook
-                add     sp, 4
-
-                pop     es
-                pop     ds
-
-                popad
-
+                pop     bp
                 ret
-_io_hook        endp
+_get_IORB       endp
+
+;                public  _notify_hook
+;_notify_hook    proc    far
+;                pushad
+;
+;                push    ds
+;                push    es
+;
+;                xor     eax,eax
+;                xchg    _pIORBHead,eax
+;                or      eax,eax
+;                jz      @@nh_exit
+;                mov     bp,sp
+;                push    eax
+;                push    eax
+;@@nh_loop:
+;                les     di,[bp-8]
+;                mov     eax,es:[di+18h]
+;                mov     [bp-4],eax
+;                call    far ptr es:[di+1Ch]
+;
+;                mov     eax,[bp-4]
+;                mov     [bp-8],eax
+;                or      eax,eax
+;                jnz     @@nh_loop
+;                mov     sp,bp
+;@@nh_exit:
+;                pop     es
+;                pop     ds
+;
+;                popad
+;
+;    	        ret
+;_notify_hook    endp
+;
+;                public _io_hook
+;_io_hook        proc    far
+;                pushad
+;
+;                push    ds
+;                push    es
+;
+;                push    eax
+;                call    _IoHook
+;                add     sp, 4
+;
+;                pop     es
+;                pop     ds
+;
+;                popad
+;
+;                ret
+;_io_hook        endp
 
                 public _memlcpy
 ; void memlcpy(LIN lDst, LIN lSrc, ULONG numBytes)

@@ -36,9 +36,10 @@ typedef unsigned long long ULONGLONG, *PULONGLONG;
 #define FUNC_GET_REQ         0x14
 #define FUNC_DONE_REQ        0x15
 #define FUNC_MOUNTED         0x16
+#define FUNC_PROC_IO         0x17
 
 #define FUNC_FIRST FUNC_MOUNT
-#define FUNC_LAST  FUNC_MOUNTED
+#define FUNC_LAST  FUNC_PROC_IO
 
 #define OP_OPEN  0UL
 #define OP_CLOSE 1UL
@@ -46,6 +47,25 @@ typedef unsigned long long ULONGLONG, *PULONGLONG;
 #define OP_WRITE 3UL
 
 #pragma pack(1)
+
+typedef struct _BPB0
+{
+// common for all FAT's
+BYTE   Jmp[3];
+BYTE   OemId[8];
+USHORT BytesPerSector;
+UCHAR  SectorsPerCluster;
+USHORT ReservedSectors;
+BYTE   NumberOfFATs;
+USHORT RootDirEntries;
+USHORT TotalSectors;
+BYTE   MediaDescriptor;
+USHORT SectorsPerFat;
+USHORT SectorsPerTrack;
+USHORT Heads;
+ULONG  HiddenSectors;
+ULONG  BigTotalSectors;
+} BPB0, far *PBPB0;
 
 typedef struct _exbuf
 {
@@ -133,9 +153,10 @@ void _far _cdecl _loadds iohandler(PIORB pIORB);
 void _cdecl _loadds strategy(RPH _far *reqpkt);
 void init(PRPINITIN reqpkt);
 void ioctl(RP_GENIOCTL far *reqpkt);
-void _far _cdecl notify_hook(void);
-void _far _cdecl io_hook(void);
-void _stdcall put_IORB(IORBH far *);
+//void _far _cdecl notify_hook(void);
+//void _far _cdecl io_hook(void);
+void _cdecl put_IORB(IORBH far *);
+IORBH far * _cdecl get_IORB(IORBH far *);
 int PreSetup(void);
 int PostSetup(void);
 PID queryCurrentPid(void);
@@ -143,15 +164,16 @@ LIN virtToLin(void far *p);
 APIRET daemonStarted(PEXBUF pexbuf);
 APIRET daemonStopped(void);
 int Mount(MNTOPTS far *opts);
-APIRET _cdecl IoHook(HookData far *data);
+//APIRET _cdecl IoHook(void);
 APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG rba, ULONG len,
                   LIN cpdata_linaddr, LIN sg_linaddr, USHORT cmd);
-APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd);
+//APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd);
 APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULONG rba,
             LIN sg_linaddr, LIN buf_linaddr, LIN cpdata_linaddr);
+APIRET _cdecl ExecIoReq(PIORB_EXECUTEIO cpIO);
 void _cdecl memlcpy(LIN lDst, LIN lSrc, ULONG numBytes);
-void far *malloc(ULONG size);
-void free(void far *p);
+//void far *malloc(ULONG size);
+//void free(void far *p);
 APIRET SemClear(long far *sem);
 APIRET SemSet(long far *sem);
 APIRET SemWait(long far *sem);
@@ -183,10 +205,10 @@ void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
 #define log_printf(str, ...)  if (LogPrint) (*LogPrint)("loop: " str, __VA_ARGS__)
 
-long semIoSerialize = 0;
-long semSerialize = 0;
-long semRqAvail = 0;
-long semRqDone = 0;
+long semSerialize = 0; // Serializes R/W requests
+long semRqAvail = 0;   // Signals that I/O buffer is available for processing by daemon
+long semRqDone = 0;    // Signals that R/W request is done by daemon
+long semRqQue = 0;     // Signals that there are new requests in the queue
 ULONG Device_Help = 0; // DevHelp entry point
 PID pidDaemon = 0;
 CPDATA far *pCPData = NULL;
@@ -197,8 +219,12 @@ USHORT driver_handle = 0;
 UCHAR init_complete = 0;
 ULONG io_hook_handle = 0; // Ctx Hook handle
 ULONG hook_handle = 0; // Ctx Hook handle
+UCHAR hook_is_running = 0;
 LIN ppTransferBuf;
 char fStrat1 = FALSE;
+
+USHORT spt = 63;
+USHORT heads = 255;
 
 struct unit units[8] = {0};
 
@@ -239,9 +265,9 @@ APIRET SemClear(long far *sem)
 
     (*sem)--;
 
-#ifdef DEBUG
-    log_printf("%lx\n", *sem);
-#endif
+//#ifdef DEBUG
+//    log_printf("%lx\n", *sem);
+//#endif
 
     rc = DevHelp_ProcRun((ULONG)sem, &usValue);
 
@@ -255,9 +281,9 @@ APIRET SemSet(long far *sem)
 
     (*sem)++;
 
-#ifdef DEBUG
-    log_printf("%lx\n", *sem);
-#endif
+//#ifdef DEBUG
+//    log_printf("%lx\n", *sem);
+//#endif
 
     return rc;
 }
@@ -266,9 +292,9 @@ APIRET SemWait(long far *sem)
 {
     APIRET rc = 0;
 
-#ifdef DEBUG
-    log_printf("%lx\n", *sem);
-#endif
+//#ifdef DEBUG
+//    log_printf("%lx\n", *sem);
+//#endif
 
     if (*sem >= 0)
     {
@@ -278,7 +304,7 @@ APIRET SemWait(long far *sem)
     return rc;
 }
 
-void far *malloc(ULONG size)
+/* void far *malloc(ULONG size)
 {
     PVOID sysresvd;
     APIRET rc;
@@ -291,7 +317,9 @@ void far *malloc(ULONG size)
                          &lin,
                          &sysresvd);
 
-    log_printf("VMAlloc rc=%d\n", rc);
+#ifdef DEBUG
+    //log_printf("VMAlloc rc=%d\n", rc);
+#endif
 
     if (rc)
         return NULL;
@@ -333,13 +361,17 @@ void free(void far *p)
 
     rc = DevHelp_FreeGDTSelector(SELECTOROF(p));
 
+#ifdef DEBUG
+    //log_printf("VMFree rc=%d\n", rc);
+#endif
+    
     if (rc)
     {
         return;
     }
 
     DevHelp_VMFree(lin);
-}
+} */
 
 void _cdecl _loadds strategy(RPH _far *reqpkt)
 {
@@ -461,8 +493,8 @@ void init(PRPINITIN reqpkt)
     // register as an ADD
     DevHelp_RegisterDeviceClass(ainfo.AdapterName, (PFN)iohandler, 0, 1, &devhandle);
 
-    DevHelp_AllocateCtxHook((NPFN)notify_hook, &hook_handle);
-    DevHelp_AllocateCtxHook((NPFN)io_hook, &io_hook_handle);
+    //DevHelp_AllocateCtxHook((NPFN)notify_hook, &hook_handle);
+    //DevHelp_AllocateCtxHook((NPFN)io_hook, &io_hook_handle);
 
     ((PRPINITOUT)reqpkt)->rph.Status = STATUS_DONE;
     ((PRPINITOUT)reqpkt)->CodeEnd = code_end;
@@ -481,7 +513,8 @@ void ioctl(RP_GENIOCTL far *reqpkt)
     USHORT cbData = reqpkt->DataLen;
 
 #ifdef DEBUG
-    log_printf("ioctl: cat=%x, func=%x\n", reqpkt->Category, reqpkt->Function);
+    //if (reqpkt->Category == CAT_LOOP && reqpkt->Function != FUNC_PROC_IO)
+        log_printf("ioctl: cat=%x, func=%x\n", reqpkt->Category, reqpkt->Function);
 #endif
 
     if (reqpkt->Category != CAT_LOOP  ||
@@ -643,8 +676,6 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                 break;
             }
 
-            DevHelp_SemClear((ULONG)&semSerialize);
-
             rc = SemWait(&semRqAvail);
 
             if (rc == WAIT_INTERRUPTED)
@@ -661,13 +692,36 @@ void ioctl(RP_GENIOCTL far *reqpkt)
             }
          
             rc = SemSet(&semRqAvail);
-            
+
             if (rc)
             {
                 rc = ERROR_I24_GEN_FAILURE;
                 break;
             }
             break;
+
+        case FUNC_PROC_IO:
+            {
+                PIORB_EXECUTEIO cpIO;
+
+                rc = SemWait(&semRqQue);
+
+                while (cpIO = (PIORB_EXECUTEIO)get_IORB((PIORBH)pIORBHead))
+                {
+                    ExecIoReq(cpIO);
+                }
+            
+                if (rc == WAIT_INTERRUPTED)
+                {
+                    daemonStopped();
+                    rc = ERROR_I24_CHAR_CALL_INTERRUPTED;
+                    break;
+                }
+
+                SemSet(&semRqQue);
+            }
+            break;
+
 
         default:
             rc = ERROR_I24_INVALID_PARAMETER;
@@ -676,7 +730,9 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 ioctl_exit:
     if (rc)
     {
+#ifdef DEBUG
         log_printf("ioctl: rc=%d\n", rc);
+#endif
         reqpkt->rph.Status = STDON | STERR | rc;
     }
     else
@@ -690,10 +746,8 @@ USHORT rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
-   rc = DevHelp_SemRequest((ULONG)&semSerialize, -1);
-
-   if (rc)
-      return rc;
+   //if (queryCurrentPid() == pidDaemon) // deadlock
+   //   return ERROR_INVALID_PROCID;
 
    rc = SemWait(&semRqDone);
 
@@ -702,6 +756,11 @@ USHORT rc;
        daemonStopped();
        return ERROR_INTERRUPT;
    }
+
+   if (rc)
+      return rc;
+
+   rc = DevHelp_SemRequest((ULONG)&semSerialize, -1);
 
    if (rc)
       {
@@ -740,6 +799,8 @@ USHORT usCount;
    
    if (rc)
       return rc;
+
+   DevHelp_SemClear((ULONG)&semSerialize);
 
    return NO_ERROR;
 }
@@ -815,7 +876,7 @@ BYTE far *pLock = (BYTE far *)&lock;
 
    pidDaemon = queryCurrentPid();
 
-   rc = SemClear(&semRqDone); ////
+   rc = SemClear(&semRqDone);
 
    if (rc)
       return rc;
@@ -834,18 +895,18 @@ BYTE far *pLock = (BYTE far *)&lock;
 
    SemClear(&semRqDone);
 
-   SemSet(&semRqDone); ////
-   SemSet(&semRqDone); ////
+   SemSet(&semRqDone);
+   SemSet(&semRqDone);
 
    rc = DevHelp_SemRequest((ULONG)&semSerialize, -1);
 
    if (rc)
       return rc;
 
-   rc = DevHelp_SemClear((ULONG)&semSerialize);
-
    DevHelp_VMUnLock(virtToLin(pLock));
    DevHelp_FreeGDTSelector(SELECTOROF(pCPData));
+
+   rc = DevHelp_SemClear((ULONG)&semSerialize);
 
    if (rc)
       return rc;
@@ -859,6 +920,7 @@ APIRET rc = 0;
 ULONG hf;
 int iUnitNo;
 struct unit *u;
+PBPB0 pbpb;
 
     switch (opts->usOp)
     {
@@ -926,6 +988,36 @@ struct unit *u;
             u->lock_state = 0;
             
             u->bMounted = 1;
+            
+            if (rc)
+                break;
+
+            // read the boot sector
+            rc = PreSetup();
+
+            if (rc)
+                break;
+
+            pCPData->Op = OP_READ;
+            pCPData->hf = u->hf;
+            pCPData->llOffset = (LONGLONG)u->ullOffset;
+            pCPData->cbData = 512;
+
+            rc = PostSetup();
+
+            if (rc)
+                break;
+
+            rc = pCPData->rc;
+            pbpb = (PBPB0)pCPData->Buf;
+
+            if (pbpb->SectorsPerTrack && pbpb->SectorsPerTrack < 64)
+                spt = pbpb->SectorsPerTrack;
+
+            if (pbpb->Heads && pbpb->Heads < 256)
+                heads = pbpb->Heads;
+
+            log_printf("heads=%d, spt=%d\n", heads, spt);
             break;
 
         case MOUNT_RELEASE:
@@ -1075,12 +1167,14 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
 
                         pgeo->Reserved        = 0;
 
+                        log_printf("%s: pIORB->UnitHandle=%x, u->bMounted=%x\n", (char far *)"IOCC_GEOMETRY", pIORB->UnitHandle, u->bMounted);
+
                         if (u->bMounted)
                         {
-                            pgeo->NumHeads        = 255;
-                            pgeo->SectorsPerTrack = 63;
+                            pgeo->NumHeads        = heads;
+                            pgeo->SectorsPerTrack = spt;
                             pgeo->BytesPerSector  = u->ulBytesPerSector;
-                            pgeo->TotalSectors    = u->ullSize / u->ulBytesPerSector + 63;
+                            pgeo->TotalSectors    = u->ullSize / u->ulBytesPerSector + spt;
                             pgeo->TotalCylinders  = (pgeo->TotalSectors + pgeo->NumHeads * pgeo->SectorsPerTrack - 1) 
                                 / (pgeo->NumHeads * pgeo->SectorsPerTrack);
                         }
@@ -1170,7 +1264,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                                         error = IOERR_MEDIA_CHANGED;
                                         break;
                                     }
-                                }
+                                  }
                                 error = IOERR_CMD_NOT_SUPPORTED;
                                 break;
 
@@ -1213,7 +1307,27 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             }
                         }
 
-                        rc = doio(u, cpIO, scode);
+                        //rc = doio(u, cpIO, scode);
+                        if (pidDaemon && u->bMounted)
+                        {
+                            rc = 0;
+
+                            if (rcont & IORB_ASYNC_POST)
+                            {
+                                put_IORB((PIORBH)cpIO);
+                            }
+
+                            SemClear(&semRqQue);
+                        }
+                        else
+                        {
+                            rc = IOERR_UNIT_NOT_READY;
+
+                            if (rcont & IORB_ASYNC_POST)
+                            {
+                                IORB_NotifyCall((PIORBH)cpIO);
+                            }
+                        }
 
                         if (rc)
                             error = rc;
@@ -1225,12 +1339,14 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             PSCATGATENTRY pt = cpIO->pSGList;
                             int i;
 
+#ifdef DEBUG
                             log_printf("iohandler %lx %d -> rc %d\n", cpIO->RBA, cpIO->BlockCount, error);
 
                             for (i = 0; i < cpIO->cSGList; i++)
                             {
                                 log_printf("sge: %d. %lx %lx\n", i, pt[i].ppXferBuf, pt[i].XferBufLen);
                             }
+#endif
                         }
                     }
                     break;
@@ -1336,8 +1452,12 @@ APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO,
     APIRET rc;
     USHORT rcont;
     PIORBH next;
-
-    rc = DevHelp_SemRequest((ULONG)&semIoSerialize, -1);
+    
+    if (rba > u->ullSize / u->ulBytesPerSector)
+    {
+        // rba exceeds the size of the image
+        return IOERR_RBA_LIMIT;
+    }
 
     do
     {
@@ -1386,29 +1506,6 @@ APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO,
         }
     } while (0);
 
-    rcont = cpIO->iorbh.RequestControl;
-    next = rcont & IORB_CHAIN ? cpIO->iorbh.pNxtIORB : 0;
-
-    log_printf("IoFunc: rc=0x%x\n", rc);
-
-    ////
-    cpIO->iorbh.ErrorCode = rc ? IOERR_CMD_ABORTED : 0;
-    cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
-
-    if (rcont & IORB_ASYNC_POST)
-    {
-        if (! fStrat1 && init_complete)
-        {
-            put_IORB((PIORBH)cpIO);
-        }
-        else
-        {
-            IORB_NotifyCall((PIORBH)cpIO);
-        }
-    }
-
-    rc = DevHelp_SemClear((ULONG)&semIoSerialize);
-    
     return rc;
 }
 
@@ -1418,13 +1515,12 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
 {
     APIRET rc = 0;
     USHORT rcont;
-    //ULONG  rba = cpIO->RBA;
     char far *pBuf = (char far *)&buf;
 
-    if (rba < 63)
+    if (rba < spt)
     {
         PTE far *pte;
-        ULONG Size = u->ullSize / u->ulBytesPerSector + 63;
+        ULONG Size = u->ullSize / u->ulBytesPerSector + spt;
         USHORT Cyl, Head, Sec, Cyl0;
         ULONG CRC32;
 
@@ -1438,85 +1534,83 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
 
         memset(buf, 0, sizeof(buf));
 
-        Cyl = (Size + 255 * 63 - 1) / (255 * 63);
-        //Cyl = Size / (255 * 63);
-        Head = (Size % (255 * 63)) / 63;
-        Sec = Size % 63 + 1;
+        Cyl = (Size + heads * spt - 1) / (heads * spt);
+        //Cyl = Size / (heads * spt);
+        Head = (Size % (heads * spt)) / spt;
+        Sec = Size % spt + 1;
 
         Cyl0 = Cyl;
 
         if (Cyl > 1023)
         {
             Cyl = 1023;
-            Head = 254;
-            Sec = 63;
+            Head = heads - 1;
+            Sec = spt;
         }
 
-        switch (rba)
+        if (rba == 0)
         {
-            case 0:
-                // partition table
-                pte = (PTE far *)(pBuf + 0x1be);
+            // partition table
+            pte = (PTE far *)(pBuf + 0x1be);
 
-                pte->boot_ind = 0x0;
-                pte->starting_cyl = 0;
-                pte->starting_head = 1;
-                pte->starting_sector = 1;
-                pte->system_id = 0x7;
-                pte->ending_cyl = Cyl;
-                pte->ending_head = Head;
-                pte->ending_sector = Sec;
-                pte->relative_sector = 63;
-                pte->total_sectors = Size;
+            pte->boot_ind = 0x0;
+            pte->starting_cyl = 0;
+            pte->starting_head = 1;
+            pte->starting_sector = 1;
+            pte->system_id = 0x7;
+            pte->ending_cyl = Cyl;
+            pte->ending_head = Head;
+            pte->ending_sector = Sec;
+            pte->relative_sector = spt;
+            pte->total_sectors = Size;
 
-                pBuf[u->ulBytesPerSector - 2] = 0x55;
-                pBuf[u->ulBytesPerSector - 1] = 0xaa;
-                break;
+            pBuf[u->ulBytesPerSector - 2] = 0x55;
+            pBuf[u->ulBytesPerSector - 1] = 0xaa;
+        }
+        else if (rba == spt - 1)
+        {
+            // DLAT
+            dlat = (DLA_Table_Sector far *)pBuf;
 
-            case 62:
-                // DLAT
-                dlat = (DLA_Table_Sector far *)pBuf;
+            dlat->DLA_Signature1 = DLA_TABLE_SIGNATURE1;
+            dlat->DLA_Signature2 = DLA_TABLE_SIGNATURE2;
 
-                dlat->DLA_Signature1 = DLA_TABLE_SIGNATURE1;
-                dlat->DLA_Signature2 = DLA_TABLE_SIGNATURE2;
+            dlat->Disk_Serial_Number = 0x4a93f05eUL;
+            dlat->Boot_Disk_Serial_Number = 0x4a93f05eUL;
 
-                dlat->Disk_Serial_Number = 0x4a93f05eUL;
-                dlat->Boot_Disk_Serial_Number = 0x4a93f05eUL;
+            dlat->Cylinders = Cyl0;
+            dlat->Heads_Per_Cylinder = heads;
+            dlat->Sectors_Per_Track = spt;
 
-                dlat->Cylinders = Cyl0;
-                dlat->Heads_Per_Cylinder = 255;
-                dlat->Sectors_Per_Track = 63;
+            memcpy(&dlat->Disk_Name, (char far *)"Loop Device ", 12);
+            dlat->Disk_Name[12] = u->cUnitNo + '0';
+            dlat->Disk_Name[13] = '\0';
 
-                memcpy(&dlat->Disk_Name, (char far *)"Loop Device ", 12);
-                dlat->Disk_Name[12] = u->cUnitNo + '0';
-                dlat->Disk_Name[13] = '\0';
+            dlae = (DLA_Entry far *)&dlat->DLA_Array;
 
-                dlae = (DLA_Entry far *)&dlat->DLA_Array;
+            dlae->Volume_Serial_Number = 0xfb8ed8f6UL;
+            dlae->Partition_Serial_Number = 0x824be8efUL;
 
-                dlae->Volume_Serial_Number = 0xfb8ed8f6UL;
-                dlae->Partition_Serial_Number = 0x824be8efUL;
+            dlae->Partition_Size = Size;
+            dlae->Partition_Start = spt;
 
-                dlae->Partition_Size = Size;
-                dlae->Partition_Start = 63;
+            memcpy(&dlae->Partition_Name, (char far *)"Loop Partition ", 15);
+            dlae->Partition_Name[15] = u->cUnitNo + '0';
+            dlae->Partition_Name[16] = '\0';
 
-                memcpy(&dlae->Partition_Name, (char far *)"Loop Partition ", 15);
-                dlae->Partition_Name[15] = u->cUnitNo + '0';
-                dlae->Partition_Name[16] = '\0';
+            memcpy(&dlae->Volume_Name, (char far *)"Loop Volume ", 12);
+            dlae->Volume_Name[12] = u->cUnitNo + '0';
+            dlae->Volume_Name[13] = '\0';
 
-                memcpy(&dlae->Volume_Name, (char far *)"Loop Volume ", 12);
-                dlae->Volume_Name[12] = u->cUnitNo + '0';
-                dlae->Volume_Name[13] = '\0';
+            dlae->Drive_Letter = '*';
 
-                dlae->Drive_Letter = '*';
-
-                dlat->DLA_CRC = 0;
-                CRC32 = crc32(pBuf, 0x200);
-                dlat->DLA_CRC = CRC32;
-                break;
-
-            default:
-                // zero sectors
-                break;
+            dlat->DLA_CRC = 0;
+            CRC32 = crc32(pBuf, 0x200);
+            dlat->DLA_CRC = CRC32;
+        }
+        else
+        {
+            // zero sectors
         }
 
         if (cmd == IOCM_READ)
@@ -1524,32 +1618,11 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
             memlcpy(sg_linaddr, buf_linaddr, u->ulBytesPerSector);
         }
 
-        rcont = cpIO->iorbh.RequestControl;
-
-        cpIO->iorbh.ErrorCode = rc;
-        cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
-
-        if (rcont & IORB_ASYNC_POST)
-        {
-            IORB_NotifyCall((PIORBH)cpIO);
-            //if (! fStrat1 && init_complete)
-            //{
-            //    put_IORB((PIORBH)cpIO);
-            //}
-            //else
-            //{
-            //    IORB_NotifyCall((PIORBH)cpIO);
-            //}
-        }
-
         return rc;
     }
     else
     {
-        rba -= 63;
-
-        ////cpIO->iorbh.ErrorCode = rc;
-        ////cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+        rba -= spt;
 
         rc = IoFunc(u, cpIO, rba, len, cpdata_linaddr, sg_linaddr, cmd);
 
@@ -1557,37 +1630,22 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
     }
 
 rw_end:
-    cpIO->iorbh.ErrorCode = rc;
-    cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
-
-    rcont = cpIO->iorbh.RequestControl;
-
-    if (rcont & IORB_ASYNC_POST)
-    {
-        IORB_NotifyCall((PIORBH)cpIO);
-        //if (! fStrat1 && init_complete)
-        //{
-        //    put_IORB((PIORBH)cpIO);
-        //}
-        //else
-        //{
-        //    IORB_NotifyCall((PIORBH)cpIO);
-        //}
-    }
-
+    
     return rc;
 }
 
-APIRET _cdecl IoHook(HookData far *data)
+APIRET _cdecl ExecIoReq(PIORB_EXECUTEIO cpIO)
 {
-    PSCATGATENTRY SGList = data->cpIO->pSGList;
-    USHORT cSGList = data->cpIO->cSGList;
-    ULONG rba = data->cpIO->RBA;
+    struct unit far *u = (struct unit far *)MAKEP(DS, cpIO->iorbh.UnitHandle);
+    PSCATGATENTRY SGList = cpIO->pSGList;
+    USHORT cSGList = cpIO->cSGList;
+    ULONG rba = cpIO->RBA;
     ULONG read = 0;
-    USHORT count = data->cpIO->BlockCount;
+    USHORT count = cpIO->BlockCount;
     char far *p = pCPData->Buf;
     PSCATGATENTRY sge;
-    USHORT rcont = data->cpIO->iorbh.RequestControl;
+    USHORT rcont = cpIO->iorbh.RequestControl;
+    USHORT cmd = cpIO->iorbh.CommandModifier;
     APIRET rc;
     int i;
     ULONG crc;
@@ -1603,7 +1661,11 @@ APIRET _cdecl IoHook(HookData far *data)
 
     LIN linaddr, cpdata_linaddr, sg_linaddr, buf_linaddr;
 
-    if (! data->u->bMounted || ! pidDaemon)
+    //DevHelp_SemClear((ULONG)&semIoSerialize);
+
+    log_printf("%s: , u->bMounted=%x, pidDaemon=%x\n", (char far *)"ExecIoReq", u->bMounted, pidDaemon);
+
+    if (! u->bMounted || ! pidDaemon)
     {
         rc = IOERR_UNIT_NOT_READY;
         goto io_end;
@@ -1639,7 +1701,7 @@ APIRET _cdecl IoHook(HookData far *data)
         goto io_end;
     }
 
-    switch (data->cmd)
+    switch (cmd)
     {
         case IOCM_READ:
         case IOCM_WRITE:
@@ -1655,34 +1717,36 @@ APIRET _cdecl IoHook(HookData far *data)
                                            linaddr,
                                            &sg_linaddr);
 
-                log_printf("IOCM_%s: rc=%x\n", (char far *)(data->cmd == IOCM_READ ? "READ" : "WRITE"), rc);
-
                 if (rc)
                 {
                     rc = IOERR_CMD_ABORTED;
                     break;
                 }
 
-                rc = dorw(data->u, data->cpIO, sge->XferBufLen, data->cmd, rba + read,
+                rc = dorw(u, cpIO, sge->XferBufLen, cmd, rba + read,
                           sg_linaddr, buf_linaddr, cpdata_linaddr);
-                read += sge->XferBufLen / data->cpIO->BlockSize;
+
+                if (rc)
+                    break;
+ 
+                read += sge->XferBufLen / cpIO->BlockSize;
             }
             break;
 
         case IOCM_READ_VERIFY:
-            rc = dorw(data->u, data->cpIO, data->cpIO->BlockCount * data->cpIO->BlockSize, data->cmd, rba,
+            rc = dorw(u, cpIO, cpIO->BlockCount * cpIO->BlockSize, cmd, rba,
                       sg_linaddr, buf_linaddr, cpdata_linaddr);
             break;
 
         case IOCM_WRITE_VERIFY:
             crc = crc32(pCPData->Buf, sizeof(pCPData->Buf));
-            rc = dorw(data->u, data->cpIO, data->cpIO->BlockCount * data->cpIO->BlockSize, IOCM_WRITE, rba,
+            rc = dorw(u, cpIO, cpIO->BlockCount * cpIO->BlockSize, IOCM_WRITE, rba,
                       sg_linaddr, buf_linaddr, cpdata_linaddr);
 
             if (rc)
                 break;
 
-            rc = dorw(data->u, data->cpIO, data->cpIO->BlockCount * data->cpIO->BlockSize, IOCM_READ_VERIFY, rba,
+            rc = dorw(u, cpIO, cpIO->BlockCount * cpIO->BlockSize, IOCM_READ_VERIFY, rba,
                       sg_linaddr, buf_linaddr, cpdata_linaddr);
 
             if (rc)
@@ -1701,35 +1765,36 @@ APIRET _cdecl IoHook(HookData far *data)
 
     }
 
-    if (pIORBHead)
-    {
-        //notify_hook();
-        log_printf("%s\n", (char far *)"Arm notify_hook");
-        DevHelp_ArmCtxHook(0, hook_handle);
-    }
-    
-    free(data);
-    return rc;    
-
 io_end:
-    data->cpIO->iorbh.ErrorCode = rc;
-    data->cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
+    cpIO->iorbh.ErrorCode = rc;
+    cpIO->iorbh.Status    = (rc ? IORB_ERROR : 0) | IORB_DONE;
 
     if (rcont & IORB_ASYNC_POST)
     {
-        IORB_NotifyCall((PIORBH)data->cpIO);
-        //if (! fStrat1 && init_complete)
-        //{
-        //    put_IORB((PIORBH)data->cpIO);
-        //}
-        //else
-        //{
-        //    IORB_NotifyCall((PIORBH)data->cpIO);
-        //}
+        IORB_NotifyCall((PIORBH)cpIO);
     }
+
+#ifdef DEBUG
+    log_printf("ExecIoReq: rc=%d\n", rc);
+#endif
+    //free(data);
+    return rc;
+}
+
+/* APIRET _cdecl IoHook(void)
+{
+    PIORB_EXECUTEIO cpIO;
+
+    hook_is_running = 1;
     
-    free(data);
-    return rc;    
+    while (cpIO = (PIORB_EXECUTEIO)get_IORB())
+    {
+        ExecIoReq(cpIO);
+    }
+
+    hook_is_running = 0;
+
+    return 0;
 }
 
 APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd)
@@ -1748,13 +1813,15 @@ APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd)
     hookdata->cpIO = cpIO;
     hookdata->cmd = cmd;
 
+    // wait until previously armed hook starts executing
+    //DevHelp_SemRequest((ULONG)&semIoSerialize, -1);
+
     if (init_complete)
     {
-        log_printf("%s\n", (char far *)"Arm io_hook");
         DevHelp_ArmCtxHook((ULONG)hookdata, io_hook_handle);
     }
     else
         IoHook(hookdata);
 
     return rc;
-}
+} */
