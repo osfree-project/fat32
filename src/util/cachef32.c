@@ -509,7 +509,7 @@ VOID _LNK_CONV IOThread(PVOID pArg)
                   NULL, 0, NULL,
                   NULL, 0, NULL);
 
-      DosSleep(1);
+      DosSleep(0);
       }
 }
 

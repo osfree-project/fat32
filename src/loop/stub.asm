@@ -101,59 +101,6 @@ _get_IORB       proc    near
                 ret
 _get_IORB       endp
 
-;                public  _notify_hook
-;_notify_hook    proc    far
-;                pushad
-;
-;                push    ds
-;                push    es
-;
-;                xor     eax,eax
-;                xchg    _pIORBHead,eax
-;                or      eax,eax
-;                jz      @@nh_exit
-;                mov     bp,sp
-;                push    eax
-;                push    eax
-;@@nh_loop:
-;                les     di,[bp-8]
-;                mov     eax,es:[di+18h]
-;                mov     [bp-4],eax
-;                call    far ptr es:[di+1Ch]
-;
-;                mov     eax,[bp-4]
-;                mov     [bp-8],eax
-;                or      eax,eax
-;                jnz     @@nh_loop
-;                mov     sp,bp
-;@@nh_exit:
-;                pop     es
-;                pop     ds
-;
-;                popad
-;
-;    	        ret
-;_notify_hook    endp
-;
-;                public _io_hook
-;_io_hook        proc    far
-;                pushad
-;
-;                push    ds
-;                push    es
-;
-;                push    eax
-;                call    _IoHook
-;                add     sp, 4
-;
-;                pop     es
-;                pop     ds
-;
-;                popad
-;
-;                ret
-;_io_hook        endp
-
                 public _memlcpy
 ; void memlcpy(LIN lDst, LIN lSrc, ULONG numBytes)
 _memlcpy        proc   near

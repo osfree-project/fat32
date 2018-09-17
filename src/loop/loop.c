@@ -153,8 +153,6 @@ void _far _cdecl _loadds iohandler(PIORB pIORB);
 void _cdecl _loadds strategy(RPH _far *reqpkt);
 void init(PRPINITIN reqpkt);
 void ioctl(RP_GENIOCTL far *reqpkt);
-//void _far _cdecl notify_hook(void);
-//void _far _cdecl io_hook(void);
 void _cdecl put_IORB(IORBH far *);
 IORBH far * _cdecl get_IORB(IORBH far *);
 int PreSetup(void);
@@ -164,16 +162,12 @@ LIN virtToLin(void far *p);
 APIRET daemonStarted(PEXBUF pexbuf);
 APIRET daemonStopped(void);
 int Mount(MNTOPTS far *opts);
-//APIRET _cdecl IoHook(void);
 APIRET _cdecl IoFunc(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG rba, ULONG len,
                   LIN cpdata_linaddr, LIN sg_linaddr, USHORT cmd);
-//APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd);
 APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULONG rba,
             LIN sg_linaddr, LIN buf_linaddr, LIN cpdata_linaddr);
 APIRET _cdecl ExecIoReq(PIORB_EXECUTEIO cpIO);
 void _cdecl memlcpy(LIN lDst, LIN lSrc, ULONG numBytes);
-//void far *malloc(ULONG size);
-//void free(void far *p);
 APIRET SemClear(long far *sem);
 APIRET SemSet(long far *sem);
 APIRET SemWait(long far *sem);
@@ -218,8 +212,6 @@ ULONG open_refcnt = 0; // open reference count
 USHORT driver_handle = 0;
 UCHAR init_complete = 0;
 ULONG io_hook_handle = 0; // Ctx Hook handle
-ULONG hook_handle = 0; // Ctx Hook handle
-UCHAR hook_is_running = 0;
 LIN ppTransferBuf;
 char fStrat1 = FALSE;
 
@@ -303,75 +295,6 @@ APIRET SemWait(long far *sem)
 
     return rc;
 }
-
-/* void far *malloc(ULONG size)
-{
-    PVOID sysresvd;
-    APIRET rc;
-    LIN lin;
-    SEL sel;
-
-    rc = DevHelp_VMAlloc(VMDHA_FIXED,
-                         size,
-                         -1,
-                         &lin,
-                         &sysresvd);
-
-#ifdef DEBUG
-    //log_printf("VMAlloc rc=%d\n", rc);
-#endif
-
-    if (rc)
-        return NULL;
-
-    rc = DevHelp_AllocGDTSelector(&sel, 1);
-
-    if (rc)
-    {
-        DevHelp_VMFree(lin);
-        return NULL;
-    }
-
-    rc = DevHelp_LinToGDTSelector(sel,
-                                  lin,
-                                  size);
-
-    if (rc)
-    {
-        DevHelp_FreeGDTSelector(sel);
-        DevHelp_VMFree(lin);
-    }
-
-    return MAKEP(sel, 0);
-}
-
-void free(void far *p)
-{
-    APIRET rc;
-    LIN lin;
-
-    rc = DevHelp_VirtToLin(SELECTOROF(p),
-                           OFFSETOF(p),
-                           &lin);
-
-    if (rc)
-    {
-        return;
-    }
-
-    rc = DevHelp_FreeGDTSelector(SELECTOROF(p));
-
-#ifdef DEBUG
-    //log_printf("VMFree rc=%d\n", rc);
-#endif
-    
-    if (rc)
-    {
-        return;
-    }
-
-    DevHelp_VMFree(lin);
-} */
 
 void _cdecl _loadds strategy(RPH _far *reqpkt)
 {
@@ -493,9 +416,6 @@ void init(PRPINITIN reqpkt)
     // register as an ADD
     DevHelp_RegisterDeviceClass(ainfo.AdapterName, (PFN)iohandler, 0, 1, &devhandle);
 
-    //DevHelp_AllocateCtxHook((NPFN)notify_hook, &hook_handle);
-    //DevHelp_AllocateCtxHook((NPFN)io_hook, &io_hook_handle);
-
     ((PRPINITOUT)reqpkt)->rph.Status = STATUS_DONE;
     ((PRPINITOUT)reqpkt)->CodeEnd = code_end;
     ((PRPINITOUT)reqpkt)->DataEnd = data_end;
@@ -513,7 +433,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
     USHORT cbData = reqpkt->DataLen;
 
 #ifdef DEBUG
-    //if (reqpkt->Category == CAT_LOOP && reqpkt->Function != FUNC_PROC_IO)
+    if (reqpkt->Category == CAT_LOOP && reqpkt->Function != FUNC_PROC_IO)
         log_printf("ioctl: cat=%x, func=%x\n", reqpkt->Category, reqpkt->Function);
 #endif
 
@@ -706,11 +626,6 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
                 rc = SemWait(&semRqQue);
 
-                while (cpIO = (PIORB_EXECUTEIO)get_IORB((PIORBH)pIORBHead))
-                {
-                    ExecIoReq(cpIO);
-                }
-            
                 if (rc == WAIT_INTERRUPTED)
                 {
                     daemonStopped();
@@ -718,6 +633,11 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                     break;
                 }
 
+                while (cpIO = (PIORB_EXECUTEIO)get_IORB((PIORBH)pIORBHead))
+                {
+                    ExecIoReq(cpIO);
+                }
+            
                 SemSet(&semRqQue);
             }
             break;
@@ -963,7 +883,7 @@ PBPB0 pbpb;
             }
 
             // find first free slot
-            for (iUnitNo = 0; iUnitNo < 8; iUnitNo++)
+            for (iUnitNo = 0; iUnitNo < ainfo.AdapterUnits; iUnitNo++)
             {
                 u = &units[iUnitNo];
 
@@ -971,7 +891,7 @@ PBPB0 pbpb;
                     break;
             }
 
-            if (iUnitNo == 8)
+            if (iUnitNo == ainfo.AdapterUnits)
             {
                 rc = 1; // @todo better error
                 break;
@@ -1167,8 +1087,6 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
 
                         pgeo->Reserved        = 0;
 
-                        log_printf("%s: pIORB->UnitHandle=%x, u->bMounted=%x\n", (char far *)"IOCC_GEOMETRY", pIORB->UnitHandle, u->bMounted);
-
                         if (u->bMounted)
                         {
                             pgeo->NumHeads        = heads;
@@ -1307,7 +1225,6 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             }
                         }
 
-                        //rc = doio(u, cpIO, scode);
                         if (pidDaemon && u->bMounted)
                         {
                             rc = 0;
@@ -1321,12 +1238,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         }
                         else
                         {
-                            rc = IOERR_UNIT_NOT_READY;
-
-                            if (rcont & IORB_ASYNC_POST)
-                            {
-                                IORB_NotifyCall((PIORBH)cpIO);
-                            }
+                            ExecIoReq(cpIO);
                         }
 
                         if (rc)
@@ -1334,7 +1246,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         else
                             cpIO->BlocksXferred = cpIO->BlockCount;
 
-                        //if (error)
+                        if (error)
                         {
                             PSCATGATENTRY pt = cpIO->pSGList;
                             int i;
@@ -1661,10 +1573,6 @@ APIRET _cdecl ExecIoReq(PIORB_EXECUTEIO cpIO)
 
     LIN linaddr, cpdata_linaddr, sg_linaddr, buf_linaddr;
 
-    //DevHelp_SemClear((ULONG)&semIoSerialize);
-
-    log_printf("%s: , u->bMounted=%x, pidDaemon=%x\n", (char far *)"ExecIoReq", u->bMounted, pidDaemon);
-
     if (! u->bMounted || ! pidDaemon)
     {
         rc = IOERR_UNIT_NOT_READY;
@@ -1777,51 +1685,5 @@ io_end:
 #ifdef DEBUG
     log_printf("ExecIoReq: rc=%d\n", rc);
 #endif
-    //free(data);
     return rc;
 }
-
-/* APIRET _cdecl IoHook(void)
-{
-    PIORB_EXECUTEIO cpIO;
-
-    hook_is_running = 1;
-    
-    while (cpIO = (PIORB_EXECUTEIO)get_IORB())
-    {
-        ExecIoReq(cpIO);
-    }
-
-    hook_is_running = 0;
-
-    return 0;
-}
-
-APIRET doio(struct unit *u, PIORB_EXECUTEIO cpIO, USHORT cmd)
-{
-    HookData far *hookdata;
-    APIRET rc = 0;
-
-    hookdata = (HookData far *)malloc(sizeof(HookData));
-
-    if (! hookdata)
-    {
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-
-    hookdata->u = MAKEP(DS, u);
-    hookdata->cpIO = cpIO;
-    hookdata->cmd = cmd;
-
-    // wait until previously armed hook starts executing
-    //DevHelp_SemRequest((ULONG)&semIoSerialize, -1);
-
-    if (init_complete)
-    {
-        DevHelp_ArmCtxHook((ULONG)hookdata, io_hook_handle);
-    }
-    else
-        IoHook(hookdata);
-
-    return rc;
-} */

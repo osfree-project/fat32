@@ -17,8 +17,7 @@ TARGETS=$(BINROOT)\test\dumpmsg.exe $(BINROOT)\test\dumpmsg.sym &
         $(BINROOT)\test\mtest.exe $(BINROOT)\test\mtest.sym &
         $(BINROOT)\test\nls.exe $(BINROOT)\test\nls.sym &
         $(BINROOT)\test\qpath.exe $(BINROOT)\test\qpath.sym &
-        $(BINROOT)\test\ttt.exe $(BINROOT)\test\ttt.sym &
-        $(BINROOT)\test\mounted.exe $(BINROOT)\test\mounted.sym
+        $(BINROOT)\test\ttt.exe $(BINROOT)\test\ttt.sym
 
 OBJS1=$(PROJ_BLD)\dumpmsg.obj
 OBJS2=$(PROJ_BLD)\info.obj
@@ -28,7 +27,6 @@ OBJS5=$(PROJ_BLD)\mtest.obj
 OBJS6=$(PROJ_BLD)\nls.obj
 OBJS7=$(PROJ_BLD)\qpath.obj
 OBJS8=$(PROJ_BLD)\ttt.obj
-OBJS9=$(PROJ_BLD)\mounted.obj
 
 SYS=os2v2
 
@@ -48,8 +46,6 @@ $(BINROOT)\test\qpath.exe:
 
 $(BINROOT)\test\ttt.exe:
 
-$(BINROOT)\test\mounted.exe:
-
 $(BINROOT)\test\dumpmsg.sym:
 
 $(BINROOT)\test\info.sym:
@@ -66,8 +62,6 @@ $(BINROOT)\test\qpath.sym:
 
 $(BINROOT)\test\ttt.sym:
 
-$(BINROOT)\test\mounted.sym:
-
 $(PROJ_BLD)\dumpmsg.lnk: $(PROJ_BLD)\dumpmsg.ols
 
 $(PROJ_BLD)\info.lnk: $(PROJ_BLD)\info.ols
@@ -83,8 +77,6 @@ $(PROJ_BLD)\nls.lnk: $(PROJ_BLD)\nls.ols
 $(PROJ_BLD)\qpath.lnk: $(PROJ_BLD)\qpath.ols
 
 $(PROJ_BLD)\ttt.lnk: $(PROJ_BLD)\ttt.ols
-
-$(PROJ_BLD)\mounted.lnk: $(PROJ_BLD)\mounted.ols
 
 $(PROJ_BLD)\dumpmsg.ols: $(OBJS1) makefile.wcc ..\makefile.mk
  @%create $^@
@@ -117,10 +109,6 @@ $(PROJ_BLD)\qpath.ols: $(OBJS7) makefile.wcc ..\makefile.mk
 $(PROJ_BLD)\ttt.ols: $(OBJS8) makefile.wcc ..\makefile.mk
  @%create $^@
  @for %e in ($(OBJS8)) do @%append $^@ FILE %e
-
-$(PROJ_BLD)\mounted.ols: $(OBJS9) makefile.wcc ..\makefile.mk
- @%create $^@
- @for %e in ($(OBJS9)) do @%append $^@ FILE %e
 
 .ols.lnk:
  @%create $@
