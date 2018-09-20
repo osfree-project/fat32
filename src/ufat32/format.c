@@ -540,7 +540,7 @@ int format_volume (char *path, format_params *params)
          FALSE )
 #endif
     {
-        die ( "The specified file system does not support the current volume size.\n", -2 );
+        die ( "The specified file system does not support \nthe current volume size.\n", -2 );
     }
 
     // Sanity check for a cluster count of >2^28, since the upper 4 bits of the cluster values in 
@@ -606,7 +606,7 @@ int format_volume (char *path, format_params *params)
     {
         // I suspect that most FAT32 implementations would mount this volume just fine, but the
         // spec says that we shouldn't do this, so we won't
-        die ( "This drive is too small for FAT32 - there must be at least 64K clusters\n", -1);
+        die ( "This drive is too small for FAT32 - there must be \nat least 64K clusters\n", -1);
     }
 
     if ( qTotalSectors >= 0xffffffff )

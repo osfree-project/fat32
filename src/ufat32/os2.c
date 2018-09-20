@@ -89,7 +89,6 @@ DWORD get_vol_id (void)
 
 void die ( char * error, DWORD rc )
 {
-    char pszMsg[MAX_MESSAGE];
     APIRET ret;
    
     // Format failed
@@ -98,7 +97,7 @@ void die ( char * error, DWORD rc )
     show_message("%s\n", 0, 0, 1, get_error(rc));
 
     if ( rc )
-        show_message("Error code: %lu\n", 0, 0, 1, rc);
+        show_message("Error code: %d\n", 0, 0, 1, rc);
 
     cleanup();
     exit ( rc );

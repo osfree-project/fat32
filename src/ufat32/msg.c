@@ -9,13 +9,15 @@ PSZ GetOS2Error(USHORT rc)
 {
 static BYTE szErrorBuf[MAX_MESSAGE] = "";
 static BYTE szErrNo[12] = "";
-ULONG rc2;
+BYTE szErrorBuf2[MAX_MESSAGE] = "";
+ULONG rc2, ret;
 ULONG ulReplySize;
 
    memset(szErrorBuf, 0, sizeof(szErrorBuf));
    if (rc)
       {
-      sprintf(szErrNo, "SYS%4.4u: ", rc);
+      sprintf(szErrNo, "SYS%05u: ", rc);
+      //sprintf(szErrNo, "SYS%4.4u: ", rc);
       rc2 = DosGetMessage(NULL, 0, szErrorBuf, sizeof(szErrorBuf),
                           rc, "OSO001.MSG", &ulReplySize);
       switch (rc2)
@@ -24,19 +26,25 @@ ULONG ulReplySize;
             strcat(szErrorBuf, "\n");
             break;
          case ERROR_FILE_NOT_FOUND :
-            sprintf(szErrorBuf, "SYS%04u (Message file not found!)", rc);
+            sprintf(szErrorBuf, "SYS%05u: Message file not found!\n", rc);
             break;
          default:
-            sprintf(szErrorBuf, "SYS%04u (Error %d while retrieving message text!)", rc, rc2);
+            sprintf(szErrorBuf, "SYS%05u: Error %d while retrieving message text!\n", rc, rc2);
             break;
          }
-      DosGetMessage(NULL,
+
+         ret = DosGetMessage(NULL,
          0,
-         szErrorBuf + strlen(szErrorBuf),
-         sizeof(szErrorBuf) - strlen(szErrorBuf),
+         szErrorBuf2,
+         sizeof(szErrorBuf2),
          rc,
          "OSO001H.MSG",
          &ulReplySize);
+
+         if (! ret)
+         {
+            strcpy(szErrorBuf + strlen(szErrorBuf), szErrorBuf2);
+         }
       }
 
    if (memicmp(szErrorBuf, "SYS", 3))
@@ -67,10 +75,10 @@ PSZ    pszMess;
       case NO_ERROR:
          break;
       case ERROR_FILE_NOT_FOUND :
-         sprintf(szMessage, "SYS%04u (Message file not found!)", usNr);
+         sprintf(szMessage, "SYS%05u (Message file not found!)", usNr);
          break;
       default:
-         sprintf(szMessage, "SYS%04u (Error %d while retrieving message text!)", usNr, rc);
+         sprintf(szMessage, "SYS%05u (Error %d while retrieving message text!)", usNr, rc);
          break;
       }
    if (rc)

@@ -490,6 +490,9 @@ ULONG cbData;
                        FAT32_MOUNTED, FS_NAME, -1, FSCTL_FSDNAME);
       }
 
+      if (! rc && Data.ucIsMounted && ! isUnmount)
+          return rc;
+
       rc = ParseOpt(argc, argv, &args);
 
       if (rc)
