@@ -109,45 +109,4 @@ $(PROJ_BLD)\f32mount.ols: $(OBJS6) makefile.wcc ..\makefile.mk
  @%append $@ OPTION MAP=$[*.wmp
  @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s # ,zlib,qemu-block
-!if 1
- @%append $@ IMPORT &
-    bdrv_init qemuimg.bdrv_init, &
-    bdrv_new qemuimg.bdrv_new, &
-    bdrv_find_format qemuimg.bdrv_find_format, &
-    bdrv_open qemuimg.bdrv_open, &
-    bdrv_open2 qemuimg.bdrv_open2, &
-    bdrv_delete qemuimg.bdrv_delete, &
-    bdrv_pread qemuimg.bdrv_pread, &
-    bdrv_pwrite qemuimg.bdrv_pwrite, &
-    bdrv_iterate_format qemuimg.bdrv_iterate_format, &
-    bdrv_is_encrypted qemuimg.bdrv_is_encrypted, &
-    bdrv_set_key qemuimg.bdrv_set_key, &
-    bdrv_create qemuimg.bdrv_create, &
-    bdrv_get_geometry qemuimg.bdrv_get_geometry, &
-    bdrv_check qemuimg.bdrv_check, &
-    bdrv_commit qemuimg.bdrv_commit, &
-    bdrv_get_info qemuimg.bdrv_get_info, &
-    bdrv_read qemuimg.bdrv_read, &
-    bdrv_write qemuimg.bdrv_write, &
-    bdrv_write_compressed qemuimg.bdrv_write_compressed, &
-    bdrv_is_allocated qemuimg.bdrv_is_allocated, &
-    bdrv_snapshot_list qemuimg.bdrv_snapshot_list, &
-    bdrv_snapshot_dump qemuimg.bdrv_snapshot_dump, &
-    bdrv_get_format qemuimg.bdrv_get_format, &
-    bdrv_get_backing_filename qemuimg.bdrv_get_backing_filename, &
-    bdrv_snapshot_create qemuimg.bdrv_snapshot_create, &
-    bdrv_snapshot_goto qemuimg.bdrv_snapshot_goto, &
-    bdrv_snapshot_delete qemuimg.bdrv_snapshot_delete, &
-    get_option_parameter qemuimg.get_option_parameter, &
-    set_option_parameter qemuimg.set_option_parameter, &
-    set_option_parameter_int qemuimg.set_option_parameter_int, &
-    parse_option_parameters qemuimg.parse_option_parameters, &
-    print_option_parameters qemuimg.print_option_parameters, &
-    free_option_parameters qemuimg.free_option_parameters, &
-    print_option_help qemuimg.print_option_help, &
-    get_human_readable_size qemuimg.get_human_readable_size, &
-    qemu_free qemuimg.qemu_free, &
-    path_combine qemuimg.path_combine, &
-    pstrcpy qemuimg.pstrcpy
-!endif
  @%append $@ @$[@

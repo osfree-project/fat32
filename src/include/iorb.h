@@ -234,6 +234,7 @@
  #define UF_FORCE                0x0100
  #define UF_NOTPRESENT           0x0200
  #define UF_LARGE_FLOPPY         0x0400
+ #define UF_USB_DEVICE           0x0800
 
  typedef struct _UNITINFO
  {

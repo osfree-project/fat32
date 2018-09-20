@@ -94,6 +94,17 @@ struct args
 
 #pragma pack()
 
+void (*pbdrv_init)(void);
+BlockDriverState *(*pbdrv_new)(const char *device_name);
+BlockDriver *(*pbdrv_find_format)(const char *format_name);
+void (*pbdrv_delete)(BlockDriverState *bs);
+int (*pbdrv_open2)(BlockDriverState *bs, const char *filename, int flags,
+                   BlockDriver *drv);
+int (*pbdrv_pread)(BlockDriverState *bs, int64_t offset,
+                   void *buf, int count1);
+int (*pbdrv_pwrite)(BlockDriverState *bs, int64_t offset,
+                    void *buf, int count1);
+
 int ParseOpt(int argc, char *argv[], struct args *args);
 int ProcessFsTab(BOOL isUnmount);
 int Mount(struct args *args);
@@ -108,6 +119,8 @@ APIRET parsePartTable(char *pszFilename,
 BlockDriverState *bs;
 BlockDriver *drv = NULL;
 APIRET rc = NO_ERROR;
+char szName[260];
+HMODULE hmod;
 HFILE hf;
 ULONG ulAction, cbActual;
 LONGLONG ibActual;
@@ -115,7 +128,58 @@ struct _MBR mbr;
 PTE pte;
 int i;
 
-   bs = bdrv_new("");
+   rc = DosLoadModule(szName, sizeof(szName), "QEMUIMG", &hmod);
+   
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_init",         (PFN *)&pbdrv_init);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_new",          (PFN *)&pbdrv_new);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_find_format",  (PFN *)&pbdrv_find_format);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_delete",       (PFN *)&pbdrv_delete);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_open2",        (PFN *)&pbdrv_open2);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_pread",        (PFN *)&pbdrv_pread);
+
+   if (rc)
+      {
+      return rc;
+      }
+
+   (*pbdrv_init)();
+
+   bs = (*pbdrv_new)("");
 
    if (! bs)
       {
@@ -124,18 +188,18 @@ int i;
 
    if (pFmt)
       {
-      drv = bdrv_find_format(pFmt);
+      drv = (*pbdrv_find_format)(pFmt);
       }
 
-   if (bdrv_open2(bs, pszFilename, 0, drv) < 0)
+   if ((*pbdrv_open2)(bs, pszFilename, 0, drv) < 0)
       {
-      bdrv_delete(bs);
+      (*pbdrv_delete)(bs);
       return ERROR_FILE_NOT_FOUND;
       }
 
-   if (bdrv_pread(bs, *pullOffset, (char *)&mbr, 512) < 0)
+   if ((*pbdrv_pread)(bs, *pullOffset, (char *)&mbr, 512) < 0)
       {
-      bdrv_delete(bs);
+      (*pbdrv_delete)(bs);
       return ERROR_READ_FAULT;
       }
 
@@ -161,7 +225,7 @@ int i;
       if (i == 4)
       {
          printf("Extended partition does not exist!\n");
-         bdrv_delete(bs);
+         (*pbdrv_delete)(bs);
          return ERROR_FILE_NOT_FOUND;
       }
 
@@ -170,7 +234,7 @@ int i;
 
       do
       {
-         if (bdrv_pread(bs, *pullOffset, (char *)&mbr, 512) < 0)
+         if ((*pbdrv_pread)(bs, *pullOffset, (char *)&mbr, 512) < 0)
             {
             rc = ERROR_READ_FAULT;
             break;
@@ -188,7 +252,7 @@ int i;
    }
 
    *pullSize = (ULONGLONG)pte.total_sectors * *pulSecSize;
-   bdrv_delete(bs);
+   (*pbdrv_delete)(bs);
 
    return rc;
 }
@@ -847,8 +911,6 @@ int main(int argc, char *argv[])
     struct args args;
     APIRET rc = NO_ERROR;
     
-    bdrv_init();
-
     rc = ParseOpt(argc, argv, &args);
     
     if (rc)

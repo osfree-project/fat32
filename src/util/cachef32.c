@@ -56,6 +56,17 @@ PRIVATE void ProcessFsTab(BOOL isUnmount);
 int remount_all(void);
 
 BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource);
+   
+void (*pbdrv_init)(void);
+BlockDriverState *(*pbdrv_new)(const char *device_name);
+BlockDriver *(*pbdrv_find_format)(const char *format_name);
+void (*pbdrv_delete)(BlockDriverState *bs);
+int (*pbdrv_open2)(BlockDriverState *bs, const char *filename, int flags,
+                   BlockDriver *drv);
+int (*pbdrv_pread)(BlockDriverState *bs, int64_t offset,
+                   void *buf, int count1);
+int (*pbdrv_pwrite)(BlockDriverState *bs, int64_t offset,
+                    void *buf, int count1);
 
 HMODULE   hMod = 0;
 
@@ -269,18 +280,78 @@ EXBUF exbuf;
 ULONG ulParmSize = sizeof(EXBUF);
 ULONG cbActual;
 ULONG ulAction;
+char szName[260];
+HMODULE hmod;
 PCPDATA pCPData = NULL;
 char *pFmt;
 APIRET rc;
 int ret;
 
-   bdrv_init();
+   rc = DosLoadModule(szName, sizeof(szName), "QEMUIMG", &hmod);
+   
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_init",         (PFN *)&pbdrv_init);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_new",          (PFN *)&pbdrv_new);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_find_format",  (PFN *)&pbdrv_find_format);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_delete",       (PFN *)&pbdrv_delete);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_open2",        (PFN *)&pbdrv_open2);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_pread",        (PFN *)&pbdrv_pread);
+
+   if (rc)
+      {
+      return;
+      }
+
+   rc = DosQueryProcAddr(hmod, 0, "bdrv_pwrite",       (PFN *)&pbdrv_pwrite);
+
+   if (rc)
+      {
+      return;
+      }
+
+   (*pbdrv_init)();
 
    rc = DosAllocMem((void **)&pCPData, sizeof(CPDATA),
                     PAG_COMMIT | PAG_READ | PAG_WRITE);
 
    if (rc)
+      {
       return;
+      }
 
    memset(pCPData, 0, sizeof(CPDATA));
 
@@ -291,7 +362,10 @@ int ret;
                  FAT32_DAEMON_STARTED, FS_NAME, -1, FSCTL_FSDNAME);
 
    if (rc)
+      {
+      DosFreeMem(pCPData);
       return;
+      }
 
    rc = DosFSCtl(NULL, 0, NULL,
                  NULL, 0, NULL,
@@ -304,7 +378,7 @@ int ret;
          switch (pCPData->Op)
             {
             case OP_OPEN:
-               bs = bdrv_new("");
+               bs = (*pbdrv_new)("");
 
                if (! bs)
                   {
@@ -316,10 +390,10 @@ int ret;
 
                if (*pFmt)
                   {
-                  drv = bdrv_find_format(pFmt);
+                  drv = (*pbdrv_find_format)(pFmt);
                   }
 
-               if ((ret = bdrv_open2(bs, pCPData->Buf, 0, drv)) < 0)
+               if ((ret = (*pbdrv_open2)(bs, pCPData->Buf, 0, drv)) < 0)
                   {
                   rc = ERROR_FILE_NOT_FOUND;
                   break;
@@ -330,13 +404,13 @@ int ret;
             case OP_CLOSE:
                bs = (BlockDriverState *)pCPData->hf;
 
-               bdrv_delete(bs);
+               (*pbdrv_delete)(bs);
                break;
 
             case OP_READ:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_pread(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+               if ((*pbdrv_pread)(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_READ_FAULT;
                   break;
@@ -348,7 +422,7 @@ int ret;
             case OP_WRITE:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_pwrite(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+               if ((*pbdrv_pwrite)(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_WRITE_FAULT;
                   break;
@@ -395,7 +469,9 @@ int ret;
                     PAG_COMMIT | PAG_READ | PAG_WRITE);
 
    if (rc)
+      {
       return;
+      }
 
    memset(pCPData, 0, sizeof(CPDATA));
 
@@ -404,7 +480,10 @@ int ret;
                 OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, NULL);
 
    if (rc)
+      {
+      DosFreeMem(pCPData);
       return;
+      }
 
    hLoop = hf;
 
@@ -415,7 +494,11 @@ int ret;
                     NULL, 0, NULL);
 
    if (rc)
+      {
+      DosClose(hf);
+      DosFreeMem(pCPData);
       return;
+      }
 
    rc = DosDevIOCtl(hf, CAT_LOOP, FUNC_GET_REQ, 
                     NULL, 0, NULL,
@@ -428,7 +511,7 @@ int ret;
          switch (pCPData->Op)
             {
             case OP_OPEN:
-               bs = bdrv_new("");
+               bs = (*pbdrv_new)("");
 
                if (! bs)
                   {
@@ -440,10 +523,10 @@ int ret;
 
                if (*pFmt)
                   {
-                  drv = bdrv_find_format(pFmt);
+                  drv = (*pbdrv_find_format)(pFmt);
                   }
 
-               if ((ret = bdrv_open2(bs, pCPData->Buf, 0, drv)) < 0)
+               if ((ret = (*pbdrv_open2)(bs, pCPData->Buf, 0, drv)) < 0)
                   {
                   rc = ERROR_FILE_NOT_FOUND;
                   break;
@@ -454,13 +537,13 @@ int ret;
             case OP_CLOSE:
                bs = (BlockDriverState *)pCPData->hf;
 
-               bdrv_delete(bs);
+               (*pbdrv_delete)(bs);
                break;
 
             case OP_READ:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_pread(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+               if ((*pbdrv_pread)(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_READ_FAULT;
                   break;
@@ -472,7 +555,7 @@ int ret;
             case OP_WRITE:
                bs = (BlockDriverState *)pCPData->hf;
 
-               if (bdrv_pwrite(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
+               if ((*pbdrv_pwrite)(bs, pCPData->llOffset, pCPData->Buf, pCPData->cbData) < 0)
                   {
                   rc = ERROR_WRITE_FAULT;
                   break;
@@ -503,11 +586,23 @@ int ret;
 ******************************************************************/
 VOID _LNK_CONV IOThread(PVOID pArg)
 {
-   for (;;)
+   APIRET rc;
+
+   if (! hLoop)
       {
-      DosDevIOCtl(hLoop, CAT_LOOP, FUNC_PROC_IO,
-                  NULL, 0, NULL,
-                  NULL, 0, NULL);
+      return;
+      }
+
+   while (! pOptions->fTerminate)
+      {
+      rc = DosDevIOCtl(hLoop, CAT_LOOP, FUNC_PROC_IO,
+                       NULL, 0, NULL,
+                       NULL, 0, NULL);
+
+      if (rc)
+         {
+         break;
+         }
 
       DosSleep(0);
       }

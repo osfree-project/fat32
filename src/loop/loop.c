@@ -212,7 +212,6 @@ ULONG open_refcnt = 0; // open reference count
 USHORT driver_handle = 0;
 UCHAR init_complete = 0;
 ULONG io_hook_handle = 0; // Ctx Hook handle
-LIN ppTransferBuf;
 char fStrat1 = FALSE;
 
 USHORT spt = 63;
@@ -227,18 +226,23 @@ ADAPTERINFO ainfo = {
    16,
    0,
    // unit info
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[0], 0, UIB_TYPE_DISK, 16, 0, 0 }
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[0], 0, UIB_TYPE_DISK, 16, 0, 0 }
 };
 
 UNITINFO u2[7] = {
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[1], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[2], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[3], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[4], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[5], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[6], 0, UIB_TYPE_DISK, 16, 0, 0 },
-   { 0, 0, UF_NOSCSI_SUPT | UF_REMOVABLE, 0, (USHORT)&units[7], 0, UIB_TYPE_DISK, 16, 0, 0 }
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[1], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[2], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[3], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[4], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[5], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[6], 0, UIB_TYPE_DISK, 16, 0, 0 },
+   { 0, 0, UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE | UF_USB_DEVICE, 0, (USHORT)&units[7], 0, UIB_TYPE_DISK, 16, 0, 0 }
 };
+// cdrom:     UF_REMOVABLE | UF_CHANGELINE | UF_NODASD_SUPT | UF_NOSCSI_SUPT | UF_USB_DEVICE
+// optical:   UF_CHANGELINE | UF_NOSCSI_SUPT | UF_USB_DEVICE
+// floppy:    UF_REMOVABLE | UF_NOSCSI_SUPT | UF_LARGE_FLOPPY | UF_CHANGELINE
+// removable: UF_REMOVABLE | UF_NOSCSI_SUPT | UF_CHANGELINE
+// hdd:       UF_NOSCSI_SUPT | UF_USB_DEVICE
 // !!!
 
 void IORB_NotifyCall(IORBH far *pIORB);
@@ -629,6 +633,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
                 if (rc == WAIT_INTERRUPTED)
                 {
                     daemonStopped();
+                    SemSet(&semRqQue);
                     rc = ERROR_I24_CHAR_CALL_INTERRUPTED;
                     break;
                 }
@@ -1238,7 +1243,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         }
                         else
                         {
-                            ExecIoReq(cpIO);
+                            rc = ExecIoReq(cpIO);
                         }
 
                         if (rc)
@@ -1246,7 +1251,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                         else
                             cpIO->BlocksXferred = cpIO->BlockCount;
 
-                        if (error)
+                        //if (error)
                         {
                             PSCATGATENTRY pt = cpIO->pSGList;
                             int i;
@@ -1432,7 +1437,7 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
     if (rba < spt)
     {
         PTE far *pte;
-        ULONG Size = u->ullSize / u->ulBytesPerSector + spt;
+        ULONG Size = u->ullSize / u->ulBytesPerSector; // + spt;
         USHORT Cyl, Head, Sec, Cyl0;
         ULONG CRC32;
 
@@ -1446,8 +1451,8 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
 
         memset(buf, 0, sizeof(buf));
 
-        Cyl = (Size + heads * spt - 1) / (heads * spt);
-        //Cyl = Size / (heads * spt);
+        Cyl = Size / (heads * spt);
+        //Cyl = (Size + heads * spt - 1) / (heads * spt);
         Head = (Size % (heads * spt)) / spt;
         Sec = Size % spt + 1;
 
@@ -1455,8 +1460,8 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
 
         if (Cyl > 1023)
         {
-            Cyl = 1023;
-            Head = heads - 1;
+            Cyl = 1024;
+            Head = heads;
             Sec = spt;
         }
 
@@ -1470,8 +1475,8 @@ APIRET dorw(struct unit far *u, PIORB_EXECUTEIO cpIO, ULONG len, USHORT cmd, ULO
             pte->starting_head = 1;
             pte->starting_sector = 1;
             pte->system_id = 0x7;
-            pte->ending_cyl = Cyl;
-            pte->ending_head = Head;
+            pte->ending_cyl = Cyl - 1;
+            pte->ending_head = Head - 1;
             pte->ending_sector = Sec;
             pte->relative_sector = spt;
             pte->total_sectors = Size;

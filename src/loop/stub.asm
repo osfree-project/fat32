@@ -2,7 +2,6 @@
 
 extrn    DOS32FLATDS :abs
 extrn    _strategy   :near
-;extrn    _IoHook     :near
 
 public   _strat
 public   _code_end
