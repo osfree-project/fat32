@@ -55,18 +55,18 @@ PRIVATE void ProcessFsTab(BOOL isUnmount);
 
 int remount_all(void);
 
-BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource);
+BOOL (*pLoadTranslateTable)(BOOL fSilent, UCHAR ucSource) = 0;
    
-void (*pbdrv_init)(void);
-BlockDriverState *(*pbdrv_new)(const char *device_name);
-BlockDriver *(*pbdrv_find_format)(const char *format_name);
-void (*pbdrv_delete)(BlockDriverState *bs);
+void (*pbdrv_init)(void) = 0;
+BlockDriverState *(*pbdrv_new)(const char *device_name) = 0;
+BlockDriver *(*pbdrv_find_format)(const char *format_name) = 0;
+void (*pbdrv_delete)(BlockDriverState *bs) = 0;
 int (*pbdrv_open2)(BlockDriverState *bs, const char *filename, int flags,
-                   BlockDriver *drv);
+                   BlockDriver *drv) = 0;
 int (*pbdrv_pread)(BlockDriverState *bs, int64_t offset,
-                   void *buf, int count1);
+                   void *buf, int count1) = 0;
 int (*pbdrv_pwrite)(BlockDriverState *bs, int64_t offset,
-                    void *buf, int count1);
+                    void *buf, int count1) = 0;
 
 HMODULE   hMod = 0;
 
@@ -118,7 +118,7 @@ UCHAR rgFirstInfo[256];
 
    //ProcessFsTab(FALSE);
    //return 0;
-   
+
    rc = DosFSCtl( rgFirstInfo, sizeof( rgFirstInfo ), &ulDataSize,
                   NULL, 0, &ulParmSize,
                   FAT32_GETFIRSTINFO, "UNIFAT", -1, FSCTL_FSDNAME );
@@ -712,14 +712,14 @@ ULONG	  ulParm;
       {
       printf("FAT32: Utility DLL not found (%s does not load).\n", rgData);
       printf("FAT32: No UNICODE translate table loaded!\n");
-      return;
+      hMod = 0;
       }
    rc = DosQueryProcAddr(hMod, 0L,
       "LoadTranslateTable", (PFN *)&pLoadTranslateTable);
    if (rc)
       {
       printf("FAT32: ERROR: Could not find address of LoadTranslateTable.\n");
-      return;
+      pLoadTranslateTable = NULL;
       }
 
    /*
@@ -973,7 +973,7 @@ ULONG	  ulParm;
 		 }
 	  }
 
-   if ( fForeGround && (*pLoadTranslateTable)(fSilent, TRUE))
+   if ( fForeGround && pLoadTranslateTable && (*pLoadTranslateTable)(fSilent, TRUE))
    	  fSetParms = TRUE;
 
    if( hMod )
