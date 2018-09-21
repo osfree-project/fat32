@@ -15,6 +15,11 @@
 static USHORT FillDirEntry(PVOLINFO pVolInfo, PBYTE * ppData, PUSHORT pcbData, PFINDINFO pFindInfo, USHORT usLevel);
 static BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, ULONG ulBlockIndex);
 
+#ifdef EXFAT
+PDIRENTRY1 fSetLongName1(PDIRENTRY1 pDir, PSZ pszLongName, PUSHORT pusNameHash);
+USHORT GetChkSum16(const UCHAR *data, int bytes);
+#endif
+
 /******************************************************************
 *
 ******************************************************************/
@@ -336,7 +341,7 @@ PDIRENTRY1 pStreamEntry = NULL;
 
    memcpy(&pFindInfo->pInfo->EAOP, &EAOP, sizeof (EAOP));
    pFindInfo->pInfo->usEntriesPerBlock = (USHORT)(pVolInfo->ulBlockSize / sizeof (DIRENTRY));
-   pFindInfo->pInfo->ulBlockIndex = 0;
+   pFindInfo->pInfo->lBlockIndex = 0;
    pFindInfo->pInfo->rgClusters[0] = ulDirCluster;
    pFindInfo->pInfo->ulTotalBlocks = ulNumBlocks;
    pFindInfo->pInfo->pDirEntries =
@@ -357,13 +362,156 @@ PDIRENTRY1 pStreamEntry = NULL;
    else
       pFindInfo->pInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * ulNumClusters;
 
-   if (!GetBlock(pVolInfo, pFindInfo, 0))
+   if (ulDirCluster != pVolInfo->BootSect.bpb.RootDirStrtClus)
       {
-      rc = ERROR_SYS_INTERNAL;
-      goto FS_FINDFIRSTEXIT;
-      }
+      if (!GetBlock(pVolInfo, pFindInfo, 0))
+         {
+         rc = ERROR_SYS_INTERNAL;
+         goto FS_FINDFIRSTEXIT;
+         }
 
-   pFindInfo->pInfo->ulCurEntry = 0;
+      pFindInfo->pInfo->lCurEntry = 0;
+      }
+   else
+      {
+      // adding fake "." and ".." entries to the root directory,
+      // as FAT root dir has them missing. So, we just create an extra
+      // block, ending with "." and "..", and make dir entries with
+      // negative numbers. Current block number is -1 too.
+      PDIRENTRY pDir = pFindInfo->pInfo->pDirEntries;
+
+      memset(pFindInfo->pInfo->pDirEntries, 0, pVolInfo->ulClusterSize * ulNumClusters);
+
+#ifdef EXFAT
+      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
+#endif
+         {
+         PDIRENTRY pDir2 = pDir;         
+
+         memset(pDir->bFileName, 0x20, 11);
+         memcpy(pDir->bFileName, ".", 1);
+
+         pDir->wCluster = 0;
+         pDir->wClusterHigh = 0;
+         pDir->bAttr = FILE_DIRECTORY;
+
+         if (pGI)
+            {
+            pDir->wLastWriteDate.year = pGI->year - 1980;
+            pDir->wLastWriteDate.month = pGI->month;
+            pDir->wLastWriteDate.day = pGI->day;
+            pDir->wLastWriteTime.hours = pGI->hour;
+            pDir->wLastWriteTime.minutes = pGI->minutes;
+            pDir->wLastWriteTime.twosecs = pGI->seconds / 2;
+
+            pDir->wCreateDate = pDir->wLastWriteDate;
+            pDir->wCreateTime = pDir->wLastWriteTime;
+            pDir->wAccessDate = pDir->wLastWriteDate;
+            }
+         
+         memcpy(pDir + 1, pDir, sizeof (DIRENTRY));
+         pDir++;
+         memcpy(pDir->bFileName, "..", 2);
+
+         pDir->wCluster = 0;
+         pDir->wClusterHigh = 0;
+         pDir->bAttr = FILE_DIRECTORY;
+
+         pDir = pDir2 + pVolInfo->ulBlockSize / sizeof(DIRENTRY) - 2;
+         memcpy(pDir, pDir2, 2 * sizeof(DIRENTRY1));
+     
+         // Yes, dir entry numbers of our block will be negative!
+         pFindInfo->pInfo->lCurEntry = -2;
+         }
+#ifdef EXFAT
+      else
+         {
+         PDIRENTRY1 pDir1 = (PDIRENTRY1)pFindInfo->pInfo->pDirEntries, pWork, pDir;
+         USHORT usNameHash;
+
+         pDir = pDir1;
+
+         pDir1->bEntryType = ENTRY_TYPE_FILE;
+         pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+         pWork = fSetLongName1(pDir1+2, ".", &usNameHash);
+         pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
+
+         if (pGI)
+            {
+            pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
+            pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
+            pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
+            pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
+            pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
+            pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
+
+            pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
+            pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
+            }
+
+         (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+         (pDir1+1)->u.Stream.bAllocPossible = 1;
+         (pDir1+1)->u.Stream.bNoFatChain = 0;
+         (pDir1+1)->u.Stream.usNameHash = usNameHash;
+         (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen(".");
+#ifdef INCL_LONGLONG
+         (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
+         (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
+#else
+         AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
+         AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+#endif
+         (pDir1+1)->u.Stream.ulFirstClus = 0;
+
+         pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
+                           sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
+         
+         pDir1 = pWork;
+
+         pDir1->bEntryType = ENTRY_TYPE_FILE;
+         pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+         pWork = fSetLongName1(pDir1+2, "..", &usNameHash);
+         pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
+
+         if (pGI)
+            {
+            pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
+            pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
+            pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
+            pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
+            pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
+            pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
+
+            pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
+            pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
+            }
+
+         (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+         (pDir1+1)->u.Stream.bAllocPossible = 1;
+         (pDir1+1)->u.Stream.bNoFatChain = 0;
+         (pDir1+1)->u.Stream.usNameHash = usNameHash;
+         (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen("..");
+#ifdef INCL_LONGLONG
+         (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
+         (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
+#else
+         AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
+         AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+#endif
+         (pDir1+1)->u.Stream.ulFirstClus = 0;
+
+         pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
+                           sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
+
+         pDir1 = pDir + pVolInfo->ulBlockSize / sizeof(DIRENTRY1) - (pWork - pDir);
+         memcpy(pDir1, pDir, (pWork - pDir) * sizeof(DIRENTRY1));
+     
+         // Yes, dir entry numbers of our block will be negative!
+         pFindInfo->pInfo->lCurEntry = -(pWork - pDir);
+         }
+#endif
+     pFindInfo->pInfo->lBlockIndex--;
+     }
 
    if (usAttr & 0x0040)
       {
@@ -410,7 +558,7 @@ PDIRENTRY1 pStreamEntry = NULL;
       if (!rc || (rc == ERROR_EAS_DIDNT_FIT && usIndex == 0))
          {
          if (usFlags == FF_GETPOS)
-            *pulOrdinal = pFindInfo->pInfo->ulCurEntry - 1;
+            *pulOrdinal = pFindInfo->pInfo->lCurEntry - 1;
          }
       if (rc)
          break;
@@ -469,9 +617,9 @@ PFINDINFO pFindInfo = (PFINDINFO)pfsfsd;
    pName = pName;
 
    MessageL(LOG_FS, "FS_FINDFROMNAME%m, curpos = %lu, requested %lu",
-            0x0009, pFindInfo->pInfo->ulCurEntry, ulPosition);
+            0x0009, pFindInfo->pInfo->lCurEntry, ulPosition);
 
-   pFindInfo->pInfo->ulCurEntry = ulPosition + 1;
+   pFindInfo->pInfo->lCurEntry = ulPosition + 1;
    return FS_FINDNEXT(pfsfsi, pfsfsd, pData, cbData, pcMatch, usLevel, usFlags);
 }
 
@@ -621,7 +769,7 @@ USHORT usEntriesWanted;
       if (!rc || (rc == ERROR_EAS_DIDNT_FIT && usIndex == 0))
          {
          if (usFlags == FF_GETPOS)
-            *pulOrdinal = pFindInfo->pInfo->ulCurEntry - 1;
+            *pulOrdinal = pFindInfo->pInfo->lCurEntry - 1;
          }
       if (rc)
          break;
@@ -660,8 +808,9 @@ PSZ szLongName;
 PSZ szUpperName;
 PBYTE pStart = *ppData;
 USHORT rc;
-ULONG  ulBlockIndex;
+LONG  lBlockIndex;
 ULONGLONG ullSize;
+LONG lCurEntry;
 
    szLongName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP);
    if (!szLongName)
@@ -688,21 +837,42 @@ ULONGLONG ullSize;
 
       //memset(szLongName, 0, sizeof szLongName);
       memset(szLongName, 0, FAT32MAXPATHCOMP);
-      pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
+
+      lCurEntry = pFindInfo->pInfo->lCurEntry;
+
+      if (pFindInfo->pInfo->lCurEntry < 0)
+         {
+         lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
+         }
+
+      pDir = &pFindInfo->pInfo->pDirEntries[lCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
       bCheck1 = 0;
-      while (pFindInfo->pInfo->ulCurEntry < pFindInfo->pInfo->ulMaxEntry)
+      while (pFindInfo->pInfo->lCurEntry < (LONG)pFindInfo->pInfo->ulMaxEntry)
          {
          memset(szShortName, 0, sizeof(szShortName)); // vs
 
-         ulBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
-         if (ulBlockIndex != pFindInfo->pInfo->ulBlockIndex)
+         lCurEntry = pFindInfo->pInfo->lCurEntry;
+
+         if (pFindInfo->pInfo->lCurEntry < 0)
             {
-            if (!GetBlock(pVolInfo, pFindInfo, ulBlockIndex))
+            lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
+            }
+
+         lBlockIndex = (USHORT)(lCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+
+         if (pFindInfo->pInfo->lCurEntry < 0)
+            {
+            lBlockIndex--;
+            }
+
+         if (lBlockIndex != pFindInfo->pInfo->lBlockIndex)
+            {
+            if (!GetBlock(pVolInfo, pFindInfo, lBlockIndex))
                {
                rc = ERROR_SYS_INTERNAL;
                goto FillDirEntryExit;
                }
-            pDir = &pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
+            pDir = &pFindInfo->pInfo->pDirEntries[lCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
             }
 
          if (pDir->bFileName[0] && pDir->bFileName[0] != DELETED_ENTRY)
@@ -781,7 +951,7 @@ ULONGLONG ullSize;
                         rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                      }
                   if (!rc)
-                     MessageL(LOG_FIND, "%m %lu : %s, %s", 0x406f, pFindInfo->pInfo->ulCurEntry, szLongName, szShortName );
+                     MessageL(LOG_FIND, "%m %ld : %s, %s", 0x406f, pFindInfo->pInfo->lCurEntry, szLongName, szShortName );
 
                   if (!rc && usLevel == FIL_STANDARD)
                      {
@@ -809,7 +979,7 @@ ULONGLONG ullSize;
                      strcpy(pfFind->achName, szLongName);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -859,7 +1029,7 @@ ULONGLONG ullSize;
                      strcpy(pfFind->achName, szLongName);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -910,7 +1080,7 @@ ULONGLONG ullSize;
                      strcpy(pfFind->achName, szLongName);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -981,7 +1151,7 @@ ULONGLONG ullSize;
                      strcpy(pfFind->achName, szLongName);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1072,7 +1242,7 @@ ULONGLONG ullSize;
                      (*ppData) += strlen(szLongName) + 1;
                      (*pcbData) -= (strlen(szLongName) + 1);
 
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      goto FillDirEntryExit;
                      }
                   else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
@@ -1182,7 +1352,7 @@ ULONGLONG ullSize;
                      (*ppData) += strlen(szLongName) + 1;
                      (*pcbData) -= (strlen(szLongName) + 1);
 
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      goto FillDirEntryExit;
                      }
                   }
@@ -1190,7 +1360,7 @@ ULONGLONG ullSize;
                memset(szLongName, 0, FAT32MAXPATHCOMP);
                }
             }
-         pFindInfo->pInfo->ulCurEntry++;
+         pFindInfo->pInfo->lCurEntry++;
          pDir++;
          }
       rc = ERROR_NO_MORE_FILES;
@@ -1209,24 +1379,45 @@ ULONGLONG ullSize;
 
       //memset(szLongName, 0, sizeof szLongName);
       memset(szLongName, 0, FAT32MAXPATHCOMP);
-      pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
-      while (pFindInfo->pInfo->ulCurEntry < pFindInfo->pInfo->ulMaxEntry)
+
+      lCurEntry = pFindInfo->pInfo->lCurEntry;
+
+      if (pFindInfo->pInfo->lCurEntry < 0)
          {
-         ulBlockIndex = (USHORT)(pFindInfo->pInfo->ulCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
-         if (ulBlockIndex != pFindInfo->pInfo->ulBlockIndex)
+         lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
+         }
+
+      pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[lCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
+      while (pFindInfo->pInfo->lCurEntry < (LONG)pFindInfo->pInfo->ulMaxEntry)
+         {
+         lCurEntry = pFindInfo->pInfo->lCurEntry;
+
+         if (pFindInfo->pInfo->lCurEntry < 0)
             {
-            if (!GetBlock(pVolInfo, pFindInfo, ulBlockIndex))
+            lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
+            }
+
+         lBlockIndex = (USHORT)(lCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
+
+         if (pFindInfo->pInfo->lCurEntry < 0)
+            {
+            lBlockIndex--;
+            }
+
+         if (lBlockIndex != pFindInfo->pInfo->lBlockIndex)
+            {
+            if (!GetBlock(pVolInfo, pFindInfo, lBlockIndex))
                {
                rc = ERROR_SYS_INTERNAL;
                goto FillDirEntryExit;
                }
-            pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[pFindInfo->pInfo->ulCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
+            pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[lCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
             }
 
          if (pDir->bEntryType == ENTRY_TYPE_EOD)
             {
             // end of directory reached
-            pFindInfo->pInfo->ulMaxEntry = pFindInfo->pInfo->ulCurEntry;
+            pFindInfo->pInfo->ulMaxEntry = (ULONG)pFindInfo->pInfo->lCurEntry;
             rc = ERROR_NO_MORE_FILES;
             goto FillDirEntryExit;
             }
@@ -1294,7 +1485,7 @@ ULONGLONG ullSize;
                      strncpy(pfFind->achName, szLongName, usNameLen);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1313,7 +1504,7 @@ ULONGLONG ullSize;
                      strncpy(pfFind->achName, szLongName, usNameLen);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1355,7 +1546,7 @@ ULONGLONG ullSize;
                      strncpy(pfFind->achName, szLongName, usNameLen);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1397,7 +1588,7 @@ ULONGLONG ullSize;
                      strncpy(pfFind->achName, szLongName, usNameLen);
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1475,7 +1666,7 @@ ULONGLONG ullSize;
                      (*ppData) += usNameLen + 1;
                      (*pcbData) -= (usNameLen + 1);
 
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      goto FillDirEntryExit;
                      }
                   else if (!rc && usLevel == FIL_QUERYEASFROMLISTL)
@@ -1552,7 +1743,7 @@ ULONGLONG ullSize;
                      (*ppData) += usNameLen + 1;
                      (*pcbData) -= (usNameLen + 1);
 
-                     pFindInfo->pInfo->ulCurEntry++;
+                     pFindInfo->pInfo->lCurEntry++;
                      goto FillDirEntryExit;
                      }
                   }
@@ -1729,7 +1920,7 @@ ULONGLONG ullSize;
                memset(szLongName, 0, FAT32MAXPATHCOMP);
                }
             }
-         pFindInfo->pInfo->ulCurEntry++;
+         pFindInfo->pInfo->lCurEntry++;
          pDir++;
          }
       rc = ERROR_NO_MORE_FILES;
@@ -1983,13 +2174,13 @@ CHAR   fRootDir = FALSE;
       {
       if (fRootDir)
          {
-         usIndex = pFindInfo->pInfo->ulBlockIndex / usBlocksPerCluster;
+         usIndex = pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster;
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
             usIndex * pVolInfo->SectorsPerCluster;
          usSectorsRead = usIndex * (USHORT)pVolInfo->SectorsPerCluster;
          }
-      for (usIndex = pFindInfo->pInfo->ulBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
+      for (usIndex = pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
          {
          if (fRootDir)
             {
@@ -2046,6 +2237,6 @@ CHAR   fRootDir = FALSE;
    if (fRootDir)
       pFindInfo->pInfo->rgClusters[0] = 1;
 
-   pFindInfo->pInfo->ulBlockIndex = ulBlockIndex;
+   pFindInfo->pInfo->lBlockIndex = ulBlockIndex;
    return TRUE;
 }
