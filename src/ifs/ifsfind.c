@@ -421,9 +421,8 @@ PDIRENTRY1 pStreamEntry = NULL;
      
          // Yes, dir entry numbers of our block will be negative!
          pFindInfo->pInfo->lCurEntry = -2;
+         pFindInfo->pInfo->lBlockIndex--;
          }
-      
-      pFindInfo->pInfo->lBlockIndex--;
 #ifdef EXFAT
       }
    else   
@@ -444,7 +443,11 @@ PDIRENTRY1 pStreamEntry = NULL;
       strcpy(pszDir, pName);
 
       p = strrchr(pszDir, '\\');
-      *p = '\0';
+
+      if (p)
+         {
+         *p = '\0';
+         }
 
       ulParentDirCluster = FindDirCluster(pVolInfo,
          pcdfsi,
@@ -550,7 +553,6 @@ PDIRENTRY1 pStreamEntry = NULL;
      
       // Yes, dir entry numbers of our block will be negative!
       pFindInfo->pInfo->lCurEntry = -(pWork - pDir);
-
       pFindInfo->pInfo->lBlockIndex--;
       }
 #endif
