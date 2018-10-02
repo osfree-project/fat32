@@ -385,7 +385,7 @@ PDIRENTRY1 pStreamEntry = NULL;
          PDIRENTRY pDir = pFindInfo->pInfo->pDirEntries;
          PDIRENTRY pDir2 = pDir;         
 
-         memset(pFindInfo->pInfo->pDirEntries, 0, pVolInfo->ulClusterSize * ulNumClusters);
+         //memset(pFindInfo->pInfo->pDirEntries, 0, pVolInfo->ulClusterSize * ulNumClusters); // !!!
 
          memset(pDir->bFileName, 0x20, 11);
          memcpy(pDir->bFileName, ".", 1);
@@ -425,8 +425,10 @@ PDIRENTRY1 pStreamEntry = NULL;
          }
 #ifdef EXFAT
       }
-   else   
+   else
       {
+      // as exFAT doesn't have . and .. in any directories, we 
+      // emulate their presence when doing any global searches
       PDIRENTRY1 pDir1 = (PDIRENTRY1)pFindInfo->pInfo->pDirEntries, pWork, pDir;
       USHORT usNameHash;
       ULONG ulParentDirCluster;
@@ -1054,7 +1056,7 @@ LONG lCurEntry;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, ullSize);
+                     iAssign(&pfFind->cbFile, *(PLONGLONG)&ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
@@ -1155,7 +1157,7 @@ LONG lCurEntry;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, ullSize);
+                     iAssign(&pfFind->cbFile, *(PLONGLONG)&ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
@@ -1316,7 +1318,7 @@ LONG lCurEntry;
                      {
                      LONGLONG llRest;
 
-                     iAssignUL(&pfFind->cbFile, ullSize);
+                     iAssign(&pfFind->cbFile, *(PLONGLONG)&ullSize);
                      pfFind->cbFileAlloc = iDivUL(pfFind->cbFile, pVolInfo->ulClusterSize);
                      pfFind->cbFileAlloc = iMulUL(pfFind->cbFileAlloc, pVolInfo->ulClusterSize);
                      llRest = iModUL(pfFind->cbFile, pVolInfo->ulClusterSize);
@@ -2197,7 +2199,7 @@ BOOL GetBlock(PVOLINFO pVolInfo, PFINDINFO pFindInfo, ULONG ulBlockIndex)
 {
 USHORT usIndex;
 USHORT usBlocksPerCluster = (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
-USHORT usClusterIndex = ulBlockIndex / usBlocksPerCluster;
+USHORT usClusterIndex = (USHORT)(ulBlockIndex / usBlocksPerCluster);
 ULONG  ulBlock = ulBlockIndex % usBlocksPerCluster;
 USHORT usSectorsPerBlock = (USHORT)pVolInfo->SectorsPerCluster /
          (USHORT)(pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
@@ -2218,13 +2220,13 @@ CHAR   fRootDir = FALSE;
       {
       if (fRootDir)
          {
-         usIndex = pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster;
+         usIndex = (USHORT)(pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster);
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs +
             usIndex * pVolInfo->SectorsPerCluster;
          usSectorsRead = usIndex * (USHORT)pVolInfo->SectorsPerCluster;
          }
-      for (usIndex = pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster; usIndex < usClusterIndex; usIndex++)
+      for (usIndex = (USHORT)(pFindInfo->pInfo->lBlockIndex / usBlocksPerCluster); usIndex < usClusterIndex; usIndex++)
          {
          if (fRootDir)
             {

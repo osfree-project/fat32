@@ -19,6 +19,10 @@
 
 #define TRACE_MAJOR 254
 
+#ifdef _MSC_VER
+#define va_copy(dest,src) ((dest)[0]=(src)[0],(void)0)
+#endif
+
 extern PGINFOSEG pGI;
 
 void serout(unsigned short port, char *s);
@@ -399,7 +403,7 @@ APIRET rc;
    return rc;
 }
 
-APIRET Trace(const char *fmt, ...)
+APIRET cdecl Trace(const char *fmt, ...)
 {
 va_list va;
 APIRET rc;

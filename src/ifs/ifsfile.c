@@ -406,8 +406,8 @@ USHORT rc;
             pDirEntryStream->u.Stream.ullValidDataLen = 0;
             pDirEntryStream->u.Stream.ullDataLen = 0;
 #else
-            AssignUL(pDirEntryStream->u.Stream.ullValidDataLen, 0);
-            AssignUL(pDirEntryStream->u.Stream.ullDataLen, 0);
+            AssignUL(&pDirEntryStream->u.Stream.ullValidDataLen, 0);
+            AssignUL(&pDirEntryStream->u.Stream.ullDataLen, 0);
 #endif
             }
 #endif
@@ -461,10 +461,10 @@ USHORT rc;
                   //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
                   {
-                  ULONGLONG ullRest;
+                  //ULONGLONG ullRest;
 
-                  Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-                  Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+                  Assign(&pDirEntryStream->u.Stream.ullValidDataLen, size);
+                  Assign(&pDirEntryStream->u.Stream.ullDataLen, size);
                   //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
                   //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
                   //ullRest = ModUL(size, pVolInfo->ulClusterSize);
@@ -637,8 +637,8 @@ USHORT rc;
             pDirEntryStream->u.Stream.ullValidDataLen = 0;
             pDirEntryStream->u.Stream.ullDataLen = 0;
 #else
-            AssignUL(pDirEntryStream->u.Stream.ullValidDataLen, 0);
-            AssignUL(pDirEntryStream->u.Stream.ullDataLen, 0);
+            AssignUL(&pDirEntryStream->u.Stream.ullValidDataLen, 0);
+            AssignUL(&pDirEntryStream->u.Stream.ullDataLen, 0);
 #endif
             pDirEntryStream->u.Stream.bAllocPossible = 1;
             pDirEntryStream->u.Stream.bNoFatChain = (BYTE)pOpenInfo->pSHInfo->fNoFatChain;
@@ -754,10 +754,10 @@ USHORT rc;
 #else
                   {
 	
-                  ULONGLONG ullRest;
+                  //ULONGLONG ullRest;
 
-                  Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-                  Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+                  Assign(&pDirEntryStream->u.Stream.ullValidDataLen, size);
+                  Assign(&pDirEntryStream->u.Stream.ullDataLen, size);
                   //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
                   //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
                   //ullRest = ModUL(size, pVolInfo->ulClusterSize);
@@ -3101,10 +3101,10 @@ USHORT rc;
             //   (size % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
             {
-            ULONGLONG ullRest;
+            //ULONGLONG ullRest;
 
-            Assign(pDirEntryStream->u.Stream.ullValidDataLen, size);
-            Assign(pDirEntryStream->u.Stream.ullDataLen, size);
+            Assign(&pDirEntryStream->u.Stream.ullValidDataLen, size);
+            Assign(&pDirEntryStream->u.Stream.ullDataLen, size);
             //pDirEntryStream->u.Stream.ullDataLen = DivUL(size, pVolInfo->ulClusterSize);
             //pDirEntryStream->u.Stream.ullDataLen = MulUL(pDirEntryStream->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
             //ullRest = ModUL(size, pVolInfo->ulClusterSize);
@@ -4126,10 +4126,17 @@ int i;
             struct Lock *lock = (struct Lock *)(curr_cmd + sizeof(struct CmdLock));
             lock_cmd = (struct CmdLock *) curr_cmd;
 
-            for (i = 0; i < lock_cmd->LockCnt; i++, lock++)
+            for (i = 0; i < (int)lock_cmd->LockCnt; i++, lock++)
                {
+#ifdef INCL_LONGLONG
                LockRange.FileOffset  = lock->Start;
                LockRange.RangeLength = lock->Length;
+#else
+               LockRange.FileOffset.ulHi  = 0;
+               LockRange.FileOffset.ulLo  = lock->Start;
+               LockRange.RangeLength.ulHi = 0;
+               LockRange.RangeLength.ulLo = lock->Length;
+#endif
 
                rc = FS_FILELOCKSL(psffsi,
                                   psffsd,
@@ -4149,10 +4156,17 @@ int i;
             struct UnLock *unlock = (struct UnLock *)(curr_cmd + sizeof(struct CmdUnLock));
             unlock_cmd = (struct CmdUnLock *) curr_cmd;
 
-            for (i = 0; i < unlock_cmd->UnlockCnt; i++, unlock++)
+            for (i = 0; i < (int)unlock_cmd->UnlockCnt; i++, unlock++)
                {
+#ifdef INCL_LONGLONG
                UnLockRange.FileOffset  = unlock->Start;
                UnLockRange.RangeLength = unlock->Length;
+#else
+               UnLockRange.FileOffset.ulHi  = 0;
+               UnLockRange.FileOffset.ulLo  = unlock->Start;
+               UnLockRange.RangeLength.ulHi = 0;
+               UnLockRange.RangeLength.ulLo = unlock->Length;
+#endif
 
                rc = FS_FILELOCKSL(psffsi,
                                   psffsd,
@@ -4191,9 +4205,9 @@ int i;
             /* move to next cmd */
             curr_cmd += sizeof(struct CmdIO);
             break;
-         case FILEIO_SEEK:
+         case FILEIO_SEEK: // is there a 64-bit seek???
             seek_cmd = (struct CmdSeek *) curr_cmd;
-            rc = FS_CHGFILEPTRL(psffsi, psffsd, (long long)seek_cmd->Position,
+            rc = FS_CHGFILEPTR(psffsi, psffsd, seek_cmd->Position,
                                 seek_cmd->Method, IOFlag);
             if (!rc)
                {

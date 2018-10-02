@@ -545,7 +545,7 @@ USHORT rc;
                   {
                   LONGLONG llRest;
 
-                  iAssign(&pfStatus->cbFile, *(PLONGLONG)pDirEntryStream->u.Stream.ullValidDataLen);
+                  iAssign(&pfStatus->cbFile, *(PLONGLONG)&pDirEntryStream->u.Stream.ullValidDataLen);
                   pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
                   pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
                   llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
@@ -692,7 +692,7 @@ USHORT rc;
                   {
                   LONGLONG llRest;
 
-                  iAssign(&pfStatus->cbFile, *(PLONGLONG)pDirEntryStream->u.Stream.ullValidDataLen);
+                  iAssign(&pfStatus->cbFile, *(PLONGLONG)&pDirEntryStream->u.Stream.ullValidDataLen);
                   pfStatus->cbFileAlloc = iDivUL(pfStatus->cbFile, pVolInfo->ulClusterSize);
                   pfStatus->cbFileAlloc = iMulUL(pfStatus->cbFileAlloc, pVolInfo->ulClusterSize);
                   llRest = iModUL(pfStatus->cbFile, pVolInfo->ulClusterSize);

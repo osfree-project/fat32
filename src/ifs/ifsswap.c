@@ -120,8 +120,14 @@ int far pascal _loadds FS_OPENPAGEFILE (
       if (*pFlags & PGIO_FIRSTOPEN)
          {
          // make swap file zero-aligned
+#ifdef INCL_LONGLONG
          rc = FS_NEWSIZEL (psffsi, psffsd, 0LL, 0x10);
-
+#else
+         ULONGLONG cbLen;
+         cbLen.ulHi = 0;
+         cbLen.ulLo = 0;
+         rc = FS_NEWSIZEL (psffsi, psffsd, cbLen, 0x10);
+#endif
          if (rc)
             {
             goto FS_OPENPAGEFILE_EXIT;
@@ -222,7 +228,7 @@ int far pascal _loadds FS_DOPAGEIO(
    Req_List_Header *rlhp;  /* pointer to request list header */
    Req_Header      *rhp;   /* pointer to request header */
    PB_Read_Write   *rwp;   /* pointer to request */
-   int i, j, rc = NO_ERROR;
+   int i, rc = NO_ERROR;
    USHORT usSectors;
 
    _asm push es;

@@ -33,18 +33,37 @@ USHORT DBCSStrlen( const PSZ pszStr );
 void FileSetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
                  PSHOPENINFO pDirSHInfo, PSZ pszFile, ULONGLONG ullSize)
 {
+#ifdef INCL_LONGLONG
    pDirEntry->ulFileSize = ullSize & 0xffffffff;
+#else
+   pDirEntry->ulFileSize = ullSize.ulLo;
+#endif
 
    if (f32Parms.fFatPlus)
+      {
+#ifdef INCL_LONGLONG
       {
       ULONGLONG ullTmp;
       ullTmp = (ULONGLONG)(pDirEntry->fEAS);
       ullTmp |= ((ullSize >> 32) & FILE_SIZE_MASK);
       pDirEntry->fEAS = (BYTE)ullTmp;
+      }
+#else
+      {
+      ULONG ulTmp;
+      ulTmp = (ULONG)(pDirEntry->fEAS);
+      ulTmp |= (ullSize.ulHi & FILE_SIZE_MASK_UL);
+      pDirEntry->fEAS = (BYTE)ulTmp;
+      }
+#endif
       pDirEntry->fEAS &= ~FILE_SIZE_EA;
       }
 
+#ifdef INCL_LONGLONG
    if ( f32Parms.fFatPlus && f32Parms.fEAS && (ullSize >> 35) )
+#else
+   if ( f32Parms.fFatPlus && f32Parms.fEAS && (ullSize.ulHi >> 3) )
+#endif
       {
       // write EAs
       EAOP eaop;
@@ -77,11 +96,19 @@ void FileSetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
 void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
                  PSHOPENINFO pDirSHInfo, PSZ pszFile, PULONGLONG pullSize)
 {
+#ifdef INCL_LONGLONG
    *pullSize = pDirEntry->ulFileSize;
+#else
+   AssignUL(pullSize, pDirEntry->ulFileSize);
+#endif
 
    if (f32Parms.fFatPlus)
       {
+#ifdef INCL_LONGLONG
       *pullSize |= (((ULONGLONG)(pDirEntry->fEAS) & FILE_SIZE_MASK) << 32);
+#else
+      pullSize->ulHi |= ((ULONG)(pDirEntry->fEAS) & FILE_SIZE_MASK_UL);
+#endif
       }
 
    if ( f32Parms.fFatPlus && f32Parms.fEAS && (pDirEntry->fEAS & FILE_SIZE_EA) )
@@ -93,7 +120,6 @@ void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
       BYTE pBuf2[sizeof(FEALIST) + 13 + 4 + sizeof(ULONGLONG)];
       PFEALIST pfealist = (PFEALIST)pBuf2;
       APIRET rc;
-      int i;
 
       memset(&eaop, 0, sizeof(eaop));
       memset(pgealist, 0, sizeof(pBuf1));
@@ -110,7 +136,12 @@ void FileGetSize(PVOLINFO pVolInfo, PDIRENTRY pDirEntry, ULONG ulDirCluster,
       if (rc)
          return;
 
+#ifdef INCL_LONGLONG
       *pullSize = *(PULONGLONG)((PBYTE)((PFEA)pfealist->list + 1) + 17);
+#else
+      pullSize->ulHi = *((PULONG)((PBYTE)((PFEA)pfealist->list + 1) + 17) + 1);
+      pullSize->ulLo = *(PULONG)((PBYTE)((PFEA)pfealist->list + 1) + 17);
+#endif
       }
 }
 
@@ -127,7 +158,6 @@ ULONG FindDirCluster(PVOLINFO pVolInfo,
    PSZ *pDirEnd,
    PDIRENTRY1 pStreamEntry)
 {
-//BYTE   szDir[FAT32MAXPATH];
 PSZ    szDir;
 ULONG  ulCluster;
 ULONG  ulCluster2;
@@ -325,8 +355,8 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          // root directory starting sector
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-         usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
-            ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+         usSectorsPerBlock = (USHORT)((ULONG)pVolInfo->SectorsPerCluster /
+            ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize));
          usSectorsRead = 0;
          }
 
@@ -783,10 +813,10 @@ ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 ULONG  ulDirEntries = 0;
-DIRENTRY1 Dir;
-USHORT usNumSecondary;
-USHORT usFileAttr;
-ULONG  ulRet;
+//DIRENTRY1 Dir;
+//USHORT usNumSecondary;
+//USHORT usFileAttr;
+//ULONG  ulRet;
 
    MessageL(LOG_FUNCS, "TranslateName%m: %s", 0x0034, pszPath);
 
@@ -848,8 +878,8 @@ ULONG  ulRet;
       // root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
-         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+      usSectorsPerBlock = (USHORT)((ULONG)pVolInfo->SectorsPerCluster /
+         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize));
       usSectorsRead = 0;
       }
 
@@ -1268,7 +1298,7 @@ USHORT    rc;
             }
          }
 
-      pDirectory = (PDIRENTRY)malloc((size_t)2 * pVolInfo->ulBlockSize);
+      pDirectory = (PDIRENTRY)malloc((size_t)(2 * pVolInfo->ulBlockSize));
       if (!pDirectory)
          {
          Message("Modify directory: Not enough memory");
@@ -1291,8 +1321,8 @@ USHORT    rc;
          // root directory starting sector
          ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
             (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-         usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
-            ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+         usSectorsPerBlock = (USHORT)((ULONG)pVolInfo->SectorsPerCluster /
+            ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize));
          usSectorsRead = 0;
          ulBytesRemained = (ULONG)pVolInfo->BootSect.bpb.RootDirEntries * sizeof(DIRENTRY);
          }
@@ -1753,7 +1783,7 @@ USHORT    rc;
             }
          }
 
-      pDirectory = (PDIRENTRY1)malloc((size_t)2 * pVolInfo->ulBlockSize);
+      pDirectory = (PDIRENTRY1)malloc((size_t)(2 * pVolInfo->ulBlockSize));
       if (!pDirectory)
          {
          free(szLongName);
@@ -1839,7 +1869,7 @@ USHORT    rc;
                case MODIFY_DIR_RENAME :
                case MODIFY_DIR_UPDATE :
                case MODIFY_DIR_DELETE :
-                  memcpy(pDirectory, pDir2, pVolInfo->ulBlockSize);
+                  memcpy(pDirectory, pDir2, (size_t)pVolInfo->ulBlockSize);
                   if (ulBlock == pVolInfo->ulClusterSize / pVolInfo->ulBlockSize - 1)
                      {
                      ulBlock2 = 0;
@@ -1862,7 +1892,7 @@ USHORT    rc;
                         }
                      }
                   else
-                     memset(pDir2, 0, pVolInfo->ulBlockSize);
+                     memset(pDir2, 0, (size_t)pVolInfo->ulBlockSize);
 
                   /*
                      Find old entry

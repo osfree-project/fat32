@@ -1,3 +1,7 @@
+_VENDOR=Netlabs
+_VER=0.10
+_VERSION=$(_VER).r$(SVNREV)
+
 !IFNDEF DEBUG
 !ERROR ,SPECIFY EITHER DEBUG=0 or DEBUG=1 ON THE NMAKE COMMANDLINE !
 !ENDIF
@@ -45,7 +49,7 @@ all: fat32.ifs fat32.sym
 
 FAT32OBJS=fat32a.obj fat32b.obj ifsmount.obj ifsfind.obj ifsdir.obj ifsattr.obj\
           ifsfile.obj ifslog.obj ifscache.obj ifsswap.obj ifsmem.obj\
-          ifsea.obj ifslang.obj ifsachk.obj\
+          ifsea.obj ifsea2.obj ifslang.obj ifsachk.obj\
           mem.obj alphabet.obj i8m086.obj i8d086.obj # helpers.obj
 
 fat32.ifs : $(FAT32OBJS) ..\lib\fat32.def makefile.msc

@@ -1051,8 +1051,8 @@ PSHOPENINFO pSHInfo = NULL;
          //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
          //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
-         AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+         Assign(&pDirStreamNew->u.Stream.ullValidDataLen, *(PULONGLONG)&pFEAL->cbList);
+         Assign(&pDirStreamNew->u.Stream.ullDataLen, *(PULONGLONG)&pDirStreamNew->u.Stream.ullValidDataLen);
          //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
          //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif
@@ -1123,8 +1123,8 @@ PSHOPENINFO pSHInfo = NULL;
          //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
          //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0);
 #else
-         AssignUL(pDirStreamNew->u.Stream.ullValidDataLen, pFEAL->cbList);
-         AssignUL(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+         Assign(&pDirStreamNew->u.Stream.ullValidDataLen, *(PULONGLONG)&pFEAL->cbList);
+         Assign(&pDirStreamNew->u.Stream.ullDataLen, *(PULONGLONG)&pDirStreamNew->u.Stream.ullValidDataLen);
          //   (pFEAL->cbList / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
          //   (pFEAL->cbList % pVolInfo->ulClusterSize ? pVolInfo->ulClusterSize : 0));
 #endif

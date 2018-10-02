@@ -267,8 +267,8 @@ APIRET rc;
    if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
       {
 #endif
-      pDirEntry->wCluster = *pulFirstClus & 0xffff;
-      pDirEntry->wClusterHigh = *pulFirstClus >> 16;
+      pDirEntry->wCluster = (USHORT)(*pulFirstClus & 0xffff);
+      pDirEntry->wClusterHigh = (USHORT)(*pulFirstClus >> 16);
 #ifdef EXFAT
       }
    else

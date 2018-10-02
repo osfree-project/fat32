@@ -354,7 +354,7 @@ APIRET rc;
    return NO_ERROR;
 }
 
-int Mount(PMNTOPTS opts, PVOLINFO *pVolInfo)
+int Mount2(PMNTOPTS opts, PVOLINFO *pVolInfo)
 {
 PVOLINFO pNext;
 APIRET rc;
@@ -399,7 +399,7 @@ ULONG hf;
                return rc;
 
             hf = pCPData->hf;
-            rc = pCPData->rc;
+            rc = (USHORT)pCPData->rc;
 
             if (rc)
                return rc;
@@ -413,7 +413,11 @@ ULONG hf;
 
          pCPData->Op = OP_READ;
          pCPData->hf = hf;
+#ifdef INCL_LONGLONG
          pCPData->llOffset = (LONGLONG)opts->ullOffset;
+#else
+         iAssign(&pCPData->llOffset, *(PLONGLONG)&opts->ullOffset);
+#endif
          pCPData->cbData = 512;
 
          rc = PostSetup();
@@ -421,7 +425,7 @@ ULONG hf;
          if (rc)
             return rc;
 
-         rc = pCPData->rc;
+         rc = (USHORT)pCPData->rc;
 
          if (rc)
             return rc;
@@ -450,7 +454,11 @@ ULONG hf;
 
          strcpy((*pVolInfo)->pbMntPoint, opts->pMntPoint);
          strcpy((*pVolInfo)->pbFilename, opts->pFilename);
+#ifdef INCL_LONGLONG
          (*pVolInfo)->ullOffset = opts->ullOffset;
+#else
+         Assign(&(*pVolInfo)->ullOffset, opts->ullOffset);
+#endif
          (*pVolInfo)->hf = hf;
 
          rc = mount(opts->usOp, *pVolInfo, pBoot);
@@ -513,7 +521,7 @@ ULONG hf;
                return rc;
 
             hf = pCPData->hf;
-            rc = pCPData->rc;
+            rc = (USHORT)pCPData->rc;
 
             if (rc)
                return rc;
@@ -527,7 +535,11 @@ ULONG hf;
 
          pCPData->Op = OP_READ;
          pCPData->hf = hf;
+#ifdef INCL_LONGLONG
          pCPData->llOffset = (LONGLONG)opts->ullOffset;
+#else
+         iAssign(&pCPData->llOffset, *(PLONGLONG)&opts->ullOffset);
+#endif
          pCPData->cbData = 512;
 
          rc = PostSetup();
@@ -1441,7 +1453,12 @@ USHORT usSectors = 1;
 
       pCPData->Op = OP_READ;
       pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
       pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+      iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+      pCPData->llOffset = iAddUL(pCPData->llOffset, pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
       pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
 
       rc = PostSetup();
@@ -1449,7 +1466,7 @@ USHORT usSectors = 1;
       if (rc)
          return rc;
 
-      rc = pCPData->rc;
+      rc = (USHORT)pCPData->rc;
 
       /* write loopback device */
       rc = PreSetup();
@@ -1461,7 +1478,12 @@ USHORT usSectors = 1;
 
       pCPData->Op = OP_WRITE;
       pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
       pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+      iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+      pCPData->llOffset = iAddUL(pCPData->llOffset, pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
       pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
 
       rc = PostSetup();
@@ -1469,7 +1491,7 @@ USHORT usSectors = 1;
       if (rc)
          return rc;
 
-      rc = pCPData->rc;
+      rc = (USHORT)pCPData->rc;
 
       if (rc == ERROR_WRITE_FAULT)
          rc = ERROR_WRITE_PROTECT;
@@ -1693,7 +1715,7 @@ UCHAR GetFatType(PVOLINFO pVolInfo, PBOOTSECT pSect)
    if (! pFat)
       return FAT_TYPE_NONE;
 
-   for (i = 0; i < ulNumFats; i++)
+   for (i = 0; i < (int)ulNumFats; i++)
       {
       // read each FAT copy start
       if (ReadSector(pVolInfo, ulSector, 1, (void far *)pFat, 0))

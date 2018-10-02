@@ -57,7 +57,7 @@ VOID MarkFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 VOID MarkFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
 USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
 VOID   ReleaseFat(PVOLINFO pVolInfo);
-int Mount(PMNTOPTS opts, PVOLINFO *pVolInfo);
+int Mount2(PMNTOPTS opts, PVOLINFO *pVolInfo);
 static USHORT RecoverChain(PVOLINFO pVolInfo, ULONG ulCluster, PBYTE pData, USHORT cbData);
 static USHORT WriteFatSector(PVOLINFO pVolInfo, ULONG ulSector);
 static USHORT ReadFatSector(PVOLINFO pVolInfo, ULONG ulSector);
@@ -112,7 +112,6 @@ APIRET SemClear(long far *sem)
 
 APIRET SemSet(long far *sem)
 {
-    USHORT usValue;
     APIRET rc = 0;
 
     (*sem)++;
@@ -532,8 +531,8 @@ PSZ      szDstLongName = NULL;
       pTarStreamEntry->u.Stream.ullValidDataLen = 0;
       pTarStreamEntry->u.Stream.ullDataLen = 0;
 #else
-      AssignUL(pTarStreamEntry->u.Stream.ullValidDataLen, 0);
-      AssignUL(pTarStreamEntry->u.Stream.ullDataLen, 0);
+      AssignUL(&pTarStreamEntry->u.Stream.ullValidDataLen, 0);
+      AssignUL(&pTarStreamEntry->u.Stream.ullDataLen, 0);
 #endif
       }
 #endif
@@ -587,8 +586,8 @@ PSZ      szDstLongName = NULL;
          pDirStreamEntry->u.Stream.ullValidDataLen = 0;
          pDirStreamEntry->u.Stream.ullDataLen = 0;
 #else
-         AssignUL(pDirStreamEntry->u.Stream.ullValidDataLen, 0);
-         AssignUL(pDirStreamEntry->u.Stream.ullDataLen, 0);
+         AssignUL(&pDirStreamEntry->u.Stream.ullValidDataLen, 0);
+         AssignUL(&pDirStreamEntry->u.Stream.ullDataLen, 0);
 #endif
          }
       }
@@ -1513,7 +1512,7 @@ POPENINFO pOpenInfo;
            rc = ERROR_BUFFER_OVERFLOW;
            goto FS_FSCTLEXIT;
            }
-        rc = Mount((PMNTOPTS)pParm, &pVolInfo2);
+        rc = Mount2((PMNTOPTS)pParm, &pVolInfo2);
         }
         break;
 
@@ -1929,8 +1928,8 @@ ULONG  ulDirEntries = 0;
       // FAT12/FAT16 root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
-         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+      usSectorsPerBlock = (USHORT)((ULONG)pVolInfo->SectorsPerCluster /
+         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize));
       usSectorsRead = 0;
       }
    while (!fFound && ulCluster != pVolInfo->ulFatEof)
@@ -3027,7 +3026,11 @@ PBIOSPARAMETERBLOCK pBPB;
 
                   pCPData->Op = OP_READ;
                   pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
                   pCPData->llOffset = (LONGLONG)ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+                  iAssignUL(&pCPData->llOffset, ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
                   pCPData->cbData = (ULONG)ptrk->cSectors * pVolInfo->BootSect.bpb.BytesPerSector;
 
                   rc = PostSetup();
@@ -3037,8 +3040,8 @@ PBIOSPARAMETERBLOCK pBPB;
                      goto FS_IOCTLEXIT;
                      }                    
 
-                  memcpy(pData, &pCPData->Buf, pCPData->cbData);
-                  rc = pCPData->rc;
+                  memcpy(pData, &pCPData->Buf, (USHORT)pCPData->cbData);
+                  rc = (USHORT)pCPData->rc;
                   }
 
                if (!rc)
@@ -3089,9 +3092,13 @@ PBIOSPARAMETERBLOCK pBPB;
 
                   pCPData->Op = OP_WRITE;
                   pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
                   pCPData->llOffset = (LONGLONG)ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+                  iAssignUL(&pCPData->llOffset, ulFirstSector * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
                   pCPData->cbData = (ULONG)ptrk->cSectors * pVolInfo->BootSect.bpb.BytesPerSector;
-                  memcpy(&pCPData->Buf, pData, pCPData->cbData);
+                  memcpy(&pCPData->Buf, pData, (USHORT)pCPData->cbData);
 
                   rc = PostSetup();
 
@@ -3100,7 +3107,7 @@ PBIOSPARAMETERBLOCK pBPB;
                      goto FS_IOCTLEXIT;
                      }                    
 
-                  rc = pCPData->rc;
+                  rc = (USHORT)pCPData->rc;
                   }
 
                if (!rc)
@@ -3147,7 +3154,11 @@ PBIOSPARAMETERBLOCK pBPB;
 
                      pCPData->Op = OP_READ;
                      pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
                      pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset;
+#else
+                     iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+#endif
                      pCPData->cbData = pVolInfo->BootSect.bpb.BytesPerSector;
 
                      rc = PostSetup();
@@ -3185,7 +3196,7 @@ PBIOSPARAMETERBLOCK pBPB;
                         goto FS_IOCTLEXIT;
                         }                    
 
-                     pBPB->cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
+                     pBPB->cCylinders = (USHORT)(cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads));
 
                      pBPB->bDeviceType = 1 << 5;  // hard disk
                      pBPB->fsDeviceAttr = 1 << 2; // > 16 MB flag
@@ -3204,7 +3215,7 @@ PBIOSPARAMETERBLOCK pBPB;
                      cSectors = pVolInfo->BootSect.bpb.BigTotalSectors;
 
                      if (cSectors < 65536UL)
-                        pBPB->cSectors = cSectors;
+                        pBPB->cSectors = (USHORT)cSectors;
                      else
                         pBPB->cLargeSectors = cSectors;
 
@@ -3236,7 +3247,7 @@ PBIOSPARAMETERBLOCK pBPB;
                         cCylinders = cSectors / (pBPB->usSectorsPerTrack * pBPB->cHeads);
                         }
 
-                     pBPB->cCylinders = cCylinders;
+                     pBPB->cCylinders = (USHORT)cCylinders;
 
                      pBPB->bDeviceType = 1 << 5;  // hard disk
                      pBPB->fsDeviceAttr = 1 << 2; // > 16 MB flag
@@ -3605,7 +3616,7 @@ PBIOSPARAMETERBLOCK pBPB;
                opts->ullOffset = pVolInfo->ullOffset;
                opts->hf = pVolInfo->hf;
 
-               rc = Mount(opts, &pVolInfo2);
+               rc = Mount2(opts, &pVolInfo2);
 
                if (rc)
                   {
@@ -3629,7 +3640,7 @@ PBIOSPARAMETERBLOCK pBPB;
                opts->ullOffset = pVolInfo->ullOffset;
                opts->hf = pVolInfo->hf;
 
-               rc = Mount(opts, &pVolInfo);
+               rc = Mount2(opts, &pVolInfo);
 
                free(opts);
 
@@ -3682,7 +3693,7 @@ PBIOSPARAMETERBLOCK pBPB;
                opts->ullOffset = pVolInfo->ullOffset;
                opts->hf = pVolInfo->hf;
 
-               rc = Mount(opts, &pVolInfo2);
+               rc = Mount2(opts, &pVolInfo2);
 
                if (rc)
                   {
@@ -3706,7 +3717,7 @@ PBIOSPARAMETERBLOCK pBPB;
                opts->ullOffset = pVolInfo->ullOffset;
                opts->hf = pVolInfo->hf;
 
-               rc = Mount(opts, &pVolInfo);
+               rc = Mount2(opts, &pVolInfo);
 
                free(opts);
 
@@ -3949,7 +3960,11 @@ USHORT   usNr;
          {
          ULONGLONG ullSize;
          FileGetSize(pVolInfo, pDirEntry, pVolInfo->BootSect.bpb.RootDirStrtClus, NULL, szFileName, &ullSize);
+#ifdef INCL_LONGLONG
          ullSize += pVolInfo->ulClusterSize;
+#else
+         AssignUL(&ullSize, pVolInfo->ulClusterSize);
+#endif
          FileSetSize(pVolInfo, pDirEntry, pVolInfo->BootSect.bpb.RootDirStrtClus, NULL, szFileName, ullSize);
          }
 #ifdef EXFAT
@@ -4069,11 +4084,31 @@ USHORT rc;
    if (ulCluster == pVolInfo->ulFatEof)
       return ERROR_FILE_NOT_FOUND;
    if (!ulCluster)
+#ifdef INCL_LONGLONG
       pFileSize->ullFileSize = 0L;
+#else
+      AssignUL(&pFileSize->ullFileSize, 0);
+#endif
 
+#ifdef INCL_LONGLONG
    ulClustersNeeded = pFileSize->ullFileSize / pVolInfo->ulClusterSize;
+
    if (pFileSize->ullFileSize % pVolInfo->ulClusterSize)
       ulClustersNeeded++;
+#else
+   {
+   ULONGLONG ullFileSize;
+   Assign(&ullFileSize, pFileSize->ullFileSize);
+   DivUL(ullFileSize, pVolInfo->ulClusterSize);
+   ulClustersNeeded = ullFileSize.ulLo;
+
+   Assign(&ullFileSize, pFileSize->ullFileSize);
+   ModUL(ullFileSize, pVolInfo->ulClusterSize);
+
+   if (ullFileSize.ulLo)
+      ulClustersNeeded++;
+   }
+#endif
 
 #ifdef EXFAT
    if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
@@ -4082,7 +4117,11 @@ USHORT rc;
       }
 #endif
 
-   if (pFileSize->ullFileSize > 0 )
+#ifdef INCL_LONGLONG
+   if (pFileSize->ullFileSize > 0)
+#else
+   if (GreaterUL(pFileSize->ullFileSize, 0))
+#endif
       {
       ulClustersUsed = 1;
       while (ulClustersUsed < ulClustersNeeded)
@@ -4096,7 +4135,14 @@ USHORT rc;
          ulClustersUsed++;
          }
       if (ulCluster == pVolInfo->ulFatEof)
+#ifdef INCL_LONGLONG
          pFileSize->ullFileSize = ulClustersUsed * pVolInfo->ulClusterSize;
+#else
+         {
+         AssignUL(&pFileSize->ullFileSize, ulClustersUsed);
+         pFileSize->ullFileSize = MulUL(pFileSize->ullFileSize, pVolInfo->ulClusterSize);
+         }
+#endif
       else
          SetNextCluster(pVolInfo, ulCluster, pVolInfo->ulFatEof);
       }
@@ -4119,15 +4165,19 @@ USHORT rc;
       //   (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
       //   ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0);
 #else
-      Assign(pDirStreamNew->u.Stream.ullValidDataLen, pFileSize->ullFileSize);
-      Assign(pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
+      Assign(&pDirStreamNew->u.Stream.ullValidDataLen, pFileSize->ullFileSize);
+      Assign(&pDirStreamNew->u.Stream.ullDataLen, pDirStreamNew->u.Stream.ullValidDataLen);
       //   (pFileSize->ullFileSize / pVolInfo->ulClusterSize) * pVolInfo->ulClusterSize +
       //   ((pFileSize->ullFileSize % pVolInfo->ulClusterSize) ? pVolInfo->ulClusterSize : 0));
 #endif
       }
 #endif
 
+#ifdef INCL_LONGLONG
    if (!pFileSize->ullFileSize)
+#else
+   if (EqUL(pFileSize->ullFileSize, 0))
+#endif
       {
 #ifdef EXFAT
       if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
@@ -5056,7 +5106,7 @@ USHORT rc;
       else
          {
          ulSec = 0;
-         usNumSec = pVolInfo->BootSect.bpb.BigSectorsPerFat;
+         usNumSec = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
          }
       }
 
@@ -5105,7 +5155,7 @@ USHORT rc;
       else
          {
          ulSec = 0;
-         usNumSec = pVolInfo->BootSect.bpb.BigSectorsPerFat;
+         usNumSec = (USHORT)pVolInfo->BootSect.bpb.BigSectorsPerFat;
          }
       }
 
@@ -7625,8 +7675,8 @@ USHORT usSectorsPerBlock;
       // FAT12/FAT16 root directory starting sector
       ulSector = pVolInfo->BootSect.bpb.ReservedSectors +
          (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-      usSectorsPerBlock = (ULONG)pVolInfo->SectorsPerCluster /
-         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize);
+      usSectorsPerBlock = (USHORT)((ULONG)pVolInfo->SectorsPerCluster /
+         ((ULONG)pVolInfo->ulClusterSize / pVolInfo->ulBlockSize));
       usSectorsRead = 0;
       }
 
@@ -7890,7 +7940,7 @@ BOOL bLoop;
       pFirstFree -= usFreeEntries;
       // Mark free entries as deleted
       //memset(pFirstFree, DELETED_ENTRY, usFreeEntries * sizeof (DIRENTRY));
-      for (p = pFirstFree, i = 0; i < usFreeEntries; i++, p++)
+      for (p = pFirstFree, i = 0; i < (int)usFreeEntries; i++, p++)
          {
          p->bEntryType &= ~ENTRY_TYPE_IN_USE_STATUS;
          }

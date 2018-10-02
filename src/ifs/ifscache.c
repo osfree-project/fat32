@@ -320,7 +320,12 @@ char far *p;
 
       pCPData->Op = OP_READ;
       pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
       pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + ulSector * pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+      iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+      pCPData->llOffset = iAddUL(pCPData->llOffset, ulSector * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
       pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
 
       rc = PostSetup();
@@ -334,8 +339,8 @@ char far *p;
          return rc;
          }
 
-      memcpy(pbSectors, &pCPData->Buf, pCPData->cbData);
-      rc = pCPData->rc;
+      memcpy(pbSectors, &pCPData->Buf, (USHORT)pCPData->cbData);
+      rc = (USHORT)pCPData->rc;
       }
    if (rc)
       {
@@ -446,16 +451,21 @@ char *p;
 
          pCPData->Op = OP_WRITE;
          pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
          pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + ulSector * pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+         iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+         pCPData->llOffset = iAddUL(pCPData->llOffset, ulSector * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
          pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
-         memcpy(&pCPData->Buf, pbData, pCPData->cbData);
+         memcpy(&pCPData->Buf, pbData, (USHORT)pCPData->cbData);
 
          rc = PostSetup();
 
          if (rc)
             return rc;
 
-         rc = pCPData->rc;
+         rc = (USHORT)pCPData->rc;
          }
       if (rc && rc != ERROR_WRITE_PROTECT )
          Message("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
