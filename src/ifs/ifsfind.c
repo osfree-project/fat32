@@ -362,31 +362,30 @@ PDIRENTRY1 pStreamEntry = NULL;
    else
       pFindInfo->pInfo->ulMaxEntry = ((ULONG)pVolInfo->ulClusterSize / sizeof (DIRENTRY)) * ulNumClusters;
 
-   if (ulDirCluster != pVolInfo->BootSect.bpb.RootDirStrtClus)
-      {
-      if (!GetBlock(pVolInfo, pFindInfo, 0))
-         {
-         rc = ERROR_SYS_INTERNAL;
-         goto FS_FINDFIRSTEXIT;
-         }
-
-      pFindInfo->pInfo->lCurEntry = 0;
-      }
-   else
-      {
-      // adding fake "." and ".." entries to the root directory,
-      // as FAT root dir has them missing. So, we just create an extra
-      // block, ending with "." and "..", and make dir entries with
-      // negative numbers. Current block number is -1 too.
-      PDIRENTRY pDir = pFindInfo->pInfo->pDirEntries;
-
-      memset(pFindInfo->pInfo->pDirEntries, 0, pVolInfo->ulClusterSize * ulNumClusters);
-
 #ifdef EXFAT
-      if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
+   if (pVolInfo->bFatType < FAT_TYPE_EXFAT)   
+      {
 #endif
+      if (ulDirCluster != pVolInfo->BootSect.bpb.RootDirStrtClus)
          {
+         if (!GetBlock(pVolInfo, pFindInfo, 0))
+            {
+            rc = ERROR_SYS_INTERNAL;
+            goto FS_FINDFIRSTEXIT;
+            }
+
+         pFindInfo->pInfo->lCurEntry = 0;
+         }
+      else
+         {
+         // adding fake "." and ".." entries to the root directory,
+         // as FAT root dir has them missing. So, we just create an extra
+         // block, ending with "." and "..", and make dir entries with
+         // negative numbers. Current block number is -1 too.
+         PDIRENTRY pDir = pFindInfo->pInfo->pDirEntries;
          PDIRENTRY pDir2 = pDir;         
+
+         memset(pFindInfo->pInfo->pDirEntries, 0, pVolInfo->ulClusterSize * ulNumClusters);
 
          memset(pDir->bFileName, 0x20, 11);
          memcpy(pDir->bFileName, ".", 1);
@@ -423,95 +422,138 @@ PDIRENTRY1 pStreamEntry = NULL;
          // Yes, dir entry numbers of our block will be negative!
          pFindInfo->pInfo->lCurEntry = -2;
          }
+      
+      pFindInfo->pInfo->lBlockIndex--;
 #ifdef EXFAT
+      }
+   else   
+      {
+      PDIRENTRY1 pDir1 = (PDIRENTRY1)pFindInfo->pInfo->pDirEntries, pWork, pDir;
+      USHORT usNameHash;
+      ULONG ulParentDirCluster;
+      PSZ pszDir, p;
+
+      pszDir = (PSZ)malloc(CCHMAXPATHCOMP);
+
+      if (! pszDir)
+         {
+         rc = ERROR_NOT_ENOUGH_MEMORY;
+         goto FS_FINDFIRSTEXIT;
+         }
+
+      strcpy(pszDir, pName);
+
+      p = strrchr(pszDir, '\\');
+      *p = '\0';
+
+      ulParentDirCluster = FindDirCluster(pVolInfo,
+         pcdfsi,
+         pcdfsd,
+         pszDir,
+         usCurDirEnd,
+         RETURN_PARENT_DIR,
+         &pszDir,
+         pStreamEntry);
+
+      free(pszDir);
+
+      pDir = pDir1;
+
+      pDir1->bEntryType = ENTRY_TYPE_FILE;
+      pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+      pWork = fSetLongName1(pDir1+2, ".", &usNameHash);
+      pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
+
+      if (pGI)
+         {
+         pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
+         pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
+         pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
+         pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
+         pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
+         pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
+
+         pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
+         pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
+         }
+
+      (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+      (pDir1+1)->u.Stream.bAllocPossible = 1;
+      (pDir1+1)->u.Stream.bNoFatChain = 0;
+      (pDir1+1)->u.Stream.usNameHash = usNameHash;
+      (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen(".");
+#ifdef INCL_LONGLONG
+      (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
+      (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
+#else
+      AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
+      AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
+#endif
+      if (ulDirCluster != pVolInfo->BootSect.bpb.RootDirStrtClus)
+         {
+         (pDir1+1)->u.Stream.ulFirstClus = ulDirCluster;
+         }
       else
          {
-         PDIRENTRY1 pDir1 = (PDIRENTRY1)pFindInfo->pInfo->pDirEntries, pWork, pDir;
-         USHORT usNameHash;
-
-         pDir = pDir1;
-
-         pDir1->bEntryType = ENTRY_TYPE_FILE;
-         pDir1->u.File.usFileAttr = FILE_DIRECTORY;
-         pWork = fSetLongName1(pDir1+2, ".", &usNameHash);
-         pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
-
-         if (pGI)
-            {
-            pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
-            pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
-            pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
-            pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
-            pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
-            pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
-
-            pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
-            pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
-            }
-
-         (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
-         (pDir1+1)->u.Stream.bAllocPossible = 1;
-         (pDir1+1)->u.Stream.bNoFatChain = 0;
-         (pDir1+1)->u.Stream.usNameHash = usNameHash;
-         (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen(".");
-#ifdef INCL_LONGLONG
-         (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
-         (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
-#else
-         AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
-         AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
-#endif
          (pDir1+1)->u.Stream.ulFirstClus = 0;
-
-         pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
-                           sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
-         
-         pDir1 = pWork;
-
-         pDir1->bEntryType = ENTRY_TYPE_FILE;
-         pDir1->u.File.usFileAttr = FILE_DIRECTORY;
-         pWork = fSetLongName1(pDir1+2, "..", &usNameHash);
-         pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
-
-         if (pGI)
-            {
-            pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
-            pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
-            pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
-            pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
-            pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
-            pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
-
-            pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
-            pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
-            }
-
-         (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
-         (pDir1+1)->u.Stream.bAllocPossible = 1;
-         (pDir1+1)->u.Stream.bNoFatChain = 0;
-         (pDir1+1)->u.Stream.usNameHash = usNameHash;
-         (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen("..");
-#ifdef INCL_LONGLONG
-         (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
-         (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
-#else
-         AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
-         AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
-#endif
-         (pDir1+1)->u.Stream.ulFirstClus = 0;
-
-         pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
-                           sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
-
-         pDir1 = pDir + pVolInfo->ulBlockSize / sizeof(DIRENTRY1) - (pWork - pDir);
-         memcpy(pDir1, pDir, (pWork - pDir) * sizeof(DIRENTRY1));
-     
-         // Yes, dir entry numbers of our block will be negative!
-         pFindInfo->pInfo->lCurEntry = -(pWork - pDir);
          }
+
+      pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
+                        sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
+         
+      pDir1 = pWork;
+
+      pDir1->bEntryType = ENTRY_TYPE_FILE;
+      pDir1->u.File.usFileAttr = FILE_DIRECTORY;
+      pWork = fSetLongName1(pDir1+2, "..", &usNameHash);
+      pDir1->u.File.bSecondaryCount = (BYTE)(pWork - pDir1 - 1);
+
+      if (pGI)
+         {
+         pDir1->u.File.ulLastModifiedTimestp.year = pGI->year - 1980;
+         pDir1->u.File.ulLastModifiedTimestp.month = pGI->month;
+         pDir1->u.File.ulLastModifiedTimestp.day = pGI->day;
+         pDir1->u.File.ulLastModifiedTimestp.hour = pGI->hour;
+         pDir1->u.File.ulLastModifiedTimestp.minutes = pGI->minutes;
+         pDir1->u.File.ulLastModifiedTimestp.twosecs = pGI->seconds / 2;
+
+         pDir1->u.File.ulCreateTimestp = pDir1->u.File.ulLastModifiedTimestp;
+         pDir1->u.File.ulLastAccessedTimestp = pDir1->u.File.ulLastModifiedTimestp;
+         }
+
+      (pDir1+1)->bEntryType = ENTRY_TYPE_STREAM_EXT;
+      (pDir1+1)->u.Stream.bAllocPossible = 1;
+      (pDir1+1)->u.Stream.bNoFatChain = 0;
+      (pDir1+1)->u.Stream.usNameHash = usNameHash;
+      (pDir1+1)->u.Stream.bNameLen = (BYTE)strlen("..");
+#ifdef INCL_LONGLONG
+      (pDir1+1)->u.Stream.ullValidDataLen = pVolInfo->ulClusterSize;
+      (pDir1+1)->u.Stream.ullDataLen = pVolInfo->ulClusterSize;
+#else
+      AssignUL(&(pDir1+1)->u.Stream.ullValidDataLen, pVolInfo->ulClusterSize);
+      AssignUL(&(pDir1+1)->u.Stream.ullDataLen, pVolInfo->ulClusterSize);
 #endif
-     pFindInfo->pInfo->lBlockIndex--;
-     }
+      if (ulDirCluster != pVolInfo->BootSect.bpb.RootDirStrtClus)
+         {
+         (pDir1+1)->u.Stream.ulFirstClus = ulParentDirCluster;
+         }
+      else
+         {
+         (pDir1+1)->u.Stream.ulFirstClus = 0;
+         }
+
+      pDir1->u.File.usSetCheckSum = GetChkSum16((UCHAR *)pDir1,
+                        sizeof(DIRENTRY1) * (pDir1->u.File.bSecondaryCount + 1));
+
+      pDir1 = pDir + pVolInfo->ulBlockSize / sizeof(DIRENTRY1) - (pWork - pDir);
+      memcpy(pDir1, pDir, (pWork - pDir) * sizeof(DIRENTRY1));
+     
+      // Yes, dir entry numbers of our block will be negative!
+      pFindInfo->pInfo->lCurEntry = -(pWork - pDir);
+
+      pFindInfo->pInfo->lBlockIndex--;
+      }
+#endif
 
    if (usAttr & 0x0040)
       {

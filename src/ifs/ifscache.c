@@ -219,6 +219,9 @@ USHORT usCBIndex;
 BOOL fRASectors = FALSE;
 char far *p;
 
+   Message("rs000: pbData=%lx", pbData);
+   Message("rs001: nSectors=%u", nSectors);
+
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
       //FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
@@ -259,6 +262,7 @@ char far *p;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
       pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
+      Message("rs002: pbSectors=%lx", pbSectors);
       fRASectors = TRUE;
       }
    //if (!pbSectors)
@@ -306,7 +310,13 @@ char far *p;
       rc = PreSetup();
 
       if (rc)
+         {
+         if (pbSectors != pbData)
+            {
+            free(pbSectors);
+            }
          return rc;
+         }
 
       pCPData->Op = OP_READ;
       pCPData->hf = pVolInfo->hf;
@@ -316,7 +326,13 @@ char far *p;
       rc = PostSetup();
 
       if (rc)
+         {
+         if (pbSectors != pbData)
+            {
+            free(pbSectors);
+            }
          return rc;
+         }
 
       memcpy(pbSectors, &pCPData->Buf, pCPData->cbData);
       rc = pCPData->rc;
@@ -375,8 +391,10 @@ char far *p;
        }
 
    if (pbSectors != pbData)
+      {
       free(pbSectors);
-
+      }
+ 
    return rc;
 }
 

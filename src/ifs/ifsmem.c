@@ -13,19 +13,32 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
+#define HEAP_MAGIC     0xdead
 #define HEAP_SIZE      (0xFFF0)
 #define MAX_SELECTORS  100
 #define RESERVED_SEGMENT (PVOID)0x00000001
 
 
-static BOOL   IsBlockFree(PBYTE pMCB);
-static ULONG  BlockSize(PBYTE pMCB);
-static VOID   SetFree(PBYTE pMCB);
-static VOID   SetInUse(PBYTE pMCB);
-static VOID   SetBlockSize(PBYTE pMCB, ULONG ulSize);
-static void * FindFreeSpace(void * pStart, size_t tSize);
-static VOID GetMemAccess(VOID);
-static VOID ReleaseMemAccess(VOID);
+//static 
+BOOL   IsBlockFree(PBYTE pMCB);
+//static 
+ULONG  BlockSize(PBYTE pMCB);
+//static 
+VOID   SetFree(PBYTE pMCB);
+//static 
+VOID   SetInUse(PBYTE pMCB);
+//static 
+VOID SetMagic(PBYTE pMCB);
+//static 
+ULONG GetMagic(PBYTE pMCB);
+//static 
+VOID   SetBlockSize(PBYTE pMCB, ULONG ulSize);
+//static 
+void * FindFreeSpace(void * pStart, size_t tSize);
+//static 
+VOID GetMemAccess(VOID);
+//static 
+VOID ReleaseMemAccess(VOID);
 
 static void * rgpSegment[MAX_SELECTORS] = {0};
 
@@ -37,9 +50,13 @@ extern UCHAR fRing3;
 VOID CheckHeap(VOID)
 {
 USHORT usSel;
-BYTE _huge * pHeapStart;
-BYTE _huge * pHeapEnd;
-BYTE _huge * pWork;
+PBYTE pHeapStart;
+PBYTE pHeapEnd;
+PBYTE pWork;
+PBYTE pPrev = NULL;
+//BYTE _huge * pHeapStart;
+//BYTE _huge * pHeapEnd;
+//BYTE _huge * pWork;
 USHORT rc;
 
    for (usSel = 0; usSel < MAX_SELECTORS; usSel++)
@@ -57,7 +74,17 @@ USHORT rc;
       pHeapEnd = pHeapStart + HEAP_SIZE;
       pWork = pHeapStart;
       while (pWork < pHeapEnd)
+      {
+         if (GetMagic(pWork) != HEAP_MAGIC)
+            {
+            Message("pWork=%lx, size=%lx, magic=%x", pWork, BlockSize(pWork), (USHORT)GetMagic(pWork));
+            Message("pPrev=%lx, size=%lx, magic=%x", pPrev, BlockSize(pPrev), (USHORT)GetMagic(pWork));
+            FatalMessage("FAT32: Heap corruption found!");
+            }
+
+         pPrev = pWork;
          pWork += BlockSize(pWork) + sizeof (ULONG);
+      }
       if (pWork != pHeapEnd)
          FatalMessage("FAT32: Heap corruption found!");
       }
@@ -92,7 +119,7 @@ void * pRet;
       return alloc3(tSize);
       }
 
-/*   CheckHeap();*/
+   //CheckHeap();
 
    GetMemAccess();
 
@@ -124,6 +151,7 @@ if( tSize > 0 )
             goto malloc_exit;
             }
          SetBlockSize(rgpSegment[usSel], HEAP_SIZE - sizeof (ULONG));
+         SetMagic(rgpSegment[usSel]);
          SetFree(rgpSegment[usSel]);
 
          pRet = FindFreeSpace(rgpSegment[usSel], tSize);
@@ -149,10 +177,14 @@ malloc_exit:
 *********************************************************************/
 void * FindFreeSpace(void * pStart, size_t tSize)
 {
-BYTE _huge * pHeapStart;
-BYTE _huge * pHeapEnd;
-BYTE _huge * pWork;
-BYTE _huge * pNext;
+PBYTE pHeapStart;
+PBYTE pHeapEnd;
+PBYTE pWork;
+PBYTE pNext;
+//BYTE _huge * pHeapStart;
+//BYTE _huge * pHeapEnd;
+//BYTE _huge * pWork;
+//BYTE _huge * pNext;
 USHORT rc;
 
    pHeapStart = pStart;
@@ -177,10 +209,13 @@ USHORT rc;
             pNext = pWork + sizeof (ULONG) + tSize;
             SetBlockSize(pNext, BlockSize(pWork) - tSize - sizeof (ULONG));
             SetFree(pNext);
+            SetMagic(pNext);
             SetBlockSize(pWork, tSize);
+            SetMagic(pWork);
             }
 
          SetInUse(pWork);
+         SetMagic(pWork);
          return pWork + sizeof (ULONG);
          }
       pWork += BlockSize(pWork) + sizeof (ULONG);
@@ -195,12 +230,18 @@ void cdecl free(void * pntr)
 #endif
 {
 USHORT usSel;
-BYTE _huge * pHeapStart;
-BYTE _huge * pHeapEnd;
-BYTE _huge * pWork;
-BYTE _huge * pToFree = pntr;
-BYTE _huge * pPrev;
-BYTE _huge * pNext;
+PBYTE pHeapStart;
+PBYTE pHeapEnd;
+PBYTE pWork;
+PBYTE pToFree = pntr;
+PBYTE pPrev;
+PBYTE pNext;
+//BYTE _huge * pHeapStart;
+//BYTE _huge * pHeapEnd;
+//BYTE _huge * pWork;
+//BYTE _huge * pToFree = pntr;
+//BYTE _huge * pPrev;
+//BYTE _huge * pNext;
 USHORT rc;
 
    MessageL(LOG_MEM, "free%m %lX", 0x006c, pntr);
@@ -211,14 +252,13 @@ USHORT rc;
       return;
       }
 
-/*   CheckHeap();*/
+   //CheckHeap();
 
    if (OFFSETOF(pntr) == 0)
       {
       freeseg(pntr);
       return;
       }
-
 
    GetMemAccess();
 
@@ -264,6 +304,7 @@ USHORT rc;
          if (pNext < pHeapEnd && IsBlockFree(pNext))
             SetBlockSize(pWork, BlockSize(pWork) + BlockSize(pNext) + sizeof (ULONG));
 
+         SetMagic(pWork);
          SetFree(pWork);
          break;
          }
@@ -296,31 +337,45 @@ USHORT rc;
 
 BOOL IsBlockFree(PBYTE pMCB)
 {
-   return (BOOL)(*((PULONG)pMCB) & 1L);
+   return (BOOL)(*((PUSHORT)pMCB + 1) & (USHORT)1);
+   //return (BOOL)(*((ULONG)pMCB) & 1L);
 }
 
 
 ULONG BlockSize(PBYTE pMCB)
 {
-   return *((PULONG)pMCB) & ~1L;
+   return *((PUSHORT)pMCB + 1) & (USHORT)~1;
+   //return *((PULONG)pMCB) & ~1L;
+}
+
+ULONG GetMagic(PBYTE pMCB)
+{
+   return *((PUSHORT)pMCB);
+}
+
+VOID SetMagic(PBYTE pMCB)
+{
+   *((PUSHORT)pMCB) = HEAP_MAGIC;
 }
 
 VOID SetFree(PBYTE pMCB)
 {
-   *((PULONG)pMCB) |= 1L;
+   *((PUSHORT)pMCB + 1) |= (USHORT)1;
+   //*((PULONG)pMCB) |= 1L;
 }
 
 VOID SetInUse(PBYTE pMCB)
 {
-   *((PULONG)pMCB) &= ~1L;
+   *((PUSHORT)pMCB + 1) &= (USHORT)~1;
+   //*((PULONG)pMCB) &= ~1L;
 }
-
 
 VOID SetBlockSize(PBYTE pMCB, ULONG ulSize)
 {
 BOOL fFree = IsBlockFree(pMCB);
 
-   *((PULONG)pMCB) = ulSize;
+   *((PUSHORT)pMCB + 1) = (USHORT)ulSize;
+   //*((PULONG)pMCB) = ulSize;
 
    if (fFree)
       SetFree(pMCB);

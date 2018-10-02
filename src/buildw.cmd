@@ -11,6 +11,8 @@ set WATCOM=f:\dev\watcom
 set TOOLKIT=f:\os2tk45
 set PATH=%toolkit%\bin;%watcom%\binp;\tools\bin;%path%
 set BEGINLIBPATH=%toolkit%\dll;%watcom%\binp\dll;\tools\dll
+set rexx_dll=rexc
+set rexxapi_dll=rexcapi
 call %WATCOM%\owsetenv.cmd >nul 2>&1
 call svnrev.cmd
 call envwic.cmd

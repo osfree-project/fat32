@@ -1944,6 +1944,7 @@ ULONG  ulDirEntries = 0;
             rc = ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
          if (rc)
             {
+            free(pDirStart);
             free(pDirEntry);
             return rc;
             }
@@ -2062,8 +2063,8 @@ ULONG  ulDirEntries = 0;
       {
       if (!strchr(rgValidChars, pszVolLabel[usIndex]))
          {
-         free(pDirEntry);
          free(pDirStart);
+         free(pDirEntry);
          return ERROR_INVALID_NAME;
          }
       }
@@ -2101,8 +2102,8 @@ ULONG  ulDirEntries = 0;
          rc = WriteBlock(pVolInfo, ulCluster, ulBlock, (PBYTE)pDirStart, DVIO_OPWRTHRU);
       if (rc)
          {
-         free(pDirEntry);
          free(pDirStart);
+         free(pDirEntry);
          return rc;
          }
       }
@@ -2113,8 +2114,8 @@ ULONG  ulDirEntries = 0;
       }
    if (rc)
       {
-      free(pDirEntry);
       free(pDirStart);
+      free(pDirEntry);
       return rc;
       }
 
@@ -2130,8 +2131,8 @@ ULONG  ulDirEntries = 0;
          rc = WriteSector(pVolInfo, 0L, 1, (PBYTE)pBootSect, DVIO_OPWRTHRU | DVIO_OPNCACHE);
          if (rc)
             {
-            free(pDirEntry);
             free(pDirStart);
+            free(pDirEntry);
             return rc;
             }
          }
@@ -2211,8 +2212,9 @@ BOOL fFound;
 
    *pulFirstCluster = pDirEntry->u.AllocBmp.ulFirstCluster;
    *pullLen = pDirEntry->u.AllocBmp.ullDataLength;
-   free(pDirEntry);
+
    free(pDirStart);
+   free(pDirEntry);
    return 0;
 }
 
@@ -2274,6 +2276,8 @@ BOOL fFound;
    *pulFirstCluster = pDirEntry->u.UpCaseTbl.ulFirstCluster;
    *pullLen = pDirEntry->u.UpCaseTbl.ullDataLength;
    *pulChecksum = pDirEntry->u.UpCaseTbl.ulTblCheckSum;
+
+   free(pDirStart);
    free(pDirEntry);
    return 0;
 }

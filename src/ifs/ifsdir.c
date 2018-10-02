@@ -599,7 +599,7 @@ PSHOPENINFO pSHInfo = NULL;
       goto FS_RMDIREXIT;
       }
 
-   pDir = malloc((size_t)pVolInfo->ulClusterSize);
+   pDir = malloc((size_t)pVolInfo->ulBlockSize);
    if (!pDir)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;

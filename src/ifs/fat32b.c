@@ -26,13 +26,6 @@ USHORT GetFreeEntries(PDIRENTRY pDirBlock, ULONG ulSize);
 USHORT GetFreeEntries1(PDIRENTRY1 pDirBlock, ULONG ulSize);
 USHORT DBCSStrlen( const PSZ pszStr );
 
-USHORT GetBuf1Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf1(PVOLINFO pVolInfo);
-USHORT GetBuf2Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf2(PVOLINFO pVolInfo);
-USHORT GetBuf3Access(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf3(PVOLINFO pVolInfo);
-
 
 /******************************************************************
 *
@@ -360,6 +353,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
 
       pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
+      Message("fpc000: pDirStart=%lx", pDirStart);
       if (!pDirStart)
          {
          Message("FAT32: Not enough memory for cluster in FindPathCluster");
@@ -416,6 +410,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
             ULONG ulBlock;
             for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
                {
+               Message("fpc001: pDirStart=%lx", pDirStart);
                if (ulCluster == 1)
                   // reading root directory on FAT12/FAT16
                   ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
@@ -579,6 +574,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
 
       pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
+      Message("fpc002: pDirStart=%lx", pDirStart);
       if (!pDirStart)
          {
          Message("FAT32: Not enough memory for cluster in FindPathCluster");
@@ -635,6 +631,7 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
             ULONG ulBlock;
             for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
                {
+               Message("fpc003: pDirStart=%lx", pDirStart);
                ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
                pDir    = pDirStart;
                pDirEnd = (PDIRENTRY1)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
@@ -813,6 +810,8 @@ ULONG  ulRet;
       }
 
    pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
+   Message("tn000: pVolInfo->ulBlockSize=%lx", pVolInfo->ulBlockSize);
+   Message("tn000: pDirStart=%lx", pDirStart);
    if (!pDirStart)
       {
       Message("FAT32: Not enough memory for cluster in TranslateName");
@@ -888,6 +887,7 @@ ULONG  ulRet;
          ULONG ulBlock;
          for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
             {
+            Message("tn001: pDirStart=%lx", pDirStart);
             if (ulCluster == 1)
                // reading root directory on FAT12/FAT16
                ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
@@ -1268,7 +1268,7 @@ USHORT    rc;
             }
          }
 
-      pDirectory = (PDIRENTRY)malloc(2 * (size_t)pVolInfo->ulBlockSize);
+      pDirectory = (PDIRENTRY)malloc((size_t)2 * pVolInfo->ulBlockSize);
       if (!pDirectory)
          {
          Message("Modify directory: Not enough memory");
@@ -1660,14 +1660,13 @@ USHORT    rc;
    else
       {
       // exFAT case
-      DIRENTRY1 _huge *pDirectory;
-      DIRENTRY1 _huge *pDir2;
-      PDIRENTRY1 Dir2, pDir1;
-      DIRENTRY1 _huge *pWork, _huge *pWork2;
-      DIRENTRY1 _huge *pWorkStream, _huge *pWorkFile, _huge *pWorkFileName;
-      DIRENTRY1 _huge *pMax;
+      PDIRENTRY1 pDirectory;
+      PDIRENTRY1 pDir2;
+      PDIRENTRY1 pWork, pWork2;
+      PDIRENTRY1 pWorkStream, pWorkFile, pWorkFileName;
+      PDIRENTRY1 pMax;
       PDIRENTRY1 pNew1 = (PDIRENTRY1)pNew;
-      DIRENTRY1 _huge *pLNStart;
+      PDIRENTRY1 pLNStart;
       PDIRENTRY1 pDirNew;
       PSZ       szLongName;
       USHORT    usNumSecondary  = 0;
@@ -1754,7 +1753,7 @@ USHORT    rc;
             }
          }
 
-      pDirectory = (DIRENTRY1 _huge *)malloc(2 * (size_t)pVolInfo->ulBlockSize);
+      pDirectory = (PDIRENTRY1)malloc((size_t)2 * pVolInfo->ulBlockSize);
       if (!pDirectory)
          {
          free(szLongName);
@@ -1762,7 +1761,7 @@ USHORT    rc;
          return ERROR_NOT_ENOUGH_MEMORY;
          }
       memset(pDirectory, 0, (size_t)pVolInfo->ulBlockSize);
-      pDir2 = (DIRENTRY1 _huge *)((BYTE _huge *)pDirectory + pVolInfo->ulBlockSize);
+      pDir2 = (PDIRENTRY1)((PBYTE)pDirectory + pVolInfo->ulBlockSize);
       memset(pDir2, 0, (size_t)pVolInfo->ulBlockSize);
 
       ulCluster = ulDirCluster;
@@ -1833,7 +1832,7 @@ USHORT    rc;
                fNewCluster = FALSE;
                }
 
-            pMax = (DIRENTRY1 _huge *)((BYTE _huge *)pDirectory + pVolInfo->ulBlockSize + ulBytesToRead);
+            pMax = (PDIRENTRY1)((PBYTE)pDirectory + pVolInfo->ulBlockSize + ulBytesToRead);
 
             switch (usMode)
                {
@@ -1872,8 +1871,7 @@ USHORT    rc;
                   fFound = FALSE;
                   fCrossBorder = FALSE;
                   pWork = pDirectory;
-                  pDir1 = NULL;
-                  pMax = (DIRENTRY1 _huge *)((BYTE _huge *)pDirectory + ulBytesToRead);
+                  pMax = (PDIRENTRY1)((PBYTE)pDirectory + ulBytesToRead);
                   while (!pLNStart)
                      {
                      if (pWork->bEntryType == ENTRY_TYPE_EOD)
@@ -2187,7 +2185,7 @@ USHORT    rc;
                memset(pDirectory, 0, (size_t)pVolInfo->ulBlockSize);
                memmove(pDirectory, pDir2, (size_t)ulBytesToRead);
                if (pLNStart)
-                  pLNStart = (DIRENTRY1 _huge *)((BYTE _huge *)pLNStart - pVolInfo->ulBlockSize);
+                  pLNStart = (PDIRENTRY1)((PBYTE)pLNStart - pVolInfo->ulBlockSize);
 
                //if (ulCluster == 1)
                //   {
