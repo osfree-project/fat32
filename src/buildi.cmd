@@ -4,18 +4,18 @@ rem
 setlocal
 @echo off
 SET DEBUG=0
-SET COMSPEC=D:\OS2\CMD.EXE
-SET OS2_SHELL=D:\OS2\CMD.EXE
-SET LANG=en_US
-SET CPP_DBG_LANG=CPP
+rem SET COMSPEC=D:\OS2\CMD.EXE
+rem SET OS2_SHELL=D:\OS2\CMD.EXE
+rem SET LANG=en_US
+rem SET CPP_DBG_LANG=CPP
 rem SET DDK=f:\ddk
 rem SET DDKTOOLS=f:\ddktools
 SET TOOLKIT=f:\os2tk45
-SET CXXMAIN=F:\Dev\vac365
+SET CXXMAIN=f:\Dev\vac365
 rem SET MSC=%ddktools%\toolkits\msc60
 rem SET MASM=%ddktools%\toolkits\masm60
 rem SET CXXMAIN=%ddk%\base\tools\OS2.386\LX.386\BIN\vacpp
-REM SET INCLUDE=..\include;%CXXMAIN%\include;%CXXMAIN%\INCLUDE\OS2;%include%
+rem SET INCLUDE=..\include;%CXXMAIN%\include;%CXXMAIN%\INCLUDE\OS2;%include%
 rem SET LIB=..\lib;%CXXMAIN%\lib;%LIB%
 rem SET BEGINLIBPATH=%toolkit%\dll;%CXXMAIN%\DLL;%CXXMAIN%\RUNTIME
 rem SET PATH=%CXXMAIN%\BIN;%MASM%\BINP;%PATH%

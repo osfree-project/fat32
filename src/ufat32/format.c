@@ -747,8 +747,13 @@ int format_volume (char *path, format_params *params)
         pEXFATBootSect->sJmpBoot[2]=0x90;
         strcpy( pEXFATBootSect->sOEMName, "EXFAT   " );
         memset( pEXFATBootSect->bpb, 0, 53 );
+#ifdef INCL_LONGLONG
         pEXFATBootSect->ullPartitionOffset = (ULONGLONG)dp.HiddenSectors;
         pEXFATBootSect->ullVolumeLength = (ULONGLONG)dp.TotalSectors;
+#else
+        pEXFATBootSect->ullPartitionOffset.ulLo = dp.HiddenSectors;
+        pEXFATBootSect->ullVolumeLength.ulLo = dp.TotalSectors;
+#endif
         pEXFATBootSect->ulFatOffset = (WORD) dp.ReservedSectCount;
         pEXFATBootSect->ulFatLength = FatSize;
         pEXFATBootSect->ulClusterHeapOffset = pEXFATBootSect->ulFatOffset + pEXFATBootSect->ulFatLength;
@@ -1109,12 +1114,20 @@ int format_volume (char *path, format_params *params)
         // alloc bitmap
         pDir->bEntryType = ENTRY_TYPE_ALLOC_BITMAP;
         pDir->u.AllocBmp.ulFirstCluster = 2;
+#ifdef INCL_LONGLONG
         pDir->u.AllocBmp.ullDataLength = ulExfatBitmapLen;
+#else
+        pDir->u.AllocBmp.ullDataLength.ulLo = ulExfatBitmapLen;
+#endif
         pDir++;
         // upcase table @todo create a real upcase table
         pDir->bEntryType = ENTRY_TYPE_UPCASE_TABLE;
         pDir->u.UpCaseTbl.ulFirstCluster = 2 + ulExfatBitmapClusters;
+#ifdef INCL_LONGLONG
         pDir->u.UpCaseTbl.ullDataLength = ulExfatUpCaseLen;
+#else
+        pDir->u.UpCaseTbl.ullDataLength.ulLo = ulExfatUpCaseLen;
+#endif
         pDir->u.UpCaseTbl.ulTblCheckSum = GetChkSum2((char *)pUpCase, ulExfatUpCaseLen);
         //
         SectorStart += ulExfatUpCaseClusters * params->sectors_per_cluster;

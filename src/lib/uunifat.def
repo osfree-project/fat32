@@ -1,6 +1,6 @@
-LIBRARY UFAT32 NEWFILES
+LIBRARY UUNIFAT NEWFILES
 STUB NONE
-DESCRIPTION 'UFAT32 Forwarder DLL, Henk Kelder'
+DESCRIPTION 'UUNIFAT Utility DLL, Henk Kelder'
 DATA LOADONCALL NONSHARED MULTIPLE
 CODE PRELOAD 
 PROTMODE
@@ -22,20 +22,7 @@ EXPORTS
       recover
       sys
       LoadTranslateTable
-
-IMPORTS
-      CHKDSK                uunifat.CHKDSK
-      FORMAT                uunifat.FORMAT
-      RECOVER               uunifat.RECOVER
-      SYS                   uunifat.SYS
-      LOADTRANSTBL          uunifat.LOADTRANSTBL
-      chkdsk                uunifat.chkdsk
-      format                uunifat.format
-      recover               uunifat.recover
-      sys                   uunifat.sys
-      LoadTranslateTable    uunifat.LoadTranslateTable
-
-
+      
 ;LIBRARY FAT32 NEWFILES
 ;STUB NONE
 ;DESCRIPTION 'FAT32 IFS driver, (c) Henk Kelder 1999'

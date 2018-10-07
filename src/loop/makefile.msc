@@ -1,0 +1,47 @@
+!IFNDEF DEBUG
+!ERROR ,SPECIFY EITHER DEBUG=0 or DEBUG=1 ON THE NMAKE COMMANDLINE !
+!ENDIF
+
+!IF $(DEBUG)
+COPTS=/Od /Zi /J /D__16BITS__ /D__OS2__ /I. /I..\include /I$(MSC)\include $(ADD_DEFS)
+AOPTS=/Zi /I. /I..\include
+LOPTS=/COD
+L32OPTS=/DE
+!ELSE
+COPTS=/Gr /J /D__16BITS__ /D__OS2__ /I. /I..\include /I$(MSC)\include $(ADD_DEFS) # /Ox
+AOPTS=/Ilibc
+LOPTS=/E:2
+L32OPTS=/E:2
+!ENDIF
+
+LINK=$(BOOTDRIVE)\os2\link386.exe
+CFLAGS=/nologo $(COPTS) /G2s /Zl /Alfu /Zp1 /W3 /c /Fc%|dpfF.lst
+AFLAGS=/nologo $(AOPTS) /c /Sa /Sn /Fl%|dpfF.lst
+LFLAGS=/NOL $(LOPTS) /MAP /FAR /PACKC /PACKD /NOD /A:512
+L32FLAGS=/NOL /BAT $(L32OPTS) /MAP /NOP /NOE /NOD
+
+.SUFFIXES:
+.SUFFIXES: .sym .map .add .obj .def .c .asm
+
+.c.obj:
+    @cl $(CFLAGS) %s
+
+.asm.obj:
+    @ml $(AFLAGS) %s
+
+.map.sym:
+    @mapsym %s >nul 2>&1
+
+all: loop.add loop.sym
+
+LOOPOBJS=loop.obj stub.obj libc\i4d.obj libc\i4m.obj libc\i8d086.obj libc\string.obj
+
+loop.add : $(LOOPOBJS) ..\lib\loop.def makefile.msc
+    @$(LINK) $(L32FLAGS) $(FAT32OBJS) ,$@,, $(DDKTOOLS)\toolkits\msc60\lib\LLIBCDLL FSHELPER DHCALLS $(DDK)\base\lib\OS2286 $(DDK)\base\lib\OS2286P, ..\lib\loop.def
+
+loop.obj:   loop.c
+string.obj: libc\string.c
+stub.obj:   stub.asm
+i4d.obj:    libc\i4d.asm
+i4m.obj:    libc\i4m.asm
+i8d086.obj: libc\i8d086.asm

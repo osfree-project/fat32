@@ -20,7 +20,6 @@
 
 #define  INCL_DOSFILEMGR
 #define  INCL_DOSERRORS
-#define  INCL_LONGLONG
 #include <os2.h>
 
 #include <stdio.h>
@@ -123,7 +122,7 @@ char szName[260];
 HMODULE hmod;
 HFILE hf;
 ULONG ulAction, cbActual;
-LONGLONG ibActual;
+//LONGLONG ibActual;
 struct _MBR mbr;
 PTE pte;
 int i;

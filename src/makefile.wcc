@@ -6,4 +6,4 @@ PATH = ..
 
 DIRS = include ufat32 ufat32\win32 util\zlib util\qemu-img &
        util ifs\libc ifs f32chk partfilt loop ifsinf\ifs ifsinf\fat32 &
-       test
+       test test\16bit

@@ -1634,7 +1634,7 @@ the following drive letters should be disabled, so this is a "blacklist"-type ma
 the following drive letters should be disabled, so this is a "blacklist"-type mask&per.
 
 :p.:hp2./EXFAT[&colon.[-]<drive letter list>] :ehp2.Enable exFAT support&per. You can optionally specify the drive
-letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.* or /exfat&colon.-abcd)&per. There is an support for exFAT
+letters which are needed to mount&per. (Like /exfat&colon.abcd or /exfat&colon.* or /exfat&colon.-abcd)&per. There is a support for exFAT
 filesystems&per. (beta-quality)&per. Minus denotes that the following drive letters should be disabled, so this is a 
 "blacklist"-type mask&per.
 
@@ -1666,6 +1666,11 @@ you can define the minimum number of sectors the IFS will read from disk and pla
 in the cache&per. 
 
 :p.:hp2./EAS :ehp2.Make :link reftype=hd refid=20042.FAT32&per.IFS :elink.support :link reftype=hd refid=62.EXTENDED ATTRIBUTES :elink.
+
+:p.:hp2./READONLY :ehp2. Set file system read only, if it's dirty&per. This is the alternative 
+behaviour (was the default one in older FAT32&per.IFS versions)&per. From now, by default, 
+file system access is denied, until it is checked&per. Instead of checking the file system, 
+you can force it clean with the :link reftype=hd refid=20053.F32STAT&per.EXE :elink. utility&per.
 
 :p.:hp2.IMPORTANT&colon.  :ehp2.:hp2.Starting with version 0&per.97, CHKDSK /F must first be run 
 on each FAT32 partition before adding EA support to the FAT32 IFS driver&per. This 
@@ -2047,6 +2052,8 @@ supported&colon.
 :p.:hp2./M&colon.<mountpoint> :ehp2.Specify mountpoint of a mounted disk image&per. This setting
 overrides the disk name&per. Disk name should point to a FAT disk, for UUNIFAT&per.DLL to be started&per.
 
+:p.:hp2./L:ehp2. Low level format for CD&apos.s/DVD&apos.s/BD&apos.s and floppies&colon. (experimental feature)
+
 :p.:hp2.FAT12 :ehp2.
 
 :cgraphic.
@@ -2169,8 +2176,11 @@ formats&colon.
 :li.QEMU vvfat, qcow, qcow2 formats
 :li.VBox &per.vdi
 :eul.
- 
-:p.These are mostly virtual machine disk images of different VM's like Bochs, VirtualPC, 
+
+:p.Also, mounting of non-FAT images is possible with :link reftype=hd refid=20043.LOOP&per.ADD :elink. 
+block device driver, which is supplied together with FAT32&per.IFS&per. 
+
+:p.These images are mostly virtual machine disk images of different VM's like Bochs, VirtualPC, 
 VirtualBox, QEMU, VMWare etc&per. Also, RAW images are supported, like diskette 
 images&per. See :link reftype=hd refid=20054.F32MOUNT&per.EXE
 :elink. for more details on how to mount different file system images with 
@@ -2227,6 +2237,11 @@ IFS= line for FAT32&per.IFS&per.
 :p.If the /MONITOR command is not specified in the config&per.sys after the :link reftype=hd refid=20042.IFS= 
 statement:elink., monitoring is OFF by default, but starting F32MON once will activate 
 monitoring&per. 
+
+:p.Also, see :link reftype=hd refid=200705.Debugging hangs or traps, or any other problems&per. :elink.
+for more information on methods of debugging FAT32&per.IFS in case of problems&per. Here is
+described, how to use OS/2 TRACE facility, or QSINIT or OS/4 log buffer and COM port for 
+debugging&per.
 
 :p.When F32MON runs, information is shown on the screen, and also written to 
 FAT32&per.LOG in the current directory&per. 
@@ -3422,6 +3437,10 @@ if I'd convince OS/4 developers to do such an enhancement&per. But it will not w
 :p.:link reftype=hd refid=200703.Notes on large floppy media&per. :elink.
 
 :p.:link reftype=hd refid=200704.Using CDRW&apos.s with FAT16/FAT32/exFAT filesystem&per. :elink.
+
+:p.:link reftype=hd refid=200705.Debugging hangs or traps, or any other problems&per. :elink.
+
+:p.:link reftype=hd refid=200706.Working with FAT filesystems, mounted to subdirectories&per. :elink.
 .br 
 
 :h3 id=200699 res=32062.How to prepare flash sticks for use with OS/2
@@ -3516,7 +3535,7 @@ can be made working under OS/2 by only assigning the LVM info with an
 explicit drive letter&per.
 
 :p.To add the LVM info, you need to call the Edit->LVM Information->...&per.
-Pick your disk from the pull-down menu&per. Here, the disk name, volume name 
+Pick your disk from the pull-down menu&per. Here, the partition name, volume name 
 and a drive letter can be set up&per. 
 
 :p.It is recommended to choose the explicit drive letter for your disk&per.
@@ -3538,7 +3557,7 @@ Such a file system can be created with a command&colon.
 .br
 .br
 
-:p.:hp2. format /fs&colon.fat16 /c&colon.128 :ehp2.
+:p.:hp2. format /fs&colon.fat16 /c&colon.128 /v&colon.sadump :ehp2.
 
 .br
 .br
@@ -3668,9 +3687,16 @@ curious fact, but it can serve as a test for non-512 byte sectors support, too, 
 :p.Also, with a little additional code for reading/writing CD&apos.s sectors (which was actually taken as is
 from my VirtualBox port, where you can run CD writing software in VBox, and burn CD&apos.s with a CD passthrough
 feature), FORMAT and CHKDSK could be taught to work with CDRW&apos.s too&per. This allows to format a CDRW as
-a big diskette, with a FAT filesystem&per. So, it works the same way UDF formatted CD&apos.s work&per. The only 
-thing not yet working is a low level format, so you format a CDRW on a low level first, either with UDF or with
-cdrecord/dvddao&per. The command may look like this&colon.
+a big diskette, with a FAT filesystem&per. So, it works the same way UDF formatted CD&apos.s work&per.
+
+:p.Also, I noticed that the current OS/2 UDF 2&per.16 has problems with formatting BD-RE (Blu-ray
+rewritable), dual layer, having 50 GB in size&per. It&apos.s possible, because it does not know such
+a medium type&per. Single-layer BD-RE&apos.s are formatted with UDF successfully&per. These 
+dual-layer disks can be formatted with FAT32 or exFAT with fat32&per.ifs without any problems, 
+as we don&apos.t check the medium type&per. This can be used if you want to use big sized 
+BD-RE&apos.s as a large diskette&per. We have tested CD-RW/DVD+-RW/BD-RE disks successfully&per.
+
+:p.The disk should be low-level formatted first&per. For example, with UDF FORMAT utility, like this&colon.
 
 :p.:hp2.format u&colon. /fs&colon.udf /l /y /nofmt :ehp2.
 
@@ -3680,6 +3706,11 @@ of UDF&colon.
 
 :p.:hp2.format u: /fs&colon.fat32 /v&colon.fat32cd :ehp2.
 
+:p.Also, we added the experimental support for low level formatting floppies and CD&apos.s. So, you also can
+try this single command, istead of the two above commands&colon.
+
+:p.:hp2.format u&colon. /fs&colon.fat32 /v&colon.fat32cd /l :ehp2.
+
 :p. You may discover that after such an operation, programs like FC/2 or the WPS see the CD as a FAT32 filesystem&per.
 They will see that a 640 MB CDRW disk has about 603 MB of available space&per. You can copy/delete/move files as usual&per.
 You can also CHKDSK this media, it will be able to fix lost clusters etc&per. SYSINSTX utility works too, but my BIOS
@@ -3687,6 +3718,105 @@ was unable to boot from a non-iso9660 CD&per.
 
 :p.After writing the CD you need to do "unlock u&colon.", then "eject u&colon."&per. Both utilites are supplied with UDF
 filesystem archive&per.
+
+
+:h3 id=200705 res=32070.Debugging hangs or traps, or any other problems&per.
+
+:p.:hp2.Debugging hangs or traps, or any other problems&per. :ehp2.
+
+:p.For viewing the FAT32&per.IFS logs, there is a :link reftype=hd refid=20052.F32MON&per.EXE :elink. 
+utility&per. Once started, it enables logging and logs are displayed in its window, plus are saved 
+additionally to a FAT32&per.LOG file in the current directory&per. Also, logging
+can be enabled from the beginning (since IFS is started) with the /MONITOR switch
+specified to FAT32&per.IFS&per.
+
+:p.Since some FAT32&per.IFS version, except for a F32MON&per.EXE log buffer,
+the log is also sent to a COM port and OS/4 or QSINIT log buffer too&per. Also, 
+trace records are sent to a trace buffer in parallel, so if OS/4 kernel, QSINIT or COM
+port are unavailable, you can use OS/2 TRACE facility to collect the information, 
+preceeding the trap or hang&per.
+
+:p.FAT32&per.IFS uses 0xfe as a TRACE MAJOR number, so you need to copy the trc00fe.tff
+file to your \os2\system\trace subdirectory&per.
+
+:p.Tracing can be enabled with the TRACE ON command, and the buffer contents can be grabbed
+with the TRACEGET utility&per. Also, you need to run the F32MON&per.EXE utility, or specify
+the /MONITOR switch to FAT32&per.IFS for the messages to be sent to the trace bufer&per. TRACE
+can be used if you use IBM kernel&per. On OS/4 kernels, the TRACE support is missing&per.
+On OS/4 kernels, the internal OS/4 log buffer is preferred&per. It can have very large sizes,
+up to some tens of megabytes&per. So, the messages are unlikely to be lost&per.
+
+If the system is trapped or hanged, and only a TRAPDUMP is available, you can extract the
+TRACE buffer from a TRAPDUMP with PMDF utility (the .T command)&per.
+
+:p.Except for using the TRACE facility, FAT32&per.IFS also checks for OS/4 kernel and QSINIT 
+loaders first, and if one of them is found, it sends the logging info to these log buffers, 
+through a pointer in OS2LDR DOSHLP code&per. The OS/4 log buffer can be taken with a
+
+:p.:hp2.copy kernlog$ log&per.txt :ehp2.
+
+:p.command&per. If you have QSINIT installed, but not the OS/4 kernel, you can grab the 
+log buffer with the
+
+:p.:hp2.copy oemhlp$ log&per.txt :ehp2.
+
+:p.command&per. If you have ACPI&per.PSD installed, OEMHLP$ driver is replaced by ACPI&per.PSD,
+original OEMHLP$ is renamed to ___HLP$&per. So, you can still grab it via the
+
+:p.:hp2.copy ___hlp$ log&per.txt :ehp2.
+
+:p.command&per. If neither QSINIT or OS/4 kernel are available, the log is still directly
+sent to the COM port&per. In all three cases, if you need to grab the log from the very
+beginning (since the IFS initialization), you need to attach a terminal emulator to the
+COM port. Also, for that, you need to specify the /MONITOR switch in FAT32&per.IFS command
+line&per. As mentioned above, the F32MON&per.EXE buffer is only 8192 bytes long&per. So
+with enough luck, you can avoid using the COM port&per. You just specify the /MONITOR
+switch to FAT32&per.IFS, and as soon as possible when OS/2 is booted, start F32MON&per.EXE&per.
+So, you can view the log buffer in via this utility&per.
+
+:p.Alternatively (the prefferred way), if you have QSINIT or OS/4 kernel installed, you can grab
+the log buffer with COPY command, as described above&per. If your system traps, or hangs and can&apos.t
+be booted until the desktop, you can attach the terminal emulator to your COM port, and see the log
+in its windows&per. Good terminal emulators also support logging&per. You can use OS/2 or Linux
+or Windows, or any other system as a debug terminal&per. Also, it is possible to use a laptop
+without a COM port, as a debug terminal&per. For that, just use an USB2Serial Cable, plus a 
+null-modem cable&per. You plug a null-modem cable in a 9-pin end of an USB2Serial Cable,
+and other end to the debuggee system COM port&per.
+
+:p.It is preferred to use a cable with a Prolific PL2303-compatible chip, if you want to use
+OS/2 as a debug terminal&per. You can use latest Lars Erdmann's USBCOM&per.SYS as an USB
+COM port driver&per. It supports that chip&per.
+
+:h3 id=200706 res=32071.Working with FAT filesystems, mounted to subdirectories&per.
+
+:p.:hp2.Working with FAT filesystems, mounted to subdirectories&per. :ehp2.
+
+:p.With the support of FAT file systems, mounted to subdirectories on another FAT drive, 
+we are able to have a number of file systems, which have no drive letters assigned. Instead,
+they are assigned the mount points, which are subdirectories on other drives. In order to
+change to these drives, FAT32&per.IFS needs to have control over these drives. So, they 
+also need to be FAT12/FAT16/FAT32/exFAT&per.
+
+:p.Except for browsing directories on these drives, having no drive letters assigned, and
+copying/moving/deleting/etc. files on them, there should also be a possibility to do
+CHKDSK/FORMAT/SYS on these drives&per. As they don&apos.t have drive letters assigned,
+we need to have possibility to pass the mount point to CHKDSK/FORMAT/SYS routines&per.
+
+:p.These routines accept drive letter as an argument, though&per. So, we introduced a new
+command line switch (which is present in all three utilities), namely, the "/M&colon.<mountpoint>"
+switch&per. It is specifies like this&colon.
+
+:p.:hp2.format u&colon. /fs&colon.fat32 /m&colon.v&colon.\tmp\0 :ehp2.
+
+:p.where v&colon.\tmp\0 is a mount point, on which our FS is mounted&per. The drive u&colon. is ignored,
+though it should be any FAT drive, in order for uunifat&per.dll to receive control&per. The
+CHKDSK command is specified the same way&colon.
+
+:p.:hp2.chkdsk u&colon. /f /m&colon.v&colon.\tmp\0 :ehp2.
+
+:p.And likewise for the SYS command&colon.
+
+:p.:hp2.sysinstx u&colon. /m&colon.v&colon.\tmp\0 :ehp2.
 
 :p.
 :h1 id=70 res=30064.Trouble Shooting
@@ -6823,9 +6953,9 @@ Ty Coon, President of Vice
 :p.That&apos.s all there is to it! 
 .br 
 
-:h1 id=78 res=30079.Sidecode licenses
+:h1 id=78 res=30079.Third party code licenses
 
-:p.:hp2. Sidecode licenses&colon. :ehp2.
+:p.:hp2. Third party code licenses&colon. :ehp2.
 
 :p. There are some code we borrowed from other projects,
 which have their respective licenses (GPL-compatible)&colon.

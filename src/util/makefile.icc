@@ -14,7 +14,8 @@ MSGBIND=msgbind.exe
 CC = icc.exe
 LINK = ilink.exe
 
-CFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(OPTS)
+CFLAGS =  /I..\include /Iqemu-img /Q+ /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(COPTS)
+# CFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt /C $(OPTS)
 MFLAGS = /DOS2 /W3 /Tl1 /Sm /Ss /Gm /Gd- /Gf /G5 /Gt $(OPTS)
 LINKOPT = /IG $(CV) /PM:VIO /STACK:10000 /ALIGN:4 /MAP /BASE:0x10000
 WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
@@ -28,21 +29,20 @@ WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 .SUFFIXES: .sym .map .exe .dll .obj .cpp .c .h .asm .inc
 
 ALL: f32parts.exe f32mon.exe diskdump.exe f32stat.exe cachef32.exe \
-     f32parts.sym f32mon.sym diskdump.sym f32stat.sym cachef32.sym
+     f32parts.sym f32mon.sym diskdump.sym f32stat.sym cachef32.sym \
+     f32mount.exe f32mount.sym
 
 .c.obj:
-   $(CC) $(CFLAGS) $(WOPTS) .\$*.c 2>$*.err
-   type $*.err      
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.c
 
 .cpp.obj:
-   $(CC) $(CFLAGS) $(WOPTS) .\$*.cpp 2>$*.err
-   type $*.err      
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.cpp
 
 .map.sym:
    @mapsym $*.map >nul 2>&1
 
 .obj.exe:
-        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
+   -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
 $*
 $@
 $*.map;
@@ -76,10 +76,21 @@ $@
 $*.map;
 <<NOKEEP
 
+OBJS2 = remount.obj cachef32.obj
+cachef32.exe : $(OBJS2)
+    -7 ilink /NOFREE /NOL $(LINKOPT) @<<
+$(OBJS2: = +^
+)
+$@
+$*.map;
+<<NOKEEP
+
 diskdump.obj : diskdump.cpp
 diskinf0.obj : diskinf0.c ..\include\fat32.h ..\include\fat32def.h
 diskinf1.obj : diskinf1.c ..\include\fat32.h ..\include\fat32def.h
 diskinf2.obj : diskinf2.c ..\include\fat32.h ..\include\fat32def.h
 monitor.obj : monitor.c ..\include\fat32def.h
 cachef32.obj : cachef32.c ..\include\fat32def.h
+remount.obj : remount.c ..\include\fat32def.h
 f32stat.obj : f32stat.c ..\include\fat32def.h
+f32mount.obj : f32mount.c ..\include\fat32def.h

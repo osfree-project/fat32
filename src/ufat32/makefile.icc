@@ -19,15 +19,27 @@ LINKOPT = /NOI $(LOPTS)  /ALIGN:4 /MAP
 # /STACK:10000 /PM:VIO   /BASE:0x10000
 WOPTS=/W3 /Wdcl /Weff /Wpar /Wpro /Wrea /Wret /Wuse
 
-OBJ_1 = format.obj msg.obj os2.obj
-OBJ_2 = ufat32.obj chkdsk.obj $(OBJ_1)
+OBJ_1 = ufat32.obd sys.obd recover.obd format.obd os2.obd msg.obd clus.obd chkdsk.obd fatfunc.obd unicode.obd ea.obd log.obd init.obd util.obd
+OBJ_2 = format.obj os2.obj msg.obj log.obj util.obj
+OBJ_3 = chkdsk.obc os2.obc msg.obc util.obc clus.obc fatfunc.obc unicode.obc log.obc ea.obc
+OBJ_4 = sys.obs os2.obs clus.obs msg.obs log.obs util.obs unicode.obs
+OBJ_5 = stub.obd
 
 .SUFFIXES:
-.SUFFIXES: .sym .map .exe .dll .obj .c .h .asm .inc
+.SUFFIXES: .sym .map .exe .dll .obs .obc .obd .obj .c .h .asm .inc
 
-ALL: ufat32.dll ufat32.sym #fat32fmt.exe fat32fmt.sym
+ALL: uunifat.dll uunifat.sym ufat12.dll ufat16.dll ufat32.dll uexfat.dll #fat32fmt.exe fat32fmt.sym
 
 .c.obj:
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.c
+
+.c.obc:
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.c
+
+.c.obs:
+   $(CC) $(CFLAGS) $(WOPTS) .\$*.c
+
+.c.obd:
    $(CC) $(CFLAGS) $(WOPTS) .\$*.c
 
 .map.sym:
@@ -45,8 +57,58 @@ ALL: ufat32.dll ufat32.sym #fat32fmt.exe fat32fmt.sym
 #*
 #<<NOKEEP
 
-ufat32.dll : $(OBJ_2)
+uunifat.dll : $(OBJ_1)
         -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_1: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+ufat12.dll : $(OBJ_5)
+        -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_5: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+ufat16.dll : $(OBJ_5)
+        -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_5: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+ufat32.dll : $(OBJ_5)
+        -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_5: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+uexfat.dll : $(OBJ_5)
+        -7 $(LINK) /NOFREE /NOL /DLL $(LINKOPT) @<<
+$(OBJ_5: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+fat32fmt.exe : $(OBJ_2)
+        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
 $(OBJ_2: = +^
 )
 $@
@@ -55,9 +117,19 @@ $*.map
 ..\lib\$*.def;
 <<NOKEEP
 
-fat32fmt.exe : $(OBJ_1)
+fat32chk.exe : $(OBJ_3)
         -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
-$(OBJ_1: = +^
+$(OBJ_3: = +^
+)
+$@
+$*.map
+
+..\lib\$*.def;
+<<NOKEEP
+
+fat32sys.exe : $(OBJ_4)
+        -7 $(LINK) /NOFREE /NOL $(LINKOPT) @<<
+$(OBJ_4: = +^
 )
 $@
 $*.map
@@ -70,5 +142,3 @@ chkdsk.obj : chkdsk.c ..\include\fat32def.h ..\include\portable.h
 msg.obj    : msg.c ..\include\fat32c.h
 os2.obj    : os2.c ..\include\fat32c.h ..\include\fat32def.h ..\include\portable.h
 fat32.obj  : fat32.c
-
-

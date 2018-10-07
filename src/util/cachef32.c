@@ -14,7 +14,6 @@
 #define INCL_DOSDEVICES
 #define INCL_DOSPROCESS
 #define INCL_VIO
-#define INCL_LONGLONG
 #include <os2.h>
 #include "portable.h"
 #include "fat32def.h"
@@ -274,7 +273,7 @@ VOID _LNK_CONV RWThread(PVOID pArg)
 {
 BlockDriverState *bs;
 BlockDriver *drv = NULL;
-LONGLONG ibActual;
+//LONGLONG ibActual;
 ULONG ulDataSize;
 EXBUF exbuf;
 ULONG ulParmSize = sizeof(EXBUF);
@@ -453,7 +452,7 @@ VOID _LNK_CONV RWThread2(PVOID pArg)
 {
 BlockDriverState *bs;
 BlockDriver *drv = NULL;
-LONGLONG ibActual;
+//LONGLONG ibActual;
 ULONG ulDataSize;
 EXBUF exbuf;
 ULONG ulParmSize = sizeof(EXBUF);

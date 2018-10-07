@@ -1,15 +1,40 @@
-#define INCL_LONGLONG
 #define INCL_DOSERRORS
 #define INCL_DOSINFOSEG
 #define INCL_NOBASEAPI
 #define INCL_NOPMAPI
 #include <os2.h>
 
+#ifdef _MSC_VER
+#define CCHMAXPATH          260
+#define CCHMAXPATHCOMP      256
+typedef ULONG LIN;
+typedef ULONG FAR   *PLIN;
+#endif
+
 #include "lvm_info.h"
 
 typedef USHORT APIRET;
+
+#ifdef INCL_LONGLONG
+
 typedef long long LONGLONG, *PLONGLONG;
 typedef unsigned long long ULONGLONG, *PULONGLONG;
+
+#else
+
+#pragma pack(1)
+typedef struct _LONGLONG {
+    ULONG ulLo;
+    LONG  ulHi;
+} LONGLONG, *PLONGLONG;
+
+typedef struct _ULONGLONG {
+    ULONG ulLo;
+    ULONG ulHi;
+} ULONGLONG, *PULONGLONG;
+#pragma pack()
+
+#endif
 
 #include <devhelp.h>
 #include <strat2.h>

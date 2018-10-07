@@ -25,7 +25,9 @@
 #endif
 
 #if defined(__WATCOMC__) || defined(__WATCOM)
+#ifndef INCL_LONGLONG
 #define INCL_LONGLONG
+#endif
 #endif
 
 #if defined(__OS2__) && !defined(__16BITS__)
@@ -55,8 +57,8 @@ typedef struct _ULONGLONG {
     ULONG ulLo;
     ULONG ulHi;
 } ULONGLONG, *PULONGLONG;
-#else
 #pragma pack()
+#else
 typedef long long LONGLONG, *PLONGLONG;
 typedef unsigned long long ULONGLONG, *PULONGLONG;
 #endif

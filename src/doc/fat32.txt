@@ -971,6 +971,12 @@ Options     Description
 
 /C:<number> Cluster size. The following cluster sizes are supported:   
 
+/M:<mountpoint> Specify mountpoint of a mounted disk image. This setting overrides 
+            the disk name. Disk name should point to a FAT disk, for UUNIFAT.DLL 
+            to be started.   
+
+/L          Low level format for CD's/DVD's/BD's and floppies: (experimental feature)   
+
 FAT12
 -----
 
@@ -2062,6 +2068,110 @@ convince OS/4 developers to do such an enhancement. But it will not work for tho
 TIPS/HOWTO's:
 =============
 
+How to prepare flash sticks for use with OS/2:
+---------------------------------------------
+
+File systems have their 'FS_MOUNT' routines called by the kernel. The kernel calls 
+them in sequence, until some filesystem returns successful status. If no IFS'es 
+returned success, the fallback filesystem is called, which is in-kernel FAT driver. 
+Also, in LVM-based systems, a drive letter is assigned according to LVM DLAT tables 
+(Drive Letter Assignment Tables). If these tables are missing, the kernel only seems 
+to call the in-kernel FAT driver. The same happens in case the kernel (together 
+with OS2DASD) detects that the unit is a large floppy.   
+
+So, the in-kernel FAT driver gets mounted. Because media is not FAT indeed, it 
+cannot be accessed. So, it looks like the drive is empty. When you open such drive 
+in FC/2, or change to this drive as a current one in CMD.EXE, ERROR_NON_DOS_DISK == 26 
+is displayed. This means that no IFS had been mounted this drive. The in-kernel 
+FAT driver attempted to mount it, and it doesn't recognise it, hence returning the 
+ERROR_NON_DOS_DISK error. So, this situation can be easily recognised by its error 
+code, 26.   
+
+To get your filesystem mounted by your IFS, you should assign it an explicit 
+drive letter. The drive letter can be assigned via LVM.EXE, or with DFSee, or 
+any similar tool.   
+
+LVM.EXE is, however, very picky regarding the disk geometries in the Partition 
+Table. IBM just refuses to do anything with the disk with a geometry disliked 
+by LVM.EXE. IBM has its own reasons to do so, for example, they don't want to 
+be responsible for any possible data losses. But this can cause many problems 
+with flash sticks, or with modern hard disks with ADF (Advanced Disk Format) 
+technology. Such disks have weird geometries. Also, all large disks (larger 
+than 512 GB) are assigned weird geometries too. Disks of sizes from range 
+512 GB..1 TB have 127 sectors per track. Disks of sizes 1 TB..2 TB have 
+255 sectros per track. The usual sectors per track value is 63, and it is 
+the only value which LVM.EXE accepts. So, for such disks, another tool is 
+required. Such tools are:   
+
+1.     ALVM (Modified LVM by Evgen Kotsuba), which has some relaxed restrictions,
+       compared to IBM's version of LVM.EXE. 
+
+2.     MiniLVM, written by Alex Taylor specially for eComStation. 
+
+3.     Disk manager from QSINIT, by _dixie_ 
+
+4.     DFSee, written by Jan van Wijk 
+  
+From these four utilities the most universal and powerful is DFSee. It allows 
+to do many useful operations, like:   
+
+-Wipe sectors on disk 
+
+-Rewrite MBR (either with new boot code, keeping partition tables, or vice 
+versa, erasing the Partition Table) 
+
+-Fix some fields in bootsector, like Hidden Sectors, and other values 
+
+-Editing sectors 
+
+-Editing partition tables 
+
+-Creating/editing LVM info 
+
+-Creating or deleting partitions 
+
+-Formatting FAT32 file systems 
+
+-etc etc etc 
+  
+The most common operation when preparing flash disks for use with OS/2 is assigning/editing 
+the LVM info. In most cases it is sufficient to make a friend's or colleague's flash 
+stick accessible from your OS/2 system. Note that DFSee allows to perform this operation 
+nondestructively, so that usually, no need to erase the beginning of the stick (which could 
+be not acceptable if that stick is not your own one, but friend's, colleague's or your 
+client's). This is because LVM info resides in an unused disk area, like a sector in zero 
+disk track right before the boot sector.   
+
+I did this operation with DFSee many times, and I never had problems with that. This can 
+be done with any existing file systems like FAT/FAT32/exFAT/NTFS/HPFS/JFS/etc. DFSee is 
+better than other tools because it can accept various disk geometries, in cases when other 
+tools refuse to do so. They simply won't allow you to do anything with your stick, and 
+scream about incorrect disk geometry, corrupted disk etc.   
+
+Some problems can occur in some rare cases, like Big Floppy media (there is a workaround 
+for this problem, see the Notes on large floppy media. section for more details) or 
+another strange case: I had a SanDisk stick with mismatched "Hidden Sectors" in the 
+boot sector, and the offset of the beginning of that partition in the Partition Table. 
+The former was a standard 63 sectors, but the latter was some bigger value, aligned 
+to flash controller block size. This was ignored on other OS'es, but it confused OS/2 
+disk subsystem. So, unfortunately, I needed to erase and repartition this stick, after 
+which it worked fine under OS/2.   
+
+However, it seems to be very rare unusual case. Most flash sticks can be made working 
+under OS/2 by only assigning the LVM info with an explicit drive letter.   
+
+To add the LVM info, you need to call the Edit->LVM Information->.... Pick your disk 
+from the pull-down menu. Here, the partition name, volume name and a drive letter can be 
+set up.   
+
+It is recommended to choose the explicit drive letter for your disk. This drive letter 
+is carried together with your flash stick to any machine you plug it in. If this drive 
+letter is occupied on that machine, the next available drive letter will be chosen. 
+Also, it is possible to select a " *:" as a drive letter. This instructs LVM to assign 
+the first available drive letter. Though, an explicit drive letter should be preferred, 
+because "*:" may not work reliably in some cases.   
+
+
 Using a 4 GB FAT16 partition with 64 KB cluster for StandAlone DUMPs: 
 ---------------------------------------------------------------------
 
@@ -2069,7 +2179,7 @@ It was discovered by me, that standard FAT OS2DUMP can be used to dump to a 4 GB
 clusters. So, you create a 4 GB partition, with BIOS type 6 (FAT16 BIG), and a volume label "SADUMP". Such a 
 file system can be created with a command:   
 
-format /fs:fat16 /c:128     
+format /fs:fat16 /c:128 /v:sadump
 
 Where 128 is the number of sectors per cluster: 64 KB == 128 sectors.   
 
@@ -2149,6 +2259,172 @@ from the boot sector. Such media can be repartitioned by erasing the boot sector
 emulation and it then works as usual.   
 
 Large floppies can be safely formatted with FAT16/FAT32/exFAT and used with fat32.ifs. 
+
+To create a Large Floppy in OS/2, you'll need to erase the medium with DFSee first. For 
+that, you need to select the whole disk with File->Open object to work with->Disk->Your disk. 
+Then wipe it with command:   
+
+wipe "" 0 2048   
+
+where "" is an empty pattern. "0" is a starting sector, and "2048" is wipe size in sectors. 
+After that, you can quit DFSee with "q" command, eject the disk, reinsert it and then you 
+can format it again as a whole with the   
+
+fat32fmt o: /fs:fat32 /v:<volume label>   
+
+command. Note that the FORMAT command will not work in this case, because FORMAT.COM frontend 
+does not like such media and will show an error.   
+
+If you want to reformat the medium back as PRM, you'll need to erase it again, eject, reinsert 
+it, create a partition on it, then reformat with FORMAT command.   
+
+
+Using CDRW's with FAT16/FAT32/exFAT filesystem.   
+----------------------------------------------
+
+It was discovered that if I create a FAT filesystem image with 2048 bytes per sector 
+(it can be done by QSINIT bootloader utilities, for example), and burn it onto a CDRW 
+disk, it can be successfully mounted by FAT32.IFS. Moreover, Windows understands such 
+CD's too. This could be treated as just a curious fact, but it can serve as a test for 
+non-512 byte sectors support, too, which is very useful.   
+
+Also, with a little additional code for reading/writing CD's sectors (which was actually 
+taken as is from my VirtualBox port, where you can run CD writing software in VBox, and 
+burn CD's with a CD passthrough feature), FORMAT and CHKDSK could be taught to work with 
+CDRW's too. This allows to format a CDRW as a big diskette, with a FAT filesystem. So, 
+it works the same way UDF formatted CD's work.   
+
+Also, I noticed that the current OS/2 UDF 2.16 has problems with formatting BD-RE (Blu-ray 
+rewritable), dual layer, having 50 GB in size. It's possible, because it does not know 
+such a medium type. Single-layer BD-RE's are formatted with UDF successfully. These 
+dual-layer disks can be formatted with FAT32 or exFAT with fat32.ifs without any problems, 
+as we don't check the medium type. This can be used if you want to use big sized BD-RE's 
+as a large diskette. We have tested CD-RW/DVD+-RW/BD-RE disks successfully.   
+
+The disk should be low-level formatted first. For example, with UDF FORMAT utility, 
+like this:   
+
+format u: /fs:udf /l /y /nofmt   
+
+This will allow to create a low level info required for accessing the CD in packet 
+mode (which allows to write sectors at once, but not tracks/sessions). Then you can 
+format the CD into a FAT filesystem, instead of UDF:   
+
+format u: /fs:fat32 /v:fat32cd   
+
+Also, we added the experimental support for low level formatting floppies and CD's. 
+So, you also can try like this single command, istead of the two above commands:   
+
+format u: /fs:fat32 /l /v:bdfat32   
+
+You may discover that after such an operation, programs like FC/2 or the WPS see 
+the CD as a FAT32 filesystem. They will see that a 640 MB CDRW disk has about 603 
+MB of available space. You can copy/delete/move files as usual. You can also 
+CHKDSK this media, it will be able to fix lost clusters etc. SYSINSTX utility 
+works too, but my BIOS was unable to boot from a non-iso9660 CD.   
+
+After writing the CD you need to do "unlock u:", then "eject u:". Both utilites 
+are supplied with UDF filesystem archive.   
+
+
+Debugging hangs or traps, or any other problems.
+-----------------------------------------------
+
+For viewing the FAT32.IFS logs, there is a F32MON.EXE utility. Once started, 
+it enables logging and logs are displayed in its window, plus are saved 
+additionally to a FAT32.LOG file in the current directory. Also, logging can 
+be enabled from the beginning (since IFS is started) with the /MONITOR switch 
+specified to FAT32.IFS.   
+
+Since some FAT32.IFS version, except for a F32MON.EXE log buffer, the log is 
+also sent to a COM port and OS/4 or QSINIT log buffer too. Also, trace records 
+are sent to a trace buffer in parallel, so if OS/4 kernel, QSINIT or COM port 
+are unavailable, you can use OS/2 TRACE facility to collect the information, 
+preceeding the trap or hang.   
+
+FAT32.IFS uses 0xfe as a TRACE MAJOR number, so you need to copy the trc00fe.tff 
+file to your \os2\system\trace subdirectory.   
+
+Tracing can be enabled with the TRACE ON command, and the buffer contents can be 
+grabbed with the TRACEGET utility. Also, you need to run the F32MON.EXE utility, 
+or specify the /MONITOR switch to FAT32.IFS for the messages to be sent to the 
+log bufer. TRACE can be used if you use IBM kernel. On OS/4 kernels, the TRACE 
+support is missing. On OS/4 kernels, the internal OS/4 log buffer is preferred. 
+It can have very large sizes, up to some tens of megabytes. So, the messages 
+are unlikely to be lost. If the system is trapped or hanged, and only a TRAPDUMP 
+is available, you can extract the TRACE buffer with the kernel debugger or PMDF 
+utility (the .T command).   
+
+Except for using the TRACE facility, FAT32.IFS also checks for OS/4 kernel and 
+QSINIT loaders first, and if one of them is found, it sends the logging info to 
+these log buffers, through a pointer in OS2LDR DOSHLP code. The OS/4 log buffer 
+can be taken with a   
+
+copy kernlog$ log.txt   
+
+command. If you have QSINIT installed, but not the OS/4 kernel, you can grab the 
+log buffer with the 
+
+copy oemhlp$ log.txt   
+
+command. If you have ACPI.PSD installed, OEMHLP$ driver is replaced by ACPI..PSD, 
+original OEMHLP$ is renamed to ___HLP$. So, you can still grab it via the   
+
+copy ___hlp$ log.txt   
+
+command. If neither QSINIT or OS/4 kernel are available, the log is still directly 
+sent to the COM port. In all three cases, if you need to grab the log from the very 
+beginning (since the IFS initialization), you need to attach a terminal emulator 
+to the COM port. Also, for that, you need to specify the /MONITOR switch in FAT32.IFS 
+command line. As mentioned above, the F32MON.EXE buffer is only 8192 bytes long. So 
+with enough luck, you can avoid using the COM port. You just specify the /MONITOR 
+switch to FAT32.IFS, and as soon as possible when OS/2 is booted, start F32MON.EXE. 
+So, you can view the log buffer in via this utility.   
+
+Alternatively (the prefferred way), if you have QSINIT or OS/4 kernel installed, you 
+can grab the log buffer with COPY command, as described above. If your system traps, 
+or hangs and can't be booted until the desktop, you can attach the terminal emulator 
+to your COM port, and see the log in its windows. Good terminal emulators also support 
+logging. You can use OS/2 or Linux or Windows, or any other system as a debug terminal. 
+Also, it is possible to use a laptop without a COM port, as a debug terminal. For that, 
+just use an USB2Serial Cable, plus a null-modem cable. You plug a null-modem cable in 
+a 9-pin end of an USB2Serial Cable, and other end to the debuggee system COM port.   
+
+It is preferred to use a cable with a Prolific PL2303-compatible chip, if you want 
+to use OS/2 as a debug terminal. You can use latest Lars Erdmann's USBCOM.SYS as an 
+USB COM port driver. It supports that chip.   
+
+
+Working with FAT filesystems, mounted to subdirectories.
+-------------------------------------------------------
+
+With the support of FAT file systems, mounted to subdirectories on another FAT drive, 
+we are able to have a number of file systems, which have no drive letters assigned. 
+Instead, they are assigned the mount points, which are subdirectories on other drives. 
+In order to change to these drives, FAT32.IFS needs to have control over these drives. 
+So, they also need to be FAT12/FAT16/FAT32/exFAT.   
+
+Except for browsing directories on these drives, having no drive letters assigned, 
+and copying/moving/deleting/etc. files on them, there should also be a possibility 
+to do CHKDSK/FORMAT/SYS on these drives. As they don't have drive letters assigned, 
+we need to have possibility to pass the mount point to CHKDSK/FORMAT/SYS routines.   
+
+These routines accept drive letter as an argument, though. So, we introduced a new 
+command line switch (which is present in all three utilities), namely, the 
+"/M:<mountpoint>" switch. It is specifies like this:   
+
+format u: /fs:fat32 /m:v:\tmp\0   
+
+where v:\tmp\0 is a mount point, on which our FS is mounted. The drive u: is ignored, 
+though it should be any FAT drive, in order for uunifat.dll to receive control. The 
+CHKDSK command is specified the same way:   
+
+chkdsk u: /f /m:v:\tmp\0   
+
+And likewise for the SYS command:   
+
+sysinstx u: /m:v:\tmp\0 
+
 
 ==================
 TROUBLE SHOOTING:
