@@ -383,7 +383,6 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
 
       pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
-      Message("fpc000: pDirStart=%lx", pDirStart);
       if (!pDirStart)
          {
          Message("FAT32: Not enough memory for cluster in FindPathCluster");
@@ -440,7 +439,6 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
             ULONG ulBlock;
             for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
                {
-               Message("fpc001: pDirStart=%lx", pDirStart);
                if (ulCluster == 1)
                   // reading root directory on FAT12/FAT16
                   ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
@@ -604,7 +602,6 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
          }
 
       pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
-      Message("fpc002: pDirStart=%lx", pDirStart);
       if (!pDirStart)
          {
          Message("FAT32: Not enough memory for cluster in FindPathCluster");
@@ -661,7 +658,6 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
             ULONG ulBlock;
             for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
                {
-               Message("fpc003: pDirStart=%lx", pDirStart);
                ReadBlock(pVolInfo, ulCluster, ulBlock, pDirStart, 0);
                pDir    = pDirStart;
                pDirEnd = (PDIRENTRY1)((PBYTE)pDirStart + pVolInfo->ulBlockSize);
@@ -813,20 +809,20 @@ ULONG  ulSector;
 USHORT usSectorsRead;
 USHORT usSectorsPerBlock;
 ULONG  ulDirEntries = 0;
-//DIRENTRY1 Dir;
-//USHORT usNumSecondary;
-//USHORT usFileAttr;
-//ULONG  ulRet;
+DIRENTRY1 Dir;
+USHORT usNumSecondary;
+USHORT usFileAttr;
+ULONG  ulRet;
 
    MessageL(LOG_FUNCS, "TranslateName%m: %s", 0x0034, pszPath);
 
-#ifdef EXFAT
-   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-      {
-      strcpy(pszTarget, pszPath);
-      return 0;
-      }
-#endif
+//#ifdef EXFAT
+//   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+//      {
+//      strcpy(pszTarget, pszPath);
+//      return 0;
+//      }
+//#endif
 
    memset(pszTarget, 0, FAT32MAXPATH);
    if (strlen(pszPath) >= 2)
@@ -840,8 +836,6 @@ ULONG  ulDirEntries = 0;
       }
 
    pDirStart = malloc((size_t)pVolInfo->ulBlockSize);
-   Message("tn000: pVolInfo->ulBlockSize=%lx", pVolInfo->ulBlockSize);
-   Message("tn000: pDirStart=%lx", pDirStart);
    if (!pDirStart)
       {
       Message("FAT32: Not enough memory for cluster in TranslateName");
@@ -917,7 +911,6 @@ ULONG  ulDirEntries = 0;
          ULONG ulBlock;
          for (ulBlock = 0; ulBlock < pVolInfo->ulClusterSize / pVolInfo->ulBlockSize; ulBlock++)
             {
-            Message("tn001: pDirStart=%lx", pDirStart);
             if (ulCluster == 1)
                // reading root directory on FAT12/FAT16
                ReadSector(pVolInfo, ulSector + ulBlock * usSectorsPerBlock, usSectorsPerBlock, (void *)pDirStart, 0);
@@ -932,10 +925,10 @@ ULONG  ulDirEntries = 0;
 
             while (usMode == MODE_SCAN && pDir < pDirEnd)
                {
-//#ifdef EXFAT
-//               if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
-//                  {
-//#endif
+#ifdef EXFAT
+               if (pVolInfo->bFatType < FAT_TYPE_EXFAT)
+                  {
+#endif
                   if (pDir->bAttr == FILE_LONGNAME)
                      {
                      fGetLongName(pDir, pszLongName, FAT32MAXPATHCOMP, &bCheck);
@@ -1014,7 +1007,7 @@ ULONG  ulDirEntries = 0;
                         }
                      memset(pszLongName, 0, FAT32MAXPATHCOMP);
                      }
-#if 0 //def EXFAT
+#ifdef EXFAT
                   }
                else
                   {

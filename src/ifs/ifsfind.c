@@ -457,7 +457,7 @@ PDIRENTRY1 pStreamEntry = NULL;
          pszDir,
          usCurDirEnd,
          RETURN_PARENT_DIR,
-         &pszDir,
+         &p,
          pStreamEntry);
 
       free(pszDir);
