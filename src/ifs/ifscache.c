@@ -212,15 +212,11 @@ APIRET rc,rc2;
 USHORT usSectors;
 USHORT usIndex;
 PBYTE pbSectors;
-//static BYTE pbSect[0x10000];
 BOOL fFromCache;
 BOOL fSectorInCache;
 USHORT usCBIndex;
 BOOL fRASectors = FALSE;
 char far *p;
-
-   Message("rs000: pbData=%lx", pbData);
-   Message("rs001: nSectors=%u", nSectors);
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
       {
@@ -262,7 +258,6 @@ char far *p;
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
       pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
-      Message("rs002: pbSectors=%lx", pbSectors);
       fRASectors = TRUE;
       }
    //if (!pbSectors)

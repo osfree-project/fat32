@@ -434,7 +434,7 @@ PDIRENTRY1 pStreamEntry = NULL;
       ULONG ulParentDirCluster;
       PSZ pszDir, p;
 
-      pszDir = (PSZ)malloc(CCHMAXPATHCOMP);
+      pszDir = (PSZ)malloc(CCHMAXPATHCOMP + 1);
 
       if (! pszDir)
          {

@@ -169,7 +169,7 @@ PSZ    p;
    MessageL(LOG_FUNCS, "FindDirCluster%m for %s, CurDirEnd %u, AttrWanted %u",
             0x0031, pDir, usCurDirEnd, usAttrWanted );
 
-   pszPath = malloc(CCHMAXPATHCOMP);
+   pszPath = malloc(CCHMAXPATHCOMP + 1);
 
    if (! pszPath)
       {
