@@ -27,7 +27,8 @@ int far pascal _loadds FS_FILEATTRIBUTE(
 PVOLINFO pVolInfo;
 ULONG ulCluster;
 ULONG ulDirCluster;
-PSZ   pszFile;
+PSZ   pszFile, pszName;
+PSZ   szFullName;
 PDIRENTRY pDirEntry = NULL;
 PDIRENTRY pDirNew = NULL;
 PDIRENTRY1 pDirStream = NULL, pDirEntryStream = NULL;
@@ -75,6 +76,12 @@ USHORT rc;
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FS_FILEATTRIBUTEEXIT;
       }
+   szFullName = (PSZ)malloc((size_t)FAT32MAXPATH);
+   if (!szFullName)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto FS_FILEATTRIBUTEEXIT;
+      }
 #ifdef EXFAT
    pDirStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
    if (!pDirStream)
@@ -102,10 +109,25 @@ USHORT rc;
       goto FS_FILEATTRIBUTEEXIT;
       }
 
+   if( TranslateName( pVolInfo, 0L, NULL, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( szFullName, pName );
+
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         pszName = szFullName;
+      else
+#endif
+         pszName = pName;
+
+      if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+         {
+         usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
+         }
+
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pName,
+      pszName,
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile,
@@ -228,6 +250,8 @@ FS_FILEATTRIBUTEEXIT:
       free(pDirEntry);
    if (pDirNew)
       free(pDirNew);
+   if (szFullName)
+      free(szFullName);
 #ifdef EXFAT
    if (pDirStream)
       free(pDirStream);
@@ -262,12 +286,13 @@ int far pascal _loadds FS_PATHINFO(
 PVOLINFO pVolInfo;
 ULONG ulCluster;
 ULONG ulDirCluster;
-PSZ   pszFile;
+PSZ   pszFile, pszName;
 PDIRENTRY pDirEntry = NULL;
 PDIRENTRY1 pDirEntryStream = NULL;
 PDIRENTRY1 pDirStream = NULL;
 PSHOPENINFO pDirSHInfo = NULL;
 USHORT usNeededSize;
+PSZ szFullName;
 USHORT rc;
 
    _asm push es;
@@ -306,6 +331,12 @@ USHORT rc;
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FS_PATHINFOEXIT;
       }
+   szFullName = (PSZ)malloc((size_t)FAT32MAXPATH);
+   if (!szFullName)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto FS_PATHINFOEXIT;
+      }
 #ifdef EXFAT
    pDirEntryStream = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
    if (!pDirEntryStream)
@@ -335,10 +366,25 @@ USHORT rc;
 
    if (usLevel != FIL_NAMEISVALID)
       {
+      if( TranslateName( pVolInfo, 0L, NULL, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
+         strcpy( szFullName, pName );
+
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         pszName = szFullName;
+      else
+#endif
+         pszName = pName;
+
+      if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+         {
+         usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
+         }
+      
       ulDirCluster = FindDirCluster(pVolInfo,
          pcdfsi,
          pcdfsd,
-         pName,
+         pszName,
          usCurDirEnd,
          RETURN_PARENT_DIR,
          &pszFile,
@@ -360,14 +406,6 @@ USHORT rc;
 
    if (usFlag == PI_RETRIEVE)
       {
-      //BYTE szFullName[FAT32MAXPATH];
-      PSZ szFullName = (PSZ)malloc((size_t)FAT32MAXPATH);
-      if (!szFullName)
-         {
-         rc = ERROR_NOT_ENOUGH_MEMORY;
-         goto FS_PATHINFOEXIT;
-         }
-
       if (usLevel != FIL_NAMEISVALID)
          {
          ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo, pDirEntry, pDirEntryStream, NULL);
@@ -376,9 +414,6 @@ USHORT rc;
             rc = ERROR_FILE_NOT_FOUND;
             goto FS_PATHINFOEXIT;
             }
-
-         if( TranslateName( pVolInfo, 0L, NULL, pName, szFullName, TRANSLATE_SHORT_TO_LONG ))
-            strcpy( szFullName, pName );
          }
 
       switch (usLevel)
@@ -794,8 +829,6 @@ USHORT rc;
             rc = ERROR_INVALID_LEVEL;
             break;
          }
-      if (szFullName)
-         free(szFullName);
 
       goto FS_PATHINFOEXIT;
       }
@@ -1141,6 +1174,8 @@ USHORT rc;
 FS_PATHINFOEXIT:
    if (pDirEntry)
       free(pDirEntry);
+   if (szFullName)
+      free(szFullName);
 #ifdef EXFAT
    if (pDirEntryStream)
       free(pDirEntryStream);

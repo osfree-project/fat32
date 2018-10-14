@@ -1213,7 +1213,7 @@ static void usage( char *s )
                  "(http://osfree.org) for ufat32.dll.\n"
                  "This software is covered by the GPL.\n"
                  "Use with care - Ridgecrop are not liable\n"
-		 "for data lost using this tool.\n\n"
+        		 "for data lost using this tool.\n\n"
                  "Usage:[c:\\] %s <d>: [options]\n\n"
                  "/C:<N> with different cluster sizes:\n"
                  "    N: sectors per cluster:\n"

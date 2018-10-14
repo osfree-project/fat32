@@ -23,16 +23,15 @@ int far pascal _loadds FS_CHDIR(
 PVOLINFO pVolInfo;
 POPENINFO pOpenInfo = NULL;
 ULONG ulCluster, ulSec;
-PSZ   pszFile;
+PSZ   pszFile, pszDir;
 USHORT rc;
-//BYTE     szDirLongName[ FAT32MAXPATH ];
 PSZ    szDirLongName = NULL;
 
    _asm push es;
 
    MessageL(LOG_FS, "FS_CHDIR%m, flag %u", 0x000f, usFlag);
 
-   szDirLongName = (PSZ)malloc((size_t)FAT32MAXPATH);
+   szDirLongName = (PSZ)malloc((size_t)FAT32MAXPATH + 1);
    if (!szDirLongName)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -92,6 +91,18 @@ PSZ    szDirLongName = NULL;
             if( TranslateName(pVolInfo, 0L, NULL, pDir, szDirLongName, TRANSLATE_SHORT_TO_LONG ))
                strcpy( szDirLongName, pDir );
 
+#ifdef EXFAT
+            if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+               pszDir = szDirLongName;
+            else
+#endif
+               pszDir = pDir;
+
+            if (usCurDirEnd == strrchr(pDir, '\\') - pDir + 1)
+               {
+               usCurDirEnd = strrchr(pszDir, '\\') - pszDir + 1;
+               }
+
             pOpenInfo->pSHInfo = GetSH( szDirLongName, pOpenInfo);
             if (!pOpenInfo->pSHInfo)
             {
@@ -115,10 +126,12 @@ PSZ    szDirLongName = NULL;
             pVolInfo = pOpenInfo->pVolInfo;
          }
 
+         Message("FS_CHDIR: pszDir=%s", pszDir);
+
          ulCluster = FindDirCluster(pVolInfo,
             pcdfsi,
             pcdfsd,
-            pDir,
+            pszDir,
             usCurDirEnd,
             FILE_DIRECTORY,
             &pszFile,
@@ -440,13 +453,12 @@ PVOLINFO pVolInfo;
 ULONG    ulCluster;
 ULONG    ulNextCluster;
 ULONG    ulDirCluster;
-PSZ      pszFile;
+PSZ      pszFile, pszDir;
 PDIRENTRY pDirEntry = NULL;
 PDIRENTRY pDir;
 PDIRENTRY pWork, pMax;
 USHORT   rc;
 USHORT   usFileCount;
-//BYTE     szLongName[ FAT32MAXPATH ];
 PSZ     szLongName = NULL;
 PDIRENTRY1 pStreamEntry = NULL, pDirStream = NULL;
 PSHOPENINFO pDirSHInfo = NULL;
@@ -553,10 +565,22 @@ PSHOPENINFO pSHInfo = NULL;
       goto FS_RMDIREXIT;
 #endif
 
+#ifdef EXFAT
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      pszDir = szLongName;
+   else
+#endif
+      pszDir = pName;
+
+   if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+      {
+      usCurDirEnd = strrchr(pszDir, '\\') - pszDir + 1;
+      }
+
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pName,
+      pszDir,
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile,

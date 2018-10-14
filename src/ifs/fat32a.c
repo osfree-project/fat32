@@ -184,6 +184,7 @@ ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
 PSZ   pszSrcFile;
 PSZ   pszDstFile;
+PSZ   pszSrc, pszDst;
 PDIRENTRY pDirEntry = NULL;
 PDIRENTRY pTarEntry = NULL;
 PDIRENTRY1 pDirStreamEntry = NULL;
@@ -333,6 +334,29 @@ PSZ      szDstLongName = NULL;
    if( TranslateName(pVolInfo, 0L, NULL, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szDstLongName, pDst );
 
+#ifdef EXFAT
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pszSrc = szSrcLongName;
+      pszDst = szDstLongName;
+      }
+   else
+#endif
+      {
+      pszSrc = pSrc;
+      pszDst = pDst;
+      }
+
+   if (usSrcCurDirEnd == strrchr(pSrc, '\\') - pSrc + 1)
+      {
+      usSrcCurDirEnd = strrchr(pszSrc, '\\') - pszSrc + 1;
+      }
+
+   if (usDstCurDirEnd == strrchr(pDst, '\\') - pDst + 1)
+      {
+      usDstCurDirEnd = strrchr(pszDst, '\\') - pszDst + 1;
+      }
+
    if (!stricmp( szSrcLongName, szDstLongName ))
       {
       rc = ERROR_CANNOT_COPY;
@@ -378,7 +402,7 @@ PSZ      szDstLongName = NULL;
    ulSrcDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pSrc,
+      pszSrc,
       usSrcCurDirEnd,
       RETURN_PARENT_DIR,
       &pszSrcFile,
@@ -441,7 +465,7 @@ PSZ      szDstLongName = NULL;
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pDst,
+      pszDst,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile,
@@ -666,7 +690,7 @@ int far pascal _loadds FS_DELETE(
 PVOLINFO pVolInfo;
 ULONG    ulCluster;
 ULONG    ulDirCluster;
-PSZ      pszFile;
+PSZ      pszFile, pszFile2;
 USHORT   rc;
 PDIRENTRY pDirEntry = NULL;
 #ifdef EXFAT
@@ -764,6 +788,18 @@ PSZ      szLongName = NULL;
    if( TranslateName(pVolInfo, 0L, NULL, pFile, szLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szLongName, pFile );
 
+#ifdef EXFAT
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      pszFile2 = szLongName;
+   else
+#endif
+      pszFile2 = pFile;
+
+   if (usCurDirEnd == strrchr(pFile, '\\') - pFile + 1)
+      {
+      usCurDirEnd = strrchr(pszFile2, '\\') - pszFile2 + 1;
+      }
+
    pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
    if (!pOpenInfo->pSHInfo)
       {
@@ -787,7 +823,7 @@ PSZ      szLongName = NULL;
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pFile,
+      pszFile2,
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pszFile,
@@ -2298,7 +2334,6 @@ PSZ  p;
 PSZ  cmd = NULL;
 char szObjname[256];
 HMODULE hmod;
-//PFN pfn;
 APIRET rc = 0;
 
    _asm push es;
@@ -4239,6 +4274,7 @@ ULONG ulSrcDirCluster;
 ULONG ulDstDirCluster;
 PSZ   pszSrcFile;
 PSZ   pszDstFile;
+PSZ   pszSrc, pszDst;
 PDIRENTRY pDirEntry = NULL;
 PDIRENTRY1 pDirEntry1;
 PDIRENTRY1 pDirEntryStream = NULL, pDirEntryStreamOld = NULL;
@@ -4367,6 +4403,29 @@ PSZ      szDstLongName = NULL;
    if( TranslateName(pVolInfo, 0L, NULL, pDst, szDstLongName, TRANSLATE_SHORT_TO_LONG ))
       strcpy( szDstLongName, pDst );
 
+#ifdef EXFAT
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      {
+      pszSrc = szSrcLongName;
+      pszDst = szDstLongName;
+      }
+   else
+#endif
+      {
+      pszSrc = pSrc;
+      pszDst = pDst;
+      }
+
+   if (usSrcCurDirEnd == strrchr(pSrc, '\\') - pSrc + 1)
+      {
+      usSrcCurDirEnd = strrchr(pszSrc, '\\') - pszSrc + 1;
+      }
+
+   if (usDstCurDirEnd == strrchr(pDst, '\\') - pDst + 1)
+      {
+      usDstCurDirEnd = strrchr(pszDst, '\\') - pszDst + 1;
+      }
+
    pOISrc = malloc(sizeof (OPENINFO));
    if (!pOISrc)
       {
@@ -4419,7 +4478,7 @@ PSZ      szDstLongName = NULL;
    ulDstDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pDst,
+      pszDst,
       usDstCurDirEnd,
       RETURN_PARENT_DIR,
       &pszDstFile,
@@ -4446,7 +4505,7 @@ PSZ      szDstLongName = NULL;
    ulSrcDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pSrc,
+      pszSrc,
       usSrcCurDirEnd,
       RETURN_PARENT_DIR,
       &pszSrcFile,
@@ -7081,7 +7140,8 @@ USHORT MakeDirEntry(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInf
 /******************************************************************
 *
 ******************************************************************/
-USHORT MakeShortName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName)
+USHORT MakeShortName(PVOLINFO pVolInfo, ULONG ulDirCluster, ULONG ulFileNo,
+                     PSZ pszLongName, PSZ pszShortName)
 {
 USHORT usLongName;
 PSZ pLastDot;
@@ -7089,6 +7149,7 @@ PSZ pFirstDot;
 PSZ p;
 USHORT usIndex;
 BYTE szShortName[12];
+BYTE szFileName[25];
 PSZ  pszUpper;
 USHORT rc;
 
@@ -7157,6 +7218,21 @@ USHORT rc;
 
          memcpy(pszShortName, szShortName, 11);
          free(pszUpper);
+         if (ulFileNo != 0xffffffff)
+            {
+            p = szShortName + 7;
+            while (*p == ' ') p--;
+            p++;
+            memset(szFileName, 0, sizeof(szFileName));
+            memcpy(szFileName, szShortName, p - szShortName);
+            if (memcmp(szShortName + 8, "   ", 3))
+               {
+               szFileName[p - szShortName] = '.';
+               memcpy(szFileName + (p - szShortName) + 1, szShortName + 8, 3);
+               }
+            strcpy(pszShortName, szFileName);
+            return usLongName;
+            }
          return usLongName;
          }
       }
@@ -7175,7 +7251,6 @@ USHORT rc;
       usLongName = LONGNAME_MAKE_UNIQUE;
 
    szShortName[11] = 0;
-
 
    usIndex = 0;
    p = pszUpper;
@@ -7249,7 +7324,6 @@ USHORT rc;
    if (usLongName == LONGNAME_MAKE_UNIQUE)
       {
       USHORT usNum;
-      BYTE   szFileName[25];
       BYTE   szNumber[18];
       ULONG ulCluster;
       PSZ p;
@@ -7269,7 +7343,12 @@ USHORT rc;
          */
 
          memset(szNumber, 0, sizeof szNumber);
-         itoa(usNum, szNumber, 10);
+
+         if (ulFileNo != 0xffffffff)
+            // if DirEntry number is specified (non-zero), use it
+            itoa(ulFileNo, szNumber, 16);
+         else
+            itoa(usNum, szNumber, 10);
 
          usPos2 = 7 - (strlen(szNumber));
          if (usPos1 && usPos1 < usPos2)
@@ -7294,11 +7373,23 @@ USHORT rc;
                p--;
             *p = 0;
             }
-         ulCluster = FindPathCluster(pVolInfo, ulDirCluster, szFileName, NULL, NULL, NULL, NULL); ////
-         if (ulCluster == pVolInfo->ulFatEof)
+         if (ulFileNo != 0xffffffff)
+            {
+            // if DirEntry number is specified, use it as NNN in file~NNN.ext,
+            // no need to try over all values < 32000
             break;
+            }
+         else
+            {
+            ulCluster = FindPathCluster(pVolInfo, ulDirCluster, szFileName, NULL, NULL, NULL, NULL);
+            if (ulCluster == pVolInfo->ulFatEof)
+               {
+               break;
+               }
+            }
          }
-      if (usNum < 32000)
+      if ( (ulFileNo == 0xffffffff && usNum < 32000) || 
+           (ulFileNo != 0xffffffff && ulFileNo < 32000) )
          {
          p = strchr(szFileName, '.');
 #if 0
@@ -7318,10 +7409,17 @@ USHORT rc;
       else
          return LONGNAME_ERROR;
       }
-   memcpy(pszShortName, szShortName, 11);
+
+   if (ulFileNo != 0xffffffff)
+      {
+      strcpy(pszShortName, szFileName);
+      }
+   else
+      {
+      memcpy(pszShortName, szShortName, 11);
+      }
    return usLongName;
 }
-
 
 /******************************************************************
 *

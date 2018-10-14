@@ -250,7 +250,6 @@ PSZ    p;
       free(pDirEntry);
       return pVolInfo->ulFatEof;
       }
-   //memset(szDir, 0, sizeof szDir);
    memset(szDir, 0, FAT32MAXPATH);
    memcpy(szDir, pDir, p - pDir);
    if (*p && p != pDir)
@@ -792,12 +791,13 @@ USHORT usMaxDirEntries = (USHORT)(pVolInfo->ulBlockSize / sizeof(DIRENTRY));
 USHORT TranslateName(PVOLINFO pVolInfo, ULONG ulDirCluster, PSHOPENINFO pDirSHInfo, PSZ pszPath, PSZ pszTarget, USHORT usTranslate)
 {
 BYTE szShortName[13];
-PSZ  pszLongName;
+PSZ  pszLongName, pszNumber;
 PSZ  pszUpperName;
 PSZ  pszUpperPart;
 PSZ  pszPart;
 PSZ  p;
-/* PSZ  pTar = pszTarget; */
+ULONG  ulFileNo;
+USHORT usNum = 0;
 PDIRENTRY pDir;
 PDIRENTRY pDirStart;
 PDIRENTRY pDirEnd;
@@ -815,14 +815,6 @@ USHORT usFileAttr;
 ULONG  ulRet;
 
    MessageL(LOG_FUNCS, "TranslateName%m: %s", 0x0034, pszPath);
-
-//#ifdef EXFAT
-//   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
-//      {
-//      strcpy(pszTarget, pszPath);
-//      return 0;
-//      }
-//#endif
 
    memset(pszTarget, 0, FAT32MAXPATH);
    if (strlen(pszPath) >= 2)
@@ -904,8 +896,15 @@ ULONG  ulRet;
       FSH_UPPERCASE(pszPart, FAT32MAXPATHCOMP, pszUpperPart);
       pszPath = p;
 
+      pszNumber = strchr(pszUpperPart, '~');
+      if (pszNumber)
+         {
+         usNum = atoi(pszNumber + 1);
+         }
+
       memset(pszLongName, 0, FAT32MAXPATHCOMP);
       fFound = FALSE;
+      ulFileNo = 0;
       while (usMode == MODE_SCAN && ulCluster != pVolInfo->ulFatEof)
          {
          ULONG ulBlock;
@@ -1063,7 +1062,7 @@ ULONG  ulRet;
 
                            if (usTranslate == TRANSLATE_LONG_TO_SHORT) /* OS/2 session, translate to DOS */
                               {
-                              MakeShortName(pVolInfo, ulDirCluster, pszUpperName, szShortName);
+                              MakeShortName(pVolInfo, ulDirCluster, ulFileNo, pszUpperName, szShortName);
                               if (
                                    ( !stricmp(pszUpperName, pszUpperPart) ||
                                      !stricmp(szShortName,  pszUpperPart) ) )
@@ -1075,8 +1074,8 @@ ULONG  ulRet;
                               }
                            else /* translate from DOS to OS/2 */
                               {
-                              if (//!stricmp(szShortName,  pszUpperPart) ||
-                                  !stricmp(pszUpperName, pszUpperPart))
+                              if ((pszNumber && usNum == (USHORT)ulFileNo) ||
+                                  (! pszNumber && ! stricmp(pszUpperName, pszUpperPart)))
                                  {
                                  strcat(pszTarget, pszLongName);
                                  pszTarget += strlen(pszTarget);
@@ -1117,6 +1116,7 @@ ULONG  ulRet;
                         usFileAttr = pDir1->u.File.usFileAttr;
                         memcpy(&Dir, pDir1, sizeof (DIRENTRY1));
                         memset(pszLongName, 0, FAT32MAXPATHCOMP);
+                        ulFileNo++;
                         }
                      }
                   }
@@ -1147,15 +1147,24 @@ ULONG  ulRet;
             }
          if (!ulCluster)
             ulCluster = pVolInfo->ulFatEof;
-         if (ulCluster == pVolInfo->ulFatEof)
-            strcat(pszTarget, pszPart);
+         //if (ulCluster == pVolInfo->ulFatEof)
+         //   {
+         //   Message("xxx7");
+         //   strcat(pszTarget, pszPart);
+         //   }
          }
       }
 
    free(pDirStart);
    free(pszLongName);
    if (ulCluster == pVolInfo->ulFatEof)
+      {
       strcat(pszTarget, pszPath);
+      }
+   if (! fFound)
+      {
+      return ERROR_FILE_NOT_FOUND;
+      }
    return 0;
 }
 
@@ -1254,7 +1263,7 @@ USHORT    rc;
          memcpy(pDirNew, pNew, sizeof (DIRENTRY));
          if ((pNew->bAttr & 0x0F) != FILE_VOLID)
             {
-            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameNew, pDirNew->bFileName);
+            rc = MakeShortName(pVolInfo, ulDirCluster, 0xffffffff, pszLongNameNew, pDirNew->bFileName);
             if (rc == LONGNAME_ERROR)
                {
                Message("Modify directory: Longname error");
@@ -1729,7 +1738,7 @@ USHORT    rc;
          memcpy(pDirNew, pNew, sizeof (DIRENTRY1));
          /* if ((pNew->bAttr & 0x0F) != FILE_VOLID)
             {
-            rc = MakeShortName(pVolInfo, ulDirCluster, pszLongNameNew, pDirNew->bFileName);
+            rc = MakeShortName(pVolInfo, ulDirCluster, 0xffffffff, pszLongNameNew, pDirNew->bFileName);
             if (rc == LONGNAME_ERROR)
                {
                Message("Modify directory: Longname error");

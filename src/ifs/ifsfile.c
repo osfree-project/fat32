@@ -47,7 +47,7 @@ int far pascal _loadds FS_OPENCREATE(
 PVOLINFO pVolInfo;
 ULONG    ulCluster, ulSec;
 ULONG    ulDirCluster;
-PSZ      pszFile;
+PSZ      pszFile, pszName;
 PDIRENTRY pDirEntry;
 PDIRENTRY1 pDirEntryStream = NULL;
 POPENINFO pOpenInfo = NULL;
@@ -177,6 +177,18 @@ USHORT rc;
       if( TranslateName(pVolInfo, 0L, NULL, pName, szLongName, TRANSLATE_SHORT_TO_LONG ))
          strcpy( szLongName, pName );
 
+#ifdef EXFAT
+      if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+         pszName = szLongName;
+      else
+#endif
+         pszName = pName;
+
+      if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+         {
+         usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
+         }
+
       pOpenInfo->pSHInfo = GetSH( szLongName, pOpenInfo);
       if (!pOpenInfo->pSHInfo)
          {
@@ -196,18 +208,14 @@ USHORT rc;
       ulDirCluster = FindDirCluster(pVolInfo,
          pcdfsi,
          pcdfsd,
-         pName,
+         pszName,
          usCurDirEnd,
          RETURN_PARENT_DIR,
          &pszFile,
          pDirStream);
 
-      Message("FS_OPENCREATE: ulDirCluster=%lx", ulDirCluster);
-
       ulSec = pVolInfo->BootSect.bpb.ReservedSectors +
       (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-
-      Message("FS_OPENCREATE: ulDirSec=%lx", ulSec);
 
       if (ulDirCluster == pVolInfo->ulFatEof)
          {
@@ -238,12 +246,8 @@ USHORT rc;
       ulCluster = FindPathCluster(pVolInfo, ulDirCluster, pszFile, pDirSHInfo,
          pDirEntry, pDirEntryStream, NULL);
 
-      Message("FS_OPENCREATE: ulCluster=%lx", ulCluster);
-
       ulSec = pVolInfo->BootSect.bpb.ReservedSectors +
       (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-
-      Message("FS_OPENCREATE: ulSec=%lx", ulSec);
 
       if (pOpenInfo->pSHInfo->sOpenCount > 1)
          {

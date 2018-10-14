@@ -93,6 +93,7 @@ ULONG  ulNumBlocks;
 ULONG  ulCluster;
 ULONG  ulDirCluster;
 PSZ    pSearch;
+PSZ    pLongName, pszName;
 PFINFO pNext;
 ULONG ulNeededSpace;
 USHORT usEntriesWanted;
@@ -108,6 +109,12 @@ PDIRENTRY1 pStreamEntry = NULL;
    usEntriesWanted = *pcMatch;
    *pcMatch  = 0;
 
+   pLongName = (PSZ)malloc((size_t)FAT32MAXPATH + 1);
+   if (!pLongName)
+      {
+      rc = ERROR_NOT_ENOUGH_MEMORY;
+      goto FS_FINDFIRSTEXIT;
+      }
 #ifdef EXFAT
    pStreamEntry = (PDIRENTRY1)malloc((size_t)sizeof(DIRENTRY1));
    if (!pStreamEntry)
@@ -265,13 +272,28 @@ PDIRENTRY1 pStreamEntry = NULL;
    */   
    memset(pData, 0, cbData);
 
+   if( TranslateName(pVolInfo, 0L, NULL, pName, pLongName, TRANSLATE_SHORT_TO_LONG ))
+      strcpy( pLongName, pName );
+
+#ifdef EXFAT
+   if (pVolInfo->bFatType == FAT_TYPE_EXFAT)
+      pszName = pLongName;
+   else
+#endif
+      pszName = pName;
+
+   if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+      {
+      usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
+      }
+
    pFindInfo->pSHInfo = NULL;
 
    ulNumClusters = 0;
    ulDirCluster = FindDirCluster(pVolInfo,
       pcdfsi,
       pcdfsd,
-      pName,
+      pszName,
       usCurDirEnd,
       RETURN_PARENT_DIR,
       &pSearch,
@@ -624,6 +646,8 @@ PDIRENTRY1 pStreamEntry = NULL;
 
 
 FS_FINDFIRSTEXIT:
+   if (pLongName)
+      free(pLongName);
 #ifdef EXFAT
    if (pStreamEntry)
       free(pStreamEntry);
@@ -858,14 +882,14 @@ LONG  lBlockIndex;
 ULONGLONG ullSize;
 LONG lCurEntry;
 
-   szLongName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP);
+   szLongName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP + 1);
    if (!szLongName)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;
       goto FillDirEntryExit;
       }
 
-   szUpperName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP);
+   szUpperName = (PSZ)malloc((size_t)FAT32MAXPATHCOMP + 1);
    if (!szUpperName)
       {
       rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -1417,6 +1441,8 @@ LONG lCurEntry;
       {
       // exFAT case
       DIRENTRY1 _huge * pDir;
+      BYTE szShortName[14];
+      static LONG lFileNo;
       USHORT usNameLen;
       USHORT usNameHash;
       USHORT usNumSecondary;
@@ -1433,9 +1459,16 @@ LONG lCurEntry;
          lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
          }
 
+      if (! pFindInfo->pInfo->lCurEntry)
+         {
+         lFileNo = 0;
+         }
+
       pDir = (PDIRENTRY1)&pFindInfo->pInfo->pDirEntries[lCurEntry % pFindInfo->pInfo->usEntriesPerBlock];
       while (pFindInfo->pInfo->lCurEntry < (LONG)pFindInfo->pInfo->ulMaxEntry)
          {
+         memset(szShortName, 0, sizeof(szShortName)); // vs
+
          lCurEntry = pFindInfo->pInfo->lCurEntry;
 
          if (pFindInfo->pInfo->lCurEntry < 0)
@@ -1443,6 +1476,11 @@ LONG lCurEntry;
             lCurEntry += pFindInfo->pInfo->usEntriesPerBlock;
             }
 
+         if (! pFindInfo->pInfo->lCurEntry)
+            {
+            lFileNo = 0;
+            }
+         
          lBlockIndex = (USHORT)(lCurEntry / pFindInfo->pInfo->usEntriesPerBlock);
 
          if (pFindInfo->pInfo->lCurEntry < 0)
@@ -1486,14 +1524,30 @@ LONG lCurEntry;
                   //FSH_UPPERCASE(szUpperName, sizeof szUpperName, szUpperName);
                   FSH_UPPERCASE(szUpperName, FAT32MAXPATHCOMP, szUpperName);
 
+                  Message("pFindInfo->pInfo->lCurEntry=%ld", pFindInfo->pInfo->lCurEntry);
+                  Message("lFileNo=%ld", lFileNo);
+                  if (pFindInfo->pInfo->lCurEntry < 0)
+                     {
+                     // . and ..
+                     strcpy(szShortName, szUpperName);
+                     }
+                  else
+                     {
+                     MakeShortName(pVolInfo, 
+                                   pFindInfo->pInfo->rgClusters[0], 
+                                   (ULONG)lFileNo, 
+                                   szUpperName, 
+                                   szShortName);
+                     }
+
                   rc = 0;
 
                   //if (!rc && strlen(pFindInfo->pInfo->szSearch))
                   if (strlen(pFindInfo->pInfo->szSearch))
                      {
                      rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szUpperName);
-                     //if (rc && stricmp(szShortName, szUpperName))
-                     //   rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
+                     if (rc && stricmp(szShortName, szUpperName))
+                        rc = FSH_WILDMATCH(pFindInfo->pInfo->szSearch, szShortName);
                      }
 
                   //if (f32Parms.fEAS && bCheck2 == bCheck1 && strlen(szLongName))
@@ -1504,8 +1558,8 @@ LONG lCurEntry;
                   if (f32Parms.fEAS && IsEASFile(szLongName))
                      rc = 1;
 
-                  //if( !pFindInfo->pInfo->fLongNames )
-                  //   strcpy( szLongName, szShortName );
+                  if( !pFindInfo->pInfo->fLongNames )
+                     strcpy( szLongName, szShortName );
 
                   /*
                      Check for MUST HAVE attributes
@@ -1532,6 +1586,7 @@ LONG lCurEntry;
                      *ppData = pfFind->achName + pfFind->cchName + 1;
                      (*pcbData) -= *ppData - pStart;
                      pFindInfo->pInfo->lCurEntry++;
+                     Message("szLongName=%s", szLongName);
                      rc = 0;
                      goto FillDirEntryExit;
                      }
@@ -1880,6 +1935,7 @@ LONG lCurEntry;
                {
                usNumSecondary = pDir->u.File.bSecondaryCount;
                fEAS = pDir->u.File.fEAS;
+               lFileNo++;
 
                if (!(pDir->u.File.usFileAttr & pFindInfo->pInfo->bAttr))
                   {
