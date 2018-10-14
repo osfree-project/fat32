@@ -7350,6 +7350,9 @@ USHORT rc;
          else
             itoa(usNum, szNumber, 10);
 
+         p = szNumber;
+         while (*p++) *p = toupper(*p);
+
          usPos2 = 7 - (strlen(szNumber));
          if (usPos1 && usPos1 < usPos2)
             usPos2 = usPos1;

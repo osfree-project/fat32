@@ -9,6 +9,7 @@ TARGETS=$(LIBROOT)\libc.lib
 COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=. -i=.. -i=$(%WATCOM)\h\os21x -i=..\..\include
 AOPT=-q -d__LARGE__ -i=. -i=.. -i=..\..\include
 OBJS=$(PROJ_BLD)\mem.obj &
+     $(PROJ_BLD)\strtol.obj &
      $(PROJ_BLD)\i4d.obj &
      $(PROJ_BLD)\i4m.obj &
      $(PROJ_BLD)\i8d086.obj &

@@ -462,10 +462,30 @@ long int atol( const char _far *p )
     return( value );
 }
 
+int isalpha(int c)
+{
+	return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+}
+
+char isupper (unsigned char c)
+{
+    if ( c >= 'A' && c <= 'Z' )
+        return 1;
+    return 0;
+}
+
 int tolower (int c)
 {
   if (c >= 'A' && c <= 'Z')
     return (c + ('a' - 'A'));
+
+  return c;
+}
+
+int toupper (int c)
+{
+  if (c >= 'a' && c <= 'z')
+    return (c + ('A' - 'a'));
 
   return c;
 }

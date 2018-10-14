@@ -796,8 +796,8 @@ PSZ  pszUpperName;
 PSZ  pszUpperPart;
 PSZ  pszPart;
 PSZ  p;
-ULONG  ulFileNo;
-USHORT usNum = 0;
+ULONG ulFileNo;
+ULONG ulNum = 0;
 PDIRENTRY pDir;
 PDIRENTRY pDirStart;
 PDIRENTRY pDirEnd;
@@ -899,7 +899,7 @@ ULONG  ulRet;
       pszNumber = strchr(pszUpperPart, '~');
       if (pszNumber)
          {
-         usNum = atoi(pszNumber + 1);
+         ulNum = strtol(pszNumber + 1, NULL, 16);
          }
 
       memset(pszLongName, 0, FAT32MAXPATHCOMP);
@@ -1074,7 +1074,7 @@ ULONG  ulRet;
                               }
                            else /* translate from DOS to OS/2 */
                               {
-                              if ((pszNumber && usNum == (USHORT)ulFileNo) ||
+                              if ((pszNumber && ulNum == ulFileNo) ||
                                   (! pszNumber && ! stricmp(pszUpperName, pszUpperPart)))
                                  {
                                  strcat(pszTarget, pszLongName);
