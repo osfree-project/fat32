@@ -282,7 +282,7 @@ PDIRENTRY1 pStreamEntry = NULL;
 #endif
       pszName = pName;
 
-   if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+   if (usCurDirEnd == (USHORT)(strrchr(pName, '\\') - pName + 1))
       {
       usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
       }
@@ -1538,6 +1538,8 @@ LONG lCurEntry;
                                    (ULONG)lFileNo, 
                                    szUpperName, 
                                    szShortName);
+                     Message("fde000: szUpperName=%s", szUpperName);
+                     Message("fde000: szShortName=%s", szShortName);
                      }
 
                   rc = 0;
@@ -1559,8 +1561,16 @@ LONG lCurEntry;
                      rc = 1;
 
                   if( !pFindInfo->pInfo->fLongNames )
+                     {
                      strcpy( szLongName, szShortName );
 
+                     if (usNameLen != strlen(szLongName))
+                        {
+                        usNameLen = strlen(szShortName);
+                        }
+                     }
+
+                  Message("fde001: szLongName=%s", szLongName);
                   /*
                      Check for MUST HAVE attributes
                   */

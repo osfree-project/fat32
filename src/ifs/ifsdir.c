@@ -98,7 +98,7 @@ PSZ    szDirLongName = NULL;
 #endif
                pszDir = pDir;
 
-            if (usCurDirEnd == strrchr(pDir, '\\') - pDir + 1)
+            if (usCurDirEnd == (USHORT)(strrchr(pDir, '\\') - pDir + 1))
                {
                usCurDirEnd = strrchr(pszDir, '\\') - pszDir + 1;
                }
@@ -572,7 +572,7 @@ PSHOPENINFO pSHInfo = NULL;
 #endif
       pszDir = pName;
 
-   if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+   if (usCurDirEnd == (USHORT)(strrchr(pName, '\\') - pName + 1))
       {
       usCurDirEnd = strrchr(pszDir, '\\') - pszDir + 1;
       }

@@ -184,7 +184,7 @@ USHORT rc;
 #endif
          pszName = pName;
 
-      if (usCurDirEnd == strrchr(pName, '\\') - pName + 1)
+      if (usCurDirEnd == (USHORT)(strrchr(pName, '\\') - pName + 1))
          {
          usCurDirEnd = strrchr(pszName, '\\') - pszName + 1;
          }

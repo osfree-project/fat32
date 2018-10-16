@@ -2492,6 +2492,8 @@ or ";" symbols&per. These lines are ignored&per.
 :li.support for FAT+ extension (a /plus switch is required), so that, 64-bit file
 size is possible on FAT32
 :li.support for VFAT LFN&apos.s on FAT12/FAT16 (for that, you should specify /fat key for fat32.ifs).
+:li.short filenames support for a DOS session for FAT12/FAT16/FAT32/exFAT&per. Filename conversion
+short <-> long&per. So that, all files on a FAT volume are accessible from a VDM&per.
 :li.EA&apos.s support (/eas switch for FAT32&per.IFS is required)
 :li.exFAT support ("/exfat" switch is required).)
 :li.support for media with different sector sizes, up to 4096 bytes (according
@@ -3423,6 +3425,23 @@ The 32-bit FS32_CHGFILEPTRL function with 32-bit IFS&apos.es, though, works&per.
 I see two solutions here&colon. 1) convert FAT32&per.IFS to a 32-bit driver, or, at least, export some necessary 32-bit
 entry points&per. 2) modify OS/2 kernel so that it will call FS_CHGFILEPTRL, as required&per. The latter variant is possible
 if I'd convince OS/4 developers to do such an enhancement&per. But it will not work for those who stick with IBM&apos.s kernels&per.
+
+.br
+:p.:hp2.Q:ehp2.&colon. Why kLIBC symlinks are not working with FAT32&per.IFS?
+.br
+:hp2.A:ehp2.&colon. kLIBC developer thinks that EA support is inefficient on FAT32&per.IFS, so he 
+disabled Unix EA&apos.s (for Unix access attributes, symlinks and similar functionality) on 
+FAT32&per.IFS&per. In the next kLIBC versions, this functionality can be selectively enabled/disabled 
+per drive&per. But by now, it is disabled in kLIBC&per. So, this is not a FAT32&per.IFS problem&per.
+All required prerequisites of FS are present&per. Only EA support is required for Unix access permissions,
+symlinks ans similar functionality&per. As far as I can see, EA support is good enough in FAT32&per.IFS&per.
+At least, I can copy OS/2 desktop to FAT32 or exFAT, and it works quite well&per. WPS objects are working,
+Volkov Commander and Dos Navigator in a DOS session see the &per.LONGNAME EA's and show long file names&per.
+This works quick enough&per. What Knut meant by "inefficiency", I don&apos.t know, perhaps, this is maybe
+FAT32&per.IFS is slow because of lack of proper caching&per. Otherwise, it works quite well&per. I hope
+this will work in the future&per. I have my OS/2 bootable flash stick, which has kLIBC port tree 
+installed&per. So, I&apos.d like to have symlinks working on it&per. But unfortunately, it 
+doesn&apos.t&per.
 
 :h2 id=20070 res=32064.HOWTO&apos.s
 

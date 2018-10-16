@@ -45,7 +45,7 @@ USHORT GetSetFileEAS(PCDINFO pCD, USHORT usFunc, PMARKFILEEASBUF pMark);
 BOOL fGetLongName(PDIRENTRY pDir, PSZ pszName, USHORT wMax, PBYTE pbCheck);
 USHORT QueryUni2NLS( USHORT usPage, USHORT usChar );
 BYTE GetVFATCheckSum(PDIRENTRY pDir);
-APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName);
+APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, ULONG ulFileNo, PSZ pszLongName, PSZ pszShortName);
 PDIRENTRY fSetLongName(PDIRENTRY pDir, PSZ pszLongName, BYTE bCheck);
 USHORT DBCSStrlen( const PSZ pszStr );
 BOOL IsDBCSLead( UCHAR uch );
@@ -663,7 +663,7 @@ APIRET ModifyDirectory0(PCDINFO pCD, ULONG ulDirCluster, USHORT usMode, PDIRENTR
       memcpy(&DirNew, pNew, sizeof (DIRENTRY));
       if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongNameNew, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, 0xffffffff, pszLongNameNew, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             return ERROR_FILE_EXISTS;
          set_datetime(&DirNew);
@@ -1112,7 +1112,7 @@ BOOL      fCrossBorder;
       memcpy(&DirNew, pNew, sizeof (DIRENTRY1));
       /* if ((pNew->bAttr & 0x0F) != FILE_VOLID)
          {
-         rc = MakeShortName(pCD, ulDirCluster, pszLongNameNew, DirNew.bFileName);
+         rc = MakeShortName(pCD, ulDirCluster, 0xffffffff, pszLongNameNew, DirNew.bFileName);
          if (rc == LONGNAME_ERROR)
             {
             Message("Modify directory: Longname error");
@@ -1667,7 +1667,8 @@ APIRET rc;
 /******************************************************************
 *
 ******************************************************************/
-APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszShortName)
+APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster,  ULONG ulFileNo,
+                     PSZ pszLongName, PSZ pszShortName)
 {
    USHORT usLongName;
    PSZ pLastDot;
@@ -1675,6 +1676,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    PSZ p;
    USHORT usIndex;
    BYTE szShortName[12];
+   BYTE szFileName[25];
    PSZ  pszUpper;
    APIRET rc;
 
@@ -1690,7 +1692,14 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    if (!pszUpper)
       return LONGNAME_ERROR;
 
-   strupr(pszLongName); // !!! @todo DBCS/Unicode
+   strcpy(pszUpper, pszLongName); // !!!
+   strupr(pszUpper);              // !!! @todo DBCS/Unicode
+   //rc = FSH_UPPERCASE(pszLongName, usIndex, pszUpper);
+   //if (rc)
+   //   {
+   //   free(pszUpper);
+   //   return LONGNAME_ERROR;
+   //   }
 
    /* Skip all leading dots */
    p = pszUpper;
@@ -1735,6 +1744,21 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
 
          memcpy(pszShortName, szShortName, 11);
          free(pszUpper);
+         if (ulFileNo != 0xffffffff)
+            {
+            p = szShortName + 7;
+            while (*p == ' ') p--;
+            p++;
+            memset(szFileName, 0, sizeof(szFileName));
+            memcpy(szFileName, szShortName, p - szShortName);
+            if (memcmp(szShortName + 8, "   ", 3))
+               {
+               szFileName[p - szShortName] = '.';
+               memcpy(szFileName + (p - szShortName) + 1, szShortName + 8, 3);
+               }
+            strcpy(pszShortName, szFileName);
+            return usLongName;
+            }
          return usLongName;
          }
       }
@@ -1745,7 +1769,6 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
       usLongName = LONGNAME_MAKE_UNIQUE;
 
    szShortName[11] = 0;
-
 
    usIndex = 0;
    p = pszUpper;
@@ -1792,6 +1815,7 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
       else
          {
          szShortName[usIndex++] = '_';
+         usLongName = LONGNAME_MAKE_UNIQUE;
          }
       p++;
       }
@@ -1819,7 +1843,6 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
    if (usLongName == LONGNAME_MAKE_UNIQUE)
       {
       USHORT usNum;
-      BYTE   szFileName[25];
       BYTE   szNumber[18];
       ULONG ulCluster;
       PSZ p;
@@ -1839,7 +1862,15 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
          */
 
          memset(szNumber, 0, sizeof szNumber);
-         itoa(usNum, szNumber, 10);
+
+         if (ulFileNo != 0xffffffff)
+            // if DirEntry number is specified (non-zero), use it
+            itoa((USHORT)ulFileNo, szNumber, 16);
+         else
+            itoa(usNum, szNumber, 10);
+
+         p = szNumber;
+         while (*p) *p++ = (char)toupper(*p);
 
          usPos2 = 7 - (strlen(szNumber));
          if (usPos1 && usPos1 < usPos2)
@@ -1864,11 +1895,23 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
                p--;
             *p = 0;
             }
-         ulCluster = FindPathCluster(pCD, ulDirCluster, szFileName, NULL, NULL, NULL, NULL);
-         if (ulCluster == pCD->ulFatEof)
+         if (ulFileNo != 0xffffffff)
+            {
+            // if DirEntry number is specified, use it as NNN in file~NNN.ext,
+            // no need to try over all values < 32000
             break;
+            }
+         else
+            {
+            ulCluster = FindPathCluster(pCD, ulDirCluster, szFileName, NULL, NULL, NULL, NULL);
+            if (ulCluster == pCD->ulFatEof)
+               {
+               break;
+               }
+            }
          }
-      if (usNum < 32000)
+      if ( (ulFileNo == 0xffffffff && usNum < 32000) || 
+           (ulFileNo != 0xffffffff && ulFileNo < 32000) )
          {
          p = strchr(szFileName, '.');
 #if 0
@@ -1886,9 +1929,19 @@ APIRET MakeShortName(PCDINFO pCD, ULONG ulDirCluster, PSZ pszLongName, PSZ pszSh
 #endif
          }
       else
+         {
          return LONGNAME_ERROR;
+         }
       }
-   memcpy(pszShortName, szShortName, 11);
+
+   if (ulFileNo != 0xffffffff)
+      {
+      strcpy(pszShortName, szFileName);
+      }
+   else
+      {
+      memcpy(pszShortName, szShortName, 11);
+      }
    return usLongName;
 }
 

@@ -347,12 +347,12 @@ PSZ      szDstLongName = NULL;
       pszDst = pDst;
       }
 
-   if (usSrcCurDirEnd == strrchr(pSrc, '\\') - pSrc + 1)
+   if (usSrcCurDirEnd == (USHORT)(strrchr(pSrc, '\\') - pSrc + 1))
       {
       usSrcCurDirEnd = strrchr(pszSrc, '\\') - pszSrc + 1;
       }
 
-   if (usDstCurDirEnd == strrchr(pDst, '\\') - pDst + 1)
+   if (usDstCurDirEnd == (USHORT)(strrchr(pDst, '\\') - pDst + 1))
       {
       usDstCurDirEnd = strrchr(pszDst, '\\') - pszDst + 1;
       }
@@ -795,7 +795,7 @@ PSZ      szLongName = NULL;
 #endif
       pszFile2 = pFile;
 
-   if (usCurDirEnd == strrchr(pFile, '\\') - pFile + 1)
+   if (usCurDirEnd == (USHORT)(strrchr(pFile, '\\') - pFile + 1))
       {
       usCurDirEnd = strrchr(pszFile2, '\\') - pszFile2 + 1;
       }
@@ -4416,12 +4416,12 @@ PSZ      szDstLongName = NULL;
       pszDst = pDst;
       }
 
-   if (usSrcCurDirEnd == strrchr(pSrc, '\\') - pSrc + 1)
+   if (usSrcCurDirEnd == (USHORT)(strrchr(pSrc, '\\') - pSrc + 1))
       {
       usSrcCurDirEnd = strrchr(pszSrc, '\\') - pszSrc + 1;
       }
 
-   if (usDstCurDirEnd == strrchr(pDst, '\\') - pDst + 1)
+   if (usDstCurDirEnd == (USHORT)(strrchr(pDst, '\\') - pDst + 1))
       {
       usDstCurDirEnd = strrchr(pszDst, '\\') - pszDst + 1;
       }
@@ -7297,6 +7297,7 @@ USHORT rc;
       else
          {
          szShortName[usIndex++] = '_';
+         usLongName = LONGNAME_MAKE_UNIQUE;
          }
       p++;
       }
@@ -7346,12 +7347,12 @@ USHORT rc;
 
          if (ulFileNo != 0xffffffff)
             // if DirEntry number is specified (non-zero), use it
-            itoa(ulFileNo, szNumber, 16);
+            itoa((USHORT)ulFileNo, szNumber, 16);
          else
             itoa(usNum, szNumber, 10);
 
          p = szNumber;
-         while (*p) *p++ = toupper(*p);
+         while (*p) *p++ = (char)toupper(*p);
 
          usPos2 = 7 - (strlen(szNumber));
          if (usPos1 && usPos1 < usPos2)
@@ -7410,7 +7411,9 @@ USHORT rc;
 #endif
          }
       else
+         {
          return LONGNAME_ERROR;
+         }
       }
 
    if (ulFileNo != 0xffffffff)
