@@ -1,98 +1,101 @@
 !define _32BITS
-ROOT=..\..
-PROJ=util\qemu-img
-PATH=..\..\..\$(PROJ)
+ROOT=..$(%SEP)..
+PROJ=util$(%SEP)qemu-img
+PATH=..$(%SEP)..$(%SEP)..$(%SEP)$(PROJ)
 DIRS=
-TARGETS=$(LIBROOT)\qemu-block.lib &
-        $(BINROOT)\os2\qemu-img.exe $(BINROOT)\os2\qemu-img.sym &
-        $(BINROOT)\os2\dll\qemuimg.dll $(BINROOT)\os2\dll\qemuimg.sym
+TARGETS=$(LIBROOT)$(%SEP)qemu-block.lib &
+        $(BINROOT)$(%SEP)os2$(%SEP)qemu-img.exe &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)qemuimg.dll &
+!ifeq %OS os2
+        $(BINROOT)$(%SEP)os2$(%SEP)qemu-img.sym &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)qemuimg.sym
+!endif
 
-
-!include ..\..\makefile.mk
+!include ..$(%SEP)..$(%SEP)makefile.mk
 
 DEBUG= -db -d2 # -dCONFIG_VDI_DEBUG
 
 # OBJEXT=obj
 OBJEXT=obd
 
-COPT=-3s -s -sg -sg -hw -mf -od -zq -q -ze -fp3 -fpi87 -dQEMU_TOOL $(DEBUG) -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=..\zlib -i=block
-OBJS1=$(PROJ_BLD)\qemu-option.$(OBJEXT) &
-     $(PROJ_BLD)\qemu-malloc.$(OBJEXT) &
-     $(PROJ_BLD)\qemu-tool.$(OBJEXT) &
-     $(PROJ_BLD)\osdep.$(OBJEXT) &
-     $(PROJ_BLD)\porting.$(OBJEXT) &
-     $(PROJ_BLD)\aes.$(OBJEXT) &
-     $(PROJ_BLD)\cutils.$(OBJEXT) &
-     $(PROJ_BLD)\module.$(OBJEXT) &
-     $(PROJ_BLD)\qbool.$(OBJEXT) &
-     $(PROJ_BLD)\qdict.$(OBJEXT) &
-     $(PROJ_BLD)\qfloat.$(OBJEXT) &
-     $(PROJ_BLD)\qint.$(OBJEXT) &
-     $(PROJ_BLD)\qlist.$(OBJEXT) &
-     $(PROJ_BLD)\qstring.$(OBJEXT) &
-     $(PROJ_BLD)\aio.$(OBJEXT) &
-     $(PROJ_BLD)\block.$(OBJEXT) &
-     $(PROJ_BLD)\block\bochs.$(OBJEXT) &
-     $(PROJ_BLD)\block\cloop.$(OBJEXT) &
-     $(PROJ_BLD)\block\dmg.$(OBJEXT) &
-     $(PROJ_BLD)\block\parallels.$(OBJEXT) &
-     $(PROJ_BLD)\block\qcow.$(OBJEXT) &
-     $(PROJ_BLD)\block\qcow2.$(OBJEXT) &
-     $(PROJ_BLD)\block\qcow2-cluster.$(OBJEXT) &
-     $(PROJ_BLD)\block\qcow2-refcount.$(OBJEXT) &
-     $(PROJ_BLD)\block\qcow2-snapshot.$(OBJEXT) &
-     $(PROJ_BLD)\block\vdi.$(OBJEXT) &
-     $(PROJ_BLD)\block\vmdk.$(OBJEXT) &
-     $(PROJ_BLD)\block\vpc.$(OBJEXT) &
-     $(PROJ_BLD)\block\vvfat.$(OBJEXT) &
-     $(PROJ_BLD)\block\raw-os2.$(OBJEXT)
+COPT=-bt=os2 -3s -s -sg -sg -hw -mf -od -zq -q -ze -fp3 -fpi87 -dQEMU_TOOL $(DEBUG) -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2 -i=..$(%SEP)zlib -i=block
+OBJS1=$(PROJ_BLD)$(%SEP)qemu-option.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qemu-malloc.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qemu-tool.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)osdep.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)porting.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)aes.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)cutils.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)module.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qbool.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qdict.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qfloat.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qint.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qlist.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)qstring.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)aio.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)bochs.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)cloop.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)dmg.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)parallels.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)qcow.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)qcow2.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)qcow2-cluster.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)qcow2-refcount.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)qcow2-snapshot.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)vdi.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)vmdk.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)vpc.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)vvfat.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)block$(%SEP)raw-os2.$(OBJEXT)
 
-OBJS2=$(PROJ_BLD)\qemu-img.obj &
-     $(PROJ_BLD)\qemu-malloc.obj &
-     $(PROJ_BLD)\qemu-tool.obj &
-     $(PROJ_BLD)\osdep.obj
+OBJS2=$(PROJ_BLD)$(%SEP)qemu-img.obj &
+     $(PROJ_BLD)$(%SEP)qemu-malloc.obj &
+     $(PROJ_BLD)$(%SEP)qemu-tool.obj &
+     $(PROJ_BLD)$(%SEP)osdep.obj
 
 SYS=os2v2_dll
 
 .c: block
 
-.obj: $(BLDROOT)\util\qemu-img\block
+.obj: $(BLDROOT)$(%SEP)util$(%SEP)qemu-img$(%SEP)block
 
-.obd: $(BLDROOT)\util\qemu-img\block
+.obd: $(BLDROOT)$(%SEP)util$(%SEP)qemu-img$(%SEP)block
 
-$(LIBROOT)\qemu-block.lib: $(PROJ_BLD)\qemu-block.ols
+$(LIBROOT)$(%SEP)qemu-block.lib: $(PROJ_BLD)$(%SEP)qemu-block.ols
 
-$(BINROOT)\os2\dll\qemuimg.dll: $(PROJ_BLD)\qemuimg.lnk
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)qemuimg.dll: $(PROJ_BLD)$(%SEP)qemuimg.lnk
 
-$(BINROOT)\os2\qemu-img.exe: $(PROJ_BLD)\qemu-img.lnk
+$(BINROOT)$(%SEP)os2$(%SEP)qemu-img.exe: $(PROJ_BLD)$(%SEP)qemu-img.lnk
 
-$(BINROOT)\os2\dll\qemuimg.sym: $(BINROOT)\os2\dll\qemuimg.dll
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)qemuimg.sym: $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)qemuimg.dll
 
-$(BINROOT)\os2\qemu-img.sym: $(BINROOT)\os2\qemu-img.exe
+$(BINROOT)$(%SEP)os2$(%SEP)qemu-img.sym: $(BINROOT)$(%SEP)os2$(%SEP)qemu-img.exe
 
-$(PROJ_BLD)\qemu-block.ols: $(OBJS1)
+$(PROJ_BLD)$(%SEP)qemu-block.ols: $(OBJS1)
  @%create $^@
  @for %e in ($<) do @%append $^@ +%e
 
-$(PROJ_BLD)\qemuimg.ols: $(OBJS1) makefile.wcc ..\..\makefile.mk
+$(PROJ_BLD)$(%SEP)qemuimg.ols: $(OBJS1) makefile.wcc ..$(%SEP)..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS1)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\qemu-img.ols: $(OBJS2) makefile.wcc ..\..\makefile.mk
+$(PROJ_BLD)$(%SEP)qemu-img.ols: $(OBJS2) makefile.wcc ..$(%SEP)..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS2)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\qemuimg.lnk: $(PROJ_BLD)\qemuimg.ols
+$(PROJ_BLD)$(%SEP)qemuimg.lnk: $(PROJ_BLD)$(%SEP)qemuimg.ols
  @%create $@
  @%append $@ SYSTEM os2v2 dll initinstance terminstance
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION ST=384000
  @%append $@ OPTION HEAP=384000
  @%append $@ OPTION QUIET
  # @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s,zlib
  @%append $@ EXPORT &
     bdrv_init, &
@@ -135,17 +138,17 @@ $(PROJ_BLD)\qemuimg.lnk: $(PROJ_BLD)\qemuimg.ols
     pstrcpy
  @%append $@ @$[@
 
-$(PROJ_BLD)\qemu-img.lnk: $(PROJ_BLD)\qemu-img.ols
+$(PROJ_BLD)$(%SEP)qemu-img.lnk: $(PROJ_BLD)$(%SEP)qemu-img.ols
  @%create $@
  @%append $@ SYSTEM os2v2
- @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION ST=65535000
  @%append $@ OPTION HEAP=65535000
  @%append $@ OPTION QUIET
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s # ,zlib,qemu-block
 !if 1
  @%append $@ IMPORT &

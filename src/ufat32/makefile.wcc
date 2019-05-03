@@ -1,7 +1,7 @@
 !define _32BITS
 ROOT=..
 PROJ=ufat32
-PATH=..\..\$(PROJ)
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
 
 DESC="UUNIFAT Helper DLL, Henk Kelder & Netlabs"
 DESC2="FORMAT, standalone version"
@@ -12,7 +12,7 @@ DESC6="UFAT12 Forwarder DLL, Henk Kelder & Netlabs"
 DESC7="UEXFAT Forwarder DLL, Henk Kelder & Netlabs"
 DESC8="UFAT32 Forwarder DLL, Henk Kelder & Netlabs"
 
-!include ..\makefile.mk
+!include ..$(%SEP)makefile.mk
 
 !ifeq EXFAT 1
 ADD_DEFS = -dEXFAT
@@ -21,99 +21,116 @@ ADD_DEFS =
 !endif
 
 # create OS/2 binaries
-OBJS1=$(PROJ_BLD)\ufat32.obd $(PROJ_BLD)\sys.obd $(PROJ_BLD)\recover.obd &
-      $(PROJ_BLD)\format.obd $(PROJ_BLD)\os2.obd $(PROJ_BLD)\msg.obd $(PROJ_BLD)\clus.obd &
-      $(PROJ_BLD)\chkdsk.obd $(PROJ_BLD)\fatfunc.obd $(PROJ_BLD)\unicode.obd &
-      $(PROJ_BLD)\ea.obd $(PROJ_BLD)\log.obd $(PROJ_BLD)\init.obd $(PROJ_BLD)\util.obd
-OBJS2=$(PROJ_BLD)\format.obj $(PROJ_BLD)\os2.obj $(PROJ_BLD)\msg.obj &
-      $(PROJ_BLD)\log.obj $(PROJ_BLD)\util.obj
-OBJS3=$(PROJ_BLD)\chkdsk.obc $(PROJ_BLD)\os2.obc $(PROJ_BLD)\msg.obc $(PROJ_BLD)\util.obc $(PROJ_BLD)\clus.obc &
-      $(PROJ_BLD)\fatfunc.obc $(PROJ_BLD)\unicode.obc $(PROJ_BLD)\log.obc $(PROJ_BLD)\ea.obc
-OBJS4=$(PROJ_BLD)\sys.obs $(PROJ_BLD)\os2.obs $(PROJ_BLD)\clus.obs &
-      $(PROJ_BLD)\msg.obs $(PROJ_BLD)\log.obs $(PROJ_BLD)\util.obs $(PROJ_BLD)\unicode.obs
-OBJS5=$(PROJ_BLD)\stub.obd
-COPT=-3s -s -sg -hw -mf -d3 -db -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-C16OPT=-s -sg -mc -d3 -db -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
+OBJS1=$(PROJ_BLD)$(%SEP)ufat32.obd $(PROJ_BLD)$(%SEP)sys.obd &
+      $(PROJ_BLD)$(%SEP)recover.obd $(PROJ_BLD)$(%SEP)format.obd &
+      $(PROJ_BLD)$(%SEP)os2.obd $(PROJ_BLD)$(%SEP)msg.obd &
+      $(PROJ_BLD)$(%SEP)clus.obd $(PROJ_BLD)$(%SEP)chkdsk.obd &
+      $(PROJ_BLD)$(%SEP)fatfunc.obd $(PROJ_BLD)$(%SEP)unicode.obd &
+      $(PROJ_BLD)$(%SEP)ea.obd $(PROJ_BLD)$(%SEP)log.obd &
+      $(PROJ_BLD)$(%SEP)init.obd $(PROJ_BLD)$(%SEP)util.obd
+OBJS2=$(PROJ_BLD)$(%SEP)format.obj $(PROJ_BLD)$(%SEP)os2.obj &
+      $(PROJ_BLD)$(%SEP)msg.obj $(PROJ_BLD)$(%SEP)log.obj &
+      $(PROJ_BLD)$(%SEP)util.obj
+OBJS3=$(PROJ_BLD)$(%SEP)chkdsk.obc $(PROJ_BLD)$(%SEP)os2.obc &
+      $(PROJ_BLD)$(%SEP)msg.obc $(PROJ_BLD)$(%SEP)util.obc &
+      $(PROJ_BLD)$(%SEP)clus.obc $(PROJ_BLD)$(%SEP)fatfunc.obc &
+      $(PROJ_BLD)$(%SEP)unicode.obc $(PROJ_BLD)$(%SEP)log.obc &
+      $(PROJ_BLD)$(%SEP)ea.obc
+OBJS4=$(PROJ_BLD)$(%SEP)sys.obs $(PROJ_BLD)$(%SEP)os2.obs &
+      $(PROJ_BLD)$(%SEP)clus.obs $(PROJ_BLD)$(%SEP)msg.obs &
+      $(PROJ_BLD)$(%SEP)log.obs $(PROJ_BLD)$(%SEP)util.obs &
+      $(PROJ_BLD)$(%SEP)unicode.obs
+OBJS5=$(PROJ_BLD)$(%SEP)stub.obd
+COPT=-bt=os2 -3s -s -sg -hw -mf -d3 -db -od -zq -q -fp3 -fpi87 $(ADD_DEFS) -dUSE_OS2_MSG -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2
+C16OPT=-bt=os2 -s -sg -mc -d3 -db -hw -od -q -fp3 -fpi87 $(ADD_DEFS) -nd=_DATA16_ -dUSE_OS2_MSG -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x
 
-TARGETS=$(BINROOT)\os2\fat32fmt.sym &
-        $(BINROOT)\os2\fat32chk.sym &
-        $(BINROOT)\os2\fat32sys.sym &
-        $(BINROOT)\os2\dll\uunifat.sym &
-        $(BINROOT)\os2\dll\ufat16.dll $(BINROOT)\os2\dll\ufat12.dll &
-        $(BINROOT)\os2\dll\ufat32.dll &
+TARGETS= &
+!ifeq %OS os2
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32fmt.sym &
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32chk.sym &
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32sys.sym &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uunifat.sym &
+!endif
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32fmt.exe &
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32chk.exe &
+        $(BINROOT)$(%SEP)os2$(%SEP)fat32sys.exe &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat16.dll &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat12.dll &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat32.dll &
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uunifat.dll &
 !ifeq EXFAT 1
-        $(BINROOT)\os2\dll\uexfat.dll
+        $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uexfat.dll
 !else
         #
 !endif
 SYS=os2v2
 
-DIRS=..\include win32
+DIRS=..$(%SEP)include win32
 
-$(BINROOT)\os2\dll\uunifat.dll:
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uunifat.dll:
 
-$(BINROOT)\os2\dll\ufat32.dll:
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat32.dll:
 
-$(BINROOT)\os2\dll\ufat16.dll:
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat16.dll:
 
-$(BINROOT)\os2\dll\ufat12.dll:
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)ufat12.dll:
 
 !ifeq EXFAT 1
-$(BINROOT)\os2\dll\uexfat.dll:
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uexfat.dll:
 !endif
 
-$(BINROOT)\os2\fat32fmt.exe:
+$(BINROOT)$(%SEP)os2$(%SEP)fat32fmt.exe:
 
-$(BINROOT)\os2\fat32chk.exe:
+$(BINROOT)$(%SEP)os2$(%SEP)fat32chk.exe:
 
-$(BINROOT)\os2\fat32sys.exe:
+$(BINROOT)$(%SEP)os2$(%SEP)fat32sys.exe:
 
-$(BINROOT)\os2\dll\uunifat.sym: $(BINROOT)\os2\dll\uunifat.dll
+$(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uunifat.sym: $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)uunifat.dll
 
-$(BINROOT)\os2\fat32fmt.sym: $(BINROOT)\os2\fat32fmt.exe
+$(BINROOT)$(%SEP)os2$(%SEP)fat32fmt.sym: $(BINROOT)$(%SEP)os2$(%SEP)fat32fmt.exe
 
-$(BINROOT)\os2\fat32chk.sym: $(BINROOT)\os2\fat32chk.exe
+$(BINROOT)$(%SEP)os2$(%SEP)fat32chk.sym: $(BINROOT)$(%SEP)os2$(%SEP)fat32chk.exe
 
-$(BINROOT)\os2\fat32sys.sym: $(BINROOT)\os2\fat32sys.exe
+$(BINROOT)$(%SEP)os2$(%SEP)fat32sys.sym: $(BINROOT)$(%SEP)os2$(%SEP)fat32sys.exe
 
-$(PROJ_BLD)\uunifat.ols: $(OBJS1) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)uunifat.ols: $(OBJS1) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS1)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat16.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)ufat16.ols: $(OBJS5) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ufat12.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)ufat12.ols: $(OBJS5) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
 !ifeq EXFAT 1
-$(PROJ_BLD)\uexfat.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)uexfat.ols: $(OBJS5) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 !endif
 
-$(PROJ_BLD)\ufat32.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)ufat32.ols: $(OBJS5) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32fmt.ols: $(OBJS2) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)fat32fmt.ols: $(OBJS2) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS2)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32chk.ols: $(OBJS3) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)fat32chk.ols: $(OBJS3) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS3)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\fat32sys.ols: $(OBJS4) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)fat32sys.ols: $(OBJS4) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS4)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\uunifat.lnk: $(PROJ_BLD)\uunifat.ols
+$(PROJ_BLD)$(%SEP)uunifat.lnk: $(PROJ_BLD)$(%SEP)uunifat.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll initinstance terminstance
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION MIXED1632
  @%append $@ OPTION NODEFAULTLIBS
@@ -139,14 +156,14 @@ $(PROJ_BLD)\uunifat.lnk: $(PROJ_BLD)\uunifat.ols
      DOSGETSHRSEG DOSCALLS.36, &
      DOSSETSIGHANDLER DOSCALLS.14, &
      DOSSETVEC DOSCALLS.89
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2
  @%append $@ LIB os2386,clib3s,math3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
+$(PROJ_BLD)$(%SEP)ufat16.lnk: $(PROJ_BLD)$(%SEP)ufat16.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC5)'
  @%append $@ OPTION MANYAUTODATA, CASEEXACT
  @%append $@ segment type DATA shared
@@ -175,10 +192,10 @@ $(PROJ_BLD)\ufat16.lnk: $(PROJ_BLD)\ufat16.ols
      LoadTranslateTable
  @%append $@ @$[@
 
-$(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
+$(PROJ_BLD)$(%SEP)ufat12.lnk: $(PROJ_BLD)$(%SEP)ufat12.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC6)'
  @%append $@ OPTION MANYAUTODATA, CASEEXACT
  @%append $@ segment type DATA shared
@@ -208,10 +225,10 @@ $(PROJ_BLD)\ufat12.lnk: $(PROJ_BLD)\ufat12.ols
  @%append $@ @$[@
 
 !ifeq EXFAT 1
-$(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
+$(PROJ_BLD)$(%SEP)uexfat.lnk: $(PROJ_BLD)$(%SEP)uexfat.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC7)'
  @%append $@ OPTION MANYAUTODATA, CASEEXACT, HEAPSIZE=65536000
  @%append $@ segment type DATA shared
@@ -241,10 +258,10 @@ $(PROJ_BLD)\uexfat.lnk: $(PROJ_BLD)\uexfat.ols
  @%append $@ @$[@
 !endif
 
-$(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
+$(PROJ_BLD)$(%SEP)ufat32.lnk: $(PROJ_BLD)$(%SEP)ufat32.ols
  @%create $@
  @%append $@ SYSTEM $(SYS) dll
- @%append $@ NAME $(BINROOT)\os2\dll\$^&.dll
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)dll$(%SEP)$^&.dll
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC8)'
  @%append $@ OPTION MANYAUTODATA, CASEEXACT
  @%append $@ segment type DATA shared
@@ -273,33 +290,33 @@ $(PROJ_BLD)\ufat32.lnk: $(PROJ_BLD)\ufat32.ols
      LoadTranslateTable
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32fmt.lnk: $(PROJ_BLD)\fat32fmt.ols
+$(PROJ_BLD)$(%SEP)fat32fmt.lnk: $(PROJ_BLD)$(%SEP)fat32fmt.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
- @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC2)'
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32chk.lnk: $(PROJ_BLD)\fat32chk.ols
+$(PROJ_BLD)$(%SEP)fat32chk.lnk: $(PROJ_BLD)$(%SEP)fat32chk.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
- @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC3)'
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@
 
-$(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols
+$(PROJ_BLD)$(%SEP)fat32sys.lnk: $(PROJ_BLD)$(%SEP)fat32sys.ols
  @%create $@
  @%append $@ SYSTEM $(SYS)
- @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC4)'
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@
 
@@ -307,22 +324,22 @@ $(PROJ_BLD)\fat32sys.lnk: $(PROJ_BLD)\fat32sys.ols
 
 .obs: $(PROJ_BLD)
 
-$(PROJ_BLD)\os2.obc: os2.c
+$(PROJ_BLD)$(%SEP)os2.obc: os2.c
  @echo CC       $^.
  @$(CC) $(COPT) -d__UNICODE__ -fr=$^*.err -fo=$^@ $<
 
-$(PROJ_BLD)\os2.obs: os2.c
+$(PROJ_BLD)$(%SEP)os2.obs: os2.c
  @echo CC       $^.
  @$(CC) $(COPT) -d__UNICODE__ -fr=$^*.err -fo=$^@ $<
 
-$(PROJ_BLD)\os2.obd: os2.c
+$(PROJ_BLD)$(%SEP)os2.obd: os2.c
  @echo CC       $^.
  @$(CC) $(COPT)  -d__DLL__ -d__UNICODE__ -bd -fr=$^*.err -fo=$^@ $<
 
-$(PROJ_BLD)\stub.obd: stub.c
+$(PROJ_BLD)$(%SEP)stub.obd: stub.c
  @echo CC       $^.
  @$(CC) -q -zq -fr=$^*.err -fo=$^@ $<
 
-$(PROJ_BLD)\init.obd: init.c16
+$(PROJ_BLD)$(%SEP)init.obd: init.c16
  @echo CC       $^.
  @wcc $(C16OPT)  -d__DLL__ -bd -fr=$^*.err -fo=$^@ $<

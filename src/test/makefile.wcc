@@ -1,125 +1,135 @@
 !define _32BITS
 ROOT=..
 PROJ=test
-PATH=..\..\$(PROJ)
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
 DIRS=16bit
 
 DESC="Test cases"
 
-!include ..\makefile.mk
+!include ..$(%SEP)makefile.mk
 
-COPT=-3s -s -sg -db -d2 -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
+COPT=-bt=os2 -3s -s -sg -db -d2 -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2
 
-TARGETS=$(BINROOT)\test\dumpmsg.exe $(BINROOT)\test\dumpmsg.sym &
-        $(BINROOT)\test\info.exe $(BINROOT)\test\info.sym &
-        $(BINROOT)\test\jpgdup.exe $(BINROOT)\test\jpgdup.sym &
-        $(BINROOT)\test\mfile.exe $(BINROOT)\test\mfile.sym &
-        $(BINROOT)\test\mtest.exe $(BINROOT)\test\mtest.sym &
-        $(BINROOT)\test\nls.exe $(BINROOT)\test\nls.sym &
-        $(BINROOT)\test\qpath.exe $(BINROOT)\test\qpath.sym &
-        $(BINROOT)\test\ttt.exe $(BINROOT)\test\ttt.sym
+TARGETS=$(BINROOT)$(%SEP)test$(%SEP)dumpmsg.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)info.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)jpgdup.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)mfile.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)mtest.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)nls.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)qpath.exe &
+        $(BINROOT)$(%SEP)test$(%SEP)ttt.exe &
+!ifeq %OS os2
+        $(BINROOT)$(%SEP)test$(%SEP)dumpmsg.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)info.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)jpgdup.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)mfile.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)mtest.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)nls.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)qpath.sym &
+        $(BINROOT)$(%SEP)test$(%SEP)ttt.sym
+!endif
 
-OBJS1=$(PROJ_BLD)\dumpmsg.obj
-OBJS2=$(PROJ_BLD)\info.obj
-OBJS3=$(PROJ_BLD)\jpgdup.obj
-OBJS4=$(PROJ_BLD)\mfile.obj
-OBJS5=$(PROJ_BLD)\mtest.obj
-OBJS6=$(PROJ_BLD)\nls.obj
-OBJS7=$(PROJ_BLD)\qpath.obj
-OBJS8=$(PROJ_BLD)\ttt.obj
+OBJS1=$(PROJ_BLD)$(%SEP)dumpmsg.obj
+OBJS2=$(PROJ_BLD)$(%SEP)info.obj
+OBJS3=$(PROJ_BLD)$(%SEP)jpgdup.obj
+OBJS4=$(PROJ_BLD)$(%SEP)mfile.obj
+OBJS5=$(PROJ_BLD)$(%SEP)mtest.obj
+OBJS6=$(PROJ_BLD)$(%SEP)nls.obj
+OBJS7=$(PROJ_BLD)$(%SEP)qpath.obj
+OBJS8=$(PROJ_BLD)$(%SEP)ttt.obj
 
 SYS=os2v2
 
-$(BINROOT)\test\dumpmsg.exe:
+$(BINROOT)$(%SEP)test$(%SEP)dumpmsg.exe:
 
-$(BINROOT)\test\info.exe:
+$(BINROOT)$(%SEP)test$(%SEP)info.exe:
 
-$(BINROOT)\test\jpgdup.exe:
+$(BINROOT)$(%SEP)test$(%SEP)jpgdup.exe:
 
-$(BINROOT)\test\mfile.exe:
+$(BINROOT)$(%SEP)test$(%SEP)mfile.exe:
 
-$(BINROOT)\test\mtest.exe:
+$(BINROOT)$(%SEP)test$(%SEP)mtest.exe:
 
-$(BINROOT)\test\nls.exe:
+$(BINROOT)$(%SEP)test$(%SEP)nls.exe:
 
-$(BINROOT)\test\qpath.exe:
+$(BINROOT)$(%SEP)test$(%SEP)qpath.exe:
 
-$(BINROOT)\test\ttt.exe:
+$(BINROOT)$(%SEP)test$(%SEP)ttt.exe:
 
-$(BINROOT)\test\dumpmsg.sym:
+$(BINROOT)$(%SEP)test$(%SEP)dumpmsg.sym:
 
-$(BINROOT)\test\info.sym:
+$(BINROOT)$(%SEP)test$(%SEP)info.sym:
 
-$(BINROOT)\test\jpgdup.sym:
+$(BINROOT)$(%SEP)test$(%SEP)jpgdup.sym:
 
-$(BINROOT)\test\mfile.sym:
+$(BINROOT)$(%SEP)test$(%SEP)mfile.sym:
 
-$(BINROOT)\test\mtest.sym:
+$(BINROOT)$(%SEP)test$(%SEP)mtest.sym:
 
-$(BINROOT)\test\nls.sym:
+$(BINROOT)$(%SEP)test$(%SEP)nls.sym:
 
-$(BINROOT)\test\qpath.sym:
+$(BINROOT)$(%SEP)test$(%SEP)qpath.sym:
 
-$(BINROOT)\test\ttt.sym:
+$(BINROOT)$(%SEP)test$(%SEP)ttt.sym:
 
-$(PROJ_BLD)\dumpmsg.lnk: $(PROJ_BLD)\dumpmsg.ols
+$(PROJ_BLD)$(%SEP)dumpmsg.lnk: $(PROJ_BLD)$(%SEP)dumpmsg.ols
 
-$(PROJ_BLD)\info.lnk: $(PROJ_BLD)\info.ols
+$(PROJ_BLD)$(%SEP)info.lnk: $(PROJ_BLD)$(%SEP)info.ols
 
-$(PROJ_BLD)\jpgdup.lnk: $(PROJ_BLD)\jpgdup.ols
+$(PROJ_BLD)$(%SEP)jpgdup.lnk: $(PROJ_BLD)$(%SEP)jpgdup.ols
 
-$(PROJ_BLD)\mfile.lnk: $(PROJ_BLD)\mfile.ols
+$(PROJ_BLD)$(%SEP)mfile.lnk: $(PROJ_BLD)$(%SEP)mfile.ols
 
-$(PROJ_BLD)\mtest.lnk: $(PROJ_BLD)\mtest.ols
+$(PROJ_BLD)$(%SEP)mtest.lnk: $(PROJ_BLD)$(%SEP)mtest.ols
 
-$(PROJ_BLD)\nls.lnk: $(PROJ_BLD)\nls.ols
+$(PROJ_BLD)$(%SEP)nls.lnk: $(PROJ_BLD)$(%SEP)nls.ols
 
-$(PROJ_BLD)\qpath.lnk: $(PROJ_BLD)\qpath.ols
+$(PROJ_BLD)$(%SEP)qpath.lnk: $(PROJ_BLD)$(%SEP)qpath.ols
 
-$(PROJ_BLD)\ttt.lnk: $(PROJ_BLD)\ttt.ols
+$(PROJ_BLD)$(%SEP)ttt.lnk: $(PROJ_BLD)$(%SEP)ttt.ols
 
-$(PROJ_BLD)\dumpmsg.ols: $(OBJS1) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)dumpmsg.ols: $(OBJS1) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS1)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\info.ols: $(OBJS2) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)info.ols: $(OBJS2) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS2)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\jpgdup.ols: $(OBJS3) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)jpgdup.ols: $(OBJS3) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS3)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\mfile.ols: $(OBJS4) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)mfile.ols: $(OBJS4) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS4)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\mtest.ols: $(OBJS5) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)mtest.ols: $(OBJS5) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS5)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\nls.ols: $(OBJS6) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)nls.ols: $(OBJS6) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS6)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\qpath.ols: $(OBJS7) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)qpath.ols: $(OBJS7) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS7)) do @%append $^@ FILE %e
 
-$(PROJ_BLD)\ttt.ols: $(OBJS8) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)ttt.ols: $(OBJS8) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS8)) do @%append $^@ FILE %e
 
 .ols.lnk:
  @%create $@
  @%append $@ SYSTEM $(SYS)
- @%append $@ NAME $(BINROOT)\test\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)test$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION ST=64000
  @%append $@ OPTION HEAP=64000
  @%append $@ OPTION QUIET
  @%append $@ DEBUG ALL
  @%append $@ OPTION MAP=$[*.wmp
- @%append $@ LIBPATH $(%WATCOM)\lib386;$(%WATCOM)\lib386\os2;$(LIBROOT)
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2;$(LIBROOT)
  @%append $@ LIB os2386,clib3s
  @%append $@ @$[@

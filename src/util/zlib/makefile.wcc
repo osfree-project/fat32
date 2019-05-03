@@ -1,34 +1,34 @@
 !define _32BITS
-ROOT=..\..
-PROJ=util\zlib
-PATH=..\..\..\$(PROJ)
+ROOT=..$(%SEP)..
+PROJ=util$(%SEP)zlib
+PATH=..$(%SEP)..$(%SEP)..$(%SEP)$(PROJ)
 DIRS=
-TARGETS=$(LIBROOT)\zlib.lib
+TARGETS=$(LIBROOT)$(%SEP)zlib.lib
 
 # OBJEXT=obj
 OBJEXT=obd
 
-!include ..\..\makefile.mk
+!include ..$(%SEP)..$(%SEP)makefile.mk
 
-COPT=-3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-OBJS=$(PROJ_BLD)\adler32.$(OBJEXT) &
-     $(PROJ_BLD)\compress.$(OBJEXT) &
-     $(PROJ_BLD)\crc32.$(OBJEXT) &
-     $(PROJ_BLD)\deflate.$(OBJEXT) &
-     $(PROJ_BLD)\gzclose.$(OBJEXT) &
-     $(PROJ_BLD)\gzlib.$(OBJEXT) &
-     $(PROJ_BLD)\gzread.$(OBJEXT) &
-     $(PROJ_BLD)\gzwrite.$(OBJEXT) &
-     $(PROJ_BLD)\infback.$(OBJEXT) &
-     $(PROJ_BLD)\inffast.$(OBJEXT) &
-     $(PROJ_BLD)\inflate.$(OBJEXT) &
-     $(PROJ_BLD)\inftrees.$(OBJEXT) &
-     $(PROJ_BLD)\trees.$(OBJEXT) &
-     $(PROJ_BLD)\uncompr.$(OBJEXT) &
-     $(PROJ_BLD)\zutil.$(OBJEXT)
+COPT=-bt=os2 -3s -s -sg -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2
+OBJS=$(PROJ_BLD)$(%SEP)adler32.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)compress.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)crc32.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)deflate.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)gzclose.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)gzlib.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)gzread.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)gzwrite.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)infback.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)inffast.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)inflate.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)inftrees.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)trees.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)uncompr.$(OBJEXT) &
+     $(PROJ_BLD)$(%SEP)zutil.$(OBJEXT)
 
-$(LIBROOT)\zlib.lib: $(PROJ_BLD)\zlib.ols
+$(LIBROOT)$(%SEP)zlib.lib: $(PROJ_BLD)$(%SEP)zlib.ols
 
-$(PROJ_BLD)\zlib.ols: $(OBJS)
+$(PROJ_BLD)$(%SEP)zlib.ols: $(OBJS)
  @%create $^@
  @for %e in ($<) do @%append $^@ +%e

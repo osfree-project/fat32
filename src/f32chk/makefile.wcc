@@ -1,32 +1,36 @@
 ROOT=..
 PROJ=f32chk
-PATH=..\..\$(PROJ)
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
 DIRS=
 
-!include ..\makefile.mk
+!include ..$(%SEP)makefile.mk
 
 DESC="CHKDSK autocheck helper"
 
-OBJS=$(PROJ_BLD)\f32chk.obj
-COPT=-2 -sg -hw -mm -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-TARGETS=$(BINROOT)\os2\f32chk.exe $(BINROOT)\os2\f32chk.sym
-DIRS=..\include
+OBJS=$(PROJ_BLD)$(%SEP)f32chk.obj
+COPT=-2 -sg -hw -mm -od -zq -q -fp3 -fpi87 -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x
+TARGETS=$(BINROOT)$(%SEP)os2$(%SEP)f32chk.exe &
+!ifeq %OS os2
+        $(BINROOT)$(%SEP)os2$(%SEP)f32chk.sym
+!endif
+
+DIRS=..$(SEP)include
 SYS=os2
 
-$(BINROOT)\os2\f32chk.sym:
+$(BINROOT)$(%SEP)os2$(%SEP)f32chk.sym:
 
-$(BINROOT)\os2\f32chk.exe:
+$(BINROOT)$(%SEP)os2$(%SEP)f32chk.exe:
 
-$(PROJ_BLD)\f32chk.lnk: $(PROJ_BLD)\f32chk.ols
+$(PROJ_BLD)$(%SEP)f32chk.lnk: $(PROJ_BLD)$(%SEP)f32chk.ols
 
-$(PROJ_BLD)\f32chk.ols: $(OBJS) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)f32chk.ols: $(OBJS) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
  @%create $@
  @%append $@ SYSTEM $(SYS)
- @%append $@ NAME $(BINROOT)\os2\$^&.exe
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  @%append $@ OPTION ST=24576
  @%append $@ DEBUG ALL

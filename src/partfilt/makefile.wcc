@@ -1,43 +1,48 @@
 ROOT=..
 PROJ=partfilt
-PATH=..\..\$(PROJ)
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
 
-!include ..\makefile.mk
+!include ..$(%SEP)makefile.mk
 
 DESC="General Partition filter, Deon van der Westhuysen"
 
 # create OS/2 binaries
-OBJ_1 = $(PROJ_BLD)\e2header.obj $(PROJ_BLD)\e2wrap.obj $(PROJ_BLD)\e2data.obj
-OBJ_2 = $(PROJ_BLD)\e2router.obj $(PROJ_BLD)\e2filt.obj $(PROJ_BLD)\e2part.obj
-OBJ_3 = $(PROJ_BLD)\e2iocmd.obj $(PROJ_BLD)\e2virtio.obj
-OBJ_4 = $(PROJ_BLD)\i4d.obj $(PROJ_BLD)\i4m.obj 
+OBJ_1 = $(PROJ_BLD)$(%SEP)e2header.obj $(PROJ_BLD)$(%SEP)e2wrap.obj $(PROJ_BLD)$(%SEP)e2data.obj
+OBJ_2 = $(PROJ_BLD)$(%SEP)e2router.obj $(PROJ_BLD)$(%SEP)e2filt.obj $(PROJ_BLD)$(%SEP)e2part.obj
+OBJ_3 = $(PROJ_BLD)$(%SEP)e2iocmd.obj $(PROJ_BLD)$(%SEP)e2virtio.obj
+OBJ_4 = $(PROJ_BLD)$(%SEP)i4d.obj $(PROJ_BLD)$(%SEP)i4m.obj 
 # These segs are discarded after driver init
-OBJ_5 = $(PROJ_BLD)\e2init.obj $(PROJ_BLD)\e2inutil.obj
+OBJ_5 = $(PROJ_BLD)$(%SEP)e2init.obj $(PROJ_BLD)$(%SEP)e2inutil.obj
 OBJS= $(OBJ_1) $(OBJ_2) $(OBJ_3) $(OBJ_4) $(OBJ_5)
-# COPT=-3s -s -sg -hw -mf -od -ze -zq -q -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2
-# COPT=-2 -ml -ecc -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__MSC__  -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-COPT=-2 -ms -ecc -s -q -zq -zdp -zgf -zls -zp=1 -zu -ze -zl -od -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-# COPT=-q -ml -ecc -za99 -bd -ei -zp=1 -d0 -ox -oi -s -wx -zl -zm -zls -d__MSC__ -i=. -i=.. -i=..\include -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x
-AOPT=-q -ms -zcm=masm -d__MASM__ -d__FUNCS__ -i=. -i=.. -i=..\include
-TARGETS = $(BINROOT)\os2\boot\partfilt.flt $(BINROOT)\os2\boot\partfilt.sym
-DIRS=..\include
+# COPT=-3s -s -sg -hw -mf -od -ze -zq -q -d__MSC__ -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2
+# COPT=-2 -ml -ecc -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__MSC__  -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x
+COPT=-2 -ms -ecc -s -q -zq -zdp -zgf -zls -zp=1 -zu -ze -zl -od -d__MSC__ -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x
+# COPT=-q -ml -ecc -za99 -bd -ei -zp=1 -d0 -ox -oi -s -wx -zl -zm -zls -d__MSC__ -i=. -i=.. -i=..$(%SEP)include -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x
+AOPT=-q -ms -zcm=masm -d__MASM__ -d__FUNCS__ -i=. -i=.. -i=..$(%SEP)include
+
+TARGETS = $(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)partfilt.flt &
+!ifeq %OS os2
+          $(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)partfilt.sym
+!endif
+
+DIRS=..$(%SEP)include
 
 .asm: libc
 
-$(BINROOT)\os2\boot\partfilt.flt:
+$(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)partfilt.flt:
 
-$(BINROOT)\os2\boot\partfilt.sym:
+$(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)partfilt.sym:
 
-$(PROJ_BLD)\partfilt.lnk: $(PROJ_BLD)\partfilt.ols
+$(PROJ_BLD)$(%SEP)partfilt.lnk: $(PROJ_BLD)$(%SEP)partfilt.ols
 
-$(PROJ_BLD)\partfilt.ols: $(OBJS) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)partfilt.ols: $(OBJS) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
  @%create $@
  @%append $@ format os2 lx phys
- @%append $@ name $(BINROOT)\os2\boot\$^&.flt
+ @%append $@ name $(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)$^&.flt
  @%append $@ option description '$(FILEVER)  $(DESC)'
  #@%append $@ option mixed1632
  @%append $@ option quiet
@@ -64,7 +69,7 @@ $(PROJ_BLD)\partfilt.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%append $@ segment 'StratCode' 
  @%append $@ segment _TEXT 
  @%append $@ segment 'InitCode'
- #@%append $@ libpath $(%WATCOM)\lib286;$(%WATCOM)\lib286\os2;
+ #@%append $@ libpath $(%WATCOM)$(%SEP)lib286;$(%WATCOM)$(%SEP)lib286$(%SEP)os2;
  #@%append $@ lib clibc
  @%append $@ @$[@
 

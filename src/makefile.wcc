@@ -4,6 +4,6 @@ PATH = ..
 
 !include makefile.mk
 
-DIRS = include ufat32 ufat32\win32 util\zlib util\qemu-img &
-       util ifs\libc ifs f32chk partfilt loop ifsinf\ifs ifsinf\fat32 &
-       test test\16bit
+DIRS = include ufat32 ufat32$(%SEP)win32 util$(%SEP)zlib util$(%SEP)qemu-img &
+       util ifs$(%SEP)libc ifs f32chk partfilt loop ifsinf$(%SEP)ifs ifsinf$(%SEP)fat32 &
+       test test$(%SEP)16bit

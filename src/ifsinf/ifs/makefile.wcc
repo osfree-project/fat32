@@ -1,10 +1,10 @@
-ROOT=..\..
+ROOT=..$(%SEP)..
 PROJ=ifsinf
-PATH=..\..\$(PROJ)
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
 
-!include ..\..\makefile.mk
+!include ..$(%SEP)..$(%SEP)makefile.mk
 
-TARGETS = $(BINROOT)\os2\book\ifs.inf
+TARGETS = $(BINROOT)$(%SEP)os2$(%SEP)book$(%SEP)ifs.inf
 DIRS=
 
-$(BINROOT)\os2\book\ifs.inf:
+$(BINROOT)$(%SEP)os2$(%SEP)book$(%SEP)ifs.inf:

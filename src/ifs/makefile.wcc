@@ -1,11 +1,15 @@
 ROOT=..
 PROJ=ifs
-PATH=..\..\$(PROJ)
-DIRS=..\include libc
-TARGETS=$(BINROOT)\os2\boot\fat32.ifs $(BINROOT)\os2\boot\fat32.sym &
-        $(BINROOT)\os2\system\trace\trc00fe.tff
+PATH=..$(%SEP)..$(%SEP)$(PROJ)
+DIRS=..$(%SEP)include libc
+TARGETS=$(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)fat32.ifs &
+!ifeq %OS os2
+        $(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)fat32.sym &
+        $(BINROOT)$(%SEP)os2$(%SEP)system$(%SEP)trace$(%SEP)trc00fe.tff
+!endif
 
-!include ..\makefile.mk
+
+!include ..$(%SEP)makefile.mk
 
 DESC="Fat32 Installable filesystem, Henk Kelder & Netlabs"
 
@@ -15,51 +19,51 @@ ADD_DEFS = -dEXFAT
 ADD_DEFS =
 !endif
 
-# COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
-COPT=-2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM $(ADD_DEFS) -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
+# COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
+COPT=-bt=os2 -2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM $(ADD_DEFS) -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
 # -zt=24576
-# *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include
-COPT32=-3 -mf -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__WATCOM -i=$(%WATCOM)\h -i=$(%WATCOM)\h\os2 -i=. -i=.. -i=..\include
-AOPT=-q $(ADD_DEFS) -i=. -i=.. -i=..\include
+# *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
+COPT32=-bt=os2 -3 -mf -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2 -i=. -i=.. -i=..$(%SEP)include
+AOPT=-q $(ADD_DEFS) -i=. -i=.. -i=..$(%SEP)include
 
 SYS=os2 lx phys
 # SYS=os2 lx dll initglobal
 # SYS=os2 dll initglobal
 
-OBJS=$(PROJ_BLD)\fat32a.obj &
-     $(PROJ_BLD)\fat32b.obj &
-     $(PROJ_BLD)\ifsmount.obj &
-     $(PROJ_BLD)\ifsfind.obj &
-     $(PROJ_BLD)\ifsdir.obj &
-     $(PROJ_BLD)\ifsattr.obj &
-     $(PROJ_BLD)\ifsfile.obj &
-     $(PROJ_BLD)\ifsfil32.obj &
-     $(PROJ_BLD)\ifslog.obj &
-     $(PROJ_BLD)\ifscache.obj &
-     $(PROJ_BLD)\ifsswap.obj &
-     $(PROJ_BLD)\ifsmem.obj &
-     $(PROJ_BLD)\ifsea.obj &
-     $(PROJ_BLD)\ifsea2.obj &
-     $(PROJ_BLD)\ifslang.obj &
-     $(PROJ_BLD)\ifsachk.obj &
-     $(PROJ_BLD)\helpers.obj
+OBJS=$(PROJ_BLD)$(%SEP)fat32a.obj &
+     $(PROJ_BLD)$(%SEP)fat32b.obj &
+     $(PROJ_BLD)$(%SEP)ifsmount.obj &
+     $(PROJ_BLD)$(%SEP)ifsfind.obj &
+     $(PROJ_BLD)$(%SEP)ifsdir.obj &
+     $(PROJ_BLD)$(%SEP)ifsattr.obj &
+     $(PROJ_BLD)$(%SEP)ifsfile.obj &
+     $(PROJ_BLD)$(%SEP)ifsfil32.obj &
+     $(PROJ_BLD)$(%SEP)ifslog.obj &
+     $(PROJ_BLD)$(%SEP)ifscache.obj &
+     $(PROJ_BLD)$(%SEP)ifsswap.obj &
+     $(PROJ_BLD)$(%SEP)ifsmem.obj &
+     $(PROJ_BLD)$(%SEP)ifsea.obj &
+     $(PROJ_BLD)$(%SEP)ifsea2.obj &
+     $(PROJ_BLD)$(%SEP)ifslang.obj &
+     $(PROJ_BLD)$(%SEP)ifsachk.obj &
+     $(PROJ_BLD)$(%SEP)helpers.obj
 
-$(BINROOT)\os2\system\trace\trc00fe.tff:
+$(BINROOT)$(%SEP)os2$(%SEP)system$(%SEP)trace$(%SEP)trc00fe.tff:
 
-$(BINROOT)\os2\boot\fat32.ifs:
+$(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)fat32.ifs:
 
-$(BINROOT)\os2\boot\fat32.sym:
+$(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)fat32.sym:
 
-$(PROJ_BLD)\fat32.lnk: $(PROJ_BLD)\fat32.ols
+$(PROJ_BLD)$(%SEP)fat32.lnk: $(PROJ_BLD)$(%SEP)fat32.ols
 
-$(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
+$(PROJ_BLD)$(%SEP)fat32.ols: $(OBJS) makefile.wcc ..$(%SEP)makefile.mk
  @%create $^@
  @for %e in ($(OBJS)) do @%append $^@ FILE %e
 
 .ols.lnk:
  @%create $@
  @%append $@ FORMAT $(SYS)
- @%append $@ NAME $(BINROOT)\os2\boot\$^&.ifs
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)boot$(%SEP)$^&.ifs
  @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
  # @%append $@ DEBUG ALL
  # @%append $@ option protmode
@@ -71,7 +75,7 @@ $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
  @%append $@ OPTION MANYAUTODATA
  @%append $@ OPTION NODEFAULTLIBS
  @%append $@ OPTION MIXED1632
- @%append $@ LIB $(LIBROOT)\libc.lib
+ @%append $@ LIB $(LIBROOT)$(%SEP)libc.lib
  @%append $@ EXPORT &
     FS_ALLOCATEPAGESPACE, &
     FS_ATTACH, &
@@ -211,13 +215,13 @@ $(PROJ_BLD)\fat32.ols: $(OBJS) makefile.wcc ..\makefile.mk
 #    KernThunkStackTo32 KEE.41
  @%append $@ @$[@
 
-$(PROJ_BLD)\ifsfil32.obj: ifsfil32.c
+$(PROJ_BLD)$(%SEP)ifsfil32.obj: ifsfil32.c
  @echo CC       $^.
  @wcc386 $(COPT32) -fr=$^*.err -fo=$^@ $<
 
 
-$(BINROOT)\os2\system\trace\trc00fe.tff: fat32.tsf
+$(BINROOT)$(%SEP)os2$(%SEP)system$(%SEP)trace$(%SEP)trc00fe.tff: fat32.tsf
  @echo TRCUST   $^.
- @trcust $[@ >nul 2>&1
- @copy trc00fe.tff $^@ >nul 2>&1
- @del $^. >nul 2>&1
+ @trcust $[@ >$(NUL) 2>&1
+ @copy trc00fe.tff $^@ >$(NUL) 2>&1
+ @$(RM) $^. >$(NUL) 2>&1

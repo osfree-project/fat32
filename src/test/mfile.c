@@ -3,8 +3,8 @@
 #include <io.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys\types.h>
-#include <sys\stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <share.h>
 #include <conio.h>
 

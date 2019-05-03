@@ -5,6 +5,11 @@ setlocal
 @echo off
 set d=p
 SET DEBUG=0
+SET OS=os2
+SET NUL=\dev\nul
+SET CP=copy
+SET RM=del
+SET SEP=\
 SET COMSPEC=d:\os2\cmd.exe
 SET OS2_SHELL=d:\os2\cmd.exe
 set WATCOM=f:\dev\watcom

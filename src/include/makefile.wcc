@@ -1,8 +1,8 @@
 ROOT=..
 PROJ=.
-PATH=..\..\$(PROJ)
+PATH=../../$(PROJ)
 DIRS=
-!include ..\makefile.mk
+!include ../makefile.mk
 
 TARGETS = ver.h
 
