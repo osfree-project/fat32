@@ -70,7 +70,8 @@ int main(int argcount, char *argval[])
    MBR    *mbr;
    USHORT DevHandle;
    char   drv[3] = "1:";
-   ULONG  i, j;
+   //ULONG  i, j;
+   ULONG  i;
    ULONG  ulCategory = IOCTL_PHYSICALDISK;
    ULONG  ulFunction = PDSK_READPHYSTRACK;
    ULONG  ulParmLen  = sizeof(TRACK);
@@ -81,7 +82,8 @@ int main(int argcount, char *argval[])
    USHORT row, column;
    DEVICEPARAMETERBLOCK dpb;
    ULONG  cyls, heads, sectors, cursector, embroff, x;
-   double dataread, diskcap, curpos;
+   //double dataread, diskcap, curpos;
+   double diskcap;
 
    if (argcount > 1)
       {
@@ -110,7 +112,8 @@ int main(int argcount, char *argval[])
 
    for (i = 0; i < 1; i++)
       {
-      trk.TrackTable[i].usSectorNumber = i+1;
+      //trk.TrackTable[i].usSectorNumber = i+1;
+      trk.TrackTable[i].usSectorNumber = (USHORT) (i+1);
       trk.TrackTable[i].usSectorSize = 512;
       }
 

@@ -81,7 +81,8 @@ typedef VOID (*STRATFUNC)(VOID);
 #define MAXRQENTRIES 48
 #define MAX_RQS     20
 #endif
-#define MAXRQENTRIES 128
+//#define MAXRQENTRIES 128
+#define MAXRQENTRIES 64
 #define MAX_RQS     8
 
 typedef struct _Request
@@ -105,7 +106,8 @@ REQUEST rgReq[MAXRQENTRIES];
 
 typedef struct _Cache
 {
-BYTE  bSector[SECTOR_SIZE * 8];
+BYTE  bSector[SECTOR_SIZE];
+//BYTE  bSector[SECTOR_SIZE * 8];
 } CACHE, *PCACHE;
 
 #define SET  1
@@ -119,6 +121,10 @@ unsigned bDrive:8;
 unsigned fLocked:1;
 unsigned fFlushPending:1;
 unsigned fDiscard:1;
+/* sequential number of a 512-byte sub-sector
+   in current sector (which could be larger,
+   e.g., 2048-byte sectors on CD or MO drives) */
+unsigned secNum:3;
 ULONG    ulAccessTime;
 ULONG    ulCreateTime;
 } CACHEBASE, *PCACHEBASE;

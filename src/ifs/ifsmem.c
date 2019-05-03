@@ -19,26 +19,16 @@
 #define RESERVED_SEGMENT (PVOID)0x00000001
 
 
-//static 
-BOOL   IsBlockFree(PBYTE pMCB);
-//static 
-ULONG  BlockSize(PBYTE pMCB);
-//static 
-VOID   SetFree(PBYTE pMCB);
-//static 
-VOID   SetInUse(PBYTE pMCB);
-//static 
-VOID SetMagic(PBYTE pMCB);
-//static 
-ULONG GetMagic(PBYTE pMCB);
-//static 
-VOID   SetBlockSize(PBYTE pMCB, ULONG ulSize);
-//static 
-void * FindFreeSpace(void * pStart, size_t tSize);
-//static 
-VOID GetMemAccess(VOID);
-//static 
-VOID ReleaseMemAccess(VOID);
+static BOOL   IsBlockFree(PBYTE pMCB);
+static ULONG  BlockSize(PBYTE pMCB);
+static VOID   SetFree(PBYTE pMCB);
+static VOID   SetInUse(PBYTE pMCB);
+static VOID SetMagic(PBYTE pMCB);
+static ULONG GetMagic(PBYTE pMCB);
+static VOID   SetBlockSize(PBYTE pMCB, ULONG ulSize);
+static void * FindFreeSpace(void * pStart, size_t tSize);
+static VOID GetMemAccess(VOID);
+static VOID ReleaseMemAccess(VOID);
 
 static void * rgpSegment[MAX_SELECTORS] = {0};
 
@@ -50,13 +40,10 @@ extern UCHAR fRing3;
 VOID CheckHeap(VOID)
 {
 USHORT usSel;
-PBYTE pHeapStart;
-PBYTE pHeapEnd;
-PBYTE pWork;
 PBYTE pPrev = NULL;
-//BYTE _huge * pHeapStart;
-//BYTE _huge * pHeapEnd;
-//BYTE _huge * pWork;
+BYTE _huge * pHeapStart;
+BYTE _huge * pHeapEnd;
+BYTE _huge * pWork;
 USHORT rc;
 
    for (usSel = 0; usSel < MAX_SELECTORS; usSel++)
@@ -177,14 +164,10 @@ malloc_exit:
 *********************************************************************/
 void * FindFreeSpace(void * pStart, size_t tSize)
 {
-PBYTE pHeapStart;
-PBYTE pHeapEnd;
-PBYTE pWork;
-PBYTE pNext;
-//BYTE _huge * pHeapStart;
-//BYTE _huge * pHeapEnd;
-//BYTE _huge * pWork;
-//BYTE _huge * pNext;
+BYTE _huge * pHeapStart;
+BYTE _huge * pHeapEnd;
+BYTE _huge * pWork;
+BYTE _huge * pNext;
 USHORT rc;
 
    pHeapStart = pStart;
@@ -230,18 +213,12 @@ void cdecl free(void * pntr)
 #endif
 {
 USHORT usSel;
-PBYTE pHeapStart;
-PBYTE pHeapEnd;
-PBYTE pWork;
-PBYTE pToFree = pntr;
-PBYTE pPrev;
-PBYTE pNext;
-//BYTE _huge * pHeapStart;
-//BYTE _huge * pHeapEnd;
-//BYTE _huge * pWork;
-//BYTE _huge * pToFree = pntr;
-//BYTE _huge * pPrev;
-//BYTE _huge * pNext;
+BYTE _huge * pHeapStart;
+BYTE _huge * pHeapEnd;
+BYTE _huge * pWork;
+BYTE _huge * pToFree = pntr;
+BYTE _huge * pPrev;
+BYTE _huge * pNext;
 USHORT rc;
 
    MessageL(LOG_MEM, "free%m %lX", 0x006c, pntr);

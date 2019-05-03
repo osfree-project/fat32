@@ -1380,7 +1380,7 @@ POPENINFO pOpenInfo;
             }
 
          // disable it temporarily
-         //f32Parms.fLW = TRUE;
+         f32Parms.fLW = TRUE;
          rc = 0;
          break;
 
@@ -3406,8 +3406,10 @@ PBIOSPARAMETERBLOCK pBPB;
                   }
                pVolInfo->usRASectors = *(PUSHORT)pParm;
 #if 1
-               if (pVolInfo->usRASectors > MAX_RASECTORS)
+               if (pVolInfo->usRASectors * (pVolInfo->BootSect.bpb.BytesPerSector / 512) > MAX_RASECTORS)
                   pVolInfo->usRASectors = MAX_RASECTORS;
+               else
+                  pVolInfo->usRASectors *= pVolInfo->BootSect.bpb.BytesPerSector / 512;
 #else
                if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4)
                   pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4;
@@ -7712,7 +7714,10 @@ ULONG  tStart = GetCurTime();
 
    ulCount = GetChainSize(pVolInfo, pSHInfo, ulCluster);
    if (!ulCount)
+      {
+      free(pbCluster);
       return 1340;
+      }
 
    *pulNew = MakeFatChain(pVolInfo, pSHInfo, pVolInfo->ulFatEof, ulCount, NULL);
    if (*pulNew == pVolInfo->ulFatEof)

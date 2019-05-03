@@ -22,7 +22,7 @@ int far pascal _loadds FS_CHDIR(
 {
 PVOLINFO pVolInfo;
 POPENINFO pOpenInfo = NULL;
-ULONG ulCluster, ulSec;
+ULONG ulCluster;
 PSZ   pszFile, pszDir;
 USHORT rc;
 PSZ    szDirLongName = NULL;
@@ -126,8 +126,6 @@ PSZ    szDirLongName = NULL;
             pVolInfo = pOpenInfo->pVolInfo;
          }
 
-         Message("FS_CHDIR: pszDir=%s", pszDir);
-
          ulCluster = FindDirCluster(pVolInfo,
             pcdfsi,
             pcdfsd,
@@ -136,13 +134,6 @@ PSZ    szDirLongName = NULL;
             FILE_DIRECTORY,
             &pszFile,
             NULL);
-
-         Message("FS_CHDIR: ulDirCluster=%lx", ulCluster);
-
-         ulSec = pVolInfo->BootSect.bpb.ReservedSectors +
-         (ULONG)pVolInfo->BootSect.bpb.SectorsPerFat * pVolInfo->BootSect.bpb.NumberOfFATs;
-
-         Message("FS_CHDIR: ulSec=%lx", ulSec);
 
          if (ulCluster == pVolInfo->ulFatEof || *pszFile)
             {

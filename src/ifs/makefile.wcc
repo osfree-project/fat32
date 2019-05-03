@@ -21,6 +21,7 @@ ADD_DEFS =
 
 # COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
 COPT=-bt=os2 -2 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM $(ADD_DEFS) -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
+##COPT=-3 -ml -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -d2 -wx -oabir -of+ -q -d__16BITS__ -d__WATCOM $(ADD_DEFS)-i=$(%WATCOM)\h -i=$(%WATCOM)\h\os21x -i=. -i=.. -i=..\include -i=$(%DDKBASE)\h
 # -zt=24576
 # *** COPT=-2 -ml -ecw -r -s -zdp -zff -zgf -zls -zp=1 -zt=16384 -zu -zl -ze -zq -od -of+ -q -d__16BITS__ -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os21x -i=. -i=.. -i=..$(%SEP)include
 COPT32=-bt=os2 -3 -mf -ecw -s -zdp -zgf -zls -zp=1 -zu -ze -zq -od -of+ -q -d__WATCOM -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2 -i=. -i=.. -i=..$(%SEP)include
@@ -219,9 +220,8 @@ $(PROJ_BLD)$(%SEP)ifsfil32.obj: ifsfil32.c
  @echo CC       $^.
  @wcc386 $(COPT32) -fr=$^*.err -fo=$^@ $<
 
-
 $(BINROOT)$(%SEP)os2$(%SEP)system$(%SEP)trace$(%SEP)trc00fe.tff: fat32.tsf
  @echo TRCUST   $^.
- @trcust $[@ >$(NUL) 2>&1
- @copy trc00fe.tff $^@ >$(NUL) 2>&1
- @$(RM) $^. >$(NUL) 2>&1
+ @trcust $[@ >$(%NUL) 2>&1
+ @copy trc00fe.tff $^@ >$(%NUL) 2>&1
+ @$(%RM) $^. >$(%NUL) 2>&1

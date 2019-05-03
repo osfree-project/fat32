@@ -6,7 +6,6 @@
 #include <time.h>
 #include <dos.h>
 
-
 #define INCL_DOS
 #define INCL_DOSDEVIOCTL
 #define INCL_DOSDEVICES
@@ -16,39 +15,39 @@
 #include "portable.h"
 #include "fat32ifs.h"
 
-
 #define NOT_USED    0xFFFFFFFF
 #define MAX_SECTORS 4096
 #define PAGE_SIZE   4096
 #define MAX_SLOTS   0x4000
 #define FREE_SLOT   0xFFFF
 
+#ifdef MAX_RASECTORS
+#undef MAX_RASECTORS
+#endif
+#define MAX_RASECTORS   64
+
 PRIVATE ULONG ulSemEmergencyTrigger=0UL;
 PRIVATE ULONG ulSemEmergencyDone   =0UL;
 PRIVATE ULONG ulDummySem           =0UL;
-PRIVATE ULONG ulSemRWRead          =0UL;
 
 PRIVATE volatile USHORT  usOldestEntry = 0xFFFF;
 PRIVATE volatile USHORT  usNewestEntry = 0xFFFF;
 PRIVATE ULONG    ulPhysCacheAddr = 0UL;
 PRIVATE SEL      rgCacheSel[(MAX_SECTORS / 128) + 1] = {0};
 PRIVATE USHORT   usSelCount = 1;
-PRIVATE USHORT   usPhysCount = 0;
 
 PRIVATE CACHEBASE  _based(_segname("IFSCACHE1_DATA"))pCacheBase[MAX_SECTORS] = {0};
 PRIVATE CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))pCacheBase2[MAX_SECTORS] = {0};
-ULONG          _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
-PRIVATE USHORT _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
-PRIVATE BOOL   _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
+PRIVATE ULONG      _based(_segname("IFSCACHE2_DATA"))ulLockSem[MAX_SECTORS] = {0};
+PRIVATE USHORT     _based(_segname("IFSCACHE2_DATA"))rgSlot[MAX_SLOTS] = {0};
+PRIVATE BOOL       _based(_segname("IFSCACHE3_DATA"))rgfDirty[MAX_SECTORS] = {0};
+PRIVATE CACHE      _based(_segname("IFSCACHE3_DATA"))raSectors[MAX_RASECTORS] = {0};
 
 extern PCPDATA pCPData;
 
-PRIVATE USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName);
-PRIVATE VOID   ReleaseReadBuf(PVOLINFO pVolInfo);
 PRIVATE BOOL   IsSectorInCache(PVOLINFO pVolInfo, ULONG ulSector, PBYTE bSector);
 PRIVATE BOOL   fStoreSector(PVOLINFO pVolInfo, ULONG ulSector, PBYTE pbSector, BOOL fDirty);
 PRIVATE PVOID  GetAddress(ULONG ulEntry);
-PRIVATE PVOID  GetPhysAddr(PRQLIST pRQ, ULONG ulEntry);
 PRIVATE BOOL   fFindSector(ULONG ulSector, BYTE bDrive, PUSHORT pusIndex);
 PRIVATE USHORT WriteCacheSector(PVOLINFO pVolInfo, USHORT usCBIndex, BOOL fSetTime);
 PRIVATE VOID   UpdateChain(USHORT usCBIndex);
@@ -58,18 +57,9 @@ PRIVATE VOID   LockBuffer(PCACHEBASE pBase);
 PRIVATE VOID   UnlockBuffer(PCACHEBASE pBase);
 PRIVATE USHORT usEmergencyFlush(VOID);
 PRIVATE USHORT VerifyOn(VOID);
-USHORT GetFatAccess(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseFat(PVOLINFO pVolInfo);
-USHORT GetBufAccess(PVOLINFO pVolInfo, PSZ pszName);
-VOID   ReleaseBuf(PVOLINFO pVolInfo);
-ULONG GetNextCluster2(PVOLINFO pVolInfo, PSHOPENINFO pSHInfo, ULONG ulCluster);
 
 int PreSetup(void);
 int PostSetup(void);
-
-PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
-
-
 
 /******************************************************************
 *
@@ -77,101 +67,84 @@ PUBLIC VOID _cdecl InitMessage(PSZ pszMessage,...);
 BOOL InitCache(ULONG ulSectors)
 {
 static BOOL fInitDone = FALSE;
-APIRET rc;
-PCACHEBASE pBase;
-PCACHEBASE2 pBase2;
-USHORT usIndex;
-ULONG ulSize;
-PVOID p;
+APIRET      rc;
+USHORT      usIndex;
+ULONG       ulSize;
+PVOID       p;
+CACHEBASE   _based(_segname("IFSCACHE1_DATA")) *pBase;
 
-   if (fInitDone)
+   if (fInitDone || !ulSectors || f32Parms.usCacheSize)
       return FALSE;
+
    fInitDone = TRUE;
-
-   if (!ulSectors || f32Parms.usCacheSize)
-      return FALSE;
-
 
    if (ulSectors > MAX_SECTORS)
       ulSectors = MAX_SECTORS;
    Message("Allocating cache space for %ld sectors", ulSectors);
 
-
-   f32Parms.usCacheSize = 0L;
-
    /* Account for enough selectors */
-
    usSelCount = (USHORT)(ulSectors / 128 + (ulSectors % 128 ? 1: 0));
 
    rc = DevHelp_AllocGDTSelector(rgCacheSel, usSelCount);
    if (rc)
-      {
+   {
       FatalMessage("FAT32: AllocGDTSelector failed, rc = %d", rc);
       return FALSE;
-      }
-
+   }
 
    /* Allocate linear memory */
-
-   ulSize = ulSectors * (ULONG)sizeof (CACHE);
+   ulSize = ulSectors * (ULONG)sizeof(CACHE);
    rc = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem,&ulPhysCacheAddr);
-   if (rc != NO_ERROR)
+   if (rc)
    {
       /* If tried to use high memory, try to use low memory */
-      if( f32Parms.fHighMem )
+      if (f32Parms.fHighMem)
       {
           f32Parms.fHighMem = FALSE;
           rc = linalloc(ulSize, f32Parms.fHighMem, f32Parms.fHighMem,&ulPhysCacheAddr);
       }
-
-      if( rc != NO_ERROR)
+      if (rc)
           return FALSE;
    }
 
-
    /* Fill the selectors */
-
     for (usIndex = 0; usIndex < usSelCount; usIndex++)
     {
         ULONG ulBlockSize = 0x10000UL;
         if (ulBlockSize > ulSize)
             ulBlockSize = ulSize;
+
         rc = DevHelp_PhysToGDTSelector( ulPhysCacheAddr+usIndex*0x10000UL,
                                         (USHORT)ulBlockSize,
                                         rgCacheSel[usIndex]);
         if (rc)
         {
             FatalMessage("FAT32: PhysGDTSelector (%d) failed, rc = %d", usIndex, rc);
-
             return FALSE;
         }
         ulSize -= 0x10000UL;
     }
 
+   /* this uses propagation to copy the contents of the
+    * first array element into the remaining elements
+    */
+   pCacheBase[0].ulSector = NOT_USED;
+   pCacheBase[0].bDrive = 0xFF;
+   pCacheBase[0].usNext = FREE_SLOT;
+   memcpy(&pCacheBase[1], pCacheBase, (ulSectors - 1) * sizeof(CACHEBASE));
+
+   /* init all but the last element with the index of the next element */
+   for (pBase = pCacheBase, usIndex = 1; usIndex < ulSectors; pBase++, usIndex++)
+      pBase->usNext = usIndex;
+
+   memset(pCacheBase2, 0xFF, ulSectors * sizeof(CACHEBASE2));
+   memset(rgSlot, 0xFF, sizeof(rgSlot));
+   memset(rgfDirty, FALSE, sizeof(rgfDirty));
+
    f32Parms.usCacheSize = (USHORT)ulSectors;
    f32Parms.usDirtyTreshold =
-      f32Parms.usCacheSize - (f32Parms.usCacheSize / 20);
-
-   pBase = pCacheBase;
-   pBase2 = pCacheBase2;
-   for (usIndex = 0; usIndex < f32Parms.usCacheSize; usIndex++)
-      {
-      pBase->ulSector = NOT_USED;
-      pBase->bDrive = 0xFF;
-      pBase2->usOlder = 0xFFFF;
-      pBase2->usNewer = 0xFFFF;
-      if (usIndex + 1 < f32Parms.usCacheSize)
-         pBase->usNext = usIndex + 1;
-      else
-         pBase->usNext = FREE_SLOT;
-      pBase++;
-      pBase2++;
-      }
-
-   memset(rgSlot, 0xFF, sizeof rgSlot);
-   memset(rgfDirty, FALSE, sizeof rgfDirty);
-
-   f32Parms.usCacheUsed = 0L;
+      f32Parms.usCacheSize - (f32Parms.usCacheSize / 10);
+   f32Parms.usCacheUsed = 0;
 
    p = (PVOID)InitCache;
    rc = FSH_FORCENOSWAP(SELECTOROF(p));
@@ -196,109 +169,62 @@ PVOID p;
    return TRUE;
 }
 
-
-#define Cluster2Sector( ulCluster )     (( ULONG )( pVolInfo->ulStartOfData + \
-                                         (( ULONG )( ulCluster ) - 2) * pVolInfo->SectorsPerCluster ))
-
-#define Sector2Cluster( ulSector )      (( ULONG )((( ULONG )( ulSector ) - pVolInfo->ulStartOfData ) / \
-                                         pVolInfo->SectorsPerCluster + 2 ))
-
 /******************************************************************
 *
 ******************************************************************/
+
 USHORT ReadSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
-APIRET rc,rc2;
-USHORT usSectors;
-USHORT usIndex;
-PBYTE pbSectors;
-BOOL fFromCache;
-BOOL fSectorInCache;
-USHORT usCBIndex;
-BOOL fRASectors = FALSE;
+APIRET   rc,rc2;
+USHORT   usSectors;
+USHORT   usIndex;
+BYTE far *pbSectors;
+USHORT   usCBIndex;
 char far *p;
+ULONG    ulLast;
+ULONG    _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
+CACHE    _based(_segname("IFSCACHE3_DATA"))*praSectors = raSectors;
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
-      {
-      //FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
-      //   ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
-      }
 
    f32Parms.ulTotalReads += nSectors;
 
-   /*
-      See if all sectors are in cache
-   */
-   fFromCache = TRUE;
-   for (usIndex = 0,p=pbData; usIndex < nSectors; usIndex++,p += (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
-      {
-      if (!IsSectorInCache(pVolInfo, ulSector + usIndex, p))
-         {
-         fFromCache = FALSE;
+   /* See how many leading sectors are in the cache -
+    * each one found is one less that has to be read from disk
+    */
+   for (ulLast = ulSector + nSectors;
+        ulSector < ulLast;
+        ulSector++, nSectors--, pbData += (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
+   {
+      if (!IsSectorInCache(pVolInfo, ulSector, pbData))
          break;
-         }
-      }
-   /*
-      if all sectors were found in cache, we are done
-   */
-   if (fFromCache)
+   }
+
+   /* if all sectors were found in cache, we are done */
+   if (ulSector >= ulLast)
       return 0;
 
-#if 0
-   if (ulSector > pVolInfo->ulStartOfData)
-      MessageL(LOG_CACHE, "Cluster%m %lu not found in cache!", 0x4062,
-               (ulSector - pVolInfo->ulStartOfData) / pVolInfo->SectorsPerCluster + 2);
-#endif
    pbSectors = NULL;
-   if (( ulSector >= pVolInfo->ulStartOfData ) &&
+   if ((ulSector >= pVolInfo->ulStartOfData) &&
        !(usIOMode & DVIO_OPNCACHE) && nSectors < pVolInfo->usRASectors)
-      {
-      usSectors = pVolInfo->usRASectors;
+   {
+      usSectors = min(pVolInfo->usRASectors, MAX_RASECTORS);
       if (ulSector + usSectors > pVolInfo->BootSect.bpb.BigTotalSectors)
          usSectors = (USHORT)(pVolInfo->BootSect.bpb.BigTotalSectors - ulSector);
-      pbSectors = malloc(usSectors * pVolInfo->BootSect.bpb.BytesPerSector);
-      fRASectors = TRUE;
-      }
-   //if (!pbSectors)
-   if (!fRASectors)
-      {
+      pbSectors = praSectors->bSector;
+   }
+
+   if (!pbSectors)
+   {
       pbSectors = pbData;
       usSectors = nSectors;
-      }
-
-   /* check bad cluster (moved to ReadBlock) */
-   /* if( ulSector >= pVolInfo->ulStartOfData )
-   {
-        ULONG ulStartCluster = Sector2Cluster( ulSector );
-        ULONG ulEndCluster = Sector2Cluster( ulSector + usSectors - 1 );
-        ULONG ulNextCluster = 0;
-        ULONG ulCluster;
-
-        for( ulCluster = ulStartCluster; ulCluster <= ulEndCluster; ulCluster++ )
-        {
-            //ulNextCluster = GetNextCluster2( pVolInfo, NULL, ulCluster );
-            ulNextCluster = GetNextCluster( pVolInfo, NULL, ulCluster );
-            if( ulNextCluster == pVolInfo->ulFatBad )
-                break;
-        }
-
-        if( ulNextCluster == pVolInfo->ulFatBad )
-        {
-            usSectors = ( ulStartCluster != ulCluster ) ?
-                ( min(( USHORT )( Cluster2Sector( ulCluster ) - ulSector ), usSectors )) : 0;
-        }
-
-        if (usSectors == 0)
-            // avoid reading zero sectors
-            return ERROR_SECTOR_NOT_FOUND;
-   } */
+   }
 
    usIOMode &= ~DVIO_OPWRITE;
    pVolInfo->ulLastDiskTime = GetCurTime();
    if (pVolInfo->hVBP)
       rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLACK, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
-      //rc = FSH_DOVOLIO(DVIO_OPREAD | usIOMode, DVIO_ALLABORT | DVIO_ALLRETRY | DVIO_ALLFAIL, pVolInfo->hVBP, pbSectors, &usSectors, ulSector);
    else
       {
       /* read loopback device */
@@ -337,64 +263,39 @@ char far *p;
       memcpy(pbSectors, &pCPData->Buf, (USHORT)pCPData->cbData);
       rc = (USHORT)pCPData->rc;
       }
+
    if (rc)
-      {
-      //CritMessage("FAT32: ReadSector of sector %ld (%d sectors) failed, rc = %u",
-      //   ulSector, usSectors, rc);
+   {
       Message("ERROR: ReadSector of sector %ld (%d sectors) failed, rc = %u",
-         ulSector, usSectors, rc);
-      }
+              ulSector, usSectors, rc);
+      return rc;
+   }
 
-    /*
-       Store sector only in cache if we should
-    */
-    if (!rc)
-       {
-       for (usIndex = 0,p=pbSectors; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
-          {
-          /*
-             Was sector already in cache?
-          */
-          fSectorInCache = fFindSector(ulSector + usIndex,
-             pVolInfo->bDrive,
-             &usCBIndex);
-
-          switch (fSectorInCache)
-             {
-             /*
-                No, it wasn't. Store it if needed. (and if caching is not to be bypassed)
-             */
-             case FALSE :
-                if (!(usIOMode & DVIO_OPNCACHE))
-                   fStoreSector(pVolInfo, ulSector + usIndex, p, FALSE);
-                break;
-             case TRUE  :
-             /*
-                Yes it was. Get it if it was dirty since then it is different
-                from version on disk.
-             */
-                if (rgfDirty[usCBIndex])
-                   {
-                   vGetSectorFromCache(pVolInfo, usCBIndex, p);
-                   }
-                   rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]); /* when fFindSector returns with true it has the semaphore requested */
-                break;
-             }
-          }
-       }
-
-    //if (!rc && pbSectors != pbData)
-    if (!rc && fRASectors)
-       {
-       f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
-       memcpy(pbData, pbSectors, min( usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
-       }
-
-   if (pbSectors != pbData)
+    /* Store sector only in cache if we should */
+   for (usIndex = 0,p=pbSectors; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
+   {
+      /* Was sector already in cache? */
+      if (!fFindSector(ulSector + usIndex, pVolInfo->bDrive, &usCBIndex))
       {
-      free(pbSectors);
+         /* No, it wasn't. Store it if needed. (and if caching is not to be bypassed) */
+         if (!(usIOMode & DVIO_OPNCACHE))
+            fStoreSector(pVolInfo, ulSector + usIndex, p, FALSE);
       }
- 
+      else {
+         /* Yes it was. Get it if it was dirty since it is different from version on disk. */
+         if (rgfDirty[usCBIndex])
+            vGetSectorFromCache(pVolInfo, usCBIndex, p);
+         /* when fFindSector returns with true it has the semaphore requested */
+         rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
+      }
+   }
+
+   if (pbSectors == praSectors->bSector)
+   {
+      f32Parms.ulTotalRA += usSectors > nSectors ? (usSectors - nSectors) : 0;
+      memcpy(pbData, pbSectors, min(usSectors, nSectors ) * pVolInfo->BootSect.bpb.BytesPerSector);
+   }
+
    return rc;
 }
 
@@ -403,34 +304,30 @@ char far *p;
 ******************************************************************/
 USHORT WriteSector(PVOLINFO pVolInfo, ULONG ulSector, USHORT nSectors, PCHAR pbData, USHORT usIOMode)
 {
-APIRET rc,rc2;
-USHORT usSectors = nSectors;
-USHORT usIndex;
-BOOL   fDirty;
-BOOL   fSectorInCache;
-USHORT usCBIndex;
-char *p;
+APIRET   rc,rc2;
+USHORT 	usSectors = nSectors;
+USHORT 	usIndex;
+BOOL     fDirty;
+USHORT   usCBIndex;
+char     *p;
+ULONG  	_based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 
    if (pVolInfo->fWriteProtected)
       return ERROR_WRITE_PROTECT;
 
    if (pVolInfo->fDiskClean)
-      {
+   {
       MarkDiskStatus(pVolInfo, FALSE);
-      pVolInfo->fDiskClean = FALSE;
-      }
+      //pVolInfo->fDiskClean = FALSE; // 0.9.13 didn't change this to FALSE
+   }
 
    if (ulSector + nSectors - 1 >= pVolInfo->BootSect.bpb.BigTotalSectors)
-      {
-      //FatalMessage("FAT32: ERROR: Sector %ld does not exist on disk %c:",
-      //   ulSector + nSectors - 1, pVolInfo->bDrive + 'A');
       return ERROR_SECTOR_NOT_FOUND;
-      }
 
    fDirty = TRUE;
    rc = 0;
    if (!f32Parms.fLW || (usIOMode & DVIO_OPWRTHRU) || (usIOMode & DVIO_OPNCACHE))
-      {
+   {
       MessageL(LOG_CACHE, "WriteSector%m: Writing sector thru", 0x4063);
       pVolInfo->ulLastDiskTime = GetCurTime();
       if (pVolInfo->hVBP)
@@ -462,50 +359,35 @@ char *p;
 
          rc = (USHORT)pCPData->rc;
          }
-      if (rc && rc != ERROR_WRITE_PROTECT )
-         Message("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
-            ulSector, nSectors, rc);
+
       fDirty = FALSE;
-      }
 
-   if (!rc)
+      if (rc)
       {
-      for (usIndex = 0,p= pbData; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
-         {
-         fSectorInCache =
-            fFindSector(ulSector + usIndex, pVolInfo->bDrive, &usCBIndex);
-         switch (fSectorInCache)
-            {
-            case FALSE :
-               if (!(usIOMode & DVIO_OPNCACHE))
-                  fStoreSector(pVolInfo, ulSector + usIndex, p, fDirty);
-               break;
-            case TRUE  :
-               {
-               BOOL fIdent = FALSE;
-
-               if( fDirty )
-                  {
-                  PCACHE pCache;
-
-                  pCache = GetAddress(usCBIndex);
-                  fIdent = memcmp(p, pCache->bSector, pVolInfo->BootSect.bpb.BytesPerSector) == 0;
-                  }
-
-               if( !fIdent )
-                  vReplaceSectorInCache(pVolInfo, usCBIndex, p, fDirty);
-
-               rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]); /* when fFindSector returns with true it has the semaphore requested */
-               break;
-               }
-            }
-         }
+         if (rc != ERROR_WRITE_PROTECT )
+            Message("FAT32: ERROR: WriteSector sector %ld (%d sectors) failed, rc = %u",
+                    ulSector, nSectors, rc);
+         return rc;
       }
+   }
+
+   for (usIndex = 0,p= pbData; usIndex < usSectors; usIndex++,p+= (ULONG)pVolInfo->BootSect.bpb.BytesPerSector)
+   {
+      if (!fFindSector(ulSector + usIndex, pVolInfo->bDrive, &usCBIndex))
+      {
+         if (!(usIOMode & DVIO_OPNCACHE))
+            fStoreSector(pVolInfo, ulSector + usIndex, p, fDirty);
+      }
+      else
+      {
+          vReplaceSectorInCache(pVolInfo, usCBIndex, p, fDirty);
+         /* when fFindSector returns with true it has the semaphore requested */
+         rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
+      }
+   }
 
    return rc;
 }
-
-
 
 /******************************************************************
 *
@@ -514,13 +396,14 @@ BOOL IsSectorInCache(PVOLINFO pVolInfo, ULONG ulSector, PBYTE pbSector)
 {
 APIRET rc2;
 USHORT usIndex;
+ULONG  _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 
    if (!fFindSector(ulSector, pVolInfo->bDrive, &usIndex))
       return FALSE;
    f32Parms.ulTotalHits++;
    vGetSectorFromCache(pVolInfo, usIndex, pbSector);
 
-   rc2 = FSH_SEMCLEAR(&ulLockSem[usIndex]); /* when fFindSector returns with true it has the semaphore requested */
+   rc2 = FSH_SEMCLEAR(&pLockSem[usIndex]); /* when fFindSector returns with true it has the semaphore requested */
 
    return TRUE;
 }
@@ -530,7 +413,7 @@ USHORT usIndex;
 ******************************************************************/
 VOID vGetSectorFromCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector)
 {
-PCACHEBASE pBase;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
 PCACHE pCache;
 
    pBase = pCacheBase + usCBIndex;
@@ -549,7 +432,7 @@ PCACHE pCache;
 ******************************************************************/
 VOID UpdateChain(USHORT usCBIndex)
 {
-PCACHEBASE2 pBase2;
+CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))*pBase2;
 
    /*
       Is entry already the newest ?
@@ -585,9 +468,6 @@ PCACHEBASE2 pBase2;
    pBase2->usNewer = 0xFFFF;
 }
 
-#if 1
-#define WAIT_THRESHOLD
-#endif
 /******************************************************************
 *
 ******************************************************************/
@@ -596,8 +476,9 @@ BOOL fStoreSector(PVOLINFO pVolInfo, ULONG ulSector, PBYTE pbSector, BOOL fDirty
 APIRET rc2;
 USHORT usSlot;
 USHORT usCBIndex,usCBIndexNew;
-PCACHEBASE pBase;
-PCACHEBASE2 pBase2;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
+CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))*pBase2;
+ULONG      _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 
    if (!f32Parms.usCacheSize)
       return FALSE;
@@ -607,7 +488,7 @@ PCACHEBASE2 pBase2;
       {
       usCBIndex = f32Parms.usCacheUsed;
 
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+      rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
 
       f32Parms.usCacheUsed++;
 
@@ -622,11 +503,12 @@ PCACHEBASE2 pBase2;
 
       vReplaceSectorInCache(pVolInfo, usCBIndex, pbSector, fDirty);
 
-      rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+
+      rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
       }
     else
     {
-      PCACHEBASE pWork;
+      CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pWork;
       USHORT usIndex;
       USHORT leaveFlag = FALSE;
 
@@ -639,10 +521,11 @@ PCACHEBASE2 pBase2;
 
         while (leaveFlag == FALSE)
         {
+            // Should try various thresholds current is
+            // f32Parms.usCacheSize - (f32Parms.usCacheSize / 20)
             while (f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold)
             {
 
-#ifdef WAIT_THRESHOLD
                 MessageL(LOG_CACHE | LOG_WAIT, "waiting for dirty sectors to be less than threshold%m...", 0x4064);
 
                 FSH_SEMSET(&ulSemEmergencyDone);
@@ -654,10 +537,8 @@ PCACHEBASE2 pBase2;
                 {
                     FSH_SEMCLEAR(&ulSemEmergencyDone);
                     usEmergencyFlush();
+                    
                 }
-#else
-                Yield();
-#endif
                 if (f32Parms.usDirtySectors >= f32Parms.usDirtyTreshold)
                 {
                     BOOL fMsg = f32Parms.fMessageActive;
@@ -669,10 +550,9 @@ PCACHEBASE2 pBase2;
             }
 
             usCBIndex = usOldestEntry;
-            while (usCBIndex != 0xFFFF)
+            while (usCBIndex != FREE_SLOT)
             {
-                rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
-
+                rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
                 if (!rgfDirty[usCBIndex])
                 {
                     /*
@@ -694,8 +574,9 @@ PCACHEBASE2 pBase2;
                                 break;
                             usIndex = pWork->usNext;
                         }
-                        if (usIndex == FREE_SLOT)
-                        FatalMessage("FAT32: Store: Oldest entry not found in slot chain!");
+                        if (usIndex == FREE_SLOT) {
+                            FatalMessage("FAT32: Store: Oldest entry not found in slot chain!");
+                        }
                         pWork->usNext = pBase->usNext;
                     }
 
@@ -709,14 +590,14 @@ PCACHEBASE2 pBase2;
                     vReplaceSectorInCache(pVolInfo, usCBIndex, pbSector, fDirty);
 
                     leaveFlag = TRUE;
-                    rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+                    rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
                     break;
                 }
 
                 pBase2 = pCacheBase2 + usCBIndex;
                 usCBIndexNew = pBase2->usNewer;
 
-                rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+                rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
 
                 usCBIndex = usCBIndexNew;
             }
@@ -730,7 +611,7 @@ PCACHEBASE2 pBase2;
 ******************************************************************/
 VOID vReplaceSectorInCache(PVOLINFO pVolInfo, USHORT usCBIndex, PBYTE pbSector, BOOL fDirty)
 {
-PCACHEBASE pBase;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
 PCACHE     pCache;
 
       pBase = pCacheBase + usCBIndex;
@@ -759,7 +640,7 @@ PVOID GetAddress(ULONG ulEntry)
 {
 ULONG ulOffset;
 USHORT usSel;
-
+    
    ulOffset = ulEntry * sizeof (CACHE);
    usSel = (USHORT)(ulOffset / 0x10000);
 
@@ -771,26 +652,11 @@ USHORT usSel;
 /******************************************************************
 *
 ******************************************************************/
-PVOID GetPhysAddr(PRQLIST pRQ, ULONG ulEntry)
-{
-ULONG ulOffset;
-USHORT usEntry;
-
-   ulOffset = ulEntry * sizeof (CACHE);
-   usEntry = (USHORT)(ulOffset / PAGE_SIZE);
-
-   ulOffset = ulOffset % PAGE_SIZE;
-
-   return (PVOID)(pRQ->rgPhys[usEntry] + ulOffset);
-}
-
-/******************************************************************
-*
-******************************************************************/
 BOOL fFindSector(ULONG ulSector, BYTE bDrive, PUSHORT pusIndex)
 {
 APIRET rc2;
-PCACHEBASE pBase;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
+ULONG      _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 USHORT    usCBIndex,usCBIndexNew;
 
    if (!f32Parms.usCacheUsed)
@@ -800,7 +666,7 @@ USHORT    usCBIndex,usCBIndexNew;
 
    while (usCBIndex != FREE_SLOT)
       {
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+      rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
       pBase = pCacheBase + usCBIndex;
       if (pBase->ulSector == ulSector && pBase->bDrive == bDrive)
          {
@@ -808,7 +674,7 @@ USHORT    usCBIndex,usCBIndexNew;
          return TRUE;
          }
       usCBIndexNew = pBase->usNext;
-      rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+      rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
       usCBIndex = usCBIndexNew;
       }
 
@@ -821,7 +687,7 @@ USHORT    usCBIndex,usCBIndexNew;
 ******************************************************************/
 USHORT WriteCacheSector(PVOLINFO pVolInfo, USHORT usCBIndex, BOOL fSetTime)
 {
-PCACHEBASE pBase;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
 USHORT   rc;
 USHORT   usSectors;
 PCACHE   pCache;
@@ -845,12 +711,41 @@ PCACHE   pCache;
       {
       if (pVolInfo->bDrive == (BYTE)pBase->bDrive)
          {
-
          usSectors = 1;
 
          pCache = GetAddress(usCBIndex);
-         rc = FSH_DOVOLIO(DVIO_OPWRITE | VerifyOn(), DVIO_ALLACK,
-               pVolInfo->hVBP, pCache->bSector, &usSectors, pBase->ulSector);
+         if (pVolInfo->hVBP)
+            {
+            rc = FSH_DOVOLIO(DVIO_OPWRITE | VerifyOn(), DVIO_ALLACK,
+                  pVolInfo->hVBP, pCache->bSector, &usSectors, pBase->ulSector);
+            }
+         else
+            {
+            /* write loopback device */
+            rc = PreSetup();
+
+            if (rc)
+               return rc;
+
+            pCPData->Op = OP_WRITE;
+            pCPData->hf = pVolInfo->hf;
+#ifdef INCL_LONGLONG
+            pCPData->llOffset = (LONGLONG)pVolInfo->ullOffset + pBase->ulSector * pVolInfo->BootSect.bpb.BytesPerSector;
+#else
+            iAssign(&pCPData->llOffset, *(PLONGLONG)&pVolInfo->ullOffset);
+            pCPData->llOffset = iAddUL(pCPData->llOffset, pBase->ulSector * pVolInfo->BootSect.bpb.BytesPerSector);
+#endif
+            pCPData->cbData = usSectors * pVolInfo->BootSect.bpb.BytesPerSector;
+            memcpy(&pCPData->Buf, pCache->bSector, (USHORT)pCPData->cbData);
+
+            rc = PostSetup();
+
+            if (rc)
+               return rc;
+
+            rc = (USHORT)pCPData->rc;
+            }
+
          FSH_IOBOOST();
 
          if (!rc || rc == ERROR_WRITE_PROTECT)
@@ -926,7 +821,7 @@ USHORT rc;
 VOID DoLW(PVOLINFO pVolInfo, PLWOPTS pOptions)
 {
 APIRET rc2;
-BYTE bPriority;
+//BYTE bPriority;
 LONG lWait;
 
    rc2 = FSH_SEMSET(&ulDummySem);
@@ -940,25 +835,6 @@ LONG lWait;
 
       if (f32Parms.fLW)
          {
-         switch (pOptions->bLWPrio)
-            {
-            case 1:
-               bPriority = PRIO_LAZY_WRITE;
-               break;
-
-            case 2:
-               bPriority = PRIO_BACKGROUND_USER;
-               break;
-
-            case 3:
-               bPriority = PRIO_FOREGROUND_USER;
-               break;
-
-            default:
-               bPriority = PRIO_PAGER_HIGH;
-               break;
-            }
-
          pVolInfo = pGlobVolInfo;
          while (pVolInfo)
             {
@@ -967,7 +843,7 @@ LONG lWait;
             if (ulTime < pVolInfo->ulLastDiskTime ||
                 pVolInfo->ulLastDiskTime + f32Parms.ulDiskIdle <= ulTime)
 
-               usFlushVolume(pVolInfo, FLUSH_RETAIN, FALSE, bPriority);
+               usFlushVolume(pVolInfo, FLUSH_RETAIN, FALSE, 0x01);
             pVolInfo = (PVOLINFO)pVolInfo->pNextVolInfo;
             }
          }
@@ -980,10 +856,6 @@ LONG lWait;
    rc2 = FSH_SEMCLEAR(&ulDummySem);
 }
 
-#if 0
-#define WAIT_PENDINGFLUSH
-#endif
-
 /******************************************************************
 *
 ******************************************************************/
@@ -991,8 +863,9 @@ USHORT usFlushVolume(PVOLINFO pVolInfo, USHORT usFlag, BOOL fFlushAll, BYTE bPri
 {
 APIRET rc2;
 USHORT usCBIndex = 0,usCBIndexNew;
-PCACHEBASE pBase;
-PCACHEBASE2 pBase2;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
+CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))*pBase2;
+ULONG      _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 USHORT usCount;
 ULONG  ulCurTime = GetCurTime();
 
@@ -1004,8 +877,8 @@ ULONG  ulCurTime = GetCurTime();
    if (!fFlushAll)
       {
       usCBIndex = usOldestEntry;
-      while ((usCBIndex != 0xFFFF) && (FSH_SEMREQUEST(&ulLockSem[usCBIndex],0L) == NO_ERROR))
-         {
+      while ((usCBIndex != FREE_SLOT) && (FSH_SEMREQUEST(&pLockSem[usCBIndex],0L) == NO_ERROR))
+      {
          pBase2 = pCacheBase2 + usCBIndex;
          pBase  = pCacheBase + usCBIndex;
 
@@ -1027,7 +900,7 @@ ULONG  ulCurTime = GetCurTime();
                }
             }
          usCBIndexNew = pBase2->usNewer;
-         rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+         rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
          usCBIndex = usCBIndexNew;
          }
       if (usCount > 0)
@@ -1042,7 +915,7 @@ ULONG  ulCurTime = GetCurTime();
    for (usCBIndex = 0; ( f32Parms.usDirtySectors || usFlag == FLUSH_DISCARD ) &&
          usCBIndex < f32Parms.usCacheUsed; usCBIndex++)
       {
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+      rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
 
       pBase = pCacheBase + usCBIndex;
       if (pVolInfo->bDrive == (BYTE)pBase->bDrive)
@@ -1061,7 +934,7 @@ ULONG  ulCurTime = GetCurTime();
             }
          }
 
-         rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+         rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
       }
 
    MessageL(LOG_CACHE, "%m%u sectors flushed, still %u dirty", 0x8167, usCount, f32Parms.usDirtySectors);
@@ -1075,8 +948,9 @@ USHORT usEmergencyFlush(VOID)
 {
 APIRET rc2;
 USHORT usCBIndex = 0,usCBIndexNew;
-PCACHEBASE pBase;
-PCACHEBASE2 pBase2;
+CACHEBASE  _based(_segname("IFSCACHE1_DATA"))*pBase;
+CACHEBASE2 _based(_segname("IFSCACHE2_DATA"))*pBase2;
+ULONG      _based(_segname("IFSCACHE2_DATA"))*pLockSem = ulLockSem;
 USHORT usCount;
 PVOLINFO pVolInfo;
 
@@ -1088,9 +962,9 @@ PVOLINFO pVolInfo;
    */
    pVolInfo = NULL;
    usCBIndex = usOldestEntry;
-   while (usCBIndex != 0xFFFF)
-      {
-      rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+   while (usCBIndex != FREE_SLOT)
+   {
+      rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
 
       pBase2 = pCacheBase2 + usCBIndex;
       pBase  = pCacheBase + usCBIndex;
@@ -1108,18 +982,18 @@ PVOLINFO pVolInfo;
          break;
          }
       usCBIndexNew = pBase2->usNewer;
-      rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+      rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
       usCBIndex = usCBIndexNew;
       }
 
-   if (usCBIndex == 0xFFFF)
+   if (usCBIndex == FREE_SLOT)
       return 0;
 
    if (!pVolInfo)
       return 0;
 
    usCount = 0;
-   while (usCBIndex != 0xFFFF)
+   while (usCBIndex != FREE_SLOT)
       {
       pBase2 = pCacheBase2 + usCBIndex;
       pBase  = pCacheBase + usCBIndex;
@@ -1131,14 +1005,14 @@ PVOLINFO pVolInfo;
          usCount++;
          }
       usCBIndexNew = pBase2->usNewer;
-      rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+      rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
       usCBIndex = usCBIndexNew;
-      if (usCBIndex != 0xFFFF)
-        rc2 = FSH_SEMREQUEST(&ulLockSem[usCBIndex],-1L);
+      if (usCBIndex != FREE_SLOT)
+        rc2 = FSH_SEMREQUEST(&pLockSem[usCBIndex],-1L);
       }
-   if (usCBIndex != 0xFFFF)
+   if (usCBIndex != FREE_SLOT)
    {
-      rc2 = FSH_SEMCLEAR(&ulLockSem[usCBIndex]);
+      rc2 = FSH_SEMCLEAR(&pLockSem[usCBIndex]);
    }
 
    pVolInfo->ulLastDiskTime = GetCurTime();
@@ -1164,27 +1038,3 @@ USHORT VerifyOn(VOID)
    return ret;
 }
 
-USHORT GetReadAccess(PVOLINFO pVolInfo, PSZ pszName)
-{
-USHORT rc;
-
-   pVolInfo = pVolInfo;
-
-   Message("GetReadAccess: %s", pszName);
-   rc = SemRequest(&ulSemRWRead, TO_INFINITE, pszName);
-   if (rc)
-      {
-      Message("ERROR: SemRequest GetReadAccess Failed, rc = %d!", rc);
-      //CritMessage("FAT32: SemRequest GetReadAccess Failed, rc = %d!", rc);
-      Message("GetReadAccess Failed for %s, rc = %d", pszName, rc);
-      return rc;
-      }
-   return 0;
-}
-
-VOID ReleaseReadBuf(PVOLINFO pVolInfo)
-{
-   pVolInfo = pVolInfo;
-   Message("ReleaseReadBuf");
-   FSH_SEMCLEAR(&ulSemRWRead);
-}

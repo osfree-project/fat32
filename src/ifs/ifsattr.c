@@ -439,7 +439,7 @@ USHORT rc;
             rc = 0;
             goto FS_PATHINFOEXIT;
          case 7:
-            usNeededSize = strlen(szFullName) + 1;
+            usNeededSize = strlen(szFullName) + 1; // pszName ???
             break;
          default                   :
             rc = ERROR_INVALID_LEVEL;
@@ -1130,9 +1130,8 @@ USHORT rc;
                pDirEntry, pDirNew, pDirEntryStream, NULL, pszFile, pszFile, 0);
             //rc = ModifyDirectory(pVolInfo, ulDirCluster, pDirSHInfo, MODIFY_DIR_UPDATE,
             //   pDirEntry, pDirNew, pDirEntryStream, NULL, NULL, 0);
-            break;
-
             free(pDirNew);
+            break;
             }
 
          case FIL_QUERYEASIZE      :

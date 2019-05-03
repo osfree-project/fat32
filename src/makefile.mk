@@ -141,7 +141,7 @@ distlist = &
  $(p)os2$(%SEP)f32mount.sym &
  $(p)os2$(%SEP)fat32chk.sym &
  $(p)os2$(%SEP)fat32fmt.sym &
- $(p)os2$(%SEP)fat32sys.sym
+ $(p)os2$(%SEP)fat32sys.sym &
 !endif
 !endif
  $(p)os2$(%SEP)docs$(%SEP)fat32$(%SEP)partfilt.doc $(p)os2$(%SEP)docs$(%SEP)fat32$(%SEP)build.txt $(p)os2$(%SEP)docs$(%SEP)fat32$(%SEP)notes.txt &
@@ -221,7 +221,7 @@ dirs: .symbolic
 
 $(BLDROOT)$(%SEP)bld.flg:
  @for %d in ($(BLDDIRS)) do @mkdir %d
- wtouch $^@
+ @wtouch $^@
 
 $(BINROOT)$(%SEP)zip-os2.flg: $(distfiles)
  @echo ZIP      $(distfile1)

@@ -702,7 +702,7 @@ int Mount(struct args *args)
                            &args->ullOffset,
                            &args->ullSize,
                            &args->ulSecSize,
-                           args->ulPart);
+                           args->ulPart); ////
 
        if (rc)
           goto err;

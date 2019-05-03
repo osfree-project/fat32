@@ -191,6 +191,7 @@ USHORT rc = NO_ERROR;
                }
             }
 
+         InitCache(ulCacheSectors);
          break;
 
       case MOUNT_ACCEPT :
@@ -299,25 +300,31 @@ APIRET rc;
    if (! pidDaemon)
       return ERROR_INVALID_PROCID;
 
+   Message("prs000");
    rc = FSH_SEMREQUEST(&semSerialize, -1);
 
+   Message("prs001");
    if (rc)
       return rc;
 
+   Message("prs002");
    rc = SemWait(&semRqDone);
 
+   Message("prs003");
    if (rc == WAIT_INTERRUPTED)
       {
       daemonStopped();
       return ERROR_INTERRUPT;
       }
    
+   Message("prs004");
    if (rc)
       {
       FSH_SEMCLEAR(&semSerialize);
       return rc;
       }
 
+   Message("prs005");
    return NO_ERROR;
 }
 
@@ -370,11 +377,14 @@ ULONG hf;
             return ERROR_ALREADY_EXISTS;
             }
 
+         Message("000");
          FSH_SEMCLEAR(&semSerialize);
 
+         Message("001");
          if (! pidDaemon)
             return ERROR_INVALID_PROCID;
          
+         Message("002");
          if (opts->hf)
             {
             /* already opened */
@@ -384,8 +394,10 @@ ULONG hf;
          else
             {
             /* open file */
+            Message("003");
             rc = PreSetup();
 
+            Message("004");
             if (rc)
                return rc;
 
@@ -393,24 +405,30 @@ ULONG hf;
             strcpy(pCPData->Buf, opts->pFilename);
             memcpy(pCPData->pFmt, opts->pFmt, 8);
 
+            Message("005");
             rc = PostSetup();
 
+            Message("006");
             if (rc)
                return rc;
 
             hf = pCPData->hf;
             rc = (USHORT)pCPData->rc;
 
+            Message("007");
             if (rc)
                return rc;
             }
 
          /* read the boot sector */
+         Message("008");
          rc = PreSetup();
 
+         Message("009");
          if (rc)
             return rc;
 
+         Message("010");
          pCPData->Op = OP_READ;
          pCPData->hf = hf;
 #ifdef INCL_LONGLONG
@@ -420,19 +438,24 @@ ULONG hf;
 #endif
          pCPData->cbData = 512;
 
+         Message("011");
          rc = PostSetup();
 
+         Message("012");
          if (rc)
             return rc;
 
+         Message("013");
          rc = (USHORT)pCPData->rc;
 
+         Message("014");
          if (rc)
             return rc;
 
          memcpy(pBoot, pCPData->Buf, 512);
 
          /* create the VOLINFO structure */
+         Message("015");
          *pVolInfo = gdtAlloc(STORAGE_NEEDED, FALSE);
          if (!*pVolInfo)
             {
@@ -444,11 +467,13 @@ ULONG hf;
 
          (*pVolInfo)->pbMntPoint = malloc(strlen(opts->pMntPoint) + 1);
 
+         Message("016");
          if (! (*pVolInfo)->pbMntPoint)
             return ERROR_NOT_ENOUGH_MEMORY;
 
          (*pVolInfo)->pbFilename = malloc(strlen(opts->pFilename) + 1);
 
+         Message("017");
          if (! (*pVolInfo)->pbFilename)
             return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -461,8 +486,10 @@ ULONG hf;
 #endif
          (*pVolInfo)->hf = hf;
 
+         Message("018");
          rc = mount(opts->usOp, *pVolInfo, pBoot);
 
+         Message("019");
          if (rc)
             return rc;
 
@@ -489,6 +516,7 @@ ULONG hf;
                }
             pNext->pNextVolInfo = *pVolInfo;
             }
+         Message("020");
          break;
 
       case MOUNT_ACCEPT:
@@ -1073,8 +1101,10 @@ int i;
             pVolInfo->usRASectors = usDefaultRASectors;
 
 #if 1
-         if( pVolInfo->usRASectors > MAX_RASECTORS )
+         if( pVolInfo->usRASectors * (pVolInfo->BootSect.bpb.BytesPerSector / 512) > MAX_RASECTORS )
             pVolInfo->usRASectors = MAX_RASECTORS;
+         else
+            pVolInfo->usRASectors *= pVolInfo->BootSect.bpb.BytesPerSector / 512;
 #else
          if (pVolInfo->usRASectors > (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector) * 4)
             pVolInfo->usRASectors = (pVolInfo->ulBlockSize / pVolInfo->BootSect.bpb.BytesPerSector ) * 4;
@@ -1348,6 +1378,11 @@ int i;
          pVolInfo->ulBlockSize = min(pVolInfo->ulClusterSize, 32768UL);
 
          pVolInfo->usRASectors = usDefaultRASectors;
+
+         if( pVolInfo->usRASectors * (pVolInfo->BootSect.bpb.BytesPerSector / 512) > MAX_RASECTORS )
+            pVolInfo->usRASectors = MAX_RASECTORS;
+         else
+            pVolInfo->usRASectors *= pVolInfo->BootSect.bpb.BytesPerSector / 512;
 
          // undefined
          pVolInfo->ulStartOfData = 0;

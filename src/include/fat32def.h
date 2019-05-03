@@ -90,7 +90,7 @@ typedef struct _FILESTATUS4L      /* fsts4L */
    ULONG    cbList;
 } FILESTATUS4L;
 typedef FILESTATUS4L FAR *PFILESTATUS4L;
-#pragma pack(2)
+#pragma pack()
 #endif
 
 #ifdef __OS2__
@@ -152,7 +152,8 @@ typedef FILESTATUS4L FAR *PFILESTATUS4L;
 #define FAT_NOTUSED    0x00000000
 #define SECTOR_SIZE    512
 #define MAX_CLUSTER_SIZE 65536
-#define MAX_RASECTORS  128
+#define MAX_RASECTORS  64
+//#define MAX_RASECTORS  128
 #define MAX_DRIVES     10
 #define DELETED_ENTRY  0xE5
 #define ERROR_VOLUME_NOT_MOUNTED 0xEE00
