@@ -37,7 +37,7 @@ APIRET trace(const char *fmt, va_list va);
 
 void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
-// QSINIT/OS4LDR log support
+// QSINIT/ARCALDR/OS4LDR log support
 
 // make pointer to DOSHLP code (this is constant value for all OS/2 versions)
 ULONG FAR *doshlp = MAKEP (0x100,0);
@@ -45,7 +45,7 @@ ULONG FAR *doshlp = MAKEP (0x100,0);
 void LogPrintInit(void)
 {
   // check OS/4 loader signature at DOSHLP:0 seg
-  if (*doshlp == 0x342F534F)
+  if (*doshlp == 0x342F534F || *doshlp == 0x41435241) // 'OS/4' or 'ARCA'
      {
      doshlp++;
      // check OS/4 loader info struct size

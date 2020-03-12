@@ -102,7 +102,7 @@ APIRET SemClear(long far *sem)
     (*sem)--;
 
 #ifdef DEBUG
-    log_printf("%lx\n", *sem);
+    log("%lx\n", *sem);
 #endif
 
     rc = DevHelp_ProcRun((ULONG)sem, &usValue);
@@ -117,7 +117,7 @@ APIRET SemSet(long far *sem)
     (*sem)++;
 
 #ifdef DEBUG
-    log_printf("%lx\n", *sem);
+    log("%lx\n", *sem);
 #endif
 
     return rc;
@@ -128,7 +128,7 @@ APIRET SemWait(long far *sem)
     APIRET rc = 0;
 
 #ifdef DEBUG
-    log_printf("%lx\n", *sem);
+    log("%lx\n", *sem);
 #endif
 
     if (*sem >= 0)
