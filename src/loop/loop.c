@@ -222,7 +222,7 @@ struct SysDev3 DevHeader = {
 
 void (_far _cdecl *LogPrint)(char _far *fmt,...) = 0;
 
-#define log_printf(str, ...)  if (LogPrint) (*LogPrint)("loop: " str, __VA_ARGS__)
+#define log(str, ...)  if (LogPrint) (*LogPrint)("loop: " str, __VA_ARGS__)
 
 long semSerialize = 0; // Serializes R/W requests
 long semRqAvail = 0;   // Signals that I/O buffer is available for processing by daemon
@@ -287,7 +287,7 @@ APIRET SemClear(long far *sem)
     (*sem)--;
 
 //#ifdef DEBUG
-//    log_printf("%lx\n", *sem);
+//    log("%lx\n", *sem);
 //#endif
 
     rc = DevHelp_ProcRun((ULONG)sem, &usValue);
@@ -303,7 +303,7 @@ APIRET SemSet(long far *sem)
     (*sem)++;
 
 //#ifdef DEBUG
-//    log_printf("%lx\n", *sem);
+//    log("%lx\n", *sem);
 //#endif
 
     return rc;
@@ -314,7 +314,7 @@ APIRET SemWait(long far *sem)
     APIRET rc = 0;
 
 //#ifdef DEBUG
-//    log_printf("%lx\n", *sem);
+//    log("%lx\n", *sem);
 //#endif
 
     if (*sem >= 0)
@@ -393,7 +393,7 @@ void init(PRPINITIN reqpkt)
     int nUnits = 3;
 
     // check for OS/4 loader signature at DOSHLP:0 seg
-    if (*doshlp == 0x342F534F)
+    if (*doshlp == 0x342F534F || *doshlp == 0x41435241) // 'OS/4' or 'ARCA'
     {
         doshlp++;
 
@@ -406,7 +406,7 @@ void init(PRPINITIN reqpkt)
         }
     }
 
-    log_printf("%s\n", (char far *)"loop.add started");
+    log("%s\n", (char far *)"loop.add started");
 
     pADDParms = (PDDD_PARM_LIST)reqpkt->InitArgs;
     pCmdLine = MAKEP(SELECTOROF(pADDParms), (USHORT)pADDParms->cmd_line_args);
@@ -434,13 +434,19 @@ void init(PRPINITIN reqpkt)
     {
         fStrat1 = TRUE;
         ainfo.MaxHWSGList = 1;
-        log_printf("%s\n", (char far *)"strat1 mode is on");
+        log("%s\n", (char far *)"strat1 mode is on");
+    }
+
+    if ( !strstr(pCmdLine, (char far *)"/d") )
+    {
+        // no debug mode
+        LogPrint = 0;
     }
 
     // DevHelp entry point
     Device_Help = (ULONG)reqpkt->DevHlpEP;
 
-    log_printf("pDevHelp = %x:%x\n", SELECTOROF(Device_Help), OFFSETOF(Device_Help));
+    log("pDevHelp = %x:%x\n", SELECTOROF(Device_Help), OFFSETOF(Device_Help));
 
     // register as an ADD
     DevHelp_RegisterDeviceClass(ainfo.AdapterName, (PFN)iohandler, 0, 1, &devhandle);
@@ -463,7 +469,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
 #ifdef DEBUG
     if (reqpkt->Category == CAT_LOOP && reqpkt->Function != FUNC_PROC_IO)
-        log_printf("ioctl: cat=%x, func=%x\n", reqpkt->Category, reqpkt->Function);
+        log("ioctl: cat=%x, func=%x\n", reqpkt->Category, reqpkt->Function);
 #endif
 
     if (reqpkt->Category != CAT_LOOP  ||
@@ -477,7 +483,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
     {
         case FUNC_MOUNT:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"mount");
+            log("ioctl: %s\n", (char far *)"mount");
 #endif
             if (! pParm)
             {
@@ -489,7 +495,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
             if (rc)
             {
-                log_printf("ioctl: %s, rc=%d\n", (char far *)"mount:", rc);
+                log("ioctl: %s, rc=%d\n", (char far *)"mount:", rc);
                 rc = ERROR_I24_NOT_DOS_DISK;
                 break;
             }
@@ -497,7 +503,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_MOUNTED:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"mounted");
+            log("ioctl: %s\n", (char far *)"mounted");
 #endif
 
             {
@@ -530,7 +536,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_DAEMON_STARTED:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"daemon_started");
+            log("ioctl: %s\n", (char far *)"daemon_started");
 #endif
             if (pidDaemon)
             {
@@ -555,7 +561,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_DAEMON_STOPPED:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"daemon_stopped");
+            log("ioctl: %s\n", (char far *)"daemon_stopped");
 #endif
             if (! pidDaemon)
             {
@@ -573,7 +579,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_DAEMON_DETACH:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"daemon_detach");
+            log("ioctl: %s\n", (char far *)"daemon_detach");
 #endif
             rc = daemonStopped();
             if (rc)
@@ -585,7 +591,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_DONE_REQ:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"done_req");
+            log("ioctl: %s\n", (char far *)"done_req");
 #endif
             if (! pidDaemon)
             {
@@ -611,7 +617,7 @@ void ioctl(RP_GENIOCTL far *reqpkt)
 
         case FUNC_GET_REQ:
 #ifdef DEBUG
-            log_printf("ioctl: %s\n", (char far *)"get_req");
+            log("ioctl: %s\n", (char far *)"get_req");
 #endif
             if (! pidDaemon)
             {
@@ -681,7 +687,7 @@ ioctl_exit:
     if (rc)
     {
 #ifdef DEBUG
-        log_printf("ioctl: rc=%d\n", rc);
+        log("ioctl: rc=%d\n", rc);
 #endif
         reqpkt->rph.Status = STDON | STERR | rc;
     }
@@ -967,7 +973,7 @@ PBPB0 pbpb;
             if (pbpb->Heads && pbpb->Heads < 256)
                 heads = pbpb->Heads;
 
-            log_printf("heads=%d, spt=%d\n", heads, spt);
+            log("heads=%d, spt=%d\n", heads, spt);
             break;
 
         case MOUNT_RELEASE:
@@ -1023,7 +1029,7 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
     APIRET  rc;
 
 #ifdef DEBUG
-    log_printf("iorb: cc=%d, cm=%d\n", pIORB->CommandCode, pIORB->CommandModifier);
+    log("iorb: cc=%d, cm=%d\n", pIORB->CommandCode, pIORB->CommandModifier);
 #endif
 
     do
@@ -1282,11 +1288,11 @@ void _far _cdecl _loadds iohandler(PIORB pIORB)
                             int i;
 
 #ifdef DEBUG
-                            log_printf("iohandler %lx %d -> rc %d\n", cpIO->RBA, cpIO->BlockCount, error);
+                            log("iohandler %lx %d -> rc %d\n", cpIO->RBA, cpIO->BlockCount, error);
 
                             for (i = 0; i < cpIO->cSGList; i++)
                             {
-                                log_printf("sge: %d. %lx %lx\n", i, pt[i].ppXferBuf, pt[i].XferBufLen);
+                                log("sge: %d. %lx %lx\n", i, pt[i].ppXferBuf, pt[i].XferBufLen);
                             }
 #endif
                         }
@@ -1713,7 +1719,7 @@ io_end:
     }
 
 #ifdef DEBUG
-    log_printf("ExecIoReq: rc=%d\n", rc);
+    log("ExecIoReq: rc=%d\n", rc);
 #endif
     return rc;
 }
