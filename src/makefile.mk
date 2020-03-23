@@ -13,7 +13,7 @@ BLDDIRS  = $(BINROOT) $(BLDROOT) $(LIBROOT) &
            $(BINROOT)$(%SEP)os2$(%SEP)book $(BINROOT)$(%SEP)os2$(%SEP)docs $(BINROOT)$(%SEP)os2$(%SEP)docs$(%SEP)fat32 &
            $(BLDROOT)$(%SEP)util $(BLDROOT)$(%SEP)ifs $(BLDROOT)$(%SEP)ifs$(%SEP)libc $(BLDROOT)$(%SEP)partfilt &
            $(BLDROOT)$(%SEP)loop $(BLDROOT)$(%SEP)loop$(%SEP)libc $(BLDROOT)$(%SEP)ifsinf &
-           $(BLDROOT)$(%SEP)ufat32 $(BLDROOT)$(%SEP)f32chk $(BLDROOT)$(%SEP)util$(%SEP)zlib &
+           $(BLDROOT)$(%SEP)ufat32 $(BLDROOT)$(%SEP)f32chk $(BLDROOT)$(%SEP)util$(%SEP)zlib $(BLDROOT)$(%SEP)util$(%SEP)emxdoc &
            $(BLDROOT)$(%SEP)util$(%SEP)qemu-img $(BLDROOT)$(%SEP)util$(%SEP)qemu-img$(%SEP)block &
            $(BLDROOT)$(%SEP)ufat32$(%SEP)win32 $(BINROOT)$(%SEP)win32 $(BINROOT)$(%SEP)win32$(%SEP)dll &
            $(BINROOT)$(%SEP)test $(BLDROOT)$(%SEP)test $(BLDROOT)$(%SEP)test$(%SEP)16bit

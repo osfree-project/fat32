@@ -5,5 +5,5 @@ PATH = ..
 !include makefile.mk
 
 DIRS = include ufat32 ufat32$(%SEP)win32 util$(%SEP)zlib util$(%SEP)qemu-img &
-       util ifs$(%SEP)libc ifs f32chk partfilt loop ifsinf$(%SEP)ifs ifsinf$(%SEP)fat32 &
+       util util$(%SEP)emxdoc ifs$(%SEP)libc ifs f32chk partfilt loop ifsinf$(%SEP)ifs ifsinf$(%SEP)fat32 &
        test test$(%SEP)16bit

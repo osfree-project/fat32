@@ -1,0 +1,601 @@
+þtitle FAT32.IFS
+
+þh1 Introduction
+þipf
+:artwork name='img0.bmp' align=center. 
+
+.* :artwork name='img1.bmp' align=center. 
+
+:lines align=center.
+:hp2. Version 0.10 :ehp2.
+:elines.
+
+:p.
+:p.
+þendipf
+
+  þbf{The universal FAT (FAT12/FAT16/FAT32/exFAT) IFS DRIVER FOR OS/2 and OS/2-based systems:}
+
+  This project is based on the original FAT32 source code by Henk Kelder who 
+  was kind enough to release the source to Netlabs (netlabs.org) in January 2002 
+  because he no longer uses OS/2. As a result, it is now a Netlabs project with the 
+  full source code always available.
+
+  The FAT32 homepage at http://trac.netlabs.org/fat32/ provides both a simple zip
+  file and a WarpIN package which will install FAT32 without much effort 
+  on the users part.
+
+  Please note that Arca Noae distributes a stripped-down version without exFAT
+  support, for legal reasons. To get a full-featured version, please refer to the
+  official project home page, which is mentioned above.
+
+  þbf{Authors:}
+þverbatim
+  -Henk Kelder: original author 
+  -Brian Smith: contributor
+  -KO Myung-Hun: main developer for the FAT32 IFS driver 
+  -Alfredo Fern ndez D¡az: creator of the WarpIN Script for FAT32 and contributor 
+  -David Graser: creator of the FAT32.INF file 
+  -Lars Erdmann: developer
+  -Valery V. Sedletski: FAT32 IFS version 0.10 developer
+þendverbatim
+
+  þbf{User's and developer's resources:}
+þverbatim
+  -Project bugtracker: http://trac.netlabs.org/fat32/report/6
+  -Mailing list for users: https://groups.yahoo.com/neo/groups/fat32user/info
+  -Mailing list for developers: https://groups.yahoo.com/neo/groups/fat32dev/info
+  -SVN repository: http://svn.netlabs.org/repos/fat32/trunk
+  -Builds archive: ftp://osfree.org/upload/fat32/
+þendverbatim
+
+  Remember that patches are always welcome. If anyone would like to 
+  contribute, feel free to contact Netlabs.
+
+
+
+  þhpt{DISCLAIMER}
+
+þh1 Disclaimer
+þlabel DISCLAIMER
+þipf
+:artwork name='img2.bmp' align=center. 
+þendipf
+
+
+
+  þbf{I allow you to use all software in this package freely under the condition 
+  that the author, contributors, and myself are in no way responsible for any damage 
+  or loss you may suffer.}
+
+  þbf{You should be aware of the fact that FAT32.IFS might damage the data 
+  stored on your hard disks.}
+
+  þbf{If you cannot agree to these conditions, you should NOT use FAT32.IFS!}
+
+  þbf{Adrian Gschwend @ netlabs.org}
+
+þh1 Making OS/2 Recognize FAT32 Partitions
+
+  þbf{MAKING OS/2 RECOGNIZE FAT32 PARTITIONS:}
+
+  eComStation and OS/2 by themselves do not recognize FAT32 partitions.
+  This means that installing the FAT32 IFS (installable file system) is useless if we 
+  cannot make OS/2 recognize them. There are several ways this is done.
+
+  þbf{LOGICAL VOLUME MANAGER (LVM):}
+
+  eComstation, Warp Server for e-business, and the convenience packages come 
+  with a Logical Volume Manager (LVM) to recognize the FAT32.IFS.
+
+
+  The Logical Volume Manager (LVM), a disk management tool, replaces the Fixed 
+  Disk utility (FDISK). It is used to create volumes and partitions, assign drive 
+  letters, span a disk across physical hard drives, and define volumes that include 
+  multiple hard drives.
+
+
+
+  LVM must be used to create either a `bootable volume` or a `compatibility volume` for
+  your FAT32 partitions. If the FAT32 partition contains a version of the Windows
+  operating system, and you want to boot to it, then you must use LVM to create a
+  `bootable volume`. In addition, the IBM Boot Manager is also required to boot to
+  your Win9x partition. If the FAT32 partition contains data that you wish to manage,
+  then use LVM to create a `compatibility volume`. It is also possible to run Windows
+  programs from a bootable or compatibility volume using ODIN. After the creation of
+  the volumes, assign them drive letters.
+
+  þbf{Warning:} þtt{Do not use DANIDASD.DMD, PARTFILT.FLT, or the modified OS2DASD.DMD with these systems!}
+
+
+  þbf{PARTITION SUPPORT PACKAGES FOR NON-LVM SYSTEMS:}
+
+  For this installable file system to access FAT32 media, first OS/2 has to 
+  be able to assign them a drive letter. You already can do this in LVM systems.
+  For non-LVM systems you need a `partition support` package.
+  Presently, there are three such packages available.
+
+
+þipf
+:color fc=black.:color bc=yellow.
+þendipf
+  1. þhpt{Daniela Engert's enhanced DANIDASD.DMD}, a replacement for the 
+  OS2DASD.DMD found in OS/2 3 and 4. This is the preferred choice for non-LVM 
+  systems.
+þipf
+:color fc=default.:color bc=default.
+þendipf
+
+  2. Deon van der Westhuysen's {PARTFILT.FLT}, a BASEDEV FILTER to 
+  `fake` partitions that are not normally unsupported by OS/2. It is 
+  obsolete with {DANIDASD.DMD} being a much better choice.
+
+  3. Henk Kelder's modified version of {OS2DASD.DMD}, another 
+  replacement for the OS2DASD.DMD found in OS/2 3 and 4. It too is obsolete with 
+  DANIDASD.DMD being a much better choice. 
+
+
+  þbf{Note:} Once recognized, FAT32 partitions already formatted by Windows 
+  systems should be readily accessible after this FAT32 driver is installed and loaded. 
+
+
+
+þh2 Daniela Engert's Enhanced DASD Manager
+þlabel Daniela Engert's enhanced DANIDASD.DMD
+
+  þbf{SYNOPSIS:}
+
+  Slightly enhanced version of the OS/2 DASD manager OS2DASD.DMD to ease 
+  coexistence with WinXY systems. Supports some limited form of logical volume management.
+
+
+  þbf{DESCRIPTION:}
+
+  This release of Daniela&apos.s DASD Manager driver is based on the OS2DASD.DMD
+  sources provided by IBM on their DDK site. It has the latest feature set 
+  as found in the current fixpacks.
+
+ þhpt{Availability}:
+
+þh3 Availability
+þlabel Availability
+
+  þbf{AVAILABILITY:}
+
+  Daniela's driver can be found on Hobbes at:
+
+  þsl{http://hobbes.nmsu.edu/pub/os2/system/drivers/storage/danidasd144.zip}
+
+
+  There may eventually be a WarpIN (wpi) version available at Hobbes in the 
+  same location as the zip file.
+
+þitemize
+þitem
+  þhpt{Caution}:
+þenditemize
+
+
+þh3 Caution
+þlabel Caution
+
+  þbf{CAUTION:}
+
+þitemize
+þitem
+ DaniDASD.DMD is made for non-LVM systems only! 
+þitem
+ It does not work with OS2LVM.DMD!
+þitem
+ It cannot overcome limitations of FDISK or OS/2 Bootmanager! 
+þenditemize
+
+þitemize
+þitem
+  þhpt{Enhancements}:
+þenditemize
+
+þh3 Enhancements
+þlabel Enhancements
+
+  þbf{DANIELA'S ENHANCEMENTS ARE:}
+
+þitemize
+þitem
+  It supports extendedX partitions (type 0F) and Linux extended partitions (type 8F,
+  even more clueless and useless than the Microsoft invented type 0F !) 
+  exactly the same as regular extended partitions (type 05). ExtendedX partitions are 
+  common today because of disks larger than 8GiB.
+
+þitem
+  It supports FAT32 partitions (type 0B and 0C) exactly as IFS partitions (type 07,
+  used by HPFS and NTFS). This way FAT32 partitions show up in `correct`
+  order (w.r.t. the disk layout), and are assigned drive letters 
+  `as expected`. PARTFILT.FLT is no longer necessary to make FAT32 
+  partitions accessible, but Henk Kelder's FAT32.IFS is still required.
+
+þitem
+  It supports FAT16X partitions (type 0E) exactly as big FAT16 (type 06) 
+  partitions.
+
+þitem
+  It supports up to eight additional partition types as specified by by the 
+  user. This is meant for making hidden partitions (types 1x) or foreign file 
+  systems like Linux's ext2 (type 83) visible to the DASD manager. You have to 
+  tell DaniDASD.DMD the additional partition types by means of the option 
+þenditemize
+
+  /AT:<type>{,<type>{,<type>...}} (<type> must be two digits hexadecimal!) 
+
+  To summarize the notion of acceptable partition types, have a look at this table.
+
+  þbf{DASD manager partition types supported}
+
+  þbf{extended regular}
+
+  þbf{OS2DASD (pre-LVM)} 05  01, 04, 06, 07
+
+  þbf{OS2DASD (LVM)} 05, 0F 01, 04, 06, 07, 35, [+ other]
+
+  þbf{DaniDASD} 05, 0F, 8F 01, 04, 06, 07, 0B, 0C, 0E, [+ other]
+
+
+  If an additional partition type is a `hidden` partition (1x), then a 
+  matching partition is propagated to its `not-hidden` counterpart (0x) and the 
+  acceptance rules above apply.
+
+þitemize
+þitem
+  þhpt{Enhanced Options}
+þenditemize
+
+
+þh3 Enhanced Options
+þlabel Enhanced Options
+
+  þbf{ENHANCED OPTIONS:}
+
+þitemize
+þitem
+  It can overcome boot problems which result in `can't operate hard disk` messages.
+  This is common if OS/2 is booted without proper help of OS/2 
+  Bootmanager which is required to notify OS/2 of the *correct* boot drive letter. If 
+  there is no boot manager with this capability available (e.g. when booting 
+  from removable media), or the boot manager fails to figure out the correct boot 
+  drive letter, you can tell DaniDASD.DMD the correct one by means of the option 
+
+  þbf{/BD:<drive letter>}
+
+  which will override the boot drive letter assignment from the first boot 
+  stage. 
+
+  þbf{Example:}
+
+þitem
+  In a mixed SCSI/EIDE environment with two SCSI adapters and 
+  and two different EIDE controllers involved (her current setup at home), the ATAPI 
+  ZIP250 drive gets assigned drive letter M:.
+
+þitem
+  To boot from this unit, she has this line in CONFIG.SYS of the ZIP boot 
+  floppy 
+
+  BASEDEV=DaniDASD.DMD /BD:M 
+
+  þbf{CAUTION:}
+
+þitem
+  It looks like the WPS doesn't honour this setting so that it is pretty much 
+  restricted to console sessions. 
+
+þitem
+  It can create a logical volume map independently from the physical volumes (partitions).
+
+  þbf{CAUTION:}
+
+þitem
+  When this option is in effect, DaniDASD no longer follows the old OS2DASD rule 
+  of accepting only the first acceptable partition in the primary partition table.
+  Instead, the LVM rule of accepting all acceptable primary partitions applies! 
+
+þitem
+  After scanning the *fixed* disks for acceptable partitions following the 
+  rules above, a logical volume mapping is created from these partitions. This is 
+  done by means of a map table. This table lists the partitions which are to be 
+  given a drive letter in ascending, consecutive order, starting from drive letter C:.
+  A particular physical partition is indicated by a two-letter code
+  <physical disk number><physical partition number>. Code `Aa` indicates the 
+  first partition on the first disk, `Ab` the second partition on the same disk,
+  `Bc` the third partition on the second disk, and so on. The 
+  numbering of disks and partitions is given by the regular scanning order of DaniDASD.
+
+þitem
+  Each entry in the mapping table must be unique, entries without an existing 
+  partition are ignored.
+þenditemize
+
+  þbf{Example:}
+
+  BASEDEV=DaniDASD.DMD /MT:Aa,Ad,Ba,Bb 
+
+  creates logical volumes C:..F: from the indicated 
+  physical partitions.
+
+  þbf{CAUTION:}
+
+  This does *not* apply to removable media units! Their drive letters *always* 
+  follow the fixed disk ones.
+
+  þbf{CAUTION:}
+
+  Remapping visible FAT and HPFS primary partitions may fail! 
+
+  May replace OS2PCARD.DMD. If you are running PCM2ATA.ADD, either 
+  remove the /!DM option there or add /PC to the DaniDASD.DMD command line. In 
+  case of DaniS506.ADD handling PCCard ATA units, no option is required. 
+
+
+þitemize
+þitem
+  þhpt{Command Line Options}
+þenditemize
+
+þh3 Command Line Options
+þlabel Command Line Options
+
+  þbf{Command Line Options}
+
+  This driver supports all switches and options OS2DASD.DMD supports. 
+  For an explanation of these look into the OS/2 online help (by picking 'OS/2 
+  Commands by name'/ 'BASEDEV...'/'OS2DASD...') and the updates found in the
+  fixpak documentation.
+
+  For the sake of completeness, these are the OS2DASD options.
+
+  þul{Options Descriptions}
+
+  þbf{/of} treat optical units like disk units (i.e. MO drives as additional 
+  removable disks) 
+
+  þbf{/lf} treat removable disks like large floppies (i.e. not partitioned) 
+
+  þbf{/mp} reserve a number partitions for removable media units (see OS2DASD docs 
+  for details 
+
+þitemize
+þitem
+  þhpt{DDInstal Installation}
+þenditemize
+
+þh3 DDInstal Installation
+þlabel DDInstal Installation
+
+  þbf{DDINSTAL INSTALLATION:}
+
+  Of the three foreign partition support packages, this is the preferred choice 
+  for installation.
+
+  For an upgrade from a previously installed OS2DASD.DMD driver, just copy 
+  DaniDASD.DMD to bootdrive:\OS2\BOOT and rename OS2DASD.DMD to 
+  DaniDASD.DMD in your CONFIG.SYS. 
+
+  BASEDEV=DaniDASD.DMD 
+
+  If you prefer chasing icons, you can do the copy and the modification of 
+  CONFIG.SYS using DDINSTAL (`OS/2 System`/`System Setup`/`Install/Remove`/`Device Driver`).
+  Due to limits in DDINSTAL, you have to disable the previously installed OS2DASD.DMD driver
+  in CONFIG&per.SYS manually, either by deleting that line or putting a 'rem' statement in front 
+  of it.
+
+  þhpt{Files}
+
+þh3 Files
+þlabel Files
+
+  þbf{FILES:}
+
+  þul{Files Descriptions}
+
+  þbf{DaniDASD.DMD} The driver itself 
+
+  þbf{DaniDASD.DDP} The device driver profile for DDINSTAL 
+
+  þbf{DaniDASD.DOC} A Document containing the information about DaniDASD 
+
+  þbf{cmprssd\DaniDASD.DMD} The same as above, but LXlite compressed.
+  This one is *not* guaranteed to work on every system.
+
+ þhpt{Disclaimer}
+
+þh3 Disclaimer
+þlabel Disclaimer
+
+  þbf{DANIELA ENGERT'S DISCLAIMER:}
+
+  YOU ARE USING THIS PROGRAM AT YOUR OWN RISK! I don't take any 
+  responsibility for damages, problems, custodies, marital disputes, etc. resulting from use,
+  inability to use, misuse, possession or non-possession of this program directly 
+  or indirectly. I also don't give any warranty for bug-free operation, 
+  fitness for a particular purpose or the appropriate behavior of the program concerning 
+  animals, programmers and little children.
+
+  THE SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR 
+  IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF 
+  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND 
+  PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST 
+  OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+þverbatim
+Or, in a few words.
+If its good, I am responsible.
+If its bad, its all your fault. ;) 
+þendverbatim
+
+  Permission is granted to redistribute this program free of charge, provided 
+  it is distributed in the full archive with unmodified contents and no profit 
+  beyond the price of the media on which it is distributed is made. Exception to the 
+  last rule: It may be included on freeware/shareware collections on CD-ROM, as 
+  well as on magazine cover CD-ROMs.
+
+  All trademarks mentioned anywhere around here are property of their owners 
+  and the like...
+
+
+  Daniela Engert <dani@ngrt>
+
+  þhpt{Copyright and Status}
+
+þh3 Copyright and Status
+þlabel Copyright and Status
+
+  þbf{COPYRIGHT:}
+
+     DaniDASD - Copyright (c) 2001 Daniela Engert. All rights reserved.
+
+  þbf{STATUS OF PROGRAM:}
+
+     DaniDASD is freeware.
+
+  þhpt{Contact}
+
+þh3 Contact
+þlabel Contact
+
+  þbf{AUTHOR:}
+
+     Daniela Engert 
+     Internet: `Daniela Engert` <dani@ngrt.de>        (preferred)  
+     Fidonet: 2:2490/2575 (no debug support here) 
+
+  þhpt{Bugs}
+
+þh3 Bugs
+þlabel Bugs
+
+  þbf{BUGS:}
+
+þverbatim
+Hopefully none, but who knows...
+Up to date, not a single problem was reported &colon. 
+
+Many people refer to driver revisions by file dates. Don't do that 
+for these reasons.
+
+- She doesn&apos.t keep track of file dates 
+- She builds several drivers almost each day 
+- file dates can easily be changed 
+- there are many different calendars in this world 
+
+The only valid reference is the driver's version number. It is shown 
+when you run `BLDLEVEL DaniDASD.DMD` which will output something like 
+this:
+
+
+Signature:     @#DANI:1.0#@##1## 17.2.2001 19:46:21
+Vendor:        DANI
+Revision:      1.00
+Date/Time:     17.2.2001 19.46.21
+Build Machine: Nachtigall
+File Version:  1.0.0 <ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+Description:   OS/2 DASD Device Manager  ³
+                                         ³
+This is the full version number  ÄÄÄÄÄÄÄÄÙ
+þendverbatim
+
+
+  She has no means to identify traps occurring outside this driver (module name 
+  different from 'Disk DD' or not present). If a trap occurs within this 
+  driver, she needs the following information: CS:EIP, EAX-EDI, DS and ES.
+  Her test systems at home (VIA and ALi) and a couple of other machines at work
+  (different INTEL chips) run flawlessly with this driver, so she has virtually no chance to 
+  reproduce errors.
+
+  þhpt{Bug Reports}
+
+þh3 Bug Reports
+þlabel Bug Reports
+
+  þbf{BUG REPORTS:}
+
+  Suggestions and bug-reports are always welcome. Well... bug-
+  reports are perhaps not *that* welcome...
+
+
+þh2 PARTFILT.FLT
+
+  þbf{PARTFILT.FLT:}
+
+  PARTFILT is based on the excellent work of Deon van der Westhuysen. Henk 
+  Kelder made only minor modifications to it. The source code is available under GPL 
+  conditions and can now be downloaded from the Netlabs. 
+
+  Also, once PARTFILT is installed FDISK, Partition Magic and other Partition 
+  tools can no longer be trusted. Do not use these tools once PARTFILT is installed. 
+
+  PARTFILT.FLT is a BASEDEV FILTER device that is able to present (fake) 
+  partition types that are normally unsupported by OS/2 in such a way to OS/2 that IFS's
+  can be loaded on these partitions. Such virtualized partition will always 
+  be mounted after the non-virtualized partitions.
+
+  The best location in the config.sys seems to differ depending on your 
+  configuration&per. Some state FAT32.IFS will only work is PARTFILT is the first basedev, 
+  others claim it only works if PARTFILT is the last one.
+
+  A specific problem was reported when using a SCSI power save basedev that 
+  only seemed to work if PARTFILT was the last basedev. 
+
+  þhpt{AVAILABILITY}
+
+þh3 Availability
+þlabel AVAILABILITY
+
+  þbf{AVAILABILITY:}
+
+  The partfilt.flt driver will NO longer be distributed with the FAT32 IFS 
+  driver. If needed, it can be extracted from Henk's latest binary release and 
+  manually installed entirely at the user's own risk. Henk Kelder's last 
+  release can be found on Hobbes at.
+
+  http://hobbes.nmsu.edu/pub/os2/system/drivers/filesys/os2fat32.zip
+
+  þhpt{Installation}
+
+þh3 Installation
+þlabel Installation
+
+  þbf{INSTALLATION:}
+
+  þbf{Note:} This driver is obsolete with Daniela's DaniDASD.DMD 
+  being the better choice. However, if one prefers this driver, it can be installed 
+  doing the following. 
+
+  Copy the partfilt.flt driver to your \OS2\Boot directory. 
+
+  Add the following line to the config.sys file&colon. 
+
+  BASEDEV=PARTFILT.FLT /P 0B [/W] 
+
+  (The /W should not be specified if you do not want write access) (The best 
+  location seems to differ depending on your configuration. Some state FAT32.IFS 
+  will only work is PARTFILT is the first basedev, other claim it only works if 
+  PARTFILT is the last one.) PARTFILT.FLT might need other options IF you have 
+  converted an existing FAT16 partition to FAT32 or if you want to influence the drive 
+  order! This manual install will add FAT32 partition after all existing drives.
+
+  Reboot.
+
+  þhpt{Supported File Systems}
+
+þh3 Supported File Systems
+þlabel Supported File Systems
+
+  þbf{SUPPORTED FILE SYSTEMS:}
+
+  Currently, the filter can only be used for two IFS's: the FAT32.IFS
+  and the Linux IFS.
+
+  Also, PARTFILT.FLT can be used for other purposes such as making not-
+  visible partitions visible or using multiple primary partitions.
+
+  {PARTFILT OPTIONS.}
+

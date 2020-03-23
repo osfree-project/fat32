@@ -768,7 +768,7 @@ driver.
 
 Examples:
 
-BASEDEV=LOOP.ADD /UNITS&colon.3
+BASEDEV=LOOP.ADD /UNITS:3
 
 
 THE PURPOSE OF CACHEF32.EXE
@@ -779,7 +779,7 @@ CACHEF32.EXE is a helper program with the following functions:
 - Check DISK state on boot, run CHKDSK if needed (but since FAT32.IFS 
 versiom 0.10, CHKDSK is no more run from CACHEF32.EXE. It is run
 from the IFS FS_INIT routine, as it should be)&per.
-- Start the LAZY WRITE daemon&per. 
+- Start the LAZY WRITE daemon. 
 - Set CACHE and READ-AHEAD parameters.
 - Set Longname behavior.
 - Load a CP to UNICODE translate table for longnames and the default codepage.

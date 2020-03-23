@@ -191,7 +191,7 @@ USHORT rc = NO_ERROR;
                }
             }
 
-         //InitCache(ulCacheSectors);
+         InitCache(ulCacheSectors);
          break;
 
       case MOUNT_ACCEPT :

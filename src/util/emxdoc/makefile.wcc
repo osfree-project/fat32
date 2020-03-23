@@ -1,0 +1,45 @@
+!define _32BITS
+ROOT=..\..
+PROJ=util\emxdoc
+PATH=..$(%SEP)..$(%SEP)..$(%SEP)$(PROJ)
+
+DESC="Fat32 utilities, Henk Kelder & Netlabs"
+
+!include ..$(%SEP)..$(%SEP)makefile.mk
+
+COPT=-bt=os2 -3s -s -sg -db -d2 -hw -mf -od -zq -q -fp3 -fpi87 -i=. -i=$(%WATCOM)$(%SEP)h -i=$(%WATCOM)$(%SEP)h$(%SEP)os2
+
+OBJS=$(PROJ_BLD)$(%SEP)emxdoc.obj $(PROJ_BLD)$(%SEP)input.obj $(PROJ_BLD)$(%SEP)cond.obj &
+        $(PROJ_BLD)$(%SEP)html.obj $(PROJ_BLD)$(%SEP)ipf.obj $(PROJ_BLD)$(%SEP)latex.obj &
+        $(PROJ_BLD)$(%SEP)text.obj $(PROJ_BLD)$(%SEP)xref.obj $(PROJ_BLD)$(%SEP)lb.obj
+
+TARGETS=$(BINROOT)$(%SEP)os2$(%SEP)emxdoc.exe &
+        $(BINROOT)$(%SEP)os2$(%SEP)emxdoc.sym
+
+DIRS=
+
+SYS=os2v2
+
+$(BINROOT)$(%SEP)os2$(%SEP)emxdoc.exe:
+
+$(BINROOT)$(%SEP)os2$(%SEP)emxdoc.sym:
+
+$(PROJ_BLD)$(%SEP)emxdoc.lnk: $(PROJ_BLD)$(%SEP)emxdoc.ols
+
+$(PROJ_BLD)$(%SEP)emxdoc.ols: $(OBJS) makefile.wcc ..$(%SEP)..$(%SEP)makefile.mk
+ @%create $^@
+ @for %e in ($(OBJS)) do @%append $^@ FILE %e
+
+.ols.lnk:
+ @%create $@
+ @%append $@ SYSTEM $(SYS)
+ @%append $@ NAME $(BINROOT)$(%SEP)os2$(%SEP)$^&.exe
+ @%append $@ OPTION DESCRIPTION '$(FILEVER)  $(DESC)'
+ @%append $@ OPTION ST=384000
+ @%append $@ OPTION HEAP=384000
+ @%append $@ OPTION QUIET
+ @%append $@ DEBUG ALL
+ @%append $@ OPTION MAP=$[*.wmp
+ @%append $@ LIBPATH $(%WATCOM)$(%SEP)lib386;$(%WATCOM)$(%SEP)lib386$(%SEP)os2;$(LIBROOT)
+ @%append $@ LIB os2386,clib3s
+ @%append $@ @$[@

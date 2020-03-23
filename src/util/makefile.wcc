@@ -31,7 +31,7 @@ TARGETS=$(BINROOT)$(%SEP)os2$(%SEP)f32stat.exe $(BINROOT)$(%SEP)os2$(%SEP)f32mon
         $(BINROOT)$(%SEP)os2$(%SEP)f32mon.sym $(BINROOT)$(%SEP)os2$(%SEP)f32stat.sym
 !endif
 
-DIRS=..$(%SEP)include zlib qemu-img
+DIRS=..$(%SEP)include zlib qemu-img emxdoc
 
 SYS=os2v2
 
