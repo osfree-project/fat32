@@ -1,5 +1,7 @@
 #! /bin/sh
 #
 
-PATH=../..:$PATH
-. buildw.sh $1 $2 $3 $4 $5 $6 $7 $8 $9
+export ROOT=.
+while [ ! -f "$ROOT/tools/mk/all.mk" ]; do ROOT="$ROOT/.."; done
+export PATH=$ROOT/tools/conf/scripts:$PATH
+build-lnx.sh $*
